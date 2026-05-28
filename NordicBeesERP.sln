@@ -5,8 +5,6 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NordicBeesERP", "NordicBeesERP.csproj", "{896C6B7F-B026-CA8C-0281-5E897191DE8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NordicBeesERP.Tests", "..\NordicBeesERP.Tests\NordicBeesERP.Tests.csproj", "{71444685-9BE9-4257-8276-3DD45CC4639C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,18 +27,6 @@ Global
 		{896C6B7F-B026-CA8C-0281-5E897191DE8A}.Release|x64.Build.0 = Release|Any CPU
 		{896C6B7F-B026-CA8C-0281-5E897191DE8A}.Release|x86.ActiveCfg = Release|Any CPU
 		{896C6B7F-B026-CA8C-0281-5E897191DE8A}.Release|x86.Build.0 = Release|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Debug|x64.Build.0 = Debug|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Debug|x86.Build.0 = Debug|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Release|x64.ActiveCfg = Release|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Release|x64.Build.0 = Release|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Release|x86.ActiveCfg = Release|Any CPU
-		{71444685-9BE9-4257-8276-3DD45CC4639C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
