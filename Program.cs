@@ -110,5 +110,12 @@ using (var scope = app.Services.CreateScope())
     );
 }
 
+// Auto-apply EF migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<NordicBeesERPContext>();
+    await db.Database.MigrateAsync();
+}
+
 // PDF Download Endpoints - Removed: Use CreditNotePdfPage.razor instead to avoid route conflict
 app.Run();
