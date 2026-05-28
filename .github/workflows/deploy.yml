@@ -1,0 +1,52 @@
+name: Build and Deploy
+on:
+  push:
+    branches:
+      - main
+      - production
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set image tag
+        id: tag
+        run: |
+          if [ "${{ github.ref_name }}" = "production" ]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          fi
+      - name: Build Docker image
+        run: |
+          docker build -t nordicbees-erp:${{ steps.tag.outputs.tag }} .
+      - name: Deploy
+        run: |
+          if [ "${{ github.ref_name }}" = "production" ]; then
+            docker stop nordicbees_prod || true
+            docker rm nordicbees_prod || true
+            docker run -d \
+              --name nordicbees_prod \
+              --restart always \
+              --add-host host.docker.internal:host-gateway \
+              -e ASPNETCORE_ENVIRONMENT=Production \
+              -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
+              -p 8080:8080 \
+              nordicbees-erp:latest
+          else
+            docker stop nordicbees_staging || true
+            docker rm nordicbees_staging || true
+            docker run -d \
+              --name nordicbees_staging \
+              --restart always \
+              --add-host host.docker.internal:host-gateway \
+              -e ASPNETCORE_ENVIRONMENT=Staging \
+              -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp_staging;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
+              -p 8081:8080 \
+              nordicbees-erp:staging
+          fi
+          docker image prune -f
