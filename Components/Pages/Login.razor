@@ -1,0 +1,77 @@
+@page "/login"
+@layout EmptyLayout
+@rendermode InteractiveServer
+@inject IAuthService AuthService
+@inject BlazorAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@using NordicBeesERP.Services
+
+<PageTitle>Prisijungimas</PageTitle>
+
+<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f8fafc">
+    <MudPaper Elevation="2" Class="pa-8" Style="width:400px; border-radius:16px">
+        <div style="text-align:center; margin-bottom:24px">
+            <img src="/logo.png" style="height:60px; margin-bottom:16px;" alt="Lakštena" />
+            <MudText Typo="Typo.h5" Style="font-weight:700; color:#1e293b">Lakštena ERP</MudText>
+            <MudText Typo="Typo.body2" Style="color:#64748b">Prisijunkite prie sistemos</MudText>
+        </div>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_email" Label="El. paštas" Variant="Variant.Outlined"
+                InputType="InputType.Email" />
+            <MudTextField @bind-Value="_password" Label="Slaptažodis" Variant="Variant.Outlined"
+                InputType="InputType.Password" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="@true"
+                Size="Size.Large" OnClick="HandleLogin" Disabled="_loading"
+                Style="height:48px">
+                @if (_loading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
+                else { <span>Prisijungti</span> }
+            </MudButton>
+        </MudStack>
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@_errorMessage</MudAlert>
+        }
+    </MudPaper>
+</div>
+
+@code {
+    private string _email = "";
+    private string _password = "";
+    private bool _loading;
+    private string _errorMessage = "";
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrEmpty(_email) || string.IsNullOrEmpty(_password))
+        {
+            _errorMessage = "Įveskite el. paštą ir slaptažodį";
+            return;
+        }
+        _loading = true;
+        _errorMessage = "";
+        StateHasChanged();
+        try
+        {
+            var user = await AuthService.ValidateUserAsync(_email, _password);
+            if (user != null)
+            {
+                await AuthStateProvider.LoginAsync(user.Email, user.Role, user.FullName);
+                Navigation.NavigateTo("/", forceLoad: false);
+            }
+            else
+            {
+                _errorMessage = "Neteisingas el. paštas arba slaptažodis";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+}

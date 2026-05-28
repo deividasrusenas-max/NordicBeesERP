@@ -1,0 +1,36 @@
+@page "/warehouses/create"
+@rendermode RenderMode.InteractiveServer
+@inject IWarehouseService WarehouseService
+@inject NavigationManager Navigation
+
+<PageTitle>Naujas sandėlis</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Naujas sandėlis</MudText>
+
+    <MudTextField @bind-Value="warehouse.Code" Label="Kodas" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+    <MudTextField @bind-Value="warehouse.Name" Label="Pavadinimas" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+    <MudTextField @bind-Value="warehouse.Address" Label="Adresas" Variant="Variant.Outlined" Class="mb-3" />
+    <MudTextField @bind-Value="warehouse.City" Label="Miestas" Variant="Variant.Outlined" Class="mb-3" />
+    <MudTextField @bind-Value="warehouse.Country" Label="Šalis" Variant="Variant.Outlined" Class="mb-3" />
+    <MudTextField @bind-Value="warehouse.Description" Label="Aprašymas" Variant="Variant.Outlined" Lines="3" Class="mb-3" />
+    <MudSwitch @bind-Value="warehouse.IsActive" Label="Aktyvus" Color="Color.Success" Class="mb-3" />
+
+    <MudButton OnClick="@HandleSubmit" Variant="Variant.Filled" Color="Color.Primary" Class="mr-2">Išsaugoti</MudButton>
+    <MudButton OnClick="@Cancel" Variant="Variant.Outlined">Atšaukti</MudButton>
+</MudContainer>
+
+@code {
+    private NordicBeesERP.Models.Warehouse warehouse = new NordicBeesERP.Models.Warehouse { IsActive = true, Country = "Lithuania" };
+
+    private async Task HandleSubmit()
+    {
+        await WarehouseService.CreateAsync(warehouse);
+        Navigation.NavigateTo("/warehouses");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/warehouses");
+    }
+}

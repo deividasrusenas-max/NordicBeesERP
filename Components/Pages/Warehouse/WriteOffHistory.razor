@@ -1,0 +1,86 @@
+@page "/warehouse/write-off-history"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject IContainerService ContainerService
+@inject IWarehouseService WarehouseService
+@inject ICustomerService CustomerService
+@inject IHoneyTypeService HoneyTypeService
+
+<PageTitle>Nurašymų istorija</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Nurašymų istorija</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (!_containers.Any())
+    {
+        <MudAlert Severity="Severity.Info">Nurašytų konteinerių nėra</MudAlert>
+    }
+    else
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="6" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#ffebee; border-radius:8px">
+                    <MudText Typo="Typo.caption">Nurašyta vnt.</MudText>
+                    <MudText Typo="Typo.h5">@_containers.Count</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#ffebee; border-radius:8px">
+                    <MudText Typo="Typo.caption">Nurašyta kg</MudText>
+                    <MudText Typo="Typo.h5">@_containers.Sum(c => c.NetWeight).ToString("N1")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudTable T="Container" Items="_containers" Dense="true" Hover="true" Striped="true" RowsPerPage="50">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Tipas</MudTh>
+                <MudTh>Tiekėjas</MudTh>
+                <MudTh>Rūšis</MudTh>
+                <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                <MudTh>Sandėlis</MudTh>
+                <MudTh>Pastabos</MudTh>
+                <MudTh>Data</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="c">
+                <MudTd><strong>@c.ContainerCode</strong></MudTd>
+                <MudTd>@(c.ContainerType == "BARREL" ? "🛢️" : "🪣")</MudTd>
+                <MudTd>@GetSupplierName(c.SupplierId)</MudTd>
+                <MudTd>@GetHoneyTypeName(c.HoneyTypeId)</MudTd>
+                <MudTd Style="text-align:right">@c.NetWeight.ToString("N1")</MudTd>
+                <MudTd>@GetWarehouseName(c.WarehouseId)</MudTd>
+                <MudTd>@c.Notes</MudTd>
+                <MudTd>@c.UpdatedAt.ToString("yyyy-MM-dd")</MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
+            </PagerContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<Container> _containers = new();
+    private List<Warehouse> _warehouses = new();
+    private List<BusinessPartner> _suppliers = new();
+    private List<HoneyType> _honeyTypes = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _warehouses = (await WarehouseService.GetAllAsync()).ToList();
+        _suppliers = await CustomerService.GetSuppliersAsync();
+        _honeyTypes = await HoneyTypeService.GetAllAsync();
+        _containers = await ContainerService.GetFilteredAsync(null, null, null, "WRITTEN_OFF", null);
+        _loading = false;
+    }
+
+    private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+    private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
+    private string GetWarehouseName(int id) => _warehouses.FirstOrDefault(w => w.Id == id)?.Name ?? $"#{id}";
+}

@@ -1,0 +1,136 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@page "/products/edit/{Id:int}"
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Redaguoti prekę</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">✏️ Redaguoti prekę: @product?.Code</MudText>
+
+@if (product == null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudPaper Class="pa-4">
+        <EditForm Model="@product">
+            <DataAnnotationsValidator />
+            
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField Value="@product.Code" Label="Prekės kodas" Disabled="@true"
+                                 HelperText="Kodo keisti negalima" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" @bind-Value="product.Category" Label="Produkto tipas" Required="true">
+                        <MudSelectItem T="string" Value="@("Žaliavinis medus")">🍯 Žaliavinis medus</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Medus (retail)")">🏪 Medus (retail)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Medaus skanėstai")">🍫 Medaus skanėstai</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Žiedadulkės")">🌼 Žiedadulkės</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Bičių produktai")">🐝 Bičių produktai</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Tara/Pakuotė")">📦 Tara/Pakuotė</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("HORECA")">🏨 HORECA</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Kita")">📋 Kita</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="product.Name" Label="Pavadinimas" Required="true" 
+                                 MaxLength="255" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="product.EanCode" Label="EAN barkodas" 
+                                 MaxLength="50" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" @bind-Value="product.Unit" Label="Vienetas" Required="true">
+                        <MudSelectItem T="string" Value="@("vnt")">vnt (vienetai)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("kg")">kg (kilogramai)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("l")">l (litrai)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("m")">m (metrai)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12" md="4">
+                    <MudNumericField T="decimal" @bind-Value="product.CostPrice" Label="Savikaina (€)" 
+                                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro"
+                                     Min="0m" Step="0.01m" />
+                </MudItem>
+                
+                <MudItem xs="12" md="4">
+                    <MudNumericField T="decimal" @bind-Value="product.SalePrice" Label="Pardavimo kaina (€)" 
+                                     Required="true"
+                                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro"
+                                     Min="0m" Step="0.01m" />
+                </MudItem>
+                
+                <MudItem xs="12" md="4">
+                    <MudNumericField T="decimal" @bind-Value="product.PurchasePrice" Label="Pirkimo kaina (€)" 
+                                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro"
+                                     Min="0m" Step="0.01m" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="product.Description" Label="Aprašymas" Lines="3" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="product.Notes" Label="Pastabos" Lines="2" MaxLength="1000" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="product.IsActive" Label="Aktyvus" Color="Color.Success" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudButtonGroup Variant="Variant.Filled">
+                        <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Save" OnClick="@HandleValidSubmit">
+                            Išsaugoti
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default" 
+                                   OnClick="@Cancel">
+                            Atšaukti
+                        </MudButton>
+                    </MudButtonGroup>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    
+    private Product? product;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        product = await ProductService.GetProductByIdAsync(Id);
+        
+        if (product == null)
+        {
+            await InvokeAsync(() => Navigation.NavigateTo("/products"));
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (product == null) return;
+
+        await ProductService.UpdateProductAsync(product);
+        Snackbar.Add("Prekė sėkmingai atnaujinta!", Severity.Success);
+        await InvokeAsync(() => Navigation.NavigateTo("/products"));
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/products");
+    }
+}

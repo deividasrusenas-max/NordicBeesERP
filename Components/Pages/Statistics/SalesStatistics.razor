@@ -1,0 +1,267 @@
+@page "/statistics/sales"
+@rendermode InteractiveServer
+@inject IInvoiceService InvoiceService
+@using NordicBeesERP.Services
+@using NordicBeesERP.Models
+
+<PageTitle>Pardavimų statistika</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Pardavimų statistika</MudText>
+
+    <MudGrid Class="mb-3">
+        <MudItem xs="12" md="2">
+    <MudSelect T="int" Value="_selectedYear" Label="Metai" Variant="Variant.Outlined"
+        ValueChanged="@(async (int y) => { _selectedYear = y; await LoadData(); })">
+        @foreach (var y in _availableYears)
+        {
+            <MudSelectItem T="int" Value="@y">@y</MudSelectItem>
+        }
+    </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#dbeafe; border-radius:12px">
+                    <MudText Typo="Typo.caption">Sąskaitų</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@_stats.TotalCount</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#f0fdf4; border-radius:12px">
+                    <MudText Typo="Typo.caption">Apyvarta (be PVM)</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@_stats.TotalAmountExclVat.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#fef3c7; border-radius:12px">
+                    <MudText Typo="Typo.caption">Apyvarta (su PVM)</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@_stats.TotalAmountInclVat.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#fee2e2; border-radius:12px">
+                    <MudText Typo="Typo.caption">Nesumokėta</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700; color:#dc2626">@_stats.UnpaidAmount.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#f3e5f5; border-radius:12px">
+                    <MudText Typo="Typo.caption">Savikaina</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@_totalSavikaina.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="@(_totalPelnas >= 0 ? "background:#f0fdf4; border-radius:12px" : "background:#fee2e2; border-radius:12px")">
+                    <MudText Typo="Typo.caption">Pelnas</MudText>
+                    <MudText Typo="Typo.h4" Style="@(_totalPelnas >= 0 ? "font-weight:700; color:#16a34a" : "font-weight:700; color:#dc2626")">@_totalPelnas.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">@_selectedYear metų pardavimų dinamika</MudText>
+        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px; min-height:450px; padding:16px">
+            <MudChart ChartType="ChartType.Bar"
+                ChartSeries="@_chartSeries"
+                XAxisLabels="@_chartLabels"
+                Width="100%" Height="400px"
+                ChartOptions="@(new ChartOptions { YAxisFormat = "N0", ChartPalette = new string[] { "#4f7cac", "#ef4444" } })" />
+        </MudPaper>
+
+        <MudText Typo="Typo.h6" Class="mb-2" Style="font-weight:600">Mėnesiai</MudText>
+        <MudTable T="MonthRow" Items="_monthly" Dense="true" Hover="true" Striped="true" Class="mb-4">
+            <HeaderContent>
+                <MudTh>Mėnuo</MudTh>
+                <MudTh Style="text-align:right">Sąskaitos</MudTh>
+                <MudTh Style="text-align:right">Be PVM (€)</MudTh>
+                <MudTh Style="text-align:right">Su PVM (€)</MudTh>
+                <MudTh Style="text-align:right">Nesumokėta (€)</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <MudTd>@row.Month</MudTd>
+                <MudTd Style="text-align:right">@row.Count</MudTd>
+                <MudTd Style="text-align:right">@row.AmountExclVat.ToString("N2")</MudTd>
+                <MudTd Style="text-align:right">@row.AmountInclVat.ToString("N2")</MudTd>
+                <MudTd Style="text-align:right">@row.Unpaid.ToString("N2")</MudTd>
+            </RowTemplate>
+            <FooterContent>
+                <MudTd><b>Iš viso</b></MudTd>
+                <MudTd Style="text-align:right"><b>@_stats.TotalCount</b></MudTd>
+                <MudTd Style="text-align:right"><b>@_stats.TotalAmountExclVat.ToString("N2")</b></MudTd>
+                <MudTd Style="text-align:right"><b>@_stats.TotalAmountInclVat.ToString("N2")</b></MudTd>
+                <MudTd Style="text-align:right"><b>@_stats.UnpaidAmount.ToString("N2")</b></MudTd>
+            </FooterContent>
+        </MudTable>
+
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-2" Style="font-weight:600">Top klientai</MudText>
+                <MudTable T="ClientRow" Items="_topClients" Dense="true" Hover="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Klientas</MudTh>
+                        <MudTh Style="text-align:right">Sąskaitos</MudTh>
+                        <MudTh Style="text-align:right">Suma (€)</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="row">
+                        <MudTd><strong>@row.Name</strong></MudTd>
+                        <MudTd Style="text-align:right">@row.Count</MudTd>
+                        <MudTd Style="text-align:right">@row.Amount.ToString("N2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-2" Style="font-weight:600">Top prekės</MudText>
+                <MudTable T="ProductRow" Items="_topProducts" Dense="true" Hover="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Prekė</MudTh>
+                        <MudTh Style="text-align:right">Kiekis</MudTh>
+                        <MudTh Style="text-align:right">Suma (€)</MudTh>
+                        <MudTh Style="text-align:right">Savikaina (€)</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="row">
+                        <MudTd><strong>@row.Name</strong></MudTd>
+                        <MudTd Style="text-align:right">@row.Quantity.ToString("N1")</MudTd>
+                        <MudTd Style="text-align:right">@row.Amount.ToString("N2")</MudTd>
+                        <MudTd Style="text-align:right">@row.Savikaina.ToString("N2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private List<int> _availableYears = new();
+    private int _selectedYear = DateTime.Now.Year;
+    private InvoiceStatistics _stats = new();
+    private List<MonthRow> _monthly = new();
+    private decimal _totalSavikaina;
+    private decimal _totalPelnas;
+    private List<ChartSeries> _chartSeries = new();
+    private string[] _chartLabels = Array.Empty<string>();
+    private List<ClientRow> _topClients = new();
+    private List<ProductRow> _topProducts = new();
+
+    private class ClientRow
+    {
+        public string Name { get; set; } = "";
+        public int Count { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    private class ProductRow
+    {
+        public string Name { get; set; } = "";
+        public decimal Quantity { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Savikaina { get; set; }
+    }
+
+    private class MonthRow
+    {
+        public string Month { get; set; } = "";
+        public int Count { get; set; }
+        public decimal AmountExclVat { get; set; }
+        public decimal AmountInclVat { get; set; }
+        public decimal Unpaid { get; set; }
+        public decimal Savikaina { get; set; }
+        public decimal Pelnas { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var years = await InvoiceService.GetInvoiceYearsAsync();
+        _availableYears = years.Any()
+            ? years.OrderByDescending(y => y).ToList()
+            : Enumerable.Range(DateTime.Now.Year - 2, 3).Reverse().ToList();
+        _selectedYear = _availableYears.Contains(DateTime.Now.Year)
+            ? DateTime.Now.Year
+            : _availableYears.FirstOrDefault();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        var from = new DateTime(_selectedYear, 1, 1);
+        var to = new DateTime(_selectedYear, 12, 31);
+        _stats = await InvoiceService.GetInvoiceStatisticsAsync(from, to) ?? new();
+        var allInvoices = await InvoiceService.GetInvoicesAsync(from, to, take: 9999, type: "sales");
+        var invoices = allInvoices; // Already filtered by InvoiceService based on type parameter
+
+        var invoicesWithDetails = new List<Invoice>();
+        foreach (var inv in invoices)
+        {
+            var detail = await InvoiceService.GetInvoiceWithDetailsAsync(inv.Id);
+            if (detail != null) invoicesWithDetails.Add(detail);
+        }
+
+        var allMonths = Enumerable.Range(1, 12).Select(m => new MonthRow
+        {
+            Month = new DateTime(_selectedYear, m, 1).ToString("MMMM", new System.Globalization.CultureInfo("lt-LT"))
+        }).ToList();
+
+        var grouped = invoicesWithDetails.GroupBy(x => x.InvoiceDate.Month).ToDictionary(g => g.Key, g => g);
+        foreach (var row in allMonths)
+        {
+            var monthNum = allMonths.IndexOf(row) + 1;
+            if (grouped.TryGetValue(monthNum, out var g))
+            {
+                row.Count = g.Count();
+                row.AmountExclVat = g.Sum(x => x.SubtotalExclVat);
+                row.AmountInclVat = g.Sum(x => x.TotalInclVat);
+                row.Savikaina = g.SelectMany(x => x.Lines).Sum(l => l.Quantity * (l.Product?.CostPrice ?? 0));
+                row.Pelnas = row.AmountExclVat - row.Savikaina;
+                row.Unpaid = g.Where(x => x.Status == InvoiceStatus.Confirmed)
+                              .Sum(x => x.TotalInclVat);
+            }
+        }
+        _monthly = allMonths;
+        _totalSavikaina = _monthly.Sum(m => m.Savikaina);
+        _totalPelnas = _monthly.Sum(m => m.Pelnas);
+
+        _topClients = invoicesWithDetails
+            .GroupBy(x => x.CustomerId)
+            .Select(g => new ClientRow
+            {
+                Name = g.First().Customer?.Name ?? $"#{g.Key}",
+                Count = g.Count(),
+                Amount = g.Sum(x => x.SubtotalExclVat)
+            })
+            .OrderByDescending(r => r.Amount)
+            .Take(10)
+            .ToList();
+
+        _topProducts = invoicesWithDetails
+            .SelectMany(x => x.Lines)
+            .GroupBy(l => l.ProductId.HasValue ? $"id:{l.ProductId.Value}" : l.Description ?? "Nežinoma")
+            .Select(g => new ProductRow
+            {
+                Name = g.First().Product?.Name ?? g.First().Description ?? "Nežinoma",
+                Quantity = g.Sum(l => l.Quantity),
+                Amount = g.Sum(l => l.LineTotal),
+                Savikaina = g.Sum(l => l.Quantity * (l.Product?.CostPrice ?? 0))
+            })
+            .OrderByDescending(r => r.Amount)
+            .Take(10)
+            .ToList();
+
+        _chartLabels = _monthly.Select(m => m.Month[..3]).ToArray();
+        _chartSeries = new List<ChartSeries>
+        {
+            new ChartSeries { Name = "Apyvarta (€)", Data = _monthly.Select(m => (double)m.AmountExclVat).ToArray() },
+            new ChartSeries { Name = "Nesumokėta (€)", Data = _monthly.Select(m => (double)m.Unpaid).ToArray() }
+        };
+
+        _loading = false;
+        StateHasChanged();
+    }
+}

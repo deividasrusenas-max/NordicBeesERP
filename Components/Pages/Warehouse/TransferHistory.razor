@@ -1,0 +1,144 @@
+@page "/warehouse/transfers"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject ITransferService TransferService
+@inject IWarehouseService WarehouseService
+@inject IContainerService ContainerService
+
+<PageTitle>Perkėlimų istorija</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Perkėlimų istorija</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (!_transfers.Any())
+    {
+        <MudAlert Severity="Severity.Info">Perkėlimų dar nėra</MudAlert>
+    }
+    else
+    {
+        <MudTable T="TransferGroup" Items="_transfers" Dense="true" Hover="true" Striped="true"
+            OnRowClick="@((TableRowClickEventArgs<TransferGroup> args) => ToggleDetail(args.Item))"
+            Style="cursor:pointer">
+            <HeaderContent>
+                <MudTh>Nr.</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Iš</MudTh>
+                <MudTh>Į</MudTh>
+                <MudTh Style="text-align:right">Vnt.</MudTh>
+                <MudTh Style="text-align:right">Netto (kg)</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="t">
+                <MudTd><strong>@t.TransferNumber</strong></MudTd>
+                <MudTd>@t.Date.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                <MudTd>@GetWarehouseName(t.FromWarehouseId)</MudTd>
+                <MudTd>@GetWarehouseName(t.ToWarehouseId)</MudTd>
+                <MudTd Style="text-align:right">@t.ContainerCount</MudTd>
+                <MudTd Style="text-align:right">@t.TotalQuantity.ToString("N1")</MudTd>
+            </RowTemplate>
+            <ChildRowContent Context="t">
+                @if (t.ShowDetail)
+                {
+                    <MudTr>
+                        <td colspan="6" style="padding:0 16px 16px 48px; background:#f8fafc">
+                            <MudSimpleTable Dense="true" Style="background:white; border-radius:8px" Elevation="0">
+                                <thead>
+                                    <tr>
+                                        <th>Konteineris</th>
+                                        <th style="text-align:right">Netto (kg)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var c in t.Containers)
+                                    {
+                                        <tr>
+                                            <td><strong>@c.Code</strong></td>
+                                            <td style="text-align:right">@c.Quantity.ToString("N1")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </td>
+                    </MudTr>
+                }
+            </ChildRowContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<TransferGroup> _transfers = new();
+    private List<NordicBeesERP.Models.Warehouse> _warehouses = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _warehouses = (await WarehouseService.GetAllAsync()).ToList();
+        var movements = await TransferService.GetTransferHistoryAsync();
+
+        _transfers = movements
+            .GroupBy(m => m.Notes ?? "")
+            .Where(g => !string.IsNullOrEmpty(g.Key))
+            .Select(g => new TransferGroup
+            {
+                TransferNumber = g.Key,
+                Date = g.Min(m => m.CreatedAt),
+                FromWarehouseId = g.First().FromWarehouseId,
+                ToWarehouseId = g.First().ToWarehouseId,
+                ContainerCount = g.Count(),
+                TotalQuantity = g.Sum(m => m.Quantity),
+                Containers = g.Select(m => new TransferContainerInfo
+                {
+                    Code = m.ContainerId.ToString(),
+                    Quantity = m.Quantity
+                }).ToList()
+            })
+            .OrderByDescending(t => t.Date)
+            .ToList();
+
+        // Pakeisti container ID į kodus
+        var allContainerIds = movements.Select(m => m.ContainerId).Distinct().ToList();
+        var containers = await ContainerService.GetByIdsAsync(allContainerIds);
+        foreach (var transfer in _transfers)
+        {
+            foreach (var c in transfer.Containers)
+            {
+                var container = containers.FirstOrDefault(x => x.Id.ToString() == c.Code);
+                if (container != null)
+                    c.Code = container.ContainerCode;
+            }
+        }
+
+        _loading = false;
+    }
+
+    private void ToggleDetail(TransferGroup t)
+    {
+        t.ShowDetail = !t.ShowDetail;
+    }
+
+    private string GetWarehouseName(int? id) => id.HasValue
+        ? _warehouses.FirstOrDefault(w => w.Id == id.Value)?.Name ?? $"#{id}"
+        : "-";
+
+    private class TransferGroup
+    {
+        public string TransferNumber { get; set; } = "";
+        public DateTime Date { get; set; }
+        public int? FromWarehouseId { get; set; }
+        public int? ToWarehouseId { get; set; }
+        public int ContainerCount { get; set; }
+        public decimal TotalQuantity { get; set; }
+        public bool ShowDetail { get; set; }
+        public List<TransferContainerInfo> Containers { get; set; } = new();
+    }
+
+    private class TransferContainerInfo
+    {
+        public string Code { get; set; } = "";
+        public decimal Quantity { get; set; }
+    }
+}

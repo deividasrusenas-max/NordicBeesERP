@@ -1,0 +1,49 @@
+@page "/warehouses/edit/{Id:int}"
+@inject IWarehouseService WarehouseService
+@inject NavigationManager Navigation
+
+<PageTitle>Redaguoti sandėlį</PageTitle>
+
+<EditForm Model="@warehouse" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <MudTextField @bind-Value="warehouse.Code" Label="Kodas" Required="true" />
+    <MudTextField @bind-Value="warehouse.Name" Label="Pavadinimas" Required="true" />
+    <MudTextField @bind-Value="warehouse.WarehouseTypeId" Label="Tipas" Required="true" />
+    <MudTextField @bind-Value="warehouse.Address" Label="Adresas" Required="true" />
+    <MudTextField @bind-Value="warehouse.City" Label="Miestas" Required="true" />
+    <MudTextField @bind-Value="warehouse.Country" Label="Šalis" Required="true" />
+    <MudTextField @bind-Value="warehouse.Description" Label="Aprašymas" Required="true" />
+    <MudSwitch @bind-Value="warehouse.IsActive" Label="Aktyvus" />
+    <MudTextField @bind-Value="warehouse.Email" Label="E-paštas" Required="true" />
+
+    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Išsaugoti</MudButton>
+    <MudButton OnClick="@Cancel" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Secondary">Atšaukti</MudButton>
+</EditForm>
+
+@code {
+    private NordicBeesERP.Models.Warehouse? warehouse;
+
+    [Parameter]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouse = await WarehouseService.GetAsync(Id);
+    }
+
+private async Task HandleSubmit()
+{
+    if (warehouse != null)
+    {
+        await WarehouseService.UpdateAsync(warehouse);
+        Navigation.NavigateTo("/warehouses");
+    }
+}
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/warehouses");
+    }
+}

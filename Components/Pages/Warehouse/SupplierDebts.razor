@@ -1,0 +1,159 @@
+@page "/warehouse/supplier-debts"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject IDeliveryService DeliveryService
+@inject ICustomerService CustomerService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Skolos tiekėjams</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Skolos tiekėjams</MudText>
+
+    <!-- Summary cards -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-4 summary-card" Style="background:#f0fdf4; border-radius:12px">
+                <MudText Typo="Typo.caption" Style="color:#666">Tiekėjų</MudText>
+                <MudText Typo="Typo.h4" Class="summary-value">@_debtRows.Count</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-4 summary-card" Style="background:#fef3c7; border-radius:12px">
+                <MudText Typo="Typo.caption" Style="color:#666">Bendra suma</MudText>
+                <MudText Typo="Typo.h4" Class="summary-value">@_debtRows.Sum(r => r.TotalAmount).ToString("N2") €</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-4 summary-card" Style="background:#dbeafe; border-radius:12px">
+                <MudText Typo="Typo.caption" Style="color:#666">Sumokėta</MudText>
+                <MudText Typo="Typo.h4" Class="summary-value">@_debtRows.Sum(r => r.PaidAmount).ToString("N2") €</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-4 summary-card debt-card" Style="@_debtCardStyle">
+                <MudText Typo="Typo.caption" Style="color:#666">Skola</MudText>
+                <MudText Typo="Typo.h4" Class="summary-value debt-text">@_totalDebt.ToString("N2") €</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Tabs -->
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Class="mb-4" @bind-ActivePanelIndex="_activeTab">
+        <MudTabPanel Text="@($"Visi ({_allRows.Count})")" OnClick="ShowAll" />
+        <MudTabPanel Text="@($"Skolingi ({_allRows.Count(r => r.Debt > 0)})")" OnClick="ShowWithDebt" />
+        <MudTabPanel Text="@($"Atsiskaitę ({_allRows.Count(r => r.Debt <= 0)})")" OnClick="ShowPaid" />
+    </MudTabs>
+
+    <!-- Table -->
+    <MudTable T="SupplierDebtRow" Items="_debtRows" Dense="true" Hover="true" Striped="true"
+        OnRowClick="@((TableRowClickEventArgs<SupplierDebtRow> args) => GoToDetail(args.Item.SupplierId))"
+        Style="cursor:pointer">
+        <HeaderContent>
+            <MudTh>Tiekėjas</MudTh>
+            <MudTh Style="text-align:right">Pristatymai</MudTh>
+            <MudTh Style="text-align:right">Netto (kg)</MudTh>
+            <MudTh Style="text-align:right">Suma (€)</MudTh>
+            <MudTh Style="text-align:right">Sumokėta (€)</MudTh>
+            <MudTh Style="text-align:right">Skola (€)</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <MudTd><strong>@row.SupplierName</strong></MudTd>
+            <MudTd Style="text-align:right">@row.DeliveryCount</MudTd>
+            <MudTd Style="text-align:right">@row.TotalNetWeight.ToString("N1")</MudTd>
+            <MudTd Style="text-align:right">@row.TotalAmount.ToString("N2")</MudTd>
+            <MudTd Style="text-align:right">@row.PaidAmount.ToString("N2")</MudTd>
+            <MudTd @attributes='@(new Dictionary<string, object> { { "Style", $"text-align:right{GetRowDebtClass(row.Debt)}" } })'>
+                @row.Debt.ToString("N2")
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<SupplierDebtRow> _allRows = new();
+    private List<SupplierDebtRow> _debtRows = new();
+    private decimal _totalDebt => _debtRows.Sum(r => r.Debt);
+    private int _activeTab = 0;
+    private string _debtCardStyle = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var deliveries = await DeliveryService.GetAllAsync();
+        var suppliers = await CustomerService.GetSuppliersAsync();
+
+        _allRows = suppliers
+            .Select(s =>
+            {
+                var supplierDeliveries = deliveries.Where(d => d.SupplierId == s.Id).ToList();
+                return new SupplierDebtRow
+                {
+                    SupplierId = s.Id,
+                    SupplierName = s.Name,
+                    DeliveryCount = supplierDeliveries.Count,
+                    TotalNetWeight = supplierDeliveries.Sum(d => d.TotalNetWeight),
+                    TotalAmount = supplierDeliveries.Sum(d => d.TotalAmount),
+                    PaidAmount = supplierDeliveries.Sum(d => d.PaidAmount),
+                    Debt = supplierDeliveries.Sum(d => d.TotalAmount - d.PaidAmount)
+                };
+            })
+            .Where(r => r.DeliveryCount > 0)
+            .OrderByDescending(r => r.Debt)
+            .ToList();
+
+        _debtRows = _allRows;
+        UpdateDebtCardStyle();
+    }
+
+    private void ShowAll() 
+    { 
+        _debtRows = _allRows; 
+        UpdateDebtCardStyle();
+    }
+    
+    private void ShowWithDebt() 
+    { 
+        _debtRows = _allRows.Where(r => r.Debt > 0).ToList(); 
+        UpdateDebtCardStyle();
+    }
+    
+    private void ShowPaid() 
+    { 
+        _debtRows = _allRows.Where(r => r.Debt <= 0).ToList(); 
+        UpdateDebtCardStyle();
+    }
+
+    private void UpdateDebtCardStyle()
+    {
+        if (_totalDebt > 0)
+        {
+            _debtCardStyle = "background:#fee2e2; border-radius:12px";
+        }
+        else
+        {
+            _debtCardStyle = "background:#f0fdf4; border-radius:12px";
+        }
+    }
+
+    private string GetRowDebtClass(decimal debt)
+    {
+        return debt > 0 ? " color:#dc2626; font-weight:bold" : " color:#16a34a";
+    }
+
+    private void GoToDetail(int supplierId)
+    {
+        Navigation.NavigateTo($"/warehouse/supplier-debts/{supplierId}");
+    }
+
+    private class SupplierDebtRow
+    {
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; } = "";
+        public int DeliveryCount { get; set; }
+        public decimal TotalNetWeight { get; set; }
+        public decimal TotalAmount { get; set; }
+        public decimal PaidAmount { get; set; }
+        public decimal Debt { get; set; }
+    }
+}

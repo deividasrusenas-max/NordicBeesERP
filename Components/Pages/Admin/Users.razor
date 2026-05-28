@@ -1,0 +1,160 @@
+@page "/admin/users"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject IErpUserService ErpUserService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@using NordicBeesERP.Components.Dialogs
+
+<PageTitle>Vartotojai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5">Vartotojai</MudText>
+        <MudButton StartIcon="@Icons.Material.Filled.PersonAdd" Variant="Variant.Filled" Color="Color.Primary"
+            OnClick="OpenCreateDialog">Naujas vartotojas</MudButton>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudPaper Elevation="1">
+            <MudTable T="ErpUser" Items="_users" Dense="true" Hover="true" Striped="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>El. paštas</MudTh>
+                    <MudTh>Vardas</MudTh>
+                    <MudTh>Rolė</MudTh>
+                    <MudTh>Aktyvus</MudTh>
+                    <MudTh Style="width:160px">Veiksmai</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="user">
+                    <MudTd>@user.Email</MudTd>
+                    <MudTd>@user.FullName</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(user.Role)">
+                            @GetRoleLabel(user.Role)
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                            Color="@(user.IsActive ? Color.Success : Color.Default)"
+                            Variant="Variant.Outlined">
+                            @(user.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <div class="d-flex gap-1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                OnClick="@(() => OpenEditDialog(user))" Title="Redaguoti" />
+                            <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" Color="Color.Warning"
+                                OnClick="@(() => OpenResetPasswordDialog(user))" Title="Keisti slaptažodį" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                OnClick="@(() => DeleteUserAsync(user))" Title="Ištrinti" />
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[]{25, 50}" />
+                </PagerContent>
+                <NoRecordsContent>
+                    <MudText Class="text-center py-4">Vartotojų nėra</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<ErpUser> _users = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _users = await ErpUserService.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkeliant vartotojus: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<ErpUserDialog>("",
+            new DialogParameters(),
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+        if (!(await dialog.Result).Canceled)
+            await LoadAsync();
+    }
+
+    private async Task OpenEditDialog(ErpUser user)
+    {
+        var parameters = new DialogParameters { ["UserToEdit"] = user };
+        var dialog = await DialogService.ShowAsync<ErpUserDialog>("", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+        if (!(await dialog.Result).Canceled)
+            await LoadAsync();
+    }
+
+    private async Task OpenResetPasswordDialog(ErpUser user)
+    {
+        var parameters = new DialogParameters
+        {
+            ["UserId"] = user.Id,
+            ["UserFullName"] = user.FullName
+        };
+        await DialogService.ShowAsync<ResetPasswordDialog>("", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+    }
+
+    private async Task DeleteUserAsync(ErpUser user)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti trynimą",
+            $"Ar tikrai norite ištrinti vartotoją \"{user.FullName}\"? Šio veiksmo negalima atšaukti.",
+            yesText: "Ištrinti",
+            cancelText: "Atšaukti");
+        if (confirmed != true) return;
+        try
+        {
+            await ErpUserService.DeleteUserAsync(user.Id);
+            Snackbar.Add($"Vartotojas \"{user.FullName}\" ištrintas", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida trinant: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetRoleColor(string role) => role switch
+    {
+        "Admin" => Color.Error,
+        "Manager" => Color.Primary,
+        "Warehouse" => Color.Info,
+        _ => Color.Default
+    };
+
+    private string GetRoleLabel(string role) => role switch
+    {
+        "Admin" => "Administratorius",
+        "Manager" => "Vadovas",
+        "Warehouse" => "Sandėlininkas",
+        _ => role
+    };
+}

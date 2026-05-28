@@ -1,0 +1,225 @@
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Helpers
+@using NordicBeesERP.Data
+@using MudBlazor
+@inject IDbContextFactory<NordicBeesERPContext> DbFactory
+@inject IExpenseService ExpenseService
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Color="Color.Error" Class="mb-2">
+            ⚠ Dubliuota sąskaita-faktūra
+        </MudText>
+        <MudText Class="mb-4">
+            Rasta panaši sąskaita. Palykite laukus:
+        </MudText>
+
+        @if (ThisInvoice != null && OriginalInvoice != null)
+        {
+            <MudPaper Elevation="2" Rounded="true" Class="pa-3 mb-4">
+                <table class="comparison-table">
+                    <thead>
+                        <tr style="background-color:#f5f5f5;font-weight:600;">
+                            <th style="text-align:left;padding:12px 16px;min-width:140px;">Laukas</th>
+                            <th style="text-align:left;padding:12px 16px;min-width:160px;">Ši sąskaita (@ThisInvoice.InvoiceNumber)</th>
+                            <th style="text-align:left;padding:12px 16px;min-width:160px;">Originalas (@OriginalInvoice.InvoiceNumber)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in ComparisonRows)
+                        {
+                            <tr style="border-bottom:1px solid #e0e0e0;">
+                                <td style="padding:10px 16px;font-weight:600;background-color:#fafafa;">@row.FieldName</td>
+                                <td style="padding:10px 16px;min-width:160px;">
+                                    @if (row.IsDifferent)
+                                    {
+                                        <span style="color:#dc2626;font-weight:600;">@row.ThisValue</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@row.ThisValue <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size:14px;" /></span>
+                                    }
+                                </td>
+                                <td style="padding:10px 16px;min-width:160px;">
+                                    @if (row.IsDifferent)
+                                    {
+                                        <span style="color:#dc2626;font-weight:600;">@row.OriginalValue</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@row.OriginalValue <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size:14px;" /></span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </MudPaper>
+        }
+        else
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="ViewOriginal" Color="Color.Primary" Variant="Variant.Outlined">
+            <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Style="margin-right:4px;" />
+            Peržiūrėti originalą ↗
+        </MudButton>
+        <MudButton OnClick="DifferentInvoice" Color="Color.Success" Variant="Variant.Outlined">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="margin-right:4px;" />
+            Tai skirtinga sąskaita
+        </MudButton>
+        <MudButton OnClick="DeleteThis" Color="Color.Error" Variant="Variant.Outlined">
+            <MudIcon Icon="@Icons.Material.Filled.Delete" Style="margin-right:4px;" />
+            Ištrinti šią
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int OriginalInvoiceId { get; set; }
+    [Parameter] public int ThisInvoiceId { get; set; }
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private ExpenseInvoice? OriginalInvoice { get; set; }
+    private ExpenseInvoice? ThisInvoice { get; set; }
+    private List<ComparisonRow> ComparisonRows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load original invoice with full details
+        OriginalInvoice = await ExpenseService.GetInvoiceWithDetailsAsync(OriginalInvoiceId);
+
+        // Load this invoice directly
+        await using var context = DbFactory.CreateDbContext();
+        ThisInvoice = await context.ExpenseInvoices
+            .FirstOrDefaultAsync(i => i.Id == ThisInvoiceId);
+
+        if (OriginalInvoice != null && ThisInvoice != null)
+        {
+            BuildComparisonRows();
+            StateHasChanged();
+        }
+    }
+
+    private void BuildComparisonRows()
+    {
+        ComparisonRows = new List<ComparisonRow>
+        {
+            new ComparisonRow
+            {
+                FieldName = "Numeris",
+                ThisValue = ThisInvoice.InvoiceNumber ?? "-",
+                OriginalValue = OriginalInvoice.InvoiceNumber ?? "-"
+            },
+            new ComparisonRow
+            {
+                FieldName = "Tiekėjas",
+                ThisValue = ThisInvoice.SupplierName ?? ThisInvoice.PendingSupplierName ?? "-",
+                OriginalValue = OriginalInvoice.SupplierName ?? "-"
+            },
+            new ComparisonRow
+            {
+                FieldName = "Data",
+                ThisValue = ThisInvoice.InvoiceDate.ToString("yyyy-MM-dd"),
+                OriginalValue = OriginalInvoice.InvoiceDate.ToString("yyyy-MM-dd")
+            },
+            new ComparisonRow
+            {
+                FieldName = "Terminas",
+                ThisValue = ThisInvoice.DueDate.ToString("yyyy-MM-dd"),
+                OriginalValue = OriginalInvoice.DueDate.ToString("yyyy-MM-dd")
+            },
+            new ComparisonRow
+            {
+                FieldName = "Suma be PVM",
+                ThisValue = $"{ThisInvoice.AmountExclVat.ToString("F2")} €",
+                OriginalValue = $"{OriginalInvoice.AmountExclVat.ToString("F2")} €"
+            },
+            new ComparisonRow
+            {
+                FieldName = "PVM suma",
+                ThisValue = $"{ThisInvoice.VatAmount.ToString("F2")} €",
+                OriginalValue = $"{OriginalInvoice.VatAmount.ToString("F2")} €"
+            },
+            new ComparisonRow
+            {
+                FieldName = "Suma su PVM",
+                ThisValue = $"{ThisInvoice.AmountInclVat.ToString("F2")} €",
+                OriginalValue = $"{OriginalInvoice.AmountInclVat.ToString("F2")} €"
+            }
+        };
+    }
+
+    private void ViewOriginal()
+    {
+        if (OriginalInvoice == null) return;
+        // Close dialog and return original invoice ID so caller can open it
+        MudDialog.Close(OriginalInvoice.Id);
+    }
+
+    private async Task DifferentInvoice()
+    {
+        if (ThisInvoice == null) return;
+
+        // Single confirmation: mark as needs review
+        var confirmed = await ConfirmDialog.ShowAsync(
+            DialogService,
+            "Patvirtinti",
+            "Ši sąskaita bus perkelta į 'Reikia patikrinti' statusą.",
+            "Patvirtinti",
+            Color.Primary);
+
+        if (!confirmed) return;
+
+        // Save status NEEDS_REVIEW
+        await using var context = DbFactory.CreateDbContext();
+        var invoice = await context.ExpenseInvoices.FindAsync(ThisInvoice.Id);
+        if (invoice != null)
+        {
+            invoice.Status = "NEEDS_REVIEW";
+            invoice.UpdatedAt = DateTime.UtcNow;
+            context.Entry(invoice).Property(i => i.Status).IsModified = true;
+            context.Entry(invoice).Property(i => i.UpdatedAt).IsModified = true;
+            await context.SaveChangesAsync();
+        }
+
+        // Close dialog and signal caller to refresh
+        MudDialog.Close("different");
+    }
+
+    private async Task DeleteThis()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti ištrynimą",
+            "Ar tikrai norite ištrinti šią sąskaitą? Veiksmo atšaukti negalima.",
+            yesText: "Ištrinti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        if (ThisInvoice == null) return;
+
+        await using var context = DbFactory.CreateDbContext();
+        var invoice = await context.ExpenseInvoices.FindAsync(ThisInvoice.Id);
+        if (invoice == null) return;
+
+        context.ExpenseInvoices.Remove(invoice);
+        await context.SaveChangesAsync();
+
+        // Close dialog and signal caller to refresh
+        MudDialog.Close("deleted");
+    }
+
+
+    private class ComparisonRow
+    {
+        public string FieldName { get; set; } = "";
+        public string ThisValue { get; set; } = "";
+        public string OriginalValue { get; set; } = "";
+        public bool IsDifferent => ThisValue != OriginalValue;
+    }
+}

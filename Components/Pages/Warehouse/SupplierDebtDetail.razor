@@ -1,0 +1,145 @@
+@page "/warehouse/supplier-debts/{SupplierId:int}"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject IDeliveryService DeliveryService
+@inject ICustomerService CustomerService
+@inject ISupplierPaymentService PaymentService
+@inject NavigationManager Navigation
+
+<PageTitle>Skolos tiekėjams</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Typo="Typo.h5" Style="font-weight:600">@_supplierName</MudText>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/warehouse/supplier-debts">Atgal</MudButton>
+    </MudStack>
+
+    <!-- Summary -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-3" Elevation="0" Style="background:#e3f2fd; border-radius:8px">
+                <MudText Typo="Typo.caption">Bendra suma</MudText>
+                <MudText Typo="Typo.h6">@_deliveries.Sum(d => d.TotalAmount).ToString("N2") €</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-3" Elevation="0" Style="background:#e8f5e9; border-radius:8px">
+                <MudText Typo="Typo.caption">Sumokėta</MudText>
+                <MudText Typo="Typo.h6">@_deliveries.Sum(d => d.PaidAmount).ToString("N2") €</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-3" Elevation="0" Style="background:#ffebee; border-radius:8px">
+                <MudText Typo="Typo.caption">Skola</MudText>
+                <MudText Typo="Typo.h6">@_deliveries.Sum(d => d.TotalAmount - d.PaidAmount).ToString("N2") €</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Class="pa-3" Elevation="0" Style="background:#fff3e0; border-radius:8px">
+                <MudText Typo="Typo.caption">Statinių skola</MudText>
+                <MudText Typo="Typo.h6">@_deliveries.Sum(d => d.BarrelsOwed - d.BarrelsReturned) vnt.</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Filter -->
+    <MudStack Row="true" Spacing="4" Class="mb-3">
+        <MudButton Variant="Variant.Filled" Color="@(_filter == "all" ? Color.Primary : Color.Secondary)" 
+                  OnClick="@(() => SetFilter("all"))">Visi</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@(_filter == "unpaid" ? Color.Primary : Color.Secondary)" 
+                  OnClick="@(() => SetFilter("unpaid"))">Nesumokėti</MudButton>
+    </MudStack>
+
+        <MudTable T="Delivery" Items="@_filteredDeliveries" Dense="true" Hover="true"
+        OnRowClick="@((TableRowClickEventArgs<Delivery> args) => Navigation.NavigateTo($"/warehouse/deliveries/{args.Item.Id}"))">
+        <HeaderContent>
+            <MudTh>Data</MudTh>
+            <MudTh>Numeris</MudTh>
+            <MudTh Style="text-align:right">Netto (kg)</MudTh>
+            <MudTh Style="text-align:right">Suma (€)</MudTh>
+            <MudTh Style="text-align:right">Sumokėta (€)</MudTh>
+            <MudTh Style="text-align:right">Skola (€)</MudTh>
+            <MudTh>Būsena</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="delivery">
+            <MudTd DataLabel="Data">@delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
+            <MudTd DataLabel="Numeris">@delivery.DeliveryNumber</MudTd>
+            <MudTd DataLabel="Netto" Style="text-align:right">@delivery.TotalNetWeight.ToString("N1")</MudTd>
+            <MudTd DataLabel="Suma" Style="text-align:right">@delivery.TotalAmount.ToString("N2")</MudTd>
+            <MudTd DataLabel="Sumokėta" Style="text-align:right">@delivery.PaidAmount.ToString("N2")</MudTd>
+            <MudTd DataLabel="Skola" Style="@GetDebtStyle(delivery.TotalAmount - delivery.PaidAmount)">
+                @((delivery.TotalAmount - delivery.PaidAmount).ToString("N2"))
+            </MudTd>
+            <MudTd DataLabel="Būsena">
+                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(delivery.Status)">@GetStatusText(delivery.Status)</MudChip>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    [Parameter] public int SupplierId { get; set; }
+
+    private string _supplierName = "";
+    private List<Delivery> _deliveries = new();
+    private List<Delivery> _filteredDeliveries = new();
+    private string _filter = "all";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var suppliers = await CustomerService.GetSuppliersAsync();
+        _supplierName = suppliers.FirstOrDefault(s => s.Id == SupplierId)?.Name ?? $"#{SupplierId}";
+
+        _deliveries = await DeliveryService.GetFilteredAsync(null, SupplierId, null, null);
+        ApplyFilter();
+    }
+
+    protected override void OnParametersSet()
+    {
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        _filteredDeliveries = _filter switch
+        {
+            "unpaid" => _deliveries.Where(d => d.TotalAmount - d.PaidAmount > 0).ToList(),
+            _ => _deliveries
+        };
+    }
+
+    private void SetFilter(string filter)
+    {
+        _filter = filter;
+        ApplyFilter();
+    }
+
+    private string GetDebtStyle(decimal debt)
+    {
+        return debt > 0 ? "text-align:right; color:red; font-weight:bold" : "text-align:right; color:green";
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "RECEIVED" => Color.Default,
+            "PRICED" => Color.Info,
+            "PARTIAL_PAID" => Color.Warning,
+            "PAID" => Color.Success,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusText(string status)
+    {
+        return status switch
+        {
+            "RECEIVED" => "Priimtas",
+            "PRICED" => "Įkainotas",
+            "PARTIAL_PAID" => "Dalinai",
+            "PAID" => "Apmokėtas",
+            _ => status
+        };
+    }
+}

@@ -1,0 +1,70 @@
+@page "/warehouses"
+@inject IWarehouseService WarehouseService
+@inject NavigationManager Navigation
+
+<PageTitle>Sandėliai</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">Sandėliai</MudText>
+
+<MudTable T="NordicBeesERP.Models.Warehouse" Items="@warehouses" Hover="true" Dense="true">
+    <HeaderContent>
+        <MudTh>Kodas</MudTh>
+        <MudTh>Pavadinimas</MudTh>
+        <MudTh>Tipas</MudTh>
+        <MudTh>Adresas</MudTh>
+        <MudTh>Miestas</MudTh>
+        <MudTh>Šalis</MudTh>
+        <MudTh>Aprašymas</MudTh>
+        <MudTh>Aktyvus</MudTh>
+        <MudTh>Sukurtas</MudTh>
+        <MudTh>Atnaujintas</MudTh>
+        <MudTh>E-paštas</MudTh>
+        <MudTh>Veiksmiai</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="warehouse">
+        <MudTd>@warehouse.Code</MudTd>
+        <MudTd>@warehouse.Name</MudTd>
+        <MudTd>@GetWarehouseType(warehouse.WarehouseTypeId ?? 0)</MudTd>
+        <MudTd>@warehouse.Address</MudTd>
+        <MudTd>@warehouse.City</MudTd>
+        <MudTd>@warehouse.Country</MudTd>
+        <MudTd>@warehouse.Description</MudTd>
+        <MudTd>@warehouse.IsActive</MudTd>
+        <MudTd>@warehouse.CreatedAt</MudTd>
+        <MudTd>@warehouse.UpdatedAt</MudTd>
+        <MudTd>@warehouse.Email</MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => EditWarehouse(warehouse.Id))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudButton OnClick="CreateNewWarehouse" Variant="Variant.Filled" Color="Color.Primary">Sukurti naują sandėlį</MudButton>
+
+@code {
+    private List<NordicBeesERP.Models.Warehouse> warehouses = new List<NordicBeesERP.Models.Warehouse>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = (List<NordicBeesERP.Models.Warehouse>)await WarehouseService.GetAllAsync();
+    }
+
+    private void EditWarehouse(int id)
+    {
+        Navigation.NavigateTo($"/warehouses/edit/{id}");
+    }
+
+    private void CreateNewWarehouse()
+    {
+        Navigation.NavigateTo("/warehouses/create");
+    }
+
+    private string GetWarehouseType(int type) => type switch
+    {
+        0 => "Žaliavų",
+        1 => "Gatavos produkcijos",
+        2 => "Gamybos",
+        3 => "Pakuotės",
+        _ => $"Tipas {type}"
+    };
+}

@@ -1,0 +1,158 @@
+@using NordicBeesERP.Models
+@using MudBlazor
+@inject IDialogService DialogService
+@inject ICustomerService CustomerService
+
+<MudDialog>
+    <DialogContent>
+        <EditForm FormName="CustomerCreateForm" Model="@customer" OnValidSubmit="@HandleValidSubmit">
+            <DataAnnotationsValidator />
+            
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudSelect T="string" @bind-Value="customer.PartnerType" Label="Partnerio tipas" Required="true">
+                        <MudSelectItem T="string" Value="@("Tiekėjas")">📦 Tiekėjas</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Klientas")">🛒 Klientas</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Abu")">📦🛒 Tiekėjas ir Klientas</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="customer.Name" Label="Pavadinimas" Required="true" 
+                                 MaxLength="255" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="customer.CompanyCode" Label="Įmonės kodas" 
+                                 MaxLength="20" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="customer.VatCode" Label="PVM mokėtojo kodas" 
+                                 MaxLength="20" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="customer.Address" Label="Adresas" Lines="2" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="customer.City" Label="Miestas" MaxLength="100" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="customer.PostalCode" Label="Pašto kodas" MaxLength="20" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="customer.Phone" Label="Telefonas" MaxLength="50" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="customer.Email" Label="El. paštas" MaxLength="100" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="customer.BankAccount" Label="Banko sąskaita" MaxLength="50" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="int" @bind-Value="customer.PaymentTermDays" Label="Mokėjimo terminas (dienos)" 
+                                     Min="0" Max="365" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="decimal" @bind-Value="customer.DefaultVatRate" Label="Numatytasis PVM (%)"
+                                     Step="0.1m" Min="0m" Max="100m" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSelect T="string" @bind-Value="customer.DefaultLanguage" Label="Kalba">
+                        <MudSelectItem T="string" Value="@("lt")">Lietuvių</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("lv")">Latviešu</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("ee")">Eesti</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("ru")">Русский</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="customer.Notes" Label="Pastabos" Lines="3" MaxLength="1000" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="customer.IsActive" Label="Aktyvus" Color="Color.Success" />
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" 
+                   OnClick="@SubmitForm" StartIcon="@Icons.Material.Filled.Save">
+            Išsaugoti
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" 
+                   OnClick="@CloseDialog" StartIcon="@Icons.Material.Filled.Close">
+            Atšaukti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private ISnackbar snackbar { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance? Dialog { get; set; }
+    [Parameter] public Customer? Customer { get; set; }
+    [Parameter] public EventCallback<Customer> OnCustomerCreated { get; set; }
+
+    private Customer customer = new();
+
+    protected override void OnParametersSet()
+    {
+        customer = Customer ?? new Customer
+        {
+            PartnerType = "Klientas",
+            PaymentTermDays = 30,
+            DefaultVatRate = 21m,
+            DefaultLanguage = "lt",
+            CountryCode = "LT",
+            Country = "Lietuva",
+            City = "",
+            Address = "",
+            PostalCode = "",
+            IsActive = true
+        };
+    }
+
+    private async Task SubmitForm()
+    {
+        try
+        {
+            // Save the customer
+            var savedCustomer = await CustomerService.SaveCustomerAsync(customer);
+            
+            // Close dialog with result
+            Dialog?.Close(savedCustomer);
+        }
+        catch (Exception ex)
+        {
+            snackbar?.Add($"Klaida išsaugant klientą: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CloseDialog()
+    {
+        Dialog?.Close();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        // Check if name already exists
+        var existingByName = await CustomerService.GetAllBusinessPartnersAsync();
+        
+        if (existingByName.Any(bp => bp.Name == customer.Name && bp.Id != customer.Id))
+        {
+            snackbar?.Add("Partneris su šiuo pavadinimu jau egzistuoja!", Severity.Warning);
+            return;
+        }
+    }
+}

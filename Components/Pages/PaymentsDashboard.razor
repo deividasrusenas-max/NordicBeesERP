@@ -1,0 +1,401 @@
+@page "/payments"
+@rendermode InteractiveServer
+@inject IPaymentService PaymentService
+@inject IInvoiceService InvoiceService
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
+@using NordicBeesERP.Models
+@using NordicBeesERP.Components.Dialogs
+@implements IDisposable
+
+<PageTitle>Įplaukos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Skolų valdymo panelė</MudText>
+    
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        // Summary cards - filtered by current year
+        <MudGrid Class="mb-4">
+            <!-- Card 1: Bendra suma -->
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#dbeafe; border-radius:12px">
+                    <MudText Typo="Typo.caption">Bendra suma</MudText>
+                    <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:bold">@_totalAmountExclVat.ToString("N2")</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#1e40af">PVM: @_totalVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#1e40af">Viso su PVM: @_totalAmount.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">@_totalInvoices vnt.</MudText>
+                </MudPaper>
+            </MudItem>
+            <!-- Card 2: Nepilnai sumokėti -->
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#fef3c7; border-radius:12px; cursor:pointer;" @onclick="OpenPartialDetail">
+                    <MudText Typo="Typo.caption">Nepilnai sumokėti</MudText>
+                    <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:bold">@_partialAmount.ToString("N2")</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#854d0e">PVM: @_partialVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#854d0e">Viso su PVM: @_partialTotal.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">@_partialPayments vnt.</MudText>
+                </MudPaper>
+            </MudItem>
+              <!-- Card 3: Permokėjimai -->
+              <MudItem xs="6" md="3">
+                  <MudPaper Elevation="0" Class="pa-4" Style="background:#f5f3ff; border-radius:12px; cursor:pointer;" @onclick="OpenOverpaidDetail">
+                      <MudText Typo="Typo.caption">Permokėjimai</MudText>
+                      <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
+                      <MudText Typo="Typo.h4" Style="font-weight:bold">@_overpaidAmount.ToString("N2")</MudText>
+                      <MudText Typo="Typo.caption" Style="color:#5b21b6">PVM: @_overpaidVat.ToString("N2") €</MudText>
+                      <MudText Typo="Typo.caption" Style="color:#5b21b6">Viso su PVM: @_overpaidTotal.ToString("N2") €</MudText>
+                      <MudText Typo="Typo.caption">@_overpaidCount vnt.</MudText>
+                  </MudPaper>
+              </MudItem>
+            <!-- Card 4: Skolos -->
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#fef2f2; border-radius:12px">
+                    <MudText Typo="Typo.caption">Skolos</MudText>
+                    <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:bold">@_totalDebtExclVat.ToString("N2")</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#991b1b">PVM: @_totalDebtVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#991b1b">Viso su PVM: @_totalDebt.ToString("N2") €</MudText>
+                     <MudText Typo="Typo.caption">@_debtCount vnt.</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        // Aging report (now called "Įsiskolinimų analizė") - NO year filter
+        <MudText Id="aging-section" Typo="Typo.subtitle1" Class="mb-2">Įsiskolinimų analizė</MudText>
+        <MudText Typo="Typo.caption" Class="mb-2 ml-1" Style="color:#6b7280;">Pradelstų sąskaitų analizė</MudText>
+        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px">
+            <MudGrid>
+                <MudItem xs="6" md="3">
+                    <MudPaper Elevation="0" Class="pa-3" Style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("0-30"))">
+                        <MudText Typo="Typo.caption" Style="color:#166534">0-30 dienų</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket0To30.InvoiceCount sąskaitos</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#166534">@((_agingReport.Bucket0To30.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket0To30.TotalAmount - _agingReport.Bucket0To30.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket0To30.TotalAmount.ToString("N2") €</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Elevation="0" Class="pa-3" Style="background:#fefce8; border:1px solid #fde047; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("31-60"))">
+                        <MudText Typo="Typo.caption" Style="color:#854d0e">31-60 dienų</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket31To60.InvoiceCount sąskaitos</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#854d0e">@((_agingReport.Bucket31To60.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket31To60.TotalAmount - _agingReport.Bucket31To60.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket31To60.TotalAmount.ToString("N2") €</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Elevation="0" Class="pa-3" Style="background:#fff7ed; border:1px solid #fdba74; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("61-90"))">
+                        <MudText Typo="Typo.caption" Style="color:#9a3412">61-90 dienų</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket61To90.InvoiceCount sąskaitos</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#9a3412">@((_agingReport.Bucket61To90.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket61To90.TotalAmount - _agingReport.Bucket61To90.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket61To90.TotalAmount.ToString("N2") €</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Elevation="0" Class="pa-3" Style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("90+"))">
+                        <MudText Typo="Typo.caption" Style="color:#991b1b">90+ dienų</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket90Plus.InvoiceCount sąskaitos</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@((_agingReport.Bucket90Plus.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket90Plus.TotalAmount - _agingReport.Bucket90Plus.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket90Plus.TotalAmount.ToString("N2") €</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+            <MudDivider Class="my-3" />
+            <MudGrid>
+                <MudItem xs="6" md="3">
+                    <MudPaper Elevation="0" Class="pa-3" Style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px">
+                        <MudText Typo="Typo.caption" Style="color:#991b1b">Iš viso pradelstų skolų</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@_agingReport.TotalOverdueExclVat.ToString("N2") € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @_agingReport.TotalOverdueVat.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.caption" Style="font-weight:700; color:#991b1b">Su PVM: @_agingReport.TotalOverdue.ToString("N2") €</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        // Sales invoices with toggle
+        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px">
+            <div Class="d-flex justify-space-between align-center mb-3">
+                <MudText Typo="Typo.subtitle1">Pardavimų sąskaitos</MudText>
+                <MudSwitch T="bool" Value="_showAllYears" ValueChanged="@(async (bool v) => { _showAllYears = v; await LoadData(); })" Color="Color.Primary" Label="Rodyti visus metus" />
+            </div>
+            
+            @if (_unpaidInvoices.Any())
+            {
+                <MudTable T="InvoiceWithPaymentInfo" Items="_unpaidInvoices" Dense="true" Hover="true" Striped="true" RowsPerPage="25" OnRowClick="@((TableRowClickEventArgs<InvoiceWithPaymentInfo> args) => _ = HandleInvoiceClickAsync(args.Item))">
+                    <HeaderContent>
+                        <MudTh Class="text-no-wrap">Sąskaitos numeris</MudTh>
+                        <MudTh>Klientas</MudTh>
+                        <MudTh Class="text-right">Data</MudTh>
+                        <MudTh Class="text-right">Suma (€)</MudTh>
+                        <MudTh Class="text-right">Sumokėta (€)</MudTh>
+                        <MudTh Class="text-right">Liko (€)</MudTh>
+                        <MudTh Class="text-center">Būsena</MudTh>
+                        <MudTh Class="text-center">Terminas</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="invoice">
+                        <MudTd Class="text-no-wrap">@invoice.InvoiceNumber</MudTd>
+                        <MudTd>@invoice.CustomerName</MudTd>
+                        <MudTd Class="text-right">@invoice.InvoiceDate.ToString("dd.MM.yyyy")</MudTd>
+                        <MudTd Class="text-right">@invoice.TotalInclVat.ToString("N2")</MudTd>
+                        <MudTd Class="text-right">@invoice.PaidAmount.ToString("N2")</MudTd>
+                        <MudTd Class="text-right">@invoice.RemainingAmount.ToString("N2")</MudTd>
+                        <MudTd Class="text-center">
+                            @if (invoice.PaidAmount > invoice.TotalInclVat)
+                            {
+                                <MudChip T="string" Color="Color.Secondary" Size="Size.Small" Text="Permoka" />
+                            }
+                            else if (invoice.PaymentStatus == "paid")
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Text="Apmokėta" />
+                            }
+                            else if (invoice.PaymentStatus == "partial")
+                            {
+                                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Text="Dalinai" />
+                            }
+                            else if (invoice.PaymentStatus == "unpaid")
+                            {
+                                <MudChip T="string" Color="Color.Error" Size="Size.Small" Text="Neapmokėta" />
+                            }
+                            else if (invoice.PaymentStatus == "overdue")
+                            {
+                                <MudChip T="string" Color="Color.Error" Size="Size.Small" Text="Pradelsta" />
+                            }
+                             else
+                             {
+                                 <MudChip T="string" Color="Color.Info" Size="Size.Small" Text="@invoice.PaymentStatus" />
+                             }
+                         </MudTd>
+                         <MudTd Class="text-center">
+                             @{
+                                 var days = invoice.DueDate.HasValue 
+                                     ? (invoice.DueDate.Value.Date - DateTime.Today).Days 
+                                     : (int?)null;
+                                 var label = days == null ? "-" 
+                                     : days == 0 ? "Šiandien" 
+                                     : days > 0 ? $"-{days}d." 
+                                     : $"+{Math.Abs(days.Value)}d.";
+                                 var termStyle = days == null ? "color:#9ca3af" 
+                                     : days < 0 ? "color:#ef4444;font-weight:600" 
+                                     : days == 0 ? "color:#f97316;font-weight:600"
+                                     : days <= 7 ? "color:#f97316;font-weight:600" 
+                                     : "color:#16a34a";
+                             }
+                             <MudText Style="@termStyle">@label</MudText>
+                         </MudTd>
+                     </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+                    </PagerContent>
+                </MudTable>
+            }
+            else
+            {
+                <MudText Typo="Typo.body1" Class="text-center py-4">Nėra sąskaitų</MudText>
+            }
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private decimal _totalAmount;
+    private decimal _totalAmountExclVat;
+    private decimal _totalVat;
+    private int _totalInvoices;
+    private int _completedPayments;
+    private int _partialPayments;
+    private decimal _partialAmount;
+    private decimal _partialVat;
+    private decimal _partialTotal;
+    private decimal _totalDebt;
+    private decimal _totalDebtExclVat;
+    private decimal _totalDebtVat;
+    private string _yearSubtitle = "";
+    private int _debtCount;
+    private int _overpaidCount;
+    private decimal _overpaidAmount;
+    private decimal _overpaidVat;
+    private decimal _overpaidTotal;
+    private AgingReport _agingReport = new();
+    private List<InvoiceWithPaymentInfo> _unpaidInvoices = new();
+    private List<InvoiceWithPaymentInfo> _overdueInvoices = new();
+    // _pageSize is no longer used - MudTable handles pagination client-side
+    private bool _showAllYears = false;
+    private List<InvoiceWithPaymentInfo> _filteredInvoices = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set year subtitle once at initialization
+        var currentYear = DateTime.Today.Year;
+        _yearSubtitle = $"({currentYear} m.)";
+        await LoadData();
+    }
+
+    public void Dispose()
+    {
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var currentYear = DateTime.Today.Year;
+            var yearStart = new DateTime(currentYear, 1, 1);
+            var yearEnd = new DateTime(currentYear, 12, 31);
+
+            // Get all invoices
+            var allInvoicesResult = await PaymentService.GetSalesInvoicesAsync(take: 10000, skip: 0);
+            var allInvoices = allInvoicesResult.Invoices;
+            
+            // Debug: show invoice count
+            
+            // Apply year filter for summary cards if not showing all years
+            _filteredInvoices = _showAllYears 
+                ? allInvoices 
+                : allInvoices.Where(i => i.InvoiceDate >= yearStart && i.InvoiceDate <= yearEnd).ToList();
+
+            _totalAmountExclVat = _filteredInvoices.Sum(i => i.SubtotalExclVat);
+            _totalVat = _filteredInvoices.Sum(i => i.TotalInclVat - i.SubtotalExclVat);
+            _totalAmount = _filteredInvoices.Sum(i => i.TotalInclVat);
+            _completedPayments = _filteredInvoices.Count(i => i.PaymentStatus == "paid");
+            _partialPayments = _filteredInvoices.Count(i => i.PaymentStatus == "partial");
+            _totalInvoices = _filteredInvoices.Count;
+            
+            // Partial payments - remaining amount (approximate VAT using /1.21m)
+            // _partialAmount = excl VAT, PVM = VAT, Viso su PVM = total incl VAT
+            var partialInvoices = _filteredInvoices.Where(i => i.PaymentStatus == "partial").ToList();
+            _partialAmount = partialInvoices.Sum(i => i.RemainingAmount / 1.21m);
+            _partialVat = partialInvoices.Sum(i => i.RemainingAmount - (i.RemainingAmount / 1.21m));
+            _partialTotal = partialInvoices.Sum(i => i.RemainingAmount);
+            
+            // Calculate debt (remaining amount) breakdown - use SubtotalExclVat and TotalVat from DTO
+            var debtInvoices = _filteredInvoices
+                .Where(i => i.PaymentStatus != "paid" && i.RemainingAmount > 0)
+                .ToList();
+            _totalDebt = debtInvoices.Sum(i => i.RemainingAmount);
+            _totalDebtExclVat = debtInvoices.Sum(i =>
+                i.TotalInclVat > 0 ? i.RemainingAmount * i.SubtotalExclVat / i.TotalInclVat : 0);
+            _totalDebtVat = _totalDebt - _totalDebtExclVat;
+            _debtCount = debtInvoices.Count;
+            
+            // Overpaid invoices (PaidAmount > TotalInclVat, excluding zero-amount invoices)
+            var overpaidInvoices = _filteredInvoices.Where(i => i.TotalInclVat > 0 && i.PaidAmount > i.TotalInclVat).ToList();
+            _overpaidCount = overpaidInvoices.Count;
+            _overpaidAmount = overpaidInvoices.Sum(i => (i.PaidAmount - i.TotalInclVat) / 1.21m);
+            _overpaidVat = overpaidInvoices.Sum(i => (i.PaidAmount - i.TotalInclVat) * 0.21m / 1.21m);
+            _overpaidTotal = overpaidInvoices.Sum(i => i.PaidAmount - i.TotalInclVat);
+
+            // Get overdue invoices (DueDate < today)
+            _overdueInvoices = allInvoices.Where(i => i.DueDate.HasValue && i.DueDate.Value.Date < DateTime.Now.Date && i.RemainingAmount > 0)
+                .OrderBy(i => i.DueDate)
+                .ToList();
+
+            // Get aging report - NO year filter (show ALL unpaid invoices)
+            _agingReport = await PaymentService.GetAgingReportAsync();
+
+            // Get sales invoices with paging for the table
+            // Apply year filter based on toggle state
+            var salesInvoices = _showAllYears 
+                ? allInvoices 
+                : allInvoices.Where(i => i.InvoiceDate >= yearStart && i.InvoiceDate <= yearEnd).ToList();
+            
+            _unpaidInvoices = salesInvoices.ToList();
+
+            _loading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida įkeliant duomenis", Severity.Error);
+            _loading = false;
+            StateHasChanged();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandleInvoiceClickAsync(InvoiceWithPaymentInfo invoice)
+    {
+        if (invoice.RemainingAmount <= 0) { NavigationManager.NavigateTo($"/invoices/{invoice.Id}"); return; }
+        
+        // Load fresh invoice to get current PaidAmount
+        var freshInvoice = await InvoiceService.GetInvoiceWithDetailsAsync(invoice.Id);
+        if (freshInvoice == null) return;
+        
+        // Calculate fresh RemainingAmount from current invoice state
+        var remainingAmount = freshInvoice.TotalInclVat - freshInvoice.PaidAmount;
+        
+        // Load payment history for this invoice
+        var history = await PaymentService.GetPaymentsByInvoiceAsync(invoice.Id);
+        
+        var p = new DialogParameters { 
+            { "InvoiceId", invoice.Id }, 
+            { "InvoiceNumber", invoice.InvoiceNumber }, 
+            { "RemainingAmount", remainingAmount },
+            { "ExistingPayments", history }
+        };
+        var d = await DialogService.ShowAsync<PaymentDialog>("Registruoti mokėjimą", p, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+        if (!(await d.Result).Canceled) 
+        { 
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenPartialDetail()
+    {
+        var partialInvoices = _filteredInvoices
+            .Where(i => i.PaymentStatus == "partial")
+            .ToList();
+        var parameters = new DialogParameters
+        {
+            ["BucketLabel"] = "Dalinai apmokėtos",
+            ["Invoices"] = partialInvoices
+        };
+        await DialogService.ShowAsync<AgingDetailDialog>("Skolos", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+    }
+
+    private async Task OpenOverpaidDetail()
+    {
+        var overpaidInvoices = _filteredInvoices
+            .Where(i => i.TotalInclVat > 0 && i.PaidAmount > i.TotalInclVat)
+            .ToList();
+        var parameters = new DialogParameters
+        {
+            ["BucketLabel"] = "Permokėtos",
+            ["Invoices"] = overpaidInvoices
+        };
+        await DialogService.ShowAsync<AgingDetailDialog>("Permokėjimai", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+    }
+
+    private async Task OpenAgingDetail(string bucket)
+    {
+        var invoices = _agingReport.GetBucketInvoices(bucket);
+        var parameters = new DialogParameters
+        {
+            ["BucketLabel"] = bucket,
+            ["Invoices"] = invoices
+        };
+        await DialogService.ShowAsync<AgingDetailDialog>("Skolos", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+    }
+}

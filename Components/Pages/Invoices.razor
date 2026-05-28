@@ -1,0 +1,189 @@
+@page "/invoices"
+@page "/invoices/sales"
+@page "/invoices/purchases"
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using MudBlazor
+@inject NavigationManager Navigation
+@inject IInvoiceService _invoiceService
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-8">
+    <MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">@(Navigation.Uri.Contains("/purchases") ? "Pirkimų sąskaitos (ULAK)" : "Pardavimų sąskaitos (LAK)")</MudText>
+
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="_searchTerm" Label="Paieška (numeris/arba klientas)" Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="InvoiceStatus?" Label="Būsena" Value="_selectedStatus" ValueChanged="OnStatusChanged" Clearable="true">
+                    @foreach (InvoiceStatus status in Enum.GetValues(typeof(InvoiceStatus)))
+                    {
+                        <MudSelectItem T="InvoiceStatus?" Value="@((InvoiceStatus?)status)">@GetStatusText(status)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudDatePicker @bind-Date="_fromDate" Label="Nuo" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudDatePicker @bind-Date="_toDate" Label="Iki" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadInvoicesAsync">Filtruoti</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFilters">Valyti</MudButton>
+        </MudStack>
+    </MudPaper>
+
+    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateNewInvoice">
+        Sukurti Naują Sąskaitą
+    </MudButton>
+
+    <MudTable T="Invoice" Items="@_invoices" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" @bind-RowsPerPage="_rowsPerPage">
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+        </PagerContent>
+        <HeaderContent>
+            <MudTh>Nr.</MudTh>
+            <MudTh>Klientas</MudTh>
+            <MudTh>Data</MudTh>
+            <MudTh>Terminas</MudTh>
+            <MudTh>Būsena</MudTh>
+            <MudTh>Veiksmai</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="invoice">
+            <MudTd DataLabel="Nr.">@invoice.InvoiceNumber</MudTd>
+            <MudTd DataLabel="Klientas">@(invoice.Customer?.Name ?? $"ID: {invoice.CustomerId}")</MudTd>
+            <MudTd DataLabel="Data">@invoice.InvoiceDate.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Terminas">@invoice.PaymentDueDate?.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Būsena">
+                <MudChip T="string" Color="@GetStatusColor(invoice.Status)" Size="Size.Small">@GetStatusText(invoice.Status)</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Veiksmai">
+                <MudTooltip Text="Peržiūrėti">
+                    <MudIconButton OnClick="@(() => ViewInvoice(invoice.Id))" Color="Color.Secondary" Icon="@Icons.Material.Filled.Visibility" />
+                </MudTooltip>
+                <MudTooltip Text="Redaguoti">
+                    <MudIconButton OnClick="@(() => EditInvoice(invoice.Id))" Color="Color.Primary" Icon="@Icons.Material.Filled.Edit" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <FooterContent>
+            <MudTd DataLabel="Iš viso" @attributes='@(new Dictionary<string, object> { { "colspan", 6 } })'>@_invoices.Count įrašai</MudTd>
+        </FooterContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<Invoice> _invoices = new();
+    private bool _loading = true;
+    private InvoiceStatus? _selectedStatus;
+    private string? _searchTerm;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private string? _typeFilter;
+    private int _rowsPerPage = 50;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInvoicesAsync();
+    }
+
+    private async Task LoadInvoicesAsync()
+    {
+        _loading = true;
+        try 
+        {
+            _typeFilter = Navigation.Uri.Contains("/purchases") 
+                ? "purchase" 
+                : "sales";
+            
+            var allInvoices = await _invoiceService.GetInvoicesAsync(
+                fromDate: _fromDate,
+                toDate: _toDate,
+                status: _selectedStatus,
+                searchTerm: _searchTerm,
+                type: _typeFilter
+            );
+            _invoices = allInvoices.ToList();
+            
+            _loading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            // Čia būtų galima pridėti pranešimą vartotojui apie DB klaidą
+            Console.WriteLine($"Klaida: {ex.Message}");
+        }
+        finally 
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnStatusChanged(InvoiceStatus? status)
+    {
+        _selectedStatus = status;
+        await LoadInvoicesAsync();
+    }
+
+    private async Task OnSearchChanged()
+    {
+        await LoadInvoicesAsync();
+    }
+
+    private async Task OnFromDateChanged(DateTime? date)
+    {
+        _fromDate = date;
+        await LoadInvoicesAsync();
+    }
+
+    private async Task OnToDateChanged(DateTime? date)
+    {
+        _toDate = date;
+        await LoadInvoicesAsync();
+    }
+
+    private void ClearFilters()
+    {
+        _searchTerm = null;
+        _selectedStatus = null;
+        _fromDate = null;
+        _toDate = null;
+        LoadInvoicesAsync().Wait();
+    }
+
+    private string GetStatusText(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => "Juodraštas",
+        InvoiceStatus.Confirmed => "Patvirtinta",
+        InvoiceStatus.Paid => "Apmokėta",
+        InvoiceStatus.Disputed => "Ginčijama",
+        _ => status.ToString()
+    };
+
+    private Color GetStatusColor(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => Color.Warning,
+        InvoiceStatus.Confirmed => Color.Primary,
+        InvoiceStatus.Paid => Color.Success,
+        InvoiceStatus.Disputed => Color.Error,
+        _ => Color.Default
+    };
+
+    private void CreateNewInvoice()
+    {
+        Navigation.NavigateTo("/invoices/create");
+    }
+
+    private void ViewInvoice(int id)
+    {
+        Navigation.NavigateTo($"/invoices/{id}");
+    }
+
+    private void EditInvoice(int id)
+    {
+        Navigation.NavigateTo($"/invoices/edit/{id}");
+    }
+}

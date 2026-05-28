@@ -1,0 +1,42 @@
+BEFORE EVERY TASK:
+1. Read .clinerules using filesystem MCP
+2. Read the FULL file before editing using filesystem MCP
+3. Verify DB schema with MySQL MCP if touching models or services
+
+CRITICAL C# RULES:
+- ALWAYS use IDbContextFactory<NordicBeesERPContext>
+- ALWAYS: using var context = await _dbContextFactory.CreateDbContextAsync();
+- ALWAYS mark modified properties before SaveChangesAsync:
+  context.Entry(entity).Property(p => p.Field).IsModified = true;
+- ALWAYS add [Column("snake_case")] to every model property
+- NEVER use .Include()
+- NEVER use EF navigation properties
+- Decimal culture: always InvariantCulture, NEVER lt-LT
+- List<T> not ICollection<T> in models
+
+CRITICAL BLAZOR RULES:
+- @inject via INTERFACE only: @inject IInvoiceService InvoiceService
+- NEVER: @inject NordicBeesERP.Services.InvoiceService
+- @using directives only in _Imports.razor
+- Every page needs @page directive
+
+CRITICAL MUDBLAZOR v8.15.0 RULES:
+- MudText NOT MudTypography
+- Variant.Filled NOT Variant.Contained
+- MudTable MUST have T attribute
+- MudTable: HeaderContent / RowTemplate Context="item" / FooterContent
+- NEVER use Header / Rows / Footer inside MudTable
+- Lines="3" NOT Rows="3" on MudTextField
+- All generic components need T attribute
+
+AFTER EVERY FILE CHANGE:
+1. dotnet build - fix ALL errors before moving on
+2. git add . && git commit -m "[Module] description"
+
+FORBIDDEN:
+- Partial code or snippets
+- Code with build errors
+- Touching files outside task scope
+- Hardcoding passwords
+- EF migrations
+- .Include() calls

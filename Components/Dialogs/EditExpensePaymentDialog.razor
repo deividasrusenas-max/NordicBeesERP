@@ -1,0 +1,99 @@
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Services
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Payments" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Redaguoti mokėjimą</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Class="mt-3">
+            <MudItem xs="12">
+                <MudNumericField T="decimal" @bind-Value="_amount" Label="Suma (€)"
+                                 Min="0.01m" Max="999999999.99m" Required="true" Format="F2" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudDatePicker Label="Data" Date="_date" DateChanged="@((DateTime? d) => _date = d)"
+                               DateFormat="yyyy-MM-dd" Variant="Variant.Text"
+                               PickerVariant="PickerVariant.Inline" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="string" @bind-Value="_method" Label="Mokėjimo būdas" Required="true">
+                    <MudSelectItem T="string" Value="@("BANK")">Banko pavedimas</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("CASH")">Grynais</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("OTHER")">Kita</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_reference" Label="Nuorodos nr." />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_notes" Label="Pastabos" Lines="2" MaxLength="500" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Inject] IExpenseService ExpenseService { get; set; } = default!;
+    [Inject] ISnackbar Snackbar { get; set; } = default!;
+
+    [Parameter] public ExpensePayment Payment { get; set; } = default!;
+
+    private decimal _amount;
+    private DateTime? _date;
+    private string _method = "BANK";
+    private string _reference = string.Empty;
+    private string _notes = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _amount = Payment.Amount;
+        _date = Payment.PaymentDate;
+        _method = Payment.PaymentMethod;
+        _reference = Payment.Reference ?? string.Empty;
+        _notes = Payment.Notes ?? string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_amount <= 0)
+        {
+            Snackbar.Add("Suma turi būti didesnė nei 0", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            var updated = new ExpensePayment
+            {
+                Id = Payment.Id,
+                InvoiceId = Payment.InvoiceId,
+                PaymentDate = _date ?? DateTime.Today,
+                Amount = _amount,
+                PaymentMethod = _method,
+                Reference = string.IsNullOrEmpty(_reference) ? null : _reference,
+                Notes = string.IsNullOrEmpty(_notes) ? null : _notes
+            };
+            await ExpenseService.UpdatePaymentAsync(updated);
+            Snackbar.Add("Mokėjimas atnaujintas", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida atnaujinant mokėjimą: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Close(DialogResult.Cancel());
+}

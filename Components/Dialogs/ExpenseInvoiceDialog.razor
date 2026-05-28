@@ -1,0 +1,184 @@
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Services
+@using NordicBeesERP.Helpers
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <DialogContent>
+        @if (_invoice is not null)
+        {
+            <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3">
+                <!-- Invoice Header -->
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3 bg-light">
+                    <MudGrid>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudText Typo="Typo.body2" Color="Color.Default">Tiekėjas</MudText>
+                            <MudText Typo="Typo.h6">@_invoice.Supplier?.Name</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudText Typo="Typo.body2" Color="Color.Default">Sąskaitos numeris</MudText>
+                            <MudText Typo="Typo.h6">@_invoice.InvoiceNumber</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudText Typo="Typo.body2" Color="Color.Default">Sąskaitos data</MudText>
+                            <MudText Typo="Typo.h6">@_invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudText Typo="Typo.body2" Color="Color.Default">Mokėjimo terminas</MudText>
+                            <MudText Typo="Typo.h6">@_invoice.DueDate.ToString("yyyy-MM-dd")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudText Typo="Typo.body2" Color="Color.Default">Būsena</MudText>
+                            <MudChip T="string" Color="@GetStatusColor(_invoice.Status)">@GetStatusText(_invoice.Status)</MudChip>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Invoice Summary -->
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3">
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">Suma be PVM</MudText>
+                            <MudText Typo="Typo.h6">@_invoice.AmountExclVat.ToString("0.00") €</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">PVM (@(_invoice.VatRate.ToString("0.00"))%)</MudText>
+                            <MudText Typo="Typo.h6">@_invoice.VatAmount.ToString("0.00") €</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">Suma su PVM</MudText>
+                            <MudText Typo="Typo.h5" Color="Color.Primary">@_invoice.AmountInclVat.ToString("0.00") €</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">Sumokėta</MudText>
+                            <MudText Typo="Typo.h5" Color="Color.Success">@_invoice.PaidAmount.ToString("0.00") €</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Invoice Lines -->
+                <MudText Typo="Typo.h6" Class="mb-2">Sąskaitos eilutės</MudText>
+                <MudTable Items="@_invoice.ExpenseInvoiceLines" Elevation="1" Rounded="true" Square="false" Class="mb-3">
+                    <HeaderContent>
+                        <MudTh>Eilutė</MudTh>
+                        <MudTh>Aprašymas</MudTh>
+                        <MudTh>Kiekis</MudTh>
+                        <MudTh>Kaina (be PVM)</MudTh>
+                        <MudTh>PVM</MudTh>
+                        <MudTh>Suma (su PVM)</MudTh>
+                        <MudTh>Allokacija</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        @{
+                            var line = context as ExpenseInvoiceLine;
+                        }
+                        <MudTd>@line?.Id</MudTd>
+                        <MudTd>@line?.Description</MudTd>
+                        <MudTd>@line?.AmountExclVat.ToString("0.00")</MudTd>
+                        <MudTd>@line?.VatRate.ToString("0.00")</MudTd>
+                        <MudTd>@line?.AmountInclVat.ToString("0.00")</MudTd>
+                        <MudTd>
+                            @if (line?.ExpenseLineAllocations?.Count > 0)
+                            {
+                                foreach (var allocation in line.ExpenseLineAllocations)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Class="mr-1 mb-1">@(allocation.Category?.Name ?? "Nežinoma")</MudChip>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Warning">Nesiskirstyta</MudText>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <!-- Payment History -->
+                @if (_invoice.ExpensePayments?.Count > 0)
+                {
+                    <MudText Typo="Typo.h6" Class="mb-2">Mokėjimų istorija</MudText>
+                    <MudTable Items="@_invoice.ExpensePayments" Elevation="1" Rounded="true" Square="false">
+                        <HeaderContent>
+                            <MudTh>Data</MudTh>
+                            <MudTh>Suma</MudTh>
+                            <MudTh>Mokėjimo būdas</MudTh>
+                            <MudTh>Referencė</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            @{
+                                var payment = context as ExpensePayment;
+                            }
+                            <MudTd>@payment?.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd>@payment?.Amount.ToString("0.00") €</MudTd>
+                            <MudTd>@payment?.PaymentMethod</MudTd>
+                            <MudTd>@payment?.Reference</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                <!-- Notes -->
+                @if (!string.IsNullOrEmpty(_invoice.Notes))
+                {
+                    <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mt-3">
+                        <MudText Typo="Typo.body2" Color="Color.Default">Pastabos</MudText>
+                        <MudText Typo="Typo.body1">@_invoice.Notes</MudText>
+                    </MudPaper>
+                }
+            </MudPaper>
+        }
+        else
+        {
+            <MudText Typo="Typo.body1" Color="Color.Default">Įkeliamas informacija...</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Uždaryti</MudButton>
+        @if (_invoice is not null && _invoice.Status != "PAID")
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Edit">Redaguoti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Pay">Mokėti</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    private ExpenseInvoice? _invoice;
+
+    [Parameter]
+    public int InvoiceId { get; set; }
+
+    [Inject]
+    private IExpenseService ExpenseService { get; set; } = default!;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadInvoiceAsync();
+    }
+
+    private async Task LoadInvoiceAsync()
+    {
+        _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(InvoiceId);
+        StateHasChanged();
+    }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+
+    private void Edit()
+    {
+        MudDialog?.Close(DialogResult.Ok(InvoiceId));
+    }
+
+    private void Pay()
+    {
+        MudDialog?.Close(DialogResult.Ok(InvoiceId));
+    }
+
+    private Color GetStatusColor(string status) => ExpenseStatusHelper.GetColor(status);
+
+    private string GetStatusText(string status) => ExpenseStatusHelper.GetLabel(status);
+}

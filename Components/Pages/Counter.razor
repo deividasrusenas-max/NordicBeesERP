@@ -1,0 +1,24 @@
+﻿@page "/counter"
+
+<PageTitle>Counter</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    <MudPaper Elevation="2" Class="pa-4">
+        <MudText Typo="MudBlazor.Typo.h6" Class="mb-3 text-center">Skaitiklis</MudText>
+        <MudText Typo="MudBlazor.Typo.body1" Class="mb-4 text-center" Color="Color.Primary">
+            Dabartinė reikšmė: @currentCount
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="IncrementCount" Class="w-100">
+            Didinti
+        </MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+}

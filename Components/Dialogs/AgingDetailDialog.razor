@@ -1,0 +1,105 @@
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-3">@BucketLabel įsiskolinimai detaliai</MudText>
+        
+        @if (Invoices.Any())
+        {
+            <MudTable T="InvoiceWithPaymentInfo" Items="Invoices" Dense="true" Hover="true" Striped="true" RowsPerPage="25">
+                <HeaderContent>
+                    <MudTh>Sąskaitos nr</MudTh>
+                    <MudTh>Klientas</MudTh>
+                    <MudTh>Data</MudTh>
+                    <MudTh Class="text-right">Suma be PVM</MudTh>
+                    <MudTh Class="text-right">PVM</MudTh>
+                    <MudTh Class="text-right">Su PVM</MudTh>
+                    <MudTh Class="text-right">Sumokėta</MudTh>
+                    <MudTh Class="text-right">Liko</MudTh>
+                    <MudTh Class="text-center">Būsena</MudTh>
+                    <MudTh Class="text-center">Vėluoja (d.)</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="invoice">
+                    <MudTd Class="text-no-wrap">@invoice.InvoiceNumber</MudTd>
+                    <MudTd>@invoice.CustomerName</MudTd>
+                    <MudTd>@invoice.InvoiceDate.ToString("dd.MM.yyyy")</MudTd>
+                    <MudTd Class="text-right">@((invoice.TotalInclVat / 1.21m).ToString("N2"))</MudTd>
+                    <MudTd Class="text-right">@((invoice.TotalInclVat - invoice.TotalInclVat / 1.21m).ToString("N2"))</MudTd>
+                    <MudTd Class="text-right">@invoice.TotalInclVat.ToString("N2")</MudTd>
+                    <MudTd Class="text-right">@invoice.PaidAmount.ToString("N2")</MudTd>
+                    <MudTd Class="text-right">@invoice.RemainingAmount.ToString("N2")</MudTd>
+                    <MudTd Class="text-center">
+                        @if (invoice.PaymentStatus == "paid")
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Text="Apmokėta" />
+                        }
+                        else if (invoice.PaymentStatus == "partial")
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Text="Dalinai" />
+                        }
+                        else if (invoice.PaymentStatus == "unpaid")
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Text="Neapmokėta" />
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small" Text="@invoice.PaymentStatus" />
+                        }
+                    </MudTd>
+                    <MudTd Class="text-center">
+                        @if (invoice.DueDate.HasValue)
+                        {
+                            var daysOverdue = (DateTime.Today - invoice.DueDate.Value).Days;
+                            if (daysOverdue > 0)
+                            {
+                                <MudText Style="color: #ef4444; font-weight: 500">@daysOverdue</MudText>
+                            }
+                            else if (daysOverdue >= -30)
+                            {
+                                <MudText Style="color: #f97316;">-@(-daysOverdue)</MudText>
+                            }
+                            else
+                            {
+                                <MudText>-</MudText>
+                            }
+                        }
+                        else
+                        {
+                            <MudText>-</MudText>
+                        }
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+                </PagerContent>
+            </MudTable>
+        }
+        else
+        {
+            <MudText Typo="Typo.body1" Class="text-center py-4">Nėra sąskaitų šiame laike</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Uždaryti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    
+    [Parameter] public string BucketLabel { get; set; } = "";
+    [Parameter] public List<InvoiceWithPaymentInfo> Invoices { get; set; } = new List<InvoiceWithPaymentInfo>();
+
+    protected override void OnInitialized()
+    {
+        // Filter out fully paid invoices
+        Invoices = Invoices.Where(i => i.PaymentStatus != "paid" && i.RemainingAmount > 0).ToList();
+    }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+}

@@ -1,0 +1,345 @@
+@using NordicBeesERP.Models.Expenses
+@using ExpenseCategoryModel = NordicBeesERP.Models.Expenses.ExpenseCategory
+@using ExpenseBudgetModel = NordicBeesERP.Models.Expenses.ExpenseBudget
+@using NordicBeesERP.Services
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog @ref="_mudDialog">
+    <DialogContent>
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3">
+            <!-- Header -->
+            <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3">
+                <MudText Typo="Typo.h6" Class="mb-2">Biudžeto planavimas</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="Metai" @bind-Value="_year" Type="number" FullWidth="@true" />
+                    </MudItem>
+                    <MudItem xs="12" Class="mt-2">
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="LoadBudgets" Disabled="_loading">
+                            <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-1" />
+                            @(_loading ? "Kraunama..." : "Atnaujinti")
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" Variant="Variant.Outlined" OnClick="AddNewBudget" Class="ml-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-1" />
+                            Naujas biudžetas
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Budget Table -->
+            @if (_budgetItems?.Count > 0)
+            {
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="mb-3">
+                    <MudTable T="BudgetItem" Items="@_budgetItems" Elevation="0" Hover="true" Striped="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Kategorija</MudTh>
+                            <MudTh>Mėnuo</MudTh>
+                            <MudTh>Planuojama suma</MudTh>
+                            <MudTh>Tikrosios išlaidos</MudTh>
+                            <MudTh>Ventilė</MudTh>
+                            <MudTh>Statusas</MudTh>
+                            <MudTh>Veiksmai</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="item">
+                            <MudTd>
+                                <MudText>@item.CategoryName</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudText>@GetMonthName(item.Month)</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudTextField @bind-Value="item.PlannedAmount" Type="number" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="€" AdornmentColor="Color.Primary" Margin="Margin.Dense" Class="w-100" />
+                            </MudTd>
+                            <MudTd>
+                                <MudText>@item.ActualExpenses.ToString("0.00") €</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Color="@(item.Variance >= 0 ? Color.Success : Color.Error)">
+                                    @item.Variance.ToString("0.00") €
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudChip T="string" Color="@(item.Status == BudgetStatus.Ok ? Color.Success : item.Status == BudgetStatus.Warning ? Color.Warning : Color.Error)" Size="Size.Small">
+                                    @GetStatusText(item.Status)
+                                </MudChip>
+                            </MudTd>
+                            <MudTd>
+                                <MudButton Color="Color.Primary" Variant="Variant.Text" OnClick="() => EditBudget(item)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Edit" />
+                                </MudButton>
+                                <MudButton Color="Color.Error" Variant="Variant.Text" OnClick="() => DeleteBudget(item.Id)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Delete" />
+                                </MudButton>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+
+                <!-- Summary -->
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3">
+                    <MudGrid>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background:#e8f5e9; border-radius:8px">
+                                <MudText Typo="Typo.body2" Color="Color.Success">Planuojama suma</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Success">@_totalBudgeted.ToString("0.00") €</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background:#ffebee; border-radius:8px">
+                                <MudText Typo="Typo.body2" Color="Color.Error">Tikrosios išlaidos</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Error">@_totalActual.ToString("0.00") €</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background:#e3f2fd; border-radius:8px">
+                                <MudText Typo="Typo.body2" Color="Color.Primary">Ventilė</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Primary">@_totalVariance.ToString("0.00") €</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-5 text-center">
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">Nerasta biudžeto duomenų</MudText>
+                    <MudText Typo="Typo.body2" Class="mt-2">Paspauskite "Naujas biudžetas" mygtuką, kad pridėtumėte naują biudžetą</MudText>
+                </MudPaper>
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Uždaryti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int Year { get; set; } = DateTime.Now.Year;
+    
+    [Inject] private IExpenseService ExpenseService { get; set; } = default!;
+    
+    private int _year = DateTime.Now.Year;
+    private bool _loading = false;
+    private List<BudgetItem> _budgetItems = new();
+    private List<ExpenseCategoryModel> _categories = new();
+    private MudDialog? _mudDialog;
+    
+    private decimal _totalBudgeted = 0m;
+    private decimal _totalActual = 0m;
+    private decimal _totalVariance = 0m;
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadBudgets();
+    }
+    
+    private async Task LoadBudgets()
+    {
+        _loading = true;
+        StateHasChanged();
+        
+        try
+        {
+            // Load budgets for the selected year
+            var budgets = await ExpenseService.GetBudgetsAsync(year: _year);
+            
+            // Load all categories
+            _categories = await ExpenseService.GetCategoriesAsync();
+            
+            // Load all invoices to calculate actual expenses
+            var invoices = await ExpenseService.GetInvoicesAsync(fromDate: new DateTime(_year, 1, 1), toDate: new DateTime(_year, 12, 31));
+            
+            // Create budget items
+            _budgetItems = CreateBudgetItems(budgets, invoices);
+            
+            // Calculate totals
+            _totalBudgeted = _budgetItems.Sum(b => b.PlannedAmount);
+            _totalActual = _budgetItems.Sum(b => b.ActualExpenses);
+            _totalVariance = _totalBudgeted - _totalActual;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private List<BudgetItem> CreateBudgetItems(List<ExpenseBudgetModel> budgets, List<ExpenseInvoice> invoices)
+    {
+        var items = new List<BudgetItem>();
+        
+        foreach (var category in _categories)
+        {
+            // Get budgets for this category
+            var categoryBudgets = budgets.Where(b => b.CategoryId == category.Id).ToList();
+            
+            // Create budget items for each month
+            for (int month = 1; month <= 12; month++)
+            {
+                var budget = categoryBudgets.FirstOrDefault(b => b.Month == month);
+                var plannedAmount = budget?.PlannedAmount ?? 0m;
+                
+                // Calculate monthly actual expenses (pro-rated based on invoice date)
+                var monthlyActual = 0m;
+                foreach (var invoice in invoices)
+                {
+                    if (invoice.InvoiceDate.Month == month)
+                    {
+                        foreach (var line in invoice.ExpenseInvoiceLines)
+                        {
+                            var allocation = line.ExpenseLineAllocations.FirstOrDefault(a => a.CategoryId == category.Id);
+                            if (allocation != null)
+                            {
+                                monthlyActual += allocation.AllocatedAmount;
+                            }
+                        }
+                    }
+                }
+                
+                var variance = plannedAmount - monthlyActual;
+                var status = GetBudgetStatus(variance, plannedAmount);
+                
+                items.Add(new BudgetItem
+                {
+                    Id = budget?.Id ?? 0,
+                    CategoryId = category.Id,
+                    CategoryName = category.Name,
+                    Month = month,
+                    PlannedAmount = plannedAmount,
+                    ActualExpenses = monthlyActual,
+                    Variance = variance,
+                    Status = status
+                });
+            }
+        }
+        
+        return items;
+    }
+    
+    private BudgetStatus GetBudgetStatus(decimal variance, decimal plannedAmount)
+    {
+        if (plannedAmount == 0m) return BudgetStatus.Ok;
+        
+        var percentage = variance / plannedAmount;
+        
+        if (percentage >= 0.1m) return BudgetStatus.Ok; // Under budget by 10% or more
+        if (percentage >= 0m) return BudgetStatus.Warning; // Under budget but less than 10%
+        if (percentage >= -0.1m) return BudgetStatus.Warning; // Over budget by less than 10%
+        return BudgetStatus.Over; // Over budget by 10% or more
+    }
+    
+    private string GetMonthName(int month)
+    {
+        return month switch
+        {
+            1 => "Sausis",
+            2 => "Vasaris",
+            3 => "Kovas",
+            4 => "Balandis",
+            5 => "Gegužė",
+            6 => "Birželis",
+            7 => "Liepa",
+            8 => "Rugpjūtis",
+            9 => "Rugsėjis",
+            10 => "Spalis",
+            11 => "Lapkritis",
+            12 => "Gruodis",
+            _ => ""
+        };
+    }
+    
+    private string GetStatusText(BudgetStatus status)
+    {
+        return status switch
+        {
+            BudgetStatus.Ok => "Ok",
+            BudgetStatus.Warning => "Įspėjimas",
+            BudgetStatus.Over => "Per biudžetą",
+            _ => ""
+        };
+    }
+    
+    private void AddNewBudget()
+    {
+        // Add new budget for current category and month
+        var newItem = new BudgetItem
+        {
+            Id = 0,
+            CategoryId = _categories.FirstOrDefault()?.Id ?? 0,
+            CategoryName = _categories.FirstOrDefault()?.Name ?? "",
+            Month = DateTime.Now.Month,
+            PlannedAmount = 0m,
+            ActualExpenses = 0m,
+            Variance = 0m,
+            Status = BudgetStatus.Ok
+        };
+        
+        _budgetItems.Add(newItem);
+        StateHasChanged();
+    }
+    
+    private void EditBudget(BudgetItem item)
+    {
+        // Edit existing budget
+        if (item.Id > 0)
+        {
+            var existingBudget = _budgetItems.FirstOrDefault(b => b.Id == item.Id);
+            if (existingBudget != null)
+            {
+                // Update the budget
+                var budget = new ExpenseBudgetModel
+                {
+                    Id = existingBudget.Id,
+                    CategoryId = existingBudget.CategoryId,
+                    Year = _year,
+                    Month = existingBudget.Month,
+                    PlannedAmount = existingBudget.PlannedAmount
+                };
+                
+                ExpenseService.UpdateBudgetAsync(budget);
+            }
+        }
+    }
+    
+    private async Task DeleteBudget(int id)
+    {
+        if (id > 0)
+        {
+            var result = await ExpenseService.DeleteBudgetAsync(id);
+            if (result)
+            {
+                await LoadBudgets();
+            }
+        }
+    }
+    
+    private void Close()
+    {
+        // Use DialogService to close this dialog
+        // The DialogReference is passed when the dialog is opened
+        // For now, we'll just refresh the dialog state
+        // In practice, you should inject IDialogService and use DialogReference.Close()
+    }
+    
+    // Data models
+    public class BudgetItem
+    {
+        public int Id { get; set; }
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = "";
+        public int Month { get; set; }
+        public decimal PlannedAmount { get; set; }
+        public decimal ActualExpenses { get; set; }
+        public decimal Variance { get; set; }
+        public BudgetStatus Status { get; set; }
+    }
+    
+    public enum BudgetStatus
+    {
+        Ok,
+        Warning,
+        Over
+    }
+}

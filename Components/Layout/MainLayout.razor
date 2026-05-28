@@ -1,0 +1,79 @@
+﻿@inherits LayoutComponentBase
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@inject BlazorAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider MaxDisplayedSnackbars="3" />
+
+<CascadingAuthenticationState>
+<MudLayout>
+    <MudAppBar Elevation="0" Style="background:#f8fafc; color:#1e293b; border-bottom:1px solid #e2e8f0">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleSidebar" />
+        <MudText Typo="Typo.h6" Class="ms-2" Style="font-weight:700; color:#1e293b">
+    <img src="/logo.png" style="height:32px; margin-right:8px; vertical-align:middle;" alt="Lakštena" />
+    Lakštena ERP
+</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-3" Style="color:#64748b">
+                    @context.User.FindFirst("FullName")?.Value
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
+                    OnClick="HandleLogout" Title="Atsijungti" />
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudDrawer @bind-Open="sidebarOpen" Elevation="0" Width="250px" 
+        Style="background:#f8fafc; border-right:1px solid #e2e8f0">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent Style="background:#ffffff">
+        <div style="padding:0">
+            @Body
+            <MudPaper Elevation="0" Class="pa-3 mt-4" Style="background:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
+                <MudText Typo="Typo.caption" Style="color:#94a3b8">© 2026 MB Lakštena · NordicBeesERP v@_version</MudText>
+            </MudPaper>
+        </div>
+    </MudMainContent>
+</MudLayout>
+</CascadingAuthenticationState>
+
+@code {
+    private bool sidebarOpen = true;
+
+    private string _version => Configuration["AppVersion"] ?? "0.9.0";
+
+    private MudTheme _theme = new MudTheme
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#4f7cac",
+            Secondary = "#7fb685",
+            AppbarBackground = "#f8fafc",
+            AppbarText = "#1e293b",
+            DrawerBackground = "#f8fafc",
+            DrawerText = "#475569",
+            Background = "#ffffff",
+            Surface = "#ffffff",
+            TextPrimary = "#1e293b",
+            TextSecondary = "#64748b"
+        }
+    };
+
+    private async Task HandleLogout()
+    {
+        await AuthStateProvider.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: false);
+    }
+
+    private void ToggleSidebar()
+    {
+        sidebarOpen = !sidebarOpen;
+    }
+}

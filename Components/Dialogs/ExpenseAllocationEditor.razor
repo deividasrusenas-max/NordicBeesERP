@@ -1,0 +1,220 @@
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Services
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <DialogContent>
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3">
+            <!-- Header -->
+            <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3 bg-light">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Default">Eilutės ID</MudText>
+                        <MudText Typo="Typo.h6">@_invoiceLine?.Id</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Default">Aprašymas</MudText>
+                        <MudText Typo="Typo.h6">@_invoiceLine?.Description</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Invoice Line Details -->
+            <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3">
+                <MudGrid>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.body2">Kiekis</MudText>
+                        <MudText Typo="Typo.h6">1</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.body2">Kaina (be PVM)</MudText>
+                        <MudText Typo="Typo.h6">@_invoiceLine?.AmountExclVat.ToString("0.00") €</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.body2">PVM (%)</MudText>
+                        <MudText Typo="Typo.h6">@_invoiceLine?.VatRate.ToString("0.00")</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.body2">Suma (su PVM)</MudText>
+                        <MudText Typo="Typo.h5" Color="Color.Primary">@_invoiceLine?.AmountInclVat.ToString("0.00") €</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Current Allocations -->
+            <MudText Typo="Typo.h6" Class="mb-2">Esamos allokacijos</MudText>
+            <MudTable Items="@_allocations" Elevation="1" Rounded="true" Square="false" Class="mb-3">
+                <HeaderContent>
+                    <MudTh>Kategorija</MudTh>
+                    <MudTh>Kainų centras</MudTh>
+                    <MudTh>Suma</MudTh>
+                    <MudTh>Procentas</MudTh>
+                    <MudTh>Veiksmai</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    @{
+                        var allocation = context as ExpenseLineAllocation;
+                    }
+                    <MudTd>@allocation?.Category?.Name</MudTd>
+                    <MudTd>@allocation?.CostCenter?.Name</MudTd>
+                    <MudTd>@allocation?.AllocatedAmount.ToString("0.00") €</MudTd>
+                    <MudTd>@allocation?.AllocatedPercent.ToString("0.00") %</MudTd>
+                    <MudTd>
+                        <MudButton Color="Color.Error" Variant="Variant.Text" OnClick="() => RemoveAllocation(allocation!.Id)">
+                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-1" />
+                            Šalinti
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <!-- Add New Allocation -->
+            <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3">
+                <MudText Typo="Typo.h6" Class="mb-2">Pridėti naują allokaciją</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int" Label="Kategorija" @bind-Value="_newCategoryId" FullWidth="@true">
+                            @foreach (var category in _categories)
+                            {
+                                <MudSelectItem T="int" Value="@category.Id">@category.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int" Label="Kainų centras" @bind-Value="_newCostCenterId" FullWidth="@true">
+                            @foreach (var center in _costCenters)
+                            {
+                                <MudSelectItem T="int" Value="@center.Id">@center.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="decimal" Label="Suma" @bind-Value="_newAllocatedAmount" FullWidth="@true" Type="TextFieldType.Number" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="decimal" Label="Procentas (%)" @bind-Value="_newAllocatedPercent" FullWidth="@true" Type="TextFieldType.Number" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="AddAllocation" Class="mt-2" Disabled="!CanAddAllocation">
+                            Pridėti allokaciją
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Allocation Summary -->
+            <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2">Iš viso sumokėta</MudText>
+                        <MudText Typo="Typo.h6">@_totalAllocated.ToString("0.00") €</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2">Liko neallokuota</MudText>
+                        <MudText Typo="Typo.h6" Color="@(RemainingAmount > 0 ? Color.Warning : Color.Success)">
+                            @RemainingAmount.ToString("0.00") €
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Uždaryti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public int InvoiceLineId { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    [Inject]
+    private IExpenseService ExpenseService { get; set; } = default!;
+
+    private ExpenseInvoiceLine? _invoiceLine;
+    private List<ExpenseLineAllocation> _allocations = new();
+    private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
+    private List<NordicBeesERP.Models.Expenses.ExpenseCostCenter> _costCenters = new();
+
+    private int _newCategoryId = 0;
+    private int _newCostCenterId = 0;
+    private decimal _newAllocatedAmount = 0m;
+    private decimal _newAllocatedPercent = 0m;
+
+    private decimal _totalAllocated => _allocations.Sum(a => a.AllocatedAmount);
+    private decimal RemainingAmount => _invoiceLine?.AmountInclVat - _totalAllocated ?? 0m;
+
+    private bool CanAddAllocation => _newCategoryId > 0 && _newCostCenterId > 0 && _newAllocatedAmount > 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        // Load invoice line details
+        var invoice = await ExpenseService.GetInvoiceWithDetailsAsync(_invoiceLine?.InvoiceId ?? 0);
+        _invoiceLine = invoice?.ExpenseInvoiceLines.FirstOrDefault(l => l.Id == InvoiceLineId);
+
+        // Load allocations
+        _allocations = await ExpenseService.GetAllocationsAsync(InvoiceLineId);
+
+        // Load categories and cost centers
+        _categories = await ExpenseService.GetCategoriesAsync(true);
+        _costCenters = await ExpenseService.GetCostCentersAsync(true);
+
+        // Set default values for new allocation
+        if (_categories.Count > 0 && _newCategoryId == 0)
+        {
+            _newCategoryId = _categories[0].Id;
+        }
+        if (_costCenters.Count > 0 && _newCostCenterId == 0)
+        {
+            _newCostCenterId = _costCenters[0].Id;
+        }
+    }
+
+    private async Task AddAllocation()
+    {
+        if (_newCategoryId <= 0 || _newCostCenterId <= 0 || _newAllocatedAmount <= 0)
+            return;
+
+        var allocation = new ExpenseLineAllocation
+        {
+            InvoiceLineId = InvoiceLineId,
+            CategoryId = _newCategoryId,
+            CostCenterId = _newCostCenterId,
+            AllocatedAmount = _newAllocatedAmount,
+            AllocatedPercent = _newAllocatedPercent
+        };
+
+        await ExpenseService.AddAllocationAsync(allocation);
+
+        // Reload allocations
+        _allocations = await ExpenseService.GetAllocationsAsync(InvoiceLineId);
+
+        // Reset form
+        _newAllocatedAmount = 0m;
+        _newAllocatedPercent = 0m;
+    }
+
+    private async Task RemoveAllocation(int allocationId)
+    {
+        var result = await ExpenseService.DeleteAllocationAsync(allocationId);
+        if (result)
+        {
+            // Reload allocations
+            _allocations = await ExpenseService.GetAllocationsAsync(InvoiceLineId);
+        }
+    }
+
+    private void CloseDialog()
+    {
+        MudDialog?.Close();
+    }
+}

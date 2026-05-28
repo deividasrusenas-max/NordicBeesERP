@@ -1,0 +1,624 @@
+@page "/invoices/create"
+@page "/invoices/create-purchase"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Components.Dialogs
+@using MudBlazor
+@using NordicBeesERP.Models.WarehouseModule
+@inject IDeliveryService DeliveryService
+@inject IInvoiceService _invoiceService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ISupplierService SupplierService
+@inject IRawMaterialTypeService RawMaterialTypeService
+
+<PageTitle>@(_isPurchase ? "Nauja pirkimo sąskaita (ULAK)" : "Naujas pardavimas (LAK)")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">📝 @(_isPurchase ? "Nauja pirkimo sąskaita (ULAK)" : "Naujas pardavimas / Sąskaita")</MudText>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
+    }
+
+    <!-- ANTRAŠTĖ -->
+    <MudPaper Class="mb-3">
+        <MudToolBar Dense="true" Class="mud-theme-primary">
+            <MudText Typo="Typo.h6">Pagrindinė informacija</MudText>
+        </MudToolBar>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="3">
+                    <MudTextField T="string" Label="Sąskaitos numeris *" @bind-Value="_nextInvoiceNumber" 
+                                  ReadOnly="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate"
+                                   Variant="Variant.Outlined" Required="true" 
+                                   DateChanged="@UpdateDueDate" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudNumericField T="int" Label="Apmokėjimo terminas (dienų) *" Value="@_paymentTermDays" 
+                                     Variant="Variant.Outlined" Min="0" 
+                                     ValueChanged="@UpdateDueDate" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudDatePicker Label="Apmokėti iki" @bind-Date="_paymentDueDate" 
+                                   Variant="Variant.Outlined" ReadOnly="true" />
+                </MudItem>
+                @if (!_isPurchase)
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
+                                      Variant="Variant.Outlined" ReadOnly="true" 
+                                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                      OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" />
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?" Label="Tiekėjas *" Value="_selectedSupplierId"
+                                   Variant="Variant.Outlined" Required="true" Placeholder="Pasirinkite tiekėją"
+                                   ValueChanged="OnSupplierSelected">
+                            @foreach (var s in _suppliers)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?" Label="Pristatymas" 
+                                   Value="_selectedDeliveryId"
+                                   ValueChanged="OnDeliverySelected"
+                                   Variant="Variant.Outlined"
+                                   Placeholder="Pasirinkite pristatymą"
+                                   Disabled="@(_selectedSupplierId == null)">
+                            @foreach (var d in _supplierDeliveries)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)d.Id)">
+                                    @d.DeliveryNumber — @d.DeliveryDate.ToString("yyyy-MM-dd") — @d.TotalNetWeight kg
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+                <MudItem xs="12" sm="2">
+                    <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined">
+                        <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("EN")">EN</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="string" Label="Sąskaitos tipas" Value="@_invoiceType" 
+                               Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged"
+                               Disabled="@_isPurchase">
+                        <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM SĄSKAITA FAKTŪRA</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">6% PVM SĄSKAITA FAKTŪRA</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- PREKIŲ LENTELĖ -->
+    <MudPaper Class="mb-3">
+        <MudToolBar Dense="true" Class="mud-success">
+            <MudText Typo="Typo.h6">@(_isPurchase ? "Žaliavos" : "Prekės")</MudText>
+        </MudToolBar>
+        <MudCardContent>
+            <MudTable T="InvoiceLineInput" Items="@_lines" Hover="true" Dense="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh Style="width: 5%;">Nr.</MudTh>
+                    <MudTh Style="width: 35%;">Prekė *</MudTh>
+                    <MudTh Style="width: 10%;">Kiekis *</MudTh>
+                    <MudTh Style="width: 8%;">Vnt.</MudTh>
+                    <MudTh Style="width: 12%;">Kaina (be PVM) *</MudTh>
+                    <MudTh Style="width: 8%;">PVM %</MudTh>
+                    <MudTh Style="width: 12%;">Suma (su PVM)</MudTh>
+                    <MudTh Style="width: 8%;"></MudTh>
+                </HeaderContent>
+                <RowTemplate Context="line">
+                    <MudTd DataLabel="Nr.">@(_lines.IndexOf(line) + 1)</MudTd>
+                    <MudTd DataLabel="Prekė">
+                        <MudTextField T="string" @bind-Value="line.Description" Variant="Variant.Text" 
+                                      Margin="Margin.Dense"
+                                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                      OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })"
+                                      @ondblclick="@(( MouseEventArgs args) => HandleProductDoubleClick(args, line))" />
+                    </MudTd>
+                    <MudTd DataLabel="Kiekis">
+                        <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" Min="0" Step="0.001M"
+                                         ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
+                    </MudTd>
+                    <MudTd DataLabel="Vnt.">
+                        <MudTextField T="string" @bind-Value="line.Unit" Variant="Variant.Outlined" 
+                                      Margin="Margin.Dense" ReadOnly="true" />
+                    </MudTd>
+                    <MudTd DataLabel="Kaina">
+                        <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" Min="0" Step="0.01M" Format="F2"
+                                         ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
+                    </MudTd>
+                    <MudTd DataLabel="PVM %">
+                        <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
+                                         ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
+                    </MudTd>
+<MudTd DataLabel="Suma">
+    <MudTextField T="string" Value="@line.LineTotal.ToString()" Variant="Variant.Outlined" 
+                  Margin="Margin.Dense" ReadOnly="true" />
+</MudTd>
+                    <MudTd DataLabel="">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => RemoveLine(line))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" 
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => { if (_isPurchase) AddLineForPurchase(); else AddLine(); })">
+                Pridėti eilutę
+            </MudButton>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- SUMOS -->
+    <MudPaper Class="mb-3">
+        <MudCardContent>
+            <MudGrid Justify="Justify.FlexEnd">
+                <MudItem xs="12" sm="4">
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td class="mud-typography-align-right"><strong>Suma be PVM:</strong></td>
+                                <td class="mud-typography-align-right">@_totalExclVat.ToString("F2") €</td>
+                            </tr>
+                            <tr>
+                                <td class="mud-typography-align-right"><strong>PVM:</strong></td>
+                                <td class="mud-typography-align-right">@_totalVat.ToString("F2") €</td>
+                            </tr>
+                            <tr style="background-color: var(--mud-palette-success-lighten);">
+                                <td class="mud-typography-align-right"><strong>IŠ VISO:</strong></td>
+                                <td class="mud-typography-align-right"><strong>@_totalInclVat.ToString("F2") €</strong></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- KOMENTARAS -->
+    <MudPaper Class="mb-3">
+        <MudToolBar Dense="true">
+            <MudText Typo="Typo.h6">Komentaras</MudText>
+        </MudToolBar>
+        <MudCardContent>
+            <MudTextField T="string" @bind-Value="_notes" 
+                          Label="Komentaras (rodomas spausdinant)" 
+                          Variant="Variant.Outlined" 
+                          Lines="3" />
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- MYGTUKAI -->
+    <MudStack Row="true" Class="mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveInvoice">
+            Išsaugoti
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                   StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">
+            Išsaugoti + Generuoti PDF
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large" 
+                   OnClick="@Cancel">
+            Atšaukti
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private DialogOptions _stdOpt = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
+    private List<Customer> _customers = new();
+    private List<Product> _products = new();
+    private List<RawMaterialType> _rawMaterials = new();
+    private List<InvoiceLineInput> _lines = new();
+    private List<Supplier> _suppliers = new();
+    private int? _selectedSupplierId = null;
+    private List<Delivery> _supplierDeliveries = new();
+    private int? _selectedDeliveryId = null;
+    private string _selectedDeliveryNumber = "";
+    
+    private string _nextInvoiceNumber = "";
+    private DateTime? _invoiceDate = DateTime.Today;
+    private int _paymentTermDays = 7;
+    private DateTime? _paymentDueDate;
+    private int? _selectedCustomerId;
+    private string _selectedClientDisplay = "";
+    private string _language = "LT";
+    private string _invoiceType = "PVM SĄSKAITA FAKTŪRA";
+    private decimal _defaultVatRate = 21m;
+    
+    // Invoice type options for UI display
+    private readonly string _invoiceTypePurchase = "6% PVM SĄSKAITA FAKTŪRA";
+    private readonly string _invoiceTypeSales = "PVM SĄSKAITA FAKTŪRA";
+    
+    private decimal _totalExclVat = 0;
+    private decimal _totalVat = 0;
+    private decimal _totalInclVat = 0;
+    
+    private string? _errorMessage;
+    private string _notes = "";
+
+    private bool _isPurchase = false;
+
+    private async Task OnSupplierSelected(int? supplierId)
+    {
+        _selectedSupplierId = supplierId;
+        _supplierDeliveries = (await DeliveryService.GetAllAsync())
+            .Where(d => d.SupplierId == supplierId && d.InvoiceId == null)
+            .ToList();
+        _selectedDeliveryId = null;
+        _selectedDeliveryNumber = "";
+        StateHasChanged();
+    }
+
+    private void OnDeliverySelected(int? deliveryId)
+    {
+        _selectedDeliveryId = deliveryId;
+        var delivery = _supplierDeliveries.FirstOrDefault(d => d.Id == deliveryId);
+        _selectedDeliveryNumber = delivery?.DeliveryNumber ?? "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isPurchase = Navigation.Uri.Contains("create-purchase");
+            
+            // Set invoice type based on purchase/sales route
+            if (_isPurchase)
+            {
+                _invoiceType = "6% PVM SĄSKAITA FAKTŪRA";
+            }
+            
+            if (_isPurchase)
+            {
+                _suppliers = await SupplierService.GetSuppliersAsync();
+                _rawMaterials = await RawMaterialTypeService.GetActiveAsync();
+            }
+            
+            _customers = await _invoiceService.GetCustomersAsync();
+            _products = await _invoiceService.GetProductsAsync();
+            _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(
+                _invoiceDate ?? DateTime.Today, 
+                _invoiceType
+            );
+            
+            if (_isPurchase)
+                AddLineForPurchase();
+            else
+                AddLine();
+            UpdateDueDate();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida kraunant duomenis: {ex.Message}";
+        }
+    }
+
+    private void AddLine()
+    {
+        _lines.Add(new InvoiceLineInput
+        {
+            Quantity = 1,
+            Unit = "vnt",
+            VatRate = _defaultVatRate,
+            PriceExclVat = 0,
+            Description = ""
+        });
+    }
+
+    private void AddLineForPurchase()
+    {
+        _lines.Add(new InvoiceLineInput
+        {
+            Description = "Medus",
+            Unit = "kg",
+            Quantity = 0,
+            PriceExclVat = 0,
+            VatRate = 6,
+            LineTotal = 0
+        });
+    }
+
+    private async Task RemoveLine(InvoiceLineInput line)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Ar tikrai norite ištrinti šią eilutę?" },
+            { x => x.ButtonText, "Ištrinti" },
+            { x => x.Color, Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        _lines.Remove(line);
+        CalculateTotals();
+    }
+
+    private void CalculateLine(InvoiceLineInput line)
+    {
+        var subtotal = line.Quantity * line.PriceExclVat;
+        var vatAmount = subtotal * (line.VatRate / 100m);
+        line.LineTotal = subtotal + vatAmount;
+        
+        CalculateTotals();
+    }
+
+    private void CalculateTotals()
+    {
+        _totalExclVat = 0;
+        _totalVat = 0;
+        
+        foreach (var line in _lines)
+        {
+            var subtotal = line.Quantity * line.PriceExclVat;
+            var vat = subtotal * (line.VatRate / 100m);
+            
+            _totalExclVat += subtotal;
+            _totalVat += vat;
+        }
+        
+        _totalInclVat = _totalExclVat + _totalVat;
+        
+        // Force UI refresh for real-time totals update
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateDueDate()
+    {
+        if (_invoiceDate.HasValue)
+        {
+            _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
+        }
+    }
+
+    private async Task OnInvoiceTypeChanged(string newType)
+    {
+        _invoiceType = newType;
+        _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? DateTime.Today, _invoiceType);
+        
+        if (_invoiceType == "6% PVM SĄSKAITA FAKTŪRA")
+        {
+            _defaultVatRate = 6m;
+            _language = "LT";
+            
+            // Update all lines to 6%
+            foreach (var line in _lines)
+            {
+                line.VatRate = 6m;
+                CalculateLine(line);
+            }
+        }
+        else
+        {
+            _defaultVatRate = 21m;
+        }
+    }
+
+    private async Task OpenClientDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
+        var parameters = new DialogParameters<ClientSelectDialog>();
+        parameters.Add("Customers", _customers);
+        
+        var dialog = await DialogService.ShowAsync<ClientSelectDialog>("Pasirinkite klientą", parameters, _stdOpt);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is Customer selectedCustomer)
+        {
+            _selectedCustomerId = selectedCustomer.Id;
+            _selectedClientDisplay = selectedCustomer.Name;
+            _paymentTermDays = selectedCustomer.PaymentTermDays;
+            _language = selectedCustomer.DefaultLanguage;
+            _defaultVatRate = selectedCustomer.DefaultVatRate;
+            
+            UpdateDueDate();
+            
+            // Force UI refresh after dialog returns
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OpenProductDialog(InvoiceLineInput line)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
+        var parameters = new DialogParameters<ProductSelectDialog>();
+        parameters.Add("Products", _products);
+        
+        var dialog = await DialogService.ShowAsync<ProductSelectDialog>("Pasirinkite prekę", parameters, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is Product selectedProduct)
+        {
+            line.ProductId = selectedProduct.Id;
+            line.ProductCode = selectedProduct.Code;
+            line.Description = selectedProduct.Name;
+            line.Unit = selectedProduct.Unit;
+            line.PriceExclVat = selectedProduct.SalePrice;
+            
+            CalculateLine(line);
+            
+            // Force UI refresh after dialog returns
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OpenRawMaterialDialog(InvoiceLineInput line)
+    {
+        var parameters = new DialogParameters
+        {
+            ["RawMaterials"] = _rawMaterials
+        };
+        var dialog = await DialogService.ShowAsync<RawMaterialSelectDialog>("Pasirinkite žaliavą", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is RawMaterialType material)
+        {
+            line.Description = material.Name;
+            line.Unit = "kg";
+            line.VatRate = 6;
+            CalculateLine(line);
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveInvoice()
+    {
+        if (!ValidateInvoice()) return;
+        
+        var invoice = BuildInvoice();
+        await _invoiceService.CreateInvoiceAsync(invoice);
+        Navigation.NavigateTo("/invoices");
+    }
+
+    private async Task SaveAndGeneratePdf()
+    {
+        if (!ValidateInvoice()) return;
+        
+        var invoice = BuildInvoice();
+        var invoiceId = await _invoiceService.CreateInvoiceAsync(invoice);
+        Navigation.NavigateTo($"/invoices/pdf/{invoiceId}");
+    }
+
+    private bool ValidateInvoice()
+    {
+        if (_isPurchase)
+        {
+            if (_selectedSupplierId == null || _selectedSupplierId == 0)
+            {
+                _errorMessage = "Prašome pasirinkti tiekėją!";
+                return false;
+            }
+            if (!_lines.Any(l => !string.IsNullOrEmpty(l.Description)))
+            {
+                _errorMessage = "Prašome pridėti bent vieną žaliavą!";
+                return false;
+            }
+            return true;
+        }
+        
+        if (!_selectedCustomerId.HasValue)
+        {
+            _errorMessage = "Prašome pasirinkti klientą!";
+            return false;
+        }
+        
+        if (!_lines.Any(l => !string.IsNullOrEmpty(l.Description)))
+        {
+            _errorMessage = "Prašome pridėti bent vieną prekę!";
+            return false;
+        }
+        
+        // 6% PVM sąskaitų faktūrų patikrinimas (reverse charge)
+        if (_invoiceType.Contains("6%"))
+        {
+            var customer = _customers.FirstOrDefault(c => c.Id == _selectedCustomerId);
+            if (customer is not null)
+            {
+                if (string.IsNullOrEmpty(customer.BankAccount))
+                {
+                    _errorMessage = "6% PVM sąskaitai klientas turi turėti nurodytą banko sąskaitą!";
+                    return false;
+                }
+                if (string.IsNullOrEmpty(customer.CompanyCode))
+                {
+                    _errorMessage = "6% PVM sąskaitai klientas turi turėti nurodytą įmonės kodą!";
+                    return false;
+                }
+                if (string.IsNullOrEmpty(customer.VatCode))
+                {
+                    _errorMessage = "6% PVM sąskaitai klientas turi turėti nurodytą PVM mokėtojo kodą!";
+                    return false;
+                }
+            }
+        }
+        
+        _errorMessage = null;
+        return true;
+    }
+
+    private Invoice BuildInvoice()
+    {
+        var invoice = new Invoice
+        {
+            InvoiceNumber = _nextInvoiceNumber,
+            InvoiceDate = _invoiceDate ?? DateTime.Today,
+            CustomerId = _isPurchase 
+                ? (_selectedSupplierId ?? 0) 
+                : (_selectedCustomerId ?? 0),
+            DeliveryId = _selectedDeliveryId,
+            PaymentTermDays = _paymentTermDays,
+            PaymentDueDate = _paymentDueDate,
+            Language = _language,
+            InvoiceType = _invoiceType,
+            Notes = _notes,
+            Status = InvoiceStatus.Draft,
+            Lines = new List<InvoiceLine>()
+        };
+        
+        int lineNumber = 1;
+        foreach (var lineInput in _lines.Where(l => !string.IsNullOrEmpty(l.Description)))
+        {
+            invoice.Lines.Add(new InvoiceLine
+            {
+                LineNumber = lineNumber++,
+                ProductId = (lineInput.ProductId.HasValue && lineInput.ProductId > 0) 
+                    ? lineInput.ProductId 
+                    : null,
+                ProductCode = lineInput.ProductCode ?? "",
+                Description = lineInput.Description,
+                Quantity = lineInput.Quantity,
+                Unit = lineInput.Unit,
+                PriceExclVat = lineInput.PriceExclVat,
+                VatRate = lineInput.VatRate
+            });
+        }
+        
+        return invoice;
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/invoices");
+    }
+
+    private DateTime? _lastClickTime = null;
+    private InvoiceLineInput? _lastClickedLine = null;
+    
+    private async Task HandleProductDoubleClick(MouseEventArgs args, InvoiceLineInput line)
+    {
+        if (!_isPurchase)
+        {
+            await OpenProductDialog(line);
+        }
+    }
+
+    public class InvoiceLineInput
+    {
+        public int? ProductId { get; set; }
+        public string? ProductCode { get; set; }
+        public string Description { get; set; } = "";
+        public decimal Quantity { get; set; } = 1;
+        public string Unit { get; set; } = "vnt";
+        public decimal PriceExclVat { get; set; } = 0;
+        public decimal VatRate { get; set; } = 21;
+        public decimal LineTotal { get; set; } = 0;
+    }
+}

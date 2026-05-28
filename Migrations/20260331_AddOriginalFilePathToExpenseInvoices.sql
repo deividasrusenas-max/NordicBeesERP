@@ -1,0 +1,1 @@
+ALTER TABLE expense_invoices ADD COLUMN original_file_path VARCHAR(500) NULL;

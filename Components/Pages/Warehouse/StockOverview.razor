@@ -1,0 +1,376 @@
+@page "/warehouse/stock"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject IContainerService ContainerService
+@inject IWarehouseService WarehouseService
+@inject ICustomerService CustomerService
+@inject IHoneyTypeService HoneyTypeService
+@inject ITransferService TransferService
+@inject IDeliveryService DeliveryService
+@inject IRawMaterialTypeService RawMaterialTypeService
+@inject IDbContextFactory<NordicBeesERPContext> DbContextFactory
+@inject ISnackbar Snackbar
+
+<PageTitle>Sandėlio likučiai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Sandėlio likučiai</MudText>
+
+    <!-- Filters -->
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+        <MudGrid>
+            <MudItem xs="12" md="2">
+                <MudSelect T="int?" @bind-Value="_filterWarehouseId" Label="Sandėlis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                    @foreach (var w in _warehouses)
+                    {
+                        <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="int?" @bind-Value="_filterHoneyTypeId" Label="Medaus rūšis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                    @foreach (var h in _honeyTypes)
+                    {
+                        <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="int?" @bind-Value="_filterSupplierId" Label="Tiekėjas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                    @foreach (var s in _suppliers)
+                    {
+                        <MudSelectItem T="int?" Value="s.Id">@s.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="string" @bind-Value="_filterStatus" Label="Statusas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                    <MudSelectItem Value="@("IN_STOCK")">Sandėlyje</MudSelectItem>
+                    <MudSelectItem Value="@("RECEIVED")">Priimtas</MudSelectItem>
+                    <MudSelectItem Value="@("RESERVED")">Rezervuotas</MudSelectItem>
+                    <MudSelectItem Value="@("IN_PRODUCTION")">Gamyboje</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudTextField @bind-Value="_searchCode" Label="Paieška (ID)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                    Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex align-end gap-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadData" Size="Size.Small">Filtruoti</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="ClearFilters" Size="Size.Small">Valyti</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Summary cards -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" md="3">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#e3f2fd; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                <MudText Typo="Typo.caption">Statinės</MudText>
+                <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BARREL") vnt.</MudText>
+                <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BARREL").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#e8f5e9; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                <MudText Typo="Typo.caption">Bendras netto</MudText>
+                <MudText Typo="Typo.h5">@_containers.Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#fff3e0; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                <MudText Typo="Typo.caption">Kibirai</MudText>
+                <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BUCKET_GROUP") vnt.</MudText>
+                <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#f3e5f5; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                <MudText Typo="Typo.caption">Bičių duona</MudText>
+                <MudText Typo="Typo.h5">@_biciuDuonaWeight.ToString("N1") kg</MudText>
+                <MudText Typo="Typo.body2" Style="color:#64748b">@_biciuDuonaCount vnt.</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Main table -->
+    <MudTable T="Container" Items="@_containers" Dense="true" Hover="true" Striped="true" Loading="_loading"
+        MultiSelection="true" @bind-SelectedItems="_selectedContainers" RowsPerPage="50">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Tipas</MudTh>
+            <MudTh>Tiekėjas</MudTh>
+            <MudTh>Rūšis</MudTh>
+            <MudTh Style="text-align:right">Brutto</MudTh>
+            <MudTh Style="text-align:right">Tara</MudTh>
+            <MudTh Style="text-align:right">Netto</MudTh>
+            <MudTh>Statusas</MudTh>
+            <MudTh>Sandėlis</MudTh>
+            <MudTh>Data</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="container">
+            <MudTd><strong>@container.ContainerCode</strong></MudTd>
+            <MudTd>@(container.ContainerType == "BARREL" ? "🛢️" : "🪣")</MudTd>
+            <MudTd>@GetSupplierName(container.SupplierId)</MudTd>
+            <MudTd>@GetHoneyTypeName(container.HoneyTypeId)</MudTd>
+            <MudTd Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
+            <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
+            <MudTd Style="text-align:right"><strong>@container.NetWeight.ToString("N1")</strong></MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="@GetStatusColor(container.Status)">@GetStatusText(container.Status)</MudChip></MudTd>
+            <MudTd>@GetWarehouseName(container.WarehouseId)</MudTd>
+            <MudTd>@container.CreatedAt.ToString("MM-dd")</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
+        </PagerContent>
+    </MudTable>
+
+    @if (_selectedContainers.Any())
+    {
+        <MudPaper Class="pa-3 mt-3" Elevation="2" Style="border-radius:8px; position:sticky; bottom:16px; background:white">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText>Pasirinkta: <strong>@_selectedContainers.Count</strong> vnt. | @_selectedContainers.Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.MoveDown"
+                        OnClick="OpenTransferDialog">Perkelti</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.Label"
+                        OnClick="OpenAssignHoneyTypeDialog">Priskirti rūšį</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.DeleteForever"
+                        Href="/warehouse/write-off">Nurašyti</MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    }
+
+    <!-- Transfer Dialog -->
+    <MudDialog @bind-Visible="_transferDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Perkelti @_selectedContainers.Count vnt. (@_selectedContainers.Sum(c => c.NetWeight).ToString("N1") kg)</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body2">Iš: <strong>@GetCurrentWarehouseName()</strong></MudText>
+                <MudSelect T="int" @bind-Value="_transferTargetWarehouseId" Label="Kur perkelti?" Variant="Variant.Outlined" Required="true">
+                    @foreach (var w in _warehouses.Where(w => w.Id != (_filterWarehouseId ?? 0)))
+                    {
+                        <MudSelectItem Value="w.Id">@w.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField T="string" @bind-Value="_transferNotes" Label="Pastaba" Variant="Variant.Outlined" Lines="2" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Color="Color.Secondary" OnClick="@(() => _transferDialogVisible = false)">Atšaukti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExecuteTransfer"
+                Disabled="@(_transferTargetWarehouseId == 0)">
+                Perkelti ✓
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    <!-- Assign Honey Type Dialog -->
+    <MudDialog @bind-Visible="_assignTypeDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Priskirti medaus rūšį (@_selectedContainers.Count vnt.)</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudSelect T="int?" @bind-Value="_assignHoneyTypeId" Label="Medaus rūšis" Variant="Variant.Outlined" Required="true">
+                @foreach (var h in _honeyTypes)
+                {
+                    <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Color="Color.Secondary" OnClick="@(() => _assignTypeDialogVisible = false)">Atšaukti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExecuteAssignHoneyType"
+                Disabled="@(!_assignHoneyTypeId.HasValue)">
+                Priskirti ✓
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+</MudContainer>
+
+@code {
+    private List<Container> _containers = new();
+    private HashSet<Container> _selectedContainers = new();
+    private bool _loading = true;
+
+    // Bičių duona stats
+    private decimal _biciuDuonaWeight = 0m;
+    private int _biciuDuonaCount = 0;
+
+    // Lookups
+    private List<Warehouse> _warehouses = new();
+    private List<BusinessPartner> _suppliers = new();
+    private List<HoneyType> _honeyTypes = new();
+
+    // Filters
+    private int? _filterWarehouseId;
+    private int? _filterHoneyTypeId;
+    private int? _filterSupplierId;
+    private string? _filterStatus;
+    private string? _searchCode;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _warehouses = (await WarehouseService.GetAllAsync()).ToList();
+        _suppliers = await CustomerService.GetSuppliersAsync();
+        _honeyTypes = await HoneyTypeService.GetAllAsync();
+        
+        // Default: pirmas sandėlis
+        if (_warehouses.Any())
+            _filterWarehouseId = _warehouses.First().Id;
+        
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _selectedContainers.Clear();
+        _containers = await ContainerService.GetFilteredAsync(_filterWarehouseId, _filterHoneyTypeId, _filterSupplierId, _filterStatus, _searchCode);
+        
+        // Calculate bičių duona stats
+        await CalculateBiciuDuonaStats();
+        
+        _loading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task CalculateBiciuDuonaStats()
+    {
+        var rawTypes = await RawMaterialTypeService.GetActiveAsync();
+        var allDeliveries = await DeliveryService.GetAllAsync();
+        var biciuTypeIds = rawTypes
+            .Where(r => r.Name.Contains("BIČIŲ DUONA", StringComparison.OrdinalIgnoreCase))
+            .Select(r => r.Id)
+            .ToHashSet();
+        
+        var biciuDeliveryIds = allDeliveries
+            .Where(d => d.RawMaterialTypeId.HasValue && biciuTypeIds.Contains(d.RawMaterialTypeId.Value))
+            .Select(d => d.Id)
+            .ToHashSet();
+        
+        // Get delivery lines for bičių duona deliveries
+        using var context = DbContextFactory.CreateDbContext();
+        var biciuLineIds = await context.DeliveryLines
+            .Where(l => biciuDeliveryIds.Contains(l.DeliveryId))
+            .Select(l => l.Id)
+            .ToListAsync();
+        
+        // Count and sum containers whose DeliveryLineId matches bičių duona delivery lines
+        _biciuDuonaCount = _containers.Count(c => c.DeliveryLineId.HasValue && biciuLineIds.Contains(c.DeliveryLineId.Value));
+        _biciuDuonaWeight = _containers
+            .Where(c => c.DeliveryLineId.HasValue && biciuLineIds.Contains(c.DeliveryLineId.Value))
+            .Sum(c => c.NetWeight);
+    }
+
+    private async Task ClearFilters()
+    {
+        _filterWarehouseId = null;
+        _filterHoneyTypeId = null;
+        _filterSupplierId = null;
+        _filterStatus = null;
+        _searchCode = null;
+        await LoadData();
+    }
+
+    private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+    private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
+    private string GetWarehouseName(int id) => _warehouses.FirstOrDefault(w => w.Id == id)?.Name ?? $"#{id}";
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "IN_STOCK" => Color.Success, "RECEIVED" => Color.Default,
+        "RESERVED" => Color.Warning, "IN_PRODUCTION" => Color.Info,
+        _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "IN_STOCK" => "Sandėlyje", "RECEIVED" => "Priimtas",
+        "RESERVED" => "Rezervuotas", "IN_PRODUCTION" => "Gamyboje",
+        _ => status
+    };
+
+    // Transfer dialog
+    private bool _transferDialogVisible;
+    private int _transferTargetWarehouseId;
+    private string _transferNotes = "";
+
+    private void OpenTransferDialog()
+    {
+        // Patikrinti ar visos iš to paties sandėlio
+        var warehouseIds = _selectedContainers.Select(c => c.WarehouseId).Distinct().ToList();
+        if (warehouseIds.Count > 1)
+        {
+            Snackbar.Add("Pasirinkite statines tik iš vieno sandėlio", Severity.Warning);
+            return;
+        }
+        
+        _transferTargetWarehouseId = 0;
+        _transferNotes = "";
+        _transferDialogVisible = true;
+    }
+
+    private async Task ExecuteTransfer()
+    {
+        try
+        {
+            var ids = _selectedContainers.Select(c => c.Id).ToList();
+            var fromWarehouseId = _selectedContainers.First().WarehouseId;
+            var transferNumber = await TransferService.TransferContainersAsync(ids, fromWarehouseId, _transferTargetWarehouseId, _transferNotes);
+            _transferDialogVisible = false;
+            var targetName = _warehouses.FirstOrDefault(w => w.Id == _transferTargetWarehouseId)?.Name ?? "";
+            Snackbar.Add($"Perkelta {ids.Count} vnt. į {targetName} ({transferNumber})", Severity.Success);
+            await LoadData();
+            _selectedContainers.Clear();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko perkelti: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetCurrentWarehouseName()
+    {
+        if (_selectedContainers.Any())
+        {
+            var warehouseId = _selectedContainers.First().WarehouseId;
+            return _warehouses.FirstOrDefault(w => w.Id == warehouseId)?.Name ?? "Nežinomas";
+        }
+        return "-";
+    }
+
+    // Assign Honey Type dialog
+    private bool _assignTypeDialogVisible;
+    private int? _assignHoneyTypeId;
+
+    private void OpenAssignHoneyTypeDialog()
+    {
+        _assignHoneyTypeId = null;
+        _assignTypeDialogVisible = true;
+    }
+
+    private async Task ExecuteAssignHoneyType()
+    {
+        try
+        {
+            var ids = _selectedContainers.Select(c => c.Id).ToList();
+            await ContainerService.UpdateHoneyTypeAsync(ids, _assignHoneyTypeId!.Value);
+            _assignTypeDialogVisible = false;
+            var typeName = _honeyTypes.FirstOrDefault(h => h.Id == _assignHoneyTypeId)?.Name ?? "";
+            Snackbar.Add($"Priskirta rūšis \"{typeName}\" — {ids.Count} vnt.", Severity.Success);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko priskirti: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+        }
+    }
+}

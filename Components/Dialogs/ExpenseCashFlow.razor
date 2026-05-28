@@ -1,0 +1,461 @@
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Services
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <DialogContent>
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3">
+            <!-- Date Range Selector -->
+            <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3">
+                <MudText Typo="Typo.h6" Class="mb-2">Periodo pasirinkimas</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker Label="Nuo" @bind-Date="_fromDate" FullWidth="@true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker Label="Iki" @bind-Date="_toDate" FullWidth="@true" />
+                    </MudItem>
+                    <MudItem xs="12" Class="mt-2">
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="LoadCashFlow" Disabled="_loading">
+                            <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-1" />
+                            @(_loading ? "Kraunama..." : "Atnaujinti")
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" Variant="Variant.Outlined" OnClick="SetLastMonth" Class="ml-2">
+                            Paskutinis mėnuo
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" Variant="Variant.Outlined" OnClick="SetNextMonth" Class="ml-2">
+                            Kitas mėnuo
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" Variant="Variant.Outlined" OnClick="SetLastWeek" Class="ml-2">
+                            Paskutinė savaitė
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" Variant="Variant.Outlined" OnClick="SetNextWeek" Class="ml-2">
+                            Kit savaitė
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Summary Cards -->
+            @if (_cashFlowData?.Count > 0)
+            {
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3">
+                    <MudGrid>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background:#e8f5e9; border-radius:8px">
+                                <MudText Typo="Typo.body2" Color="Color.Success">Bendra pajamos</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Success">@_totalIncome.ToString("0.00") €</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background:#ffebee; border-radius:8px">
+                                <MudText Typo="Typo.body2" Color="Color.Error">Bendra išlaidos</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Error">@_totalExpenses.ToString("0.00") €</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background:#e3f2fd; border-radius:8px">
+                                <MudText Typo="Typo.body2" Color="Color.Primary">Grynoji srautas</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Primary">@_netCashFlow.ToString("0.00") €</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Grouping Options -->
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-3 mb-3">
+                    <MudText Typo="Typo.body2" Class="mb-2">Grupuoti pagal:</MudText>
+                    <MudChipSet T="string" Filter="true" SelectedValue="_groupBy" OnSelectedValuesChanged="OnGroupByChanged">
+                    <MudChip T="string" Value="@("Week")">Savaitė</MudChip>
+                    <MudChip T="string" Value="@("Month")">Mėnuo</MudChip>
+                    </MudChipSet>
+                </MudPaper>
+
+                <!-- Cash Flow Table -->
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="mb-3">
+                    <MudTable T="CashFlowGroup" Items="@_groupedData" Elevation="0" Hover="true" Striped="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Periodas</MudTh>
+                            <MudTh>Pajamos</MudTh>
+                            <MudTh>Išlaidos</MudTh>
+                            <MudTh>Balansas</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="group">
+                            <MudTd>
+                                <MudButton Variant="Variant.Text" OnClick="() => ToggleGroup(group)">
+                                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Class="mr-1" />
+                                    @group.GroupKey
+                                </MudButton>
+                            </MudTd>
+                            <MudTd>@group.TotalIncome.ToString("0.00") €</MudTd>
+                            <MudTd>@group.TotalExpenses.ToString("0.00") €</MudTd>
+                            <MudTd Color="@(group.NetBalance >= 0 ? Color.Success : Color.Error)">
+                                @group.NetBalance.ToString("0.00") €
+                            </MudTd>
+                        </RowTemplate>
+                        <ChildRowContent Context="group">
+                            @if (group.IsExpanded)
+                            {
+                                <MudTr>
+                                    <MudTd ColSpan="4">
+                                        <MudTable T="CashFlowEntry" Items="@group.Entries" Elevation="0" Hover="true" Striped="true" Dense="true">
+                                            <HeaderContent>
+                                                <MudTh>Data</MudTh>
+                                                <MudTh>Aprašymas</MudTh>
+                                                <MudTh>Tipas</MudTh>
+                                                <MudTh>Suma</MudTh>
+                                                <MudTh>Balansas</MudTh>
+                                            </HeaderContent>
+                                            <RowTemplate Context="entry">
+                                                <MudTd>@entry.Date.ToString("yyyy-MM-dd")</MudTd>
+                                                <MudTd>@entry.Description</MudTd>
+                                                <MudTd>
+                                                    <MudChip T="string" Color="@(entry.Type == "Income" ? Color.Success : Color.Error)" Size="Size.Small">
+                                                        @entry.Type
+                                                    </MudChip>
+                                                </MudTd>
+                                                <MudTd>@entry.Amount.ToString("0.00") €</MudTd>
+                                                <MudTd>@entry.Balance.ToString("0.00") €</MudTd>
+                                            </RowTemplate>
+                                        </MudTable>
+                                    </MudTd>
+                                </MudTr>
+                            }
+                        </ChildRowContent>
+                        <FooterContent>
+                            <MudTd><b>Iš viso</b></MudTd>
+                            <MudTd><b>@_totalIncome.ToString("0.00") €</b></MudTd>
+                            <MudTd><b>@_totalExpenses.ToString("0.00") €</b></MudTd>
+                            <MudTd Color="@(NetCashFlowColor)"><b>@_netCashFlow.ToString("0.00") €</b></MudTd>
+                        </FooterContent>
+                    </MudTable>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-5 text-center">
+                    <MudText Typo="Typo.body1" Color="Color.Default">Pasirinkite periodą ir spustelėkite "Atnaujinti"</MudText>
+                </MudPaper>
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Uždaryti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    
+    [Parameter]
+    public DateTime? FromDate { get; set; }
+    
+    [Parameter]
+    public DateTime? ToDate { get; set; }
+    
+    [Inject]
+    private IExpenseService ExpenseService { get; set; } = default!;
+    
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private bool _loading = false;
+    private string _groupBy = "Week";
+    private List<ExpenseInvoice> _cashFlowData = new();
+    private List<CashFlowGroup> _groupedData = new();
+    
+    private decimal _totalIncome = 0m;
+    private decimal _totalExpenses = 0m;
+    private decimal _netCashFlow = 0m;
+    private Color NetCashFlowColor => _netCashFlow >= 0 ? Color.Success : Color.Error;
+    
+    protected override void OnParametersSet()
+    {
+        _fromDate = FromDate ?? DateTime.Today.AddMonths(-1);
+        _toDate = ToDate ?? DateTime.Today;
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCashFlow();
+    }
+    
+    private async Task LoadCashFlow()
+    {
+        _loading = true;
+        StateHasChanged();
+        
+        try
+        {
+            _cashFlowData = await ExpenseService.GetCashFlowAsync(_fromDate.Value, _toDate.Value);
+            GroupData();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private void GroupData()
+    {
+        _groupedData = new List<CashFlowGroup>();
+        _totalIncome = 0m;
+        _totalExpenses = 0m;
+        
+        if (_cashFlowData.Count == 0)
+            return;
+        
+        decimal runningBalance = 0m;
+        
+        if (_groupBy == "Month")
+        {
+            // Group by month
+            var groups = _cashFlowData.GroupBy(i => new { i.DueDate.Year, i.DueDate.Month });
+            
+            foreach (var group in groups)
+            {
+                var groupKey = $"{group.Key.Year}-{group.Key.Month:D2}";
+                
+                var entries = new List<CashFlowEntry>();
+                var groupIncome = 0m;
+                var groupExpenses = 0m;
+                
+                foreach (var invoice in group.OrderBy(i => i.DueDate))
+                {
+                    var invoiceAmount = invoice.AmountInclVat;
+                    var invoicePaid = invoice.PaidAmount;
+                    var invoiceOutstanding = invoiceAmount - invoicePaid;
+                    
+                    if (invoicePaid > 0)
+                    {
+                        entries.Add(new CashFlowEntry
+                        {
+                            Date = invoice.DueDate,
+                            Description = $"{invoice.Supplier?.Name ?? "Nežinotas"} - {invoice.InvoiceNumber}",
+                            Type = "Income",
+                            Amount = invoicePaid,
+                            Balance = 0m
+                        });
+                        groupIncome += invoicePaid;
+                    }
+                    
+                    if (invoiceOutstanding > 0)
+                    {
+                        entries.Add(new CashFlowEntry
+                        {
+                            Date = invoice.DueDate,
+                            Description = $"{invoice.Supplier?.Name ?? "Nežinotas"} - {invoice.InvoiceNumber}",
+                            Type = "Expense",
+                            Amount = invoiceOutstanding,
+                            Balance = 0m
+                        });
+                        groupExpenses += invoiceOutstanding;
+                    }
+                }
+                
+                // Calculate running balance for entries
+                runningBalance = 0m;
+                foreach (var entry in entries)
+                {
+                    if (entry.Type == "Income")
+                        runningBalance += entry.Amount;
+                    else
+                        runningBalance -= entry.Amount;
+                    entry.Balance = runningBalance;
+                }
+                
+                var netBalance = groupIncome - groupExpenses;
+                
+                _groupedData.Add(new CashFlowGroup
+                {
+                    GroupKey = groupKey,
+                    Entries = entries,
+                    TotalIncome = groupIncome,
+                    TotalExpenses = groupExpenses,
+                    NetBalance = netBalance,
+                    IsExpanded = false
+                });
+                
+                _totalIncome += groupIncome;
+                _totalExpenses += groupExpenses;
+            }
+        }
+        else
+        {
+            // Group by week
+            var groups = _cashFlowData.GroupBy(i => GetWeekNumber(i.DueDate));
+            
+            foreach (var group in groups)
+            {
+                var groupKey = $"Savaitė {group.Key.week}, {group.Key.year}";
+                
+                var entries = new List<CashFlowEntry>();
+                var groupIncome = 0m;
+                var groupExpenses = 0m;
+                
+                foreach (var invoice in group.OrderBy(i => i.DueDate))
+                {
+                    var invoiceAmount = invoice.AmountInclVat;
+                    var invoicePaid = invoice.PaidAmount;
+                    var invoiceOutstanding = invoiceAmount - invoicePaid;
+                    
+                    if (invoicePaid > 0)
+                    {
+                        entries.Add(new CashFlowEntry
+                        {
+                            Date = invoice.DueDate,
+                            Description = $"{invoice.Supplier?.Name ?? "Nežinotas"} - {invoice.InvoiceNumber}",
+                            Type = "Income",
+                            Amount = invoicePaid,
+                            Balance = 0m
+                        });
+                        groupIncome += invoicePaid;
+                    }
+                    
+                    if (invoiceOutstanding > 0)
+                    {
+                        entries.Add(new CashFlowEntry
+                        {
+                            Date = invoice.DueDate,
+                            Description = $"{invoice.Supplier?.Name ?? "Nežinotas"} - {invoice.InvoiceNumber}",
+                            Type = "Expense",
+                            Amount = invoiceOutstanding,
+                            Balance = 0m
+                        });
+                        groupExpenses += invoiceOutstanding;
+                    }
+                }
+                
+                // Calculate running balance for entries
+                runningBalance = 0m;
+                foreach (var entry in entries)
+                {
+                    if (entry.Type == "Income")
+                        runningBalance += entry.Amount;
+                    else
+                        runningBalance -= entry.Amount;
+                    entry.Balance = runningBalance;
+                }
+                
+                var netBalance = groupIncome - groupExpenses;
+                
+                _groupedData.Add(new CashFlowGroup
+                {
+                    GroupKey = groupKey,
+                    Entries = entries,
+                    TotalIncome = groupIncome,
+                    TotalExpenses = groupExpenses,
+                    NetBalance = netBalance,
+                    IsExpanded = false
+                });
+                
+                _totalIncome += groupIncome;
+                _totalExpenses += groupExpenses;
+            }
+        }
+        
+        _netCashFlow = _totalIncome - _totalExpenses;
+    }
+    
+    private (int week, int year) GetWeekNumber(DateTime date)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        var weekNum = culture.Calendar.GetWeekOfYear(date, System.Globalization.CalendarWeekRule.FirstFourDayWeek, System.DayOfWeek.Monday);
+        return (weekNum, date.Year);
+    }
+    
+    private void ToggleGroup(CashFlowGroup group)
+    {
+        group.IsExpanded = !group.IsExpanded;
+    }
+    
+    private void OnGroupByChanged(IEnumerable<string> newGroup)
+    {
+        if (newGroup.Any())
+        {
+            _groupBy = newGroup.First();
+            GroupData();
+        }
+    }
+    
+    private void SetLastMonth()
+    {
+        if (_fromDate.HasValue)
+        {
+            _fromDate = _fromDate.Value.AddMonths(-1);
+            _toDate = _toDate ?? DateTime.Today;
+        }
+        else
+        {
+            _fromDate = DateTime.Today.AddMonths(-1);
+            _toDate = DateTime.Today;
+        }
+        GroupData();
+    }
+    
+    private void SetNextMonth()
+    {
+        if (_fromDate.HasValue && _toDate.HasValue)
+        {
+            var nextMonth = _fromDate.Value.AddMonths(1);
+            _fromDate = new DateTime(nextMonth.Year, nextMonth.Month, 1);
+            _toDate = _fromDate.Value.AddMonths(1).AddDays(-1);
+        }
+        else
+        {
+            _fromDate = DateTime.Today.AddMonths(-1);
+            _toDate = DateTime.Today;
+        }
+        GroupData();
+    }
+    
+    private void SetLastWeek()
+    {
+        var today = DateTime.Today;
+        var currentDayOfWeek = (int)today.DayOfWeek;
+        var daysSinceMonday = currentDayOfWeek == 0 ? 6 : currentDayOfWeek - 1;
+        var currentWeekStart = today.AddDays(-daysSinceMonday);
+        
+        _fromDate = currentWeekStart.AddDays(-7);
+        _toDate = _fromDate.Value.AddDays(6);
+        GroupData();
+    }
+    
+    private void SetNextWeek()
+    {
+        var today = DateTime.Today;
+        var currentDayOfWeek = (int)today.DayOfWeek;
+        var daysSinceMonday = currentDayOfWeek == 0 ? 6 : currentDayOfWeek - 1;
+        var currentWeekStart = today.AddDays(-daysSinceMonday);
+        
+        _fromDate = currentWeekStart.AddDays(7);
+        _toDate = _fromDate.Value.AddDays(6);
+        GroupData();
+    }
+    
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+    
+    // Data models
+    public class CashFlowGroup
+    {
+        public string GroupKey { get; set; } = "";
+        public List<CashFlowEntry> Entries { get; set; } = new();
+        public decimal TotalIncome { get; set; }
+        public decimal TotalExpenses { get; set; }
+        public decimal NetBalance { get; set; }
+        public bool IsExpanded { get; set; }
+    }
+    
+    public class CashFlowEntry
+    {
+        public DateTime Date { get; set; }
+        public string Description { get; set; } = "";
+        public string Type { get; set; } = "";
+        public decimal Amount { get; set; }
+        public decimal Balance { get; set; }
+    }
+}

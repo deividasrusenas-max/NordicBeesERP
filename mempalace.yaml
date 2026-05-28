@@ -1,0 +1,55 @@
+wing: nordicbeeserp
+rooms:
+- name: obj
+  description: Files from obj/
+  keywords:
+  - obj
+  - obj
+- name: migrations
+  description: Files from Migrations/
+  keywords:
+  - migrations
+  - migrations
+- name: wwwroot
+  description: Files from wwwroot/
+  keywords:
+  - wwwroot
+  - wwwroot
+- name: bin
+  description: Files from bin/
+  keywords:
+  - bin
+  - bin
+- name: backend
+  description: Files from Models/
+  keywords:
+  - backend
+  - models
+- name: frontend
+  description: Files from Components/
+  keywords:
+  - frontend
+  - components
+- name: properties
+  description: Files from Properties/
+  keywords:
+  - properties
+  - properties
+- name: nordicbeeserp
+  description: Files from NordicBeesERP/
+  keywords:
+  - nordicbeeserp
+  - nordicbeeserp
+- name: data
+  description: Files from Data/
+  keywords:
+  - data
+  - data
+- name: helpers
+  description: Files from Helpers/
+  keywords:
+  - helpers
+  - helpers
+- name: general
+  description: Files that don't fit other rooms
+  keywords: []

@@ -1,0 +1,148 @@
+@page "/expense-payments"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Models
+@using NordicBeesERP.Data
+@using MudBlazor
+@inject IDbContextFactory<NordicBeesERPContext> DbFactory
+@inject MudBlazor.ISnackbar Snackbar
+
+<PageTitle>Išlaidų mokėjimai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Išlaidų mokėjimai</MudText>
+
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField Value="@_filterSearch"
+                              ValueChanged="@(async (string val) => { _filterSearch = val; await LoadPaymentsAsync(); })"
+                              Label="Paieška pagal sąskaitą / tiekėją / referencę"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              FullWidth="@true"
+                              Clearable="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Adornment="Adornment.Start" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudDateRangePicker DateRange="@_dateRange"
+                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadPaymentsAsync(); })"
+                                    Label="Data (nuo / iki)"
+                                    Variant="Variant.Outlined"
+                                    FullWidth="@true"
+                                    Clearable="true" />
+            </MudItem>
+            @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null)
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                               OnClick="@(async () => { _filterSearch = null; _dateRange = null; await LoadPaymentsAsync(); })">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
+
+    <MudTable T="PaymentRow" Items="@_payments" Hover="true" Dense="true" Striped="true"
+              Loading="@_loading" LoadingProgressColor="Color.Info" RowsPerPage="50">
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+        </PagerContent>
+        <HeaderContent>
+            <MudTh>Data</MudTh>
+            <MudTh>Tiekėjas</MudTh>
+            <MudTh>Sąskaita Nr.</MudTh>
+            <MudTh Class="text-right">Suma (€)</MudTh>
+            <MudTh>Metodas</MudTh>
+            <MudTh>Referencė</MudTh>
+            <MudTh>Pastabos</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="p">
+            <MudTd>@p.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
+            <MudTd>@p.SupplierName</MudTd>
+            <MudTd>@p.InvoiceNumber</MudTd>
+            <MudTd Class="text-right">@p.Amount.ToString("N2")</MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Secondary">@p.PaymentMethod</MudChip></MudTd>
+            <MudTd>@p.Reference</MudTd>
+            <MudTd>@p.Notes</MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Mokėjimų nėra</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private record PaymentRow(
+        int Id, DateTime PaymentDate, decimal Amount,
+        string PaymentMethod, string? Reference, string? Notes,
+        string InvoiceNumber, string SupplierName);
+
+    private List<PaymentRow> _payments = new();
+    private bool _loading = true;
+    private string? _filterSearch;
+    private DateRange? _dateRange;
+
+    protected override async Task OnInitializedAsync()
+        => await LoadPaymentsAsync();
+
+    private async Task LoadPaymentsAsync()
+    {
+        _loading = true;
+        try
+        {
+            using var ctx = DbFactory.CreateDbContext();
+
+            var query = from p in ctx.ExpensePayments
+                        join i in ctx.ExpenseInvoices on p.InvoiceId equals i.Id into invGroup
+                        from i in invGroup.DefaultIfEmpty()
+                        join bp in ctx.BusinessPartners on i.SupplierId equals bp.Id into bpGroup
+                        from bp in bpGroup.DefaultIfEmpty()
+                        select new
+                        {
+                            p.Id,
+                            p.PaymentDate,
+                            p.Amount,
+                            p.PaymentMethod,
+                            p.Reference,
+                            p.Notes,
+                            InvoiceNumber = i != null ? i.InvoiceNumber : "-",
+                            SupplierName = bp != null ? bp.Name : (i != null ? i.PendingSupplierName ?? "Nežinomas" : "Nežinomas"),
+                            SupplierId = i != null ? i.SupplierId : null
+                        };
+
+            DateTime? fromDate = _dateRange?.Start?.Date;
+            DateTime? toDate = _dateRange?.End?.Date;
+            if (fromDate.HasValue)
+                query = query.Where(p => p.PaymentDate >= fromDate.Value);
+            if (toDate.HasValue)
+                query = query.Where(p => p.PaymentDate <= toDate.Value);
+            if (!string.IsNullOrWhiteSpace(_filterSearch))
+            {
+                var s = _filterSearch.ToLower();
+                query = query.Where(p =>
+                    p.InvoiceNumber.ToLower().Contains(s) ||
+                    p.SupplierName.ToLower().Contains(s) ||
+                    (p.Reference != null && p.Reference.ToLower().Contains(s)));
+            }
+
+            var rows = await query.OrderByDescending(p => p.PaymentDate).ToListAsync();
+            _payments = rows.Select(p => new PaymentRow(
+                p.Id, p.PaymentDate, p.Amount,
+                p.PaymentMethod, p.Reference, p.Notes,
+                p.InvoiceNumber, p.SupplierName)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida įkeliant mokėjimus: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+}

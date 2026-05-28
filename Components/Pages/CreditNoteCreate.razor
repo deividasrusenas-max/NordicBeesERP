@@ -1,0 +1,365 @@
+@page "/credit-notes/new"
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+@inject ICreditNoteService _creditNoteService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IAuthService _authService
+
+<PageTitle>Nauja kreditinė sąskaita</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">📝 Nauja kreditinė sąskaita</MudText>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
+    }
+
+    <!-- Pagrindinė informacija Section -->
+    <MudPaper Class="mb-3">
+        <MudToolBar Dense="true" Class="mud-theme-primary">
+            <MudText Typo="Typo.h6">Pagrindinė informacija</MudText>
+        </MudToolBar>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Kreditinės sąskaitos numeris" @bind-Value="_creditNoteNumber" 
+                                  ReadOnly="true" Variant="Variant.Outlined" MinCharacters="1" DebounceInterval="300" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudDatePicker Label="Data" Date="@_creditDate"
+                                   Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                 <MudItem xs="12" sm="4">
+                     <MudAutocomplete T="InvoiceSelectDto" Label="Originali sąskaita" Value="@_selectedInvoice" 
+                                      SearchFunc="@SearchInvoices" ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} ({i.InvoiceDate:yyyy-MM-dd}) - {i.TotalInclVat:F2}€")"
+                                      ValueChanged="@OnInvoiceSelected"
+                                      Variant="Variant.Outlined" MinCharacters="1" DebounceInterval="300" />
+                 </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Klientas" @bind-Value="_customerName" 
+                                  Variant="Variant.Outlined" ReadOnly="true" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudAutocomplete T="InvoiceSelectDto" Label="Taikoma sąskaita" Value="@_appliedInvoice" 
+                                     SearchFunc="@SearchAppliedInvoices" ToStringFunc="@(i => i == null ? "" : i.InvoiceNumber)"
+                                     ValueChanged="@OnAppliedInvoiceSelected"
+                                     Variant="Variant.Outlined" Clearable="true" Placeholder="Pasirinkite sąskaitą" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined">
+                        <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("EN")">EN</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- Eilutės Section -->
+    <MudPaper Class="mb-3">
+        <MudToolBar Dense="true" Class="mud-success">
+            <MudText Typo="Typo.h6">Eilutės</MudText>
+        </MudToolBar>
+        <MudCardContent>
+            <MudTable T="CreditNoteLineModel" Items="@_lines" Hover="true" Dense="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh Style="width: 5%;">Nr.</MudTh>
+                    <MudTh Style="width: 35%;">Aprašymas</MudTh>
+                    <MudTh Style="width: 10%;">Orig.kiekis</MudTh>
+                    <MudTh Style="width: 12%;">Kreditinis kiekis</MudTh>
+                    <MudTh Style="width: 12%;">Kaina (be PVM)</MudTh>
+                    <MudTh Style="width: 8%;">PVM %</MudTh>
+                    <MudTh Style="width: 12%;">Suma</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="line">
+                    <MudTd DataLabel="Nr.">@(_lines.IndexOf(line) + 1)</MudTd>
+                    <MudTd DataLabel="Aprašymas">
+                        <MudTextField T="string" Value="@line.Description" Variant="Variant.Text" 
+                                      Margin="Margin.Dense" ReadOnly="true" />
+                    </MudTd>
+                      <MudTd DataLabel="Orig.kiekis">
+                          <MudText>@(line.OriginalQuantity % 1 == 0 ? ((int)line.OriginalQuantity).ToString() : line.OriginalQuantity.ToString("F2"))</MudText>
+                      </MudTd>
+                      <MudTd DataLabel="Kreditinis kiekis">
+                          <MudNumericField T="decimal" Value="@line.CreditQuantity" Variant="Variant.Outlined" 
+                                           Margin="Margin.Dense" Min="0" Step="0.001M" Format="@(line.CreditQuantity % 1 == 0 ? "F0" : "F2")"
+                                           ValueChanged="@((decimal val) => { line.CreditQuantity = val; line.IsChecked = val > 0; CalculateLine(line); })" />
+                      </MudTd>
+                    <MudTd DataLabel="Kaina (be PVM)">
+                        <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" Min="0" Step="0.01M" Format="F2"
+                                         ValueChanged="@((decimal val) => { line.PriceExclVat = val; line.IsChecked = true; CalculateLine(line); })" />
+                    </MudTd>
+                    <MudTd DataLabel="PVM %">
+                        <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
+                                         ValueChanged="@((decimal val) => { line.VatRate = val; line.IsChecked = true; CalculateLine(line); })" />
+                    </MudTd>
+                     <MudTd DataLabel="Suma">
+                         <MudNumericField T="decimal" Value="@(-line.LineTotal)" Variant="Variant.Outlined" 
+                                          Margin="Margin.Dense" ReadOnly="true" Format="F2" />
+                     </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- Sumos Section -->
+    <MudPaper Class="mb-3">
+        <MudCardContent>
+            <MudGrid Justify="Justify.FlexEnd">
+                <MudItem xs="12" sm="4">
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td class="mud-typography-align-right"><strong>Suma be PVM:</strong></td>
+                                <td class="mud-typography-align-right">@_subtotalExclVat.ToString("F2") €</td>
+                            </tr>
+                            <tr>
+                                <td class="mud-typography-align-right"><strong>PVM:</strong></td>
+                                <td class="mud-typography-align-right">@_totalVat.ToString("F2") €</td>
+                            </tr>
+                            <tr style="background-color: var(--mud-palette-success-lighten);">
+                                <td class="mud-typography-align-right"><strong>IŠ VISO:</strong></td>
+                                <td class="mud-typography-align-right"><strong>@_totalInclVat.ToString("F2") €</strong></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- Mygtukai -->
+    <MudStack Row="true" Class="mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveCreditNote">
+            Išsaugoti
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                   StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">
+            Išsaugoti + Generuoti PDF
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large" 
+                   OnClick="@Cancel">
+            Atšaukti
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<InvoiceSelectDto> _invoices = new();
+    private List<InvoiceSelectDto> _customerInvoices = new();
+    private List<CreditNoteLineModel> _lines = new();
+    
+    private string _creditNoteNumber = string.Empty;
+    private DateTime _creditDate = DateTime.Today;
+    private InvoiceSelectDto? _selectedInvoice;
+    private string _customerName = string.Empty;
+    private InvoiceSelectDto? _appliedInvoice;
+    private string _language = "LT";
+    private decimal _subtotalExclVat;
+    private decimal _totalVat;
+    private decimal _totalInclVat;
+    
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Generate default credit note number
+            _creditNoteNumber = await _creditNoteService.GetNextCreditNoteNumberAsync(_creditDate);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida kraunant duomenis: {ex.Message}";
+        }
+    }
+
+    private async Task<IEnumerable<InvoiceSelectDto>> SearchInvoices(string term, CancellationToken cancellationToken)
+    {
+        return await _creditNoteService.SearchInvoicesForCreditNoteAsync(term, 0, 20, cancellationToken);
+    }
+
+    private async Task<IEnumerable<InvoiceSelectDto>> SearchAppliedInvoices(string term, CancellationToken cancellationToken)
+    {
+        if (_selectedInvoice == null)
+        {
+            return new List<InvoiceSelectDto>();
+        }
+        return await _creditNoteService.GetCustomerInvoicesForApplyingAsync(_selectedInvoice.Id, _selectedInvoice.Id);
+    }
+
+    private void OnAppliedInvoiceSelected(InvoiceSelectDto? invoice)
+    {
+        _appliedInvoice = invoice;
+        StateHasChanged();
+    }
+
+    private async Task OnInvoiceSelected(InvoiceSelectDto? invoice)
+    {
+        if (invoice == null)
+        {
+            _lines.Clear();
+            _subtotalExclVat = 0;
+            _totalVat = 0;
+            _totalInclVat = 0;
+            _customerInvoices.Clear();
+            _customerName = string.Empty;
+            _appliedInvoice = null;
+            StateHasChanged();
+            return;
+        }
+
+        _selectedInvoice = invoice;
+        _customerName = invoice.CustomerName ?? string.Empty;
+        // Auto-fill Taikoma sąskaita with the same invoice
+        _appliedInvoice = invoice;
+        
+        // Get invoice lines
+        var lines = await _creditNoteService.GetInvoiceLinesAsync(invoice.Id);
+        _lines = lines.Select(l => new CreditNoteLineModel
+        {
+            InvoiceLineId = l.Id,
+            Description = l.Description,
+            OriginalQuantity = l.Quantity,
+            CreditQuantity = l.Quantity,
+            PriceExclVat = l.PriceExclVat,
+            VatRate = l.VatRate,
+            LineTotal = l.LineTotal,
+            IsChecked = true
+        }).ToList();
+
+        CalculateTotals();
+
+        // Load customer invoices for applying (excluding current invoice)
+        _customerInvoices = await _creditNoteService.GetCustomerInvoicesForApplyingAsync(invoice.Id, invoice.Id);
+        
+        StateHasChanged();
+    }
+
+    private void CalculateLine(CreditNoteLineModel line)
+    {
+        var subtotal = line.CreditQuantity * line.PriceExclVat;
+        var vatAmount = subtotal * (line.VatRate / 100m);
+        line.LineTotal = subtotal + vatAmount;
+        
+        CalculateTotals();
+    }
+
+    private void CalculateTotals()
+    {
+        _subtotalExclVat = -_lines.Where(l => l.IsChecked).Sum(l => l.CreditQuantity * l.PriceExclVat);
+        _totalVat = -_lines.Where(l => l.IsChecked).Sum(l => l.CreditQuantity * l.PriceExclVat * (l.VatRate / 100m));
+        _totalInclVat = _subtotalExclVat + _totalVat;
+    }
+
+    private async Task SaveCreditNote()
+    {
+        if (_selectedInvoice == null)
+        {
+            _errorMessage = "Pasirinkite originalią sąskaitą";
+            return;
+        }
+
+        if (!_lines.Any())
+        {
+            _errorMessage = "Pridėkite bent vieną eilutę";
+            return;
+        }
+
+        var request = new CreateCreditNoteRequest
+        {
+            OriginalInvoiceId = _selectedInvoice.Id,
+            AppliedInvoiceId = _appliedInvoice?.Id,
+            CreditDate = _creditDate,
+            Language = _language,
+            Lines = _lines.Where(l => l.IsChecked).Select(l => new CreditNoteLineRequest
+            {
+                InvoiceLineId = l.InvoiceLineId,
+                Quantity = l.CreditQuantity
+            }).ToList()
+        };
+
+        try
+        {
+            var userId = await _authService.GetUserIdAsync();
+            await _creditNoteService.CreateCreditNoteAsync(request, userId!.Value);
+            Snackbar.Add("Kreditinė sąskaita išsaugota", Severity.Success);
+            Navigation.NavigateTo("/credit-notes");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida: {ex.Message}";
+        }
+    }
+
+    private async Task SaveAndGeneratePdf()
+    {
+        if (_selectedInvoice == null)
+        {
+            _errorMessage = "Pasirinkite originalią sąskaitą";
+            return;
+        }
+
+        if (!_lines.Any())
+        {
+            _errorMessage = "Pridėkite bent vieną eilutę";
+            return;
+        }
+
+            var request = new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = _selectedInvoice.Id,
+                AppliedInvoiceId = _appliedInvoice?.Id,
+                CreditDate = _creditDate,
+                Language = _language,
+                Lines = _lines.Where(l => l.IsChecked).Select(l => new CreditNoteLineRequest
+                {
+                    InvoiceLineId = l.InvoiceLineId,
+                    Quantity = l.CreditQuantity
+                }).ToList()
+            };
+
+            try
+            {
+                var userId = await _authService.GetUserIdAsync();
+                var creditNote = await _creditNoteService.CreateCreditNoteAsync(request, userId!.Value);
+                
+                Snackbar.Add("Kreditinė sąskaita išsaugota ir PDF generuojamas", Severity.Success);
+                Navigation.NavigateTo($"/credit-notes/pdf/{creditNote.Id}", forceLoad: true);
+            }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida: {ex.Message}";
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/credit-notes");
+    }
+
+    private string GetQuantityFormat(decimal quantity)
+    {
+        return quantity % 1 == 0 ? "F0" : "F2";
+    }
+
+    public class CreditNoteLineModel
+    {
+        public int InvoiceLineId { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public decimal OriginalQuantity { get; set; }
+        public decimal CreditQuantity { get; set; }
+        public decimal PriceExclVat { get; set; }
+        public decimal VatRate { get; set; }
+        public decimal LineTotal { get; set; }
+        public bool IsChecked { get; set; } = true;
+    }
+}

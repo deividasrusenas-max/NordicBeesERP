@@ -1,0 +1,310 @@
+@page "/warehouse/deliveries/{Id:int}"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Components.Dialogs
+@inject IDeliveryService DeliveryService
+@inject ICustomerService CustomerService
+@inject IHoneyTypeService HoneyTypeService
+@inject IProductService ProductService
+@inject IWarehouseService WarehouseService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
+
+@implements IDisposable
+
+<PageTitle>Pristatymas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_delivery == null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <!-- Header -->
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudText Typo="Typo.h5">Pristatymas @_delivery.DeliveryNumber</MudText>
+                <MudChip T="string" Color="@GetStatusColor(_delivery.Status)">@GetStatusText(_delivery.Status)</MudChip>
+            </MudStack>
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/warehouse/deliveries">Atgal</MudButton>
+        </MudStack>
+
+        <!-- Save indicator -->
+        @if (_saveIndicatorVisible)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.Check"
+                Style="position:fixed; top:16px; right:16px; z-index:9999">
+                Išsaugota
+            </MudChip>
+        }
+
+        <!-- Info cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+                    <MudText Typo="Typo.caption">Data</MudText>
+                    <MudText Typo="Typo.h6">@_delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+                    <MudText Typo="Typo.caption">Tiekėjas</MudText>
+                    <MudText Typo="Typo.h6">@_supplierName</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+                    <MudText Typo="Typo.caption">Sandėlis</MudText>
+                    <MudText Typo="Typo.h6">@_warehouseName</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+                    <MudText Typo="Typo.caption">Bendras netto</MudText>
+                    <MudText Typo="Typo.h6">@(_delivery != null ? _delivery.TotalNetWeight.ToString("N1") : "0.0") kg</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Delivery Lines -->
+        <MudText Typo="Typo.h6" Class="mb-2">Pristatymo eilutės</MudText>
+        <MudTable T="DeliveryLine" Items="_lines" Dense="true" Hover="true" Class="mb-4">
+            <HeaderContent>
+                <MudTh>Prekė</MudTh>
+                <MudTh>Medaus rūšis</MudTh>
+                <MudTh>Tipas</MudTh>
+                <MudTh Style="text-align:right">Kiekis</MudTh>
+                <MudTh Style="text-align:right">Netto (kg)</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="context">
+                <MudTd>@GetProductName(context.ProductId)</MudTd>
+                <MudTd>@GetHoneyTypeName(context.HoneyTypeId)</MudTd>
+                <MudTd>@GetContainerTypeName(context.ContainerType)</MudTd>
+                <MudTd Style="text-align:right">@context.ContainerCount</MudTd>
+                <MudTd Style="text-align:right">@((context.TotalNetWeight ?? 0m).ToString("N1"))</MudTd>
+            </RowTemplate>
+            <FooterContent>
+                <MudTFootRow>
+                    <MudTd colspan="3"></MudTd>
+                    <MudTd Style="text-align:right"><strong>@GetFooterNetWeight()</strong></MudTd>
+                </MudTFootRow>
+            </FooterContent>
+        </MudTable>
+
+        <!-- Statics (barrels) section -->
+        @if (_containers.Any(c => c.ContainerType == "BARREL"))
+        {
+        <MudPaper Class="pa-4 mt-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-3">Statinių apskaita</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSwitch T="bool" Value="_delivery.NeedReturnBarrels"
+                        ValueChanged="@((bool val) => { _delivery.NeedReturnBarrels = val; OnFieldChanged(); })"
+                        Color="Color.Primary" Label="Ar reikės grąžinti statines?" />
+                </MudItem>
+                @if (_delivery.NeedReturnBarrels)
+                {
+                    <MudItem xs="6" md="3">
+                        <MudNumericField T="int" Value="_delivery.BarrelsOwed"
+                            ValueChanged="@((int val) => { _delivery.BarrelsOwed = val; OnFieldChanged(); })"
+                            Label="Skolingos statinės (vnt)" Variant="Variant.Outlined" Min="0" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField T="int" Value="_delivery.BarrelsReturned"
+                            ValueChanged="@((int val) => { _delivery.BarrelsReturned = val; OnFieldChanged(); })"
+                            Label="Grąžintos (vnt)" Variant="Variant.Outlined" Min="0" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+        }
+
+        <!-- Containers table -->
+        <MudText Typo="Typo.h6" Class="mb-2 mt-4">Statinės / Konteineriai</MudText>
+        <MudTable T="Container" Items="_containers" Dense="true" Hover="true" Striped="false" Bordered="false">
+            <HeaderContent>
+                <MudTh Style="width:80px">ID</MudTh>
+                <MudTh Style="width:150px">Tipas</MudTh>
+                <MudTh Style="width:150px; text-align:right">Brutto (kg)</MudTh>
+                <MudTh Style="width:150px; text-align:right">Tara (kg)</MudTh>
+                <MudTh Style="width:100px; text-align:right">Netto (kg)</MudTh>
+                <MudTh Style="width:120px">Statusas</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="context">
+                <MudTd Style="width:80px">@context.Id</MudTd>
+                <MudTd Style="width:150px">@GetContainerTypeName(context.ContainerType)</MudTd>
+                <MudTd Style="text-align:right">
+                    <input type="number" 
+                        value="@context.GrossWeight.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)" 
+                        step="0.1"
+                        style="width:70px; text-align:right; border:none; border-bottom:1px solid #ccc; background:transparent; font-size:14px; outline:none"
+                        @onchange="@(async (ChangeEventArgs e) => { 
+                            if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var val)) 
+                            { context.GrossWeight = val; context.NetWeight = val - context.TareWeight; OnContainerChanged(context); } 
+                        })" />
+                </MudTd>
+                <MudTd Style="text-align:right">
+                    <input type="number" 
+                        value="@context.TareWeight.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)" 
+                        step="0.1"
+                        style="width:70px; text-align:right; border:none; border-bottom:1px solid #ccc; background:transparent; font-size:14px; outline:none"
+                        @onchange="@(async (ChangeEventArgs e) => { 
+                            if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var val)) 
+                            { context.TareWeight = val; context.NetWeight = context.GrossWeight - val; OnContainerChanged(context); } 
+                        })" />
+                </MudTd>
+                <MudTd Style="width:100px; text-align:right"><b>@context.NetWeight.ToString("F1")</b></MudTd>
+                <MudTd Style="width:120px">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">@GetContainerStatusName(context.Status)</MudChip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Delivery? _delivery;
+    private List<DeliveryLine> _lines = new();
+    private List<Container> _containers = new();
+    private string _supplierName = "";
+    private string _warehouseName = "";
+
+    // Lookups
+    private List<Product> _products = new();
+    private List<HoneyType> _honeyTypes = new();
+
+    private System.Threading.Timer? _autoSaveTimer;
+    private bool _saveIndicatorVisible = false;
+
+    private void OnFieldChanged()
+    {
+        _autoSaveTimer?.Dispose();
+        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    if (_delivery == null) return;
+                    _delivery.UpdatedAt = DateTime.Now;
+                    using var context = await ContextFactory.CreateDbContextAsync();
+                    context.Deliveries.Update(_delivery);
+                    await context.SaveChangesAsync();
+                    _saveIndicatorVisible = true;
+                    StateHasChanged();
+                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error);
+                    StateHasChanged();
+                }
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private void OnContainerChanged(Container container)
+    {
+        _autoSaveTimer?.Dispose();
+        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    using var context = await ContextFactory.CreateDbContextAsync();
+                    var existing = await context.Containers.FindAsync(container.Id);
+                    if (existing != null)
+                    {
+                        existing.GrossWeight = container.GrossWeight;
+                        existing.TareWeight = container.TareWeight;
+                        existing.NetWeight = container.GrossWeight - container.TareWeight;
+                        existing.UpdatedAt = DateTime.Now;
+                        context.Entry(existing).Property(x => x.GrossWeight).IsModified = true;
+                        context.Entry(existing).Property(x => x.TareWeight).IsModified = true;
+                        context.Entry(existing).Property(x => x.NetWeight).IsModified = true;
+                        context.Entry(existing).Property(x => x.UpdatedAt).IsModified = true;
+                        await context.SaveChangesAsync();
+                    }
+                    _saveIndicatorVisible = true;
+                    StateHasChanged();
+                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Nepavyko išsaugoti: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+                    StateHasChanged();
+                }
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _products = await ProductService.GetAllProductsAsync();
+        _honeyTypes = await HoneyTypeService.GetAllAsync();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _delivery = await DeliveryService.GetByIdAsync(Id);
+        if (_delivery == null) return;
+
+        _lines = await DeliveryService.GetLinesByDeliveryIdAsync(Id);
+        _containers = await DeliveryService.GetContainersByDeliveryAsync(Id);
+
+        var suppliers = await CustomerService.GetSuppliersAsync();
+        _supplierName = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId)?.Name ?? "";
+
+        var warehouses = await WarehouseService.GetAllAsync();
+        _warehouseName = warehouses.FirstOrDefault(w => w.Id == _delivery.WarehouseId)?.Name ?? "";
+    }
+
+    private string GetProductName(int? id) => id.HasValue ? _products.FirstOrDefault(p => p.Id == id.Value)?.Name ?? $"#{id.Value}" : "-";
+    private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
+
+    private string GetContainerTypeName(string containerType) => containerType switch
+    {
+        "BARREL" => "Statinės",
+        "BUCKET" => "Kibiras",
+        "BUCKET_GROUP" => "Kibirai",
+        _ => containerType
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "RECEIVED" => Color.Default, "PRICED" => Color.Info,
+        "PARTIAL_PAID" => Color.Warning, "PAID" => Color.Success, _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "RECEIVED" => "Priimtas", "PRICED" => "Įkainotas",
+        "PARTIAL_PAID" => "Dalinai", "PAID" => "Apmokėtas", _ => status
+    };
+
+    private string GetContainerStatusName(string? status) => status switch
+    {
+        "IN_STOCK" => "Sandėlyje",
+        "TRANSFERRED" => "Perkeltas",
+        "WRITTEN_OFF" => "Nurašytas",
+        _ => status ?? "-"
+    };
+
+    private string GetFooterNetWeight()
+    {
+        var total = _lines != null ? _lines.Sum(l => l.TotalNetWeight ?? 0m) : 0m;
+        return total.ToString("N1");
+    }
+
+    public void Dispose()
+    {
+        _autoSaveTimer?.Dispose();
+    }
+}

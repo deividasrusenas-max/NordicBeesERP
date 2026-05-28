@@ -1,0 +1,101 @@
+@inject IErpUserService ErpUserService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(IsEdit ? "Redaguoti vartotoją" : "Naujas vartotojas")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:420px;">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Email" Label="El. paštas" Variant="Variant.Outlined"
+                    InputType="InputType.Email" Required="true" />
+                <MudTextField @bind-Value="_model.FullName" Label="Vardas Pavardė" Variant="Variant.Outlined"
+                    Required="true" />
+                <MudSelect @bind-Value="_model.Role" Label="Rolė" Variant="Variant.Outlined" Required="true">
+                    <MudSelectItem Value="@("Admin")">Administratorius</MudSelectItem>
+                    <MudSelectItem Value="@("Manager")">Vadovas</MudSelectItem>
+                    <MudSelectItem Value="@("Warehouse")">Sandėlininkas</MudSelectItem>
+                </MudSelect>
+                @if (IsEdit)
+                {
+                    <MudSwitch @bind-Value="_model.IsActive" Label="Aktyvus" Color="Color.Success" />
+                }
+                @if (!IsEdit)
+                {
+                    <MudTextField @bind-Value="_password" Label="Slaptažodis" Variant="Variant.Outlined"
+                        InputType="InputType.Password" Required="true" />
+                    <MudTextField @bind-Value="_passwordConfirm" Label="Pakartoti slaptažodį" Variant="Variant.Outlined"
+                        InputType="InputType.Password" Required="true" />
+                }
+            </MudStack>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync"
+            StartIcon="@Icons.Material.Filled.Save">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ErpUser? UserToEdit { get; set; }
+
+    private bool IsEdit => UserToEdit != null;
+    private ErpUser _model = new() { IsActive = true, Role = "Manager" };
+    private string _password = "";
+    private string _passwordConfirm = "";
+
+    protected override void OnInitialized()
+    {
+        if (UserToEdit != null)
+            _model = new ErpUser
+            {
+                Id = UserToEdit.Id,
+                Email = UserToEdit.Email,
+                FullName = UserToEdit.FullName,
+                Role = UserToEdit.Role,
+                IsActive = UserToEdit.IsActive
+            };
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Email) || string.IsNullOrWhiteSpace(_model.FullName))
+        {
+            Snackbar.Add("El. paštas ir vardas privalomi", Severity.Warning);
+            return;
+        }
+        if (!IsEdit)
+        {
+            if (string.IsNullOrWhiteSpace(_password))
+            {
+                Snackbar.Add("Slaptažodis privalomas", Severity.Warning);
+                return;
+            }
+            if (_password != _passwordConfirm)
+            {
+                Snackbar.Add("Slaptažodžiai nesutampa", Severity.Warning);
+                return;
+            }
+        }
+        try
+        {
+            if (IsEdit)
+                await ErpUserService.UpdateUserAsync(_model);
+            else
+                await ErpUserService.CreateUserAsync(_model, _password);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida: {ex.Message}", Severity.Error);
+        }
+    }
+}

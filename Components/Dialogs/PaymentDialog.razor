@@ -1,0 +1,160 @@
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6">Mokėjimas: @InvoiceNumber</MudText>
+            </MudItem>
+
+            @if (ExistingPayments?.Any() == true)
+            {
+                <MudItem xs="12" Class="mt-3">
+                    <MudDivider Class="my-3"/>
+                    <MudText Typo="Typo.subtitle2">Mokėjimų istorija</MudText>
+                    <MudSimpleTable Dense="true">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Suma</th>
+                                <th>Būdas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in ExistingPayments)
+                            {
+                                <tr>
+                                    <td>@p.Date.ToString("yyyy-MM-dd")</td>
+                                    <td>@p.Amount.ToString("F2") €</td>
+                                    <td>@GetPaymentMethodLabel(p.Method)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudItem>
+            }
+            
+            <MudItem xs="12">
+                <MudNumericField T="decimal"
+                                 Value="_amount"
+                                 ValueChanged="@((decimal v) => _amount = v)"
+                                 Label="Suma (€)"
+                                 Min="0.01m" Max="999999999.99m" Required="true"
+                                 Format="F2" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudDatePicker 
+                    Label="Data"
+                    Date="_date"
+                    DateChanged="@((DateTime? d) => _date = d)"
+                    DateFormat="yyyy-MM-dd"
+                    Variant="Variant.Text"
+                    PickerVariant="PickerVariant.Inline" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudSelect T="string" @bind-Value="_method" Label="Mokėjimo būdas" Required="true">
+                    <MudSelectItem T="string" Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("cash")">Grynais</MudSelectItem>
+                     <MudSelectItem T="string" Value="@("other")">Užskaita</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_reference" Label="Nuorodos nr." />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_notes" Label="Pastabos" Lines="2" MaxLength="500" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" 
+                   OnClick="@SavePayment" StartIcon="@Icons.Material.Filled.Save">
+            Išsaugoti
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" 
+                   OnClick="@CancelDialog" StartIcon="@Icons.Material.Filled.Close">
+            Atšaukti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private IPaymentService PaymentService { get; set; } = default!;
+    [Inject] private IAuthService AuthService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private IDialogService DialogService { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance? MudDialogInstance { get; set; }
+
+    [Parameter] public int InvoiceId { get; set; }
+    [Parameter] public string InvoiceNumber { get; set; } = string.Empty;
+    [Parameter] public decimal RemainingAmount { get; set; }
+    [Parameter] public List<PaymentHistoryItem>? ExistingPayments { get; set; }
+
+    private decimal _amount;
+    private DateTime? _date = DateTime.Today;
+    private string _method = "bank_transfer";
+    private string _reference = string.Empty;
+    private string _notes = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _amount = RemainingAmount;
+        _date = DateTime.Today;
+        _method = "bank_transfer";
+        await Task.Delay(1);
+        StateHasChanged();
+    }
+
+    private async Task SavePayment()
+    {
+        try
+        {
+            // Validate amount does not exceed remaining balance
+            if (_amount > RemainingAmount)
+            {
+                var confirmed = await DialogService.ShowMessageBox(
+                    "Patvirtinimas",
+                    $"Įvedėte {_amount:F2} €, bet likutis tik {RemainingAmount:F2} €. Ar tikrai norite registruoti permokėjimą?",
+                    yesText: "Taip, registruoti", cancelText: "Atšaukti");
+                if (confirmed != true) return;
+            }
+
+            var userId = await AuthService.GetUserIdAsync();
+            if (!userId.HasValue)
+            {
+                Snackbar.Add("Nepavyko nustatyti vartotojo", Severity.Error);
+                return;
+            }
+            await PaymentService.RegisterPaymentAsync(
+                invoiceIds: new List<int> { InvoiceId },
+                _amount, _date ?? DateTime.Today, _method, _reference, _notes, userId.Value);
+            MudDialogInstance?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida registruojant mokėjimą: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CancelDialog()
+    {
+        MudDialogInstance?.Close(DialogResult.Cancel());
+    }
+
+    private string GetPaymentMethodLabel(string method)
+    {
+        return method switch {
+            "BankTransfer" or "bank_transfer" => "Banko pavedimas",
+            "Cash" or "cash" => "Grynais",
+            "Card" or "card" => "Kortelė",
+            "Other" or "other" => "Kita",
+            _ => method
+        };
+    }
+}

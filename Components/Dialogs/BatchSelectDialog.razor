@@ -1,0 +1,105 @@
+@using Microsoft.AspNetCore.Components
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using MudBlazor
+@inject NordicBeesERP.Services.ProductionService _productionService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@namespace NordicBeesERP.Components.Dialogs
+
+<PageTitle>Pasirinkite partiją</PageTitle>
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Pasirinkite partiją</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Filtruoti pagal lot numerį" @bind-Value="@_searchTerm" Variant="Variant.Outlined" 
+                              Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" OnTextChanged="OnSearchInput" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTable T="WarehouseStockViewModel" Items="@_filteredStocks" Hover="true" Density="Density.Dense" Bordered="true">
+                    <HeaderContent>
+                        <MudTh>Lot Numeris</MudTh>
+                        <MudTh>Gamintojas</MudTh>
+                        <MudTh>Kiekis</MudTh>
+                        <MudTh>Gali galiojti iki</MudTh>
+                        <MudTh>Veiksmas</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="stock">
+                        <MudTd DataLabel="Lot Numeris">@stock.LotNumber</MudTd>
+                        <MudTd DataLabel="Gamintojas">@stock.ProductName</MudTd>
+                        <MudTd DataLabel="Kiekis">@stock.Quantity</MudTd>
+                        <MudTd DataLabel="Gali galiojti iki">@stock.ExpirationDate?.ToString("yyyy-MM-dd")</MudTd>
+                        <MudTd>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStock(stock))">Pasirinkti</MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@CloseDialog">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@SelectBatch">Pasirinkti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _searchTerm = string.Empty;
+    private List<WarehouseStockViewModel> _stocks = new();
+    private List<WarehouseStockViewModel> _filteredStocks = new();
+    private WarehouseStockViewModel? _selectedStock;
+    private string? _errorMessage;
+
+    [CascadingParameter]
+    public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stocks = await _productionService.GetWarehouseStockAsync();
+        _filteredStocks = _stocks;
+    }
+
+    private void OnSearchInput(ChangeEventArgs args)
+    {
+        _searchTerm = args.Value?.ToString() ?? string.Empty;
+        FilterStocks();
+    }
+
+    private void FilterStocks()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _filteredStocks = _stocks;
+        }
+        else
+        {
+            _filteredStocks = _stocks
+                .Where(s => s.LotNumber.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private void SelectBatch()
+    {
+        if (_selectedStock != null)
+        {
+            MudDialog.Close(DialogResult.Ok(_selectedStock));
+        }
+        else
+        {
+            _errorMessage = "Prašome pasirinkti partiją!";
+        }
+    }
+
+    private void SelectStock(WarehouseStockViewModel stock)
+    {
+        _selectedStock = stock;
+        MudDialog.Close(DialogResult.Ok(stock));
+    }
+
+    private void CloseDialog() => MudDialog.Close(DialogResult.Cancel());
+}

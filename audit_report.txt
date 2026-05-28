@@ -1,0 +1,264 @@
+=========================================
+NordicBeesERP AUDIT REPORT
+Data: Tue Feb 24 14:00:20 EET 2026
+=========================================
+
+=== 1. PROJEKTO STRUKTŪRA (3 lygiai) ===
+./Components/App.razor
+./Components/Dialogs/BatchSelectDialog.razor
+./Components/Dialogs/ClientSelectDialog.razor
+./Components/Dialogs/ConfirmDialog.razor
+./Components/Dialogs/CustomerCreateDialog.razor
+./Components/Dialogs/CustomerSelectDialog.razor
+./Components/Dialogs/ProductSelectDialog.razor
+./Components/Dialogs/SupplierCreateDialog.razor
+./Components/Dialogs/SupplierEditDialog.razor
+./Components/Dialogs/SupplierSelectDialog.razor
+./Components/Layout/MainLayout.razor
+./Components/Layout/NavMenu.razor
+./Components/Layout/ReconnectModal.razor
+./Components/Pages/Counter.razor
+./Components/Pages/Customers.razor
+./Components/Pages/Error.razor
+./Components/Pages/Home.razor
+./Components/Pages/Inventory.razor
+./Components/Pages/InvoiceCreate.razor
+./Components/Pages/InvoiceEdit.razor
+./Components/Pages/InvoiceView.razor
+./Components/Pages/Invoices.razor
+./Components/Pages/NotFound.razor
+./Components/Pages/PdfPage.razor
+./Components/Pages/ProductCreate.razor
+./Components/Pages/ProductEdit.razor
+./Components/Pages/Products.razor
+./Components/Pages/Suppliers.razor
+./Components/Pages/WarehouseCreate.razor
+./Components/Pages/WarehouseEdit.razor
+./Components/Pages/Warehouses.razor
+./Components/Pages/Weather.razor
+./Components/Routes.razor
+./Components/_Imports.razor
+./Data/NordicBeesERPContext.cs
+./Models/Honey/HoneyBatch.cs
+./Models/InvoiceModels.cs
+./Models/Models_Part1.cs
+./Models/Models_Part2.cs
+./Models/PdfLocalization.cs
+./Models/ProductionViewModels.cs
+./Program.cs
+./Services/CustomerService.cs
+./Services/IProductionService.cs
+./Services/InvoiceService.cs
+./Services/PdfGeneratorService.cs
+./Services/ProductService.cs
+./Services/ProductionService.cs
+./Services/SupplierService.cs
+./Services/WarehouseService.cs
+
+=== 2. RAZOR PUSLAPIAI (GUI) ===
+--- Pages/ katalogas ---
+./Components/App.razor
+./Components/Dialogs/BatchSelectDialog.razor
+./Components/Dialogs/ClientSelectDialog.razor
+./Components/Dialogs/ConfirmDialog.razor
+./Components/Dialogs/CustomerCreateDialog.razor
+./Components/Dialogs/CustomerSelectDialog.razor
+./Components/Dialogs/ProductSelectDialog.razor
+./Components/Dialogs/SupplierCreateDialog.razor
+./Components/Dialogs/SupplierEditDialog.razor
+./Components/Dialogs/SupplierSelectDialog.razor
+./Components/Layout/MainLayout.razor
+./Components/Layout/NavMenu.razor
+./Components/Layout/ReconnectModal.razor
+./Components/Pages/Counter.razor
+./Components/Pages/Customers.razor
+./Components/Pages/Error.razor
+./Components/Pages/Home.razor
+./Components/Pages/Inventory.razor
+./Components/Pages/InvoiceCreate.razor
+./Components/Pages/InvoiceEdit.razor
+./Components/Pages/InvoiceView.razor
+./Components/Pages/Invoices.razor
+./Components/Pages/NotFound.razor
+./Components/Pages/PdfPage.razor
+./Components/Pages/ProductCreate.razor
+./Components/Pages/ProductEdit.razor
+./Components/Pages/Production/NewBatch.razor
+./Components/Pages/Products.razor
+./Components/Pages/Suppliers.razor
+./Components/Pages/WarehouseCreate.razor
+./Components/Pages/WarehouseEdit.razor
+./Components/Pages/Warehouses.razor
+./Components/Pages/Weather.razor
+./Components/Routes.razor
+./Components/_Imports.razor
+
+--- Kiekvieno puslapio @page routes ---
+./Components/Pages/Counter.razor:1:﻿@page "/counter"
+./Components/Pages/Customers.razor:1:@page "/customers"
+./Components/Pages/Error.razor:1:﻿@page "/Error"
+./Components/Pages/Home.razor:1:﻿@page "/"
+./Components/Pages/Inventory.razor:1:@page "/inventory"
+./Components/Pages/InvoiceCreate.razor:1:@page "/invoices/create"
+./Components/Pages/InvoiceEdit.razor:1:@page "/invoices/edit/{Id:int}"
+./Components/Pages/InvoiceView.razor:1:@page "/invoices/{Id:int}"
+./Components/Pages/Invoices.razor:1:@page "/invoices"
+./Components/Pages/NotFound.razor:1:﻿@page "/not-found"
+./Components/Pages/PdfPage.razor:1:@page "/invoice/pdf/{Id:int}"
+./Components/Pages/ProductCreate.razor:1:@page "/products/create"
+./Components/Pages/ProductEdit.razor:2:@page "/products/edit/{Id:int}"
+./Components/Pages/Production/NewBatch.razor:1:@page "/production/newbatch"
+./Components/Pages/Products.razor:1:@page "/products"
+./Components/Pages/Suppliers.razor:1:@page "/suppliers"
+./Components/Pages/WarehouseCreate.razor:1:@page "/warehouses/create"
+./Components/Pages/WarehouseEdit.razor:1:@page "/warehouses/edit/{Id:int}"
+./Components/Pages/Warehouses.razor:1:@page "/warehouses"
+./Components/Pages/Weather.razor:1:﻿@page "/weather"
+
+=== 3. NAVMENU TURINYS ===
+--- ./Components/Layout/NavMenu.razor ---
+@using MudBlazor
+
+<MudNavMenu>
+    <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Pradžia</MudNavLink>
+    
+    <MudNavLink Href="/warehouses" Icon="@Icons.Material.Filled.Warehouse">Sandėlis</MudNavLink>
+    
+    <MudNavGroup Title="Produkcija" Icon="@Icons.Material.Filled.Agriculture">
+        <MudNavLink Href="/products" Icon="@Icons.Material.Filled.Inventory">Produktai</MudNavLink>
+        <MudNavLink Href="/products/types" Icon="@Icons.Material.Filled.Category">Tipai</MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavGroup Title="Tiekėjai ir klientai" Icon="@Icons.Material.Filled.People">
+        <MudNavLink Href="/suppliers" Icon="@Icons.Material.Filled.LocalShipping">Tiekėjai</MudNavLink>
+        <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavGroup Title="Apskaita" Icon="@Icons.Material.Filled.AccountBalance">
+        <MudNavLink Href="/invoices" Icon="@Icons.Material.Filled.Receipt">Sąskaitos</MudNavLink>
+        <MudNavLink Href="/payments" Icon="@Icons.Material.Filled.Payment">Mokėjimai</MudNavLink>
+    </MudNavGroup>
+</MudNavMenu>
+=== 4. DB MODELIAI (Entities/Models) ===
+./Data/NordicBeesERPContext.cs
+./Models/Honey/HoneyBatch.cs
+./Models/InvoiceModels.cs
+./Models/Models_Part1.cs
+./Models/Models_Part2.cs
+./Models/PdfLocalization.cs
+./Models/ProductionViewModels.cs
+
+--- DbContext klasė ---
+
+=== 5. SERVISAI (Services) ===
+./Services/CustomerService.cs
+./Services/IProductionService.cs
+./Services/InvoiceService.cs
+./Services/PdfGeneratorService.cs
+./Services/ProductService.cs
+./Services/ProductionService.cs
+./Services/SupplierService.cs
+./Services/WarehouseService.cs
+
+--- Service registracija Program.cs ---
+10:builder.Services.AddRazorComponents()
+13:builder.Services.AddMudServices();
+19:builder.Services.AddDbContextFactory<NordicBeesERPContext>(options =>
+24:builder.Services.AddScoped<InvoiceService>();
+25:builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+26:builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+27:builder.Services.AddScoped<IProductService, ProductService>();
+28:builder.Services.AddScoped<ICustomerService, CustomerService>();
+29:builder.Services.AddScoped<ISupplierService, SupplierService>();
+30:builder.Services.AddScoped<IProductionService, ProductionService>();
+31:builder.Services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
+
+=== 6. MIGRACIJOS ===
+
+=== 7. INVOICE SUSIJĘ FAILAI ===
+--- Invoice razor puslapiai ---
+./Components/Pages/InvoiceCreate.razor
+./Components/Pages/InvoiceEdit.razor
+./Components/Pages/InvoiceView.razor
+./Components/Pages/Invoices.razor
+--- Invoice servisai ---
+./Models/InvoiceModels.cs
+./Services/InvoiceService.cs
+
+=== 8. LOT SUSIJĘ FAILAI ===
+
+=== 9. PAYMENT/MOKĖJIMŲ FAILAI ===
+
+=== 10. WAREHOUSE/SANDĖLIO FAILAI ===
+./Components/Pages/WarehouseCreate.razor
+./Components/Pages/WarehouseEdit.razor
+./Components/Pages/Warehouses.razor
+./Services/WarehouseService.cs
+
+=== 11. PRODUCT/PREKIŲ FAILAI ===
+./Components/Dialogs/ProductSelectDialog.razor
+./Components/Pages/ProductCreate.razor
+./Components/Pages/ProductEdit.razor
+./Components/Pages/Products.razor
+./Models/ProductionViewModels.cs
+./Services/IProductionService.cs
+./Services/ProductService.cs
+./Services/ProductionService.cs
+
+=== 12. PARTNER/KLIENTŲ FAILAI ===
+./Components/Dialogs/ClientSelectDialog.razor
+./Components/Dialogs/CustomerCreateDialog.razor
+./Components/Dialogs/CustomerSelectDialog.razor
+./Components/Pages/Customers.razor
+./Services/CustomerService.cs
+
+=== 13. PRODUCTION/GAMYBOS FAILAI ===
+./Components/Dialogs/BatchSelectDialog.razor
+./Components/Pages/Production/NewBatch.razor
+./Models/Honey/HoneyBatch.cs
+./Models/ProductionViewModels.cs
+./Services/IProductionService.cs
+./Services/ProductionService.cs
+
+=== 14. PDF GENERAVIMO FAILAI ===
+./Components/Pages/PdfPage.razor
+./Models/PdfLocalization.cs
+./Services/PdfGeneratorService.cs
+./Models/PdfLocalization.cs:1:using QuestPDF.Fluent;
+./Models/PdfLocalization.cs:2:using QuestPDF.Helpers;
+./NordicBeesERP.csproj:13:    <PackageReference Include="QuestPDF" Version="2024.8.1" />
+./Services/PdfGeneratorService.cs:4:using QuestPDF.Fluent;
+./Services/PdfGeneratorService.cs:5:using QuestPDF.Helpers;
+
+=== 15. CSPROJ DEPENDENCIES ===
+--- ./NordicBeesERP.csproj ---
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.0" />
+    <PackageReference Include="QuestPDF" Version="2024.8.1" />
+  </ItemGroup>
+</Project>
+=== 16. KOMPILIAVIMO KLAIDOS ===
+/Users/deividasru/Library/CloudStorage/GoogleDrive-deividas.rusenas@gmail.com/My Drive/DEV/AI DARBAI/2026 02 18/NordicBeesERP/NordicBeesERP.csproj : warning NU1603: NordicBeesERP depends on QuestPDF (>= 2024.8.1) but QuestPDF 2024.8.1 was not found. QuestPDF 2024.10.0 was resolved instead.
+  NordicBeesERP -> /Users/deividasru/Library/CloudStorage/GoogleDrive-deividas.rusenas@gmail.com/My Drive/DEV/AI DARBAI/2026 02 18/NordicBeesERP/bin/Debug/net10.0/NordicBeesERP.dll
+
+Build succeeded.
+
+/Users/deividasru/Library/CloudStorage/GoogleDrive-deividas.rusenas@gmail.com/My Drive/DEV/AI DARBAI/2026 02 18/NordicBeesERP/NordicBeesERP.csproj : warning NU1603: NordicBeesERP depends on QuestPDF (>= 2024.8.1) but QuestPDF 2024.8.1 was not found. QuestPDF 2024.10.0 was resolved instead.
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.46
+
+=========================================
+AUDIT BAIGTAS
+=========================================

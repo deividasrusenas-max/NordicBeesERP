@@ -1,0 +1,255 @@
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+@inject IPaymentService PaymentService
+@inject IDbContextFactory<NordicBeesERPContext> DbFactory
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-3">Registruoti mokėjimą</MudText>
+        
+        <MudPaper Elevation="1" Rounded="@true" Square="false" Class="pa-3 mb-3">
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_paymentDate" Label="Mokėjimo data" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" Label="Mokėjimo būdas" Value="_paymentMethod" ValueChanged="OnPaymentMethodChanged" Variant="Variant.Outlined">
+                        @foreach (var method in Enum.GetNames(typeof(PaymentMethod)))
+                        {
+                            <MudSelectItem Value="@method">@method</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_referenceNumber" Label="Referencinis numeris" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_notes" Label="Pastabos" Variant="Variant.Outlined" multiline="true" Rows="3" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudText Typo="Typo.h6" Class="mb-2">Pasirinkti sąskaitas</MudText>
+        <MudPaper Elevation="1" Rounded="@true" Square="false" Class="pa-3 mb-3">
+            @if (_invoices.Any())
+            {
+                <MudTable T="InvoiceWithPaymentInfo" Items="@_invoices" Hover="true" Dense="true" Striped="true" SelectionChanged="OnInvoiceSelected">
+                    <HeaderContent>
+                        <MudTh><MudCheckBox T="bool" Checked="_selectAll" CheckedChanged="OnSelectAllChanged" /></MudTh>
+                        <MudTh>Sąskaitos nr.</MudTh>
+                        <MudTh>Klientas</MudTh>
+                        <MudTh>Data</MudTh>
+                        <MudTh>Terminas</MudTh>
+                        <MudTh Style="text-align:right">Suma (€)</MudTh>
+                        <MudTh Style="text-align:right">Sumokėta (€)</MudTh>
+                        <MudTh Style="text-align:right">Likęs mokėjimas (€)</MudTh>
+                        <MudTh Style="text-align:right">Skirtumas (€)</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="invoice">
+                        <MudTd DataLabel="Pasirinkti">
+                            <MudCheckBox T="bool" Checked="_selectedInvoices.TryGetValue(invoice.Id, out var amount)" CheckedChanged="val => OnCheckboxChanged(invoice.Id, val)" />
+                        </MudTd>
+                        <MudTd DataLabel="Sąskaitos nr.">@invoice.InvoiceNumber</MudTd>
+                        <MudTd DataLabel="Klientas">@invoice.CustomerName</MudTd>
+                        <MudTd DataLabel="Data">@invoice.InvoiceDate.ToShortDateString()</MudTd>
+                        <MudTd DataLabel="Terminas">@invoice.DueDate?.ToShortDateString()</MudTd>
+                        <MudTd DataLabel="Suma" Style="text-align:right">@invoice.TotalInclVat.ToString("N2")</MudTd>
+                        <MudTd DataLabel="Sumokėta" Style="text-align:right">@invoice.PaidAmount.ToString("N2")</MudTd>
+                        <MudTd DataLabel="Likęs mokėjimas" Style="text-align:right">@invoice.RemainingAmount.ToString("N2")</MudTd>
+                        <MudTd DataLabel="Skirtumas" Style="text-align:right; font-weight:600">
+                            @GetAllocationAmount(invoice.Id).ToString("N2")
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else
+            {
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Nėra nepamokėtų sąskaitų</MudText>
+            }
+        </MudPaper>
+
+        <MudPaper Elevation="1" Rounded="@true" Square="false" Class="pa-3 mb-3 bg-light">
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body2">Iš viso pasirinkta</MudText>
+                    <MudText Typo="Typo.h5">@_totalAllocated.ToString("N2") €</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body2">Mokėjimo suma</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Primary">@_paymentAmount.ToString("N2") €</MudText>
+                </MudItem>
+            </MudGrid>
+            @if (_totalAllocated > _paymentAmount)
+            {
+                <MudAlert T="Alert" Severity="Severity.Warning" Class="mt-2">
+                    Pasirinktų sąskaitų suma (@_totalAllocated.ToString("N2") €) viršija mokėjimo sumą (@_paymentAmount.ToString("N2") €).
+                </MudAlert>
+            }
+            else if (_totalAllocated < _paymentAmount)
+            {
+                <MudAlert T="Alert" Severity="Severity.Info" Class="mt-2">
+                    Mokėjimo suma (@_paymentAmount.ToString("N2") €) yra didesnė už pasirinktų sąskaitų sumą (@_totalAllocated.ToString("N2") €).
+                </MudAlert>
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RegisterPayment">Registruoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private DateTime? _paymentDate = DateTime.Today;
+    private string _paymentMethod = "bank_transfer";
+    private string? _referenceNumber;
+    private string? _notes;
+    private decimal _paymentAmount = 0m;
+    
+    private List<InvoiceWithPaymentInfo> _invoices = new();
+    private Dictionary<int, decimal> _selectedInvoices = new();
+    private decimal _totalAllocated = 0m;
+    private bool _selectAll = false;
+
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public int? InvoiceId { get; set; }
+
+    private bool _disposed = false;
+
+    protected override void OnParametersSet()
+    {
+        _disposed = false;
+        _ = LoadInvoicesAsync();
+    }
+
+    private async Task LoadInvoicesAsync()
+    {
+        _invoices = await PaymentService.GetUnpaidInvoicesAsync(
+            customerId: null,
+            status: "unpaid",
+            fromDate: null,
+            toDate: null
+        );
+        
+        // Initialize selected invoices with full remaining amount
+        foreach (var invoice in _invoices)
+        {
+            _selectedInvoices[invoice.Id] = invoice.RemainingAmount;
+        }
+        
+        // If InvoiceId is provided, pre-select it
+        if (InvoiceId.HasValue && _selectedInvoices.ContainsKey(InvoiceId.Value))
+        {
+            _paymentAmount = _selectedInvoices[InvoiceId.Value];
+        }
+    }
+
+    private void OnInvoiceSelected(InvoiceWithPaymentInfo invoice)
+    {
+        if (_selectedInvoices.ContainsKey(invoice.Id))
+        {
+            _selectedInvoices.Remove(invoice.Id);
+        }
+        else
+        {
+            _selectedInvoices[invoice.Id] = invoice.RemainingAmount;
+        }
+        CalculateTotal();
+    }
+
+    private void OnSelectAllChanged(bool value)
+    {
+        if (value)
+        {
+            foreach (var invoice in _invoices)
+            {
+                if (!_selectedInvoices.ContainsKey(invoice.Id))
+                {
+                    _selectedInvoices[invoice.Id] = invoice.RemainingAmount;
+                }
+            }
+        }
+        else
+        {
+            _selectedInvoices.Clear();
+        }
+        CalculateTotal();
+    }
+
+    private void OnPaymentMethodChanged(string method)
+    {
+        _paymentMethod = method;
+    }
+
+    private decimal GetAllocationAmount(int invoiceId)
+    {
+        return _selectedInvoices.TryGetValue(invoiceId, out var amount) ? amount : 0m;
+    }
+
+    private void CalculateTotal()
+    {
+        _totalAllocated = _selectedInvoices.Values.Sum();
+    }
+
+    private async Task RegisterPayment()
+    {
+        if (_disposed) return;
+
+        if (!_selectedInvoices.Any())
+        {
+            Snackbar.Add("Pasirinkite bent vieną sąskaitą", Severity.Error, options => {
+                options.Icon = Icons.Material.Filled.Error;
+            });
+            return;
+        }
+
+        if (_paymentAmount <= 0)
+        {
+            Snackbar.Add("Įveskite mokėjimo sumą", Severity.Error, options => {
+                options.Icon = Icons.Material.Filled.Error;
+            });
+            return;
+        }
+
+        try
+        {
+            var invoiceIds = _selectedInvoices.Keys.ToList();
+            var userId = 1; // TODO: Get actual user ID from authentication
+            
+            await PaymentService.RegisterPaymentAsync(
+                invoiceIds: invoiceIds,
+                amount: _paymentAmount,
+                paymentDate: _paymentDate.Value,
+                method: _paymentMethod,
+                reference: _referenceNumber,
+                notes: _notes,
+                userId: userId
+            );
+
+            Snackbar.Add("Mokėjimas sėkmingai registruotas", Severity.Success, options => {
+                options.Icon = Icons.Material.Filled.CheckCircle;
+            });
+            MudDialog?.Close();
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add("Klaida registruojant mokėjimą", Severity.Error, options => {
+                options.Icon = Icons.Material.Filled.Error;
+            });
+        }
+    }
+
+    private void CloseDialog()
+    {
+        MudDialog?.Cancel();
+    }
+}

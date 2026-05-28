@@ -1,0 +1,194 @@
+@using NordicBeesERP.Models
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Data
+@using MudBlazor
+@inject IDialogService DialogService
+@inject ISupplierService SupplierService
+@inject NordicBeesERP.Data.NordicBeesERPContext context
+
+<MudDialog>
+    <DialogContent>
+        <EditForm FormName="SupplierEditForm" Model="@supplier" OnValidSubmit="@HandleValidSubmit">
+            <DataAnnotationsValidator />
+            
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudSelect T="PartnerType" @bind-Value="supplier.PartnerType" Label="Partnerio tipas" Required="true">
+                        <MudSelectItem T="PartnerType" Value="@PartnerType.Supplier">📦 Tiekėjas</MudSelectItem>
+                        <MudSelectItem T="PartnerType" Value="@PartnerType.Customer">🛒 Klientas</MudSelectItem>
+                        <MudSelectItem T="PartnerType" Value="@PartnerType.Both">📦🛒 Tiekėjas ir Klientas</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="supplier.Name" Label="Pavadinimas" Required="true" 
+                                 MaxLength="255" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.CompanyCode" Label="Įmonės kodas" 
+                                 MaxLength="20" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.VatCode" Label="PVM mokėtojo kodas" 
+                                 MaxLength="20" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="supplier.Address" Label="Adresas" Lines="2" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.City" Label="Miestas" MaxLength="100" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.PostalCode" Label="Pašto kodas" MaxLength="20" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.Phone" Label="Telefonas" MaxLength="50" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.Email" Label="El. paštas" MaxLength="100" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.BankAccount" Label="Banko sąskaita" MaxLength="50" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="int" @bind-Value="supplier.PaymentTermDays" Label="Mokėjimo terminas (dienos)" 
+                                     Min="0" Max="365" />
+                </MudItem>
+                
+                <MudItem xs="12" md="6">
+                    <MudSelect T="int" @bind-Value="_vatRate" Label="PVM tarifas %" Variant="Variant.Outlined">
+                        <MudSelectItem Value="0">0%</MudSelectItem>
+                        <MudSelectItem Value="6">6%</MudSelectItem>
+                        <MudSelectItem Value="21">21%</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="supplier.DefaultExpenseCategoryId" T="int?" Label="Numatyta išlaidų kategorija" Variant="Variant.Outlined" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— Nepriskirta —</MudSelectItem>
+                        @foreach (var cat in _categories)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)cat.Id)">@cat.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSelect T="string" @bind-Value="supplier.DefaultLanguage" Label="Kalba">
+                        <MudSelectItem T="string" Value="@("lt")">Lietuvių</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("lv")">Latviešu</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("ee")">Eesti</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("ru")">Русский</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="supplier.Notes" Label="Pastabos" Lines="3" MaxLength="1000" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="supplier.IsActive" Label="Aktyvus" Color="Color.Success" />
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" 
+                   OnClick="@SubmitForm" StartIcon="@Icons.Material.Filled.Save">
+            Išsaugoti
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" 
+                   OnClick="@CloseDialog" StartIcon="@Icons.Material.Filled.Close">
+            Atšaukti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private ISnackbar snackbar { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance? Dialog { get; set; }
+    [Parameter] public Supplier? Supplier { get; set; }
+    [Parameter] public EventCallback<Supplier> OnSupplierUpdated { get; set; }
+
+    private Supplier supplier = new();
+    private int _vatRate = 21;
+    private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = await context.Set<NordicBeesERP.Models.Expenses.ExpenseCategory>()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.SortOrder)
+            .ToListAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($"[SupplierEdit] DefaultExpenseCategoryId={Supplier?.DefaultExpenseCategoryId}");
+        
+        supplier = Supplier ?? new Supplier
+        {
+            PartnerType = PartnerType.Supplier,
+            PaymentTermDays = 30,
+            DefaultVatRate = 21m,
+            DefaultLanguage = "lt",
+            CountryCode = "LT",
+            Country = "Lietuva",
+            City = "",
+            Address = "",
+            PostalCode = "",
+            IsActive = true
+        };
+        
+        // Initialize _vatRate from supplier.DefaultVatRate
+        _vatRate = (int)supplier.DefaultVatRate;
+    }
+
+    private async Task SubmitForm()
+    {
+        try
+        {
+            Console.WriteLine($"[SupplierEdit] Saving DefaultExpenseCategoryId={supplier.DefaultExpenseCategoryId}");
+            
+            // Set supplier.DefaultVatRate from _vatRate
+            supplier.DefaultVatRate = _vatRate;
+            
+            // Save the supplier
+            var savedSupplier = await SupplierService.SaveSupplierAsync(supplier);
+            
+            // Close dialog with result
+            Dialog?.Close(savedSupplier);
+        }
+        catch (Exception ex)
+        {
+            snackbar?.Add($"Klaida išsaugant tiekėją: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CloseDialog()
+    {
+        Dialog?.Close();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        // Check if name already exists (excluding current supplier)
+        var existingByName = await SupplierService.GetAllSuppliersAsync();
+        
+        if (existingByName.Any(bp => bp.Name == supplier.Name && bp.Id != supplier.Id))
+        {
+            snackbar?.Add("Tiekėjas su šiuo pavadinimu jau egzistuoja!", Severity.Warning);
+            return;
+        }
+    }
+}

@@ -1,0 +1,112 @@
+@using NordicBeesERP.Models
+@using MudBlazor
+@inject IDialogService DialogService
+@inject ICustomerService CustomerService
+
+<MudDialog Options="@_dialogOptions">
+    <DialogContent>
+        <MudTextField T="string" Value="@_searchText" Label="Ieškoti pagal pavadinimą, šalį, kodą..." 
+                      Variant="Variant.Outlined" Immediate="true" 
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      ValueChanged="@FilterClients" Class="mb-3" />
+        
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" 
+                   StartIcon="@Icons.Material.Filled.Add" Class="mb-3" OnClick="@OpenCreateDialog">
+            Pridėti klientą
+        </MudButton>
+        
+        <MudTable T="Customer" Items="@_filteredCustomers" Hover="true" Dense="true" 
+                  Height="400px" FixedHeader="true" OnRowClick="@OnRowClick">
+            <HeaderContent>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>Šalis</MudTh>
+                <MudTh>PVM kodas</MudTh>
+                <MudTh Style="width: 100px;">Veiksmai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="customer">
+                <MudTd DataLabel="Pavadinimas">@customer.Name</MudTd>
+                <MudTd DataLabel="Šalis">@customer.City</MudTd>
+                <MudTd DataLabel="PVM kodas"><span class="text-muted">@customer.VatCode</span></MudTd>
+                <MudTd DataLabel="Veiksmai">
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                               OnClick="@(() => SelectClient(customer))">
+                        Rinktis
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Atšaukti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly DialogOptions _dialogOptions = new() { CloseOnEscapeKey = true };
+    
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    
+    [Parameter] public List<Customer> Customers { get; set; } = new();
+    
+    private string _searchText = "";
+    private List<Customer> _filteredCustomers = new();
+
+    protected override void OnInitialized()
+    {
+        _filteredCustomers = Customers;
+    }
+
+    private void FilterClients(string searchText)
+    {
+        _searchText = searchText?.ToLower() ?? "";
+        
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            _filteredCustomers = Customers;
+        }
+        else
+        {
+            _filteredCustomers = Customers.Where(c =>
+                c.Name.ToLower().Contains(_searchText) ||
+                (c.City?.ToLower().Contains(_searchText) ?? false) ||
+                (c.VatCode?.ToLower().Contains(_searchText) ?? false)
+            ).ToList();
+        }
+    }
+
+    private void OnRowClick(TableRowClickEventArgs<Customer> args)
+    {
+        SelectClient(args.Item);
+    }
+
+    private void SelectClient(Customer? customer)
+    {
+        if (customer != null)
+        {
+            MudDialog.Close(DialogResult.Ok(customer));
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
+        
+        var dialog = await DialogService.ShowAsync<CustomerCreateDialog>("Naujas klientas", parameters, options);
+        
+        if (dialog is not null)
+        {
+            var result = await dialog.Result;
+            if (result is not null && result.Data is Customer customer)
+            {
+                Customers.Add(customer);
+                _filteredCustomers = Customers;
+            }
+        }
+    }
+}

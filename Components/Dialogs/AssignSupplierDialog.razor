@@ -1,0 +1,310 @@
+@using NordicBeesERP.Data
+@using NordicBeesERP.Models
+@using NordicBeesERP.Models.Expenses
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Priskirti tiekėją</MudText>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center align-center pa-8">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+        else if (_invoice != null)
+        {
+            <!-- Invoice Info (Blue Paper) -->
+            <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                <MudGrid Spacing="2">
+                    <MudItem xs="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Numeris</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.InvoiceNumber</MudText>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Data</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudText>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Suma</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:700; color:#1976d2">@_invoice.AmountInclVat.ToString("N2") €</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- OCR Detected Info (Yellow Paper, only if PendingSupplierName not empty) -->
+            @if (!string.IsNullOrEmpty(_pendingSupplierName))
+            {
+                <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#fffde7; border-radius:8px; border-left:4px solid #f9a825">
+                    <div class="d-flex align-center gap-2 mb-1">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.overline" Color="Color.Secondary">OCR aptikta</MudText>
+                    </div>
+                    <MudText Typo="Typo.body2" Style="font-weight:600">@_pendingSupplierName</MudText>
+                    @if (!string.IsNullOrEmpty(_pendingSupplierVat))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas: @_pendingSupplierVat</MudText>
+                    }
+                </MudPaper>
+            }
+
+            <!-- Create Supplier Button (Filled Primary Full-Width 52px) -->
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Height="52px"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="CreateSupplierAsync"
+                       Class="mb-3">
+                Sukurti tiekėją
+            </MudButton>
+
+            <!-- Existing Supplier Search Toggle -->
+            <MudText Typo="Typo.body2"
+                     Color="Color.Secondary"
+                     Style="cursor:pointer; font-weight:500"
+                     OnClick="ToggleExistingSearch">
+                Priskirti esamam @(_showExistingSearch ? "▲" : "▼")
+            </MudText>
+
+            <!-- Existing Supplier Search (shown when toggle is open) -->
+            @if (_showExistingSearch)
+            {
+                <MudAutocomplete T="BusinessPartner"
+                                 Label="Ieškoti tiekėjo..."
+                                 @bind-Value="_selectedSupplier"
+                                 SearchFunc="SearchSuppliers"
+                                 ToStringFunc="@(s => s?.Name ?? "")"
+                                 Variant="Variant.Outlined"
+                                 FullWidth="true"
+                                 Clearable="true"
+                                 NoItemsFoundText="Nerasta"
+                                 Class="mt-2 mb-2" />
+                @if (_selectedSupplier != null)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               OnClick="ConfirmExistingSupplierAsync"
+                               StartIcon="@Icons.Material.Filled.Check">
+                        Patvirtinti
+                    </MudButton>
+                }
+            }
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelAsync">
+            Atšaukti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] IDbContextFactory<NordicBeesERPContext> DbFactory { get; set; } = default!;
+    [Inject] IExpenseService ExpenseService { get; set; } = default!;
+    [Inject] IAuthService AuthService { get; set; } = default!;
+    [Inject] IDialogService DialogService { get; set; } = default!;
+    [Inject] ISnackbar Snackbar { get; set; } = default!;
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int InvoiceId { get; set; }
+
+    private ExpenseInvoice? _invoice;
+    private List<BusinessPartner> _suppliers = new();
+    private BusinessPartner? _selectedSupplier;
+    private bool _isLoading = true;
+    private bool _showExistingSearch = false;
+    private string _pendingSupplierName = "";
+    private string _pendingSupplierVat = "";
+    private int _loadedInvoiceId = 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedInvoiceId == InvoiceId) return;
+        _loadedInvoiceId = InvoiceId;
+        _isLoading = true;
+        _invoice = null;
+        _suppliers = new();
+        _selectedSupplier = null;
+        _pendingSupplierName = "";
+        _pendingSupplierVat = "";
+
+        try
+        {
+            // Load invoice
+            await using var context = DbFactory.CreateDbContext();
+            _invoice = await context.ExpenseInvoices.FindAsync(InvoiceId);
+
+            if (_invoice != null)
+            {
+                _pendingSupplierName = _invoice.PendingSupplierName ?? "";
+                _pendingSupplierVat = _invoice.PendingSupplierVat ?? "";
+
+                // Load suppliers: PartnerType in (ExpenseSupplier, Both) and IsActive=true
+                _suppliers = await context.BusinessPartners
+                    .Where(p => (p.PartnerType == PartnerType.ExpenseSupplier ||
+                                 p.PartnerType == PartnerType.Both) &&
+                                p.IsActive)
+                    .OrderBy(s => s.Name)
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida įkeliant sąskaitą: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleExistingSearch()
+    {
+        _showExistingSearch = !_showExistingSearch;
+    }
+
+    private async Task<IEnumerable<BusinessPartner>> SearchSuppliers(string val, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(val))
+            return _suppliers;
+
+        var search = val.ToLower();
+        return _suppliers.Where(s =>
+            s.Name.ToLower().Contains(search) ||
+            (!string.IsNullOrEmpty(s.VatCode) && s.VatCode.ToLower().Contains(search)));
+    }
+
+    private async Task CreateSupplierAsync()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add(nameof(SupplierCreateDialog.PrefilledName), _invoice?.PendingSupplierName);
+        parameters.Add(nameof(SupplierCreateDialog.PrefilledVatCode), _invoice?.PendingSupplierVat);
+        parameters.Add(nameof(SupplierCreateDialog.PrefilledAddress), _invoice?.PendingSupplierAddress);
+
+        var dialog = await DialogService.ShowAsync<SupplierCreateDialog>(
+            "Sukurti tiekėją",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+        var result = await dialog.Result;
+        if (result is { Canceled: true }) return;
+
+        var newPartner = result.Data as BusinessPartner;
+        if (newPartner == null)
+        {
+            Snackbar.Add("Tiekėjas nesukurtas", Severity.Warning);
+            return;
+        }
+
+        Snackbar.Add($"Tiekėjas {newPartner.Name} sėkmingai sukurtas", Severity.Success);
+
+        // Reload suppliers from DB, find by VAT, then by name, then OrderByDescending(Id).First
+        await ReloadSuppliersAsync();
+
+        int foundId;
+        var vat = _invoice?.PendingSupplierVat?.Trim();
+        var name = _invoice?.PendingSupplierName?.Trim();
+
+        if (!string.IsNullOrEmpty(vat))
+        {
+            var byVat = _suppliers.FirstOrDefault(s => s.VatCode?.Trim() == vat);
+            if (byVat != null)
+            {
+                foundId = byVat.Id;
+            }
+            else if (!string.IsNullOrEmpty(name))
+            {
+                var byName = _suppliers.FirstOrDefault(s => s.Name?.Trim() == name);
+                if (byName != null)
+                {
+                    foundId = byName.Id;
+                }
+                else
+                {
+                    foundId = _suppliers.OrderByDescending(s => s.Id).First().Id;
+                }
+            }
+            else
+            {
+                foundId = _suppliers.OrderByDescending(s => s.Id).First().Id;
+            }
+        }
+        else if (!string.IsNullOrEmpty(name))
+        {
+            var byName = _suppliers.FirstOrDefault(s => s.Name?.Trim() == name);
+            if (byName != null)
+            {
+                foundId = byName.Id;
+            }
+            else
+            {
+                foundId = _suppliers.OrderByDescending(s => s.Id).First().Id;
+            }
+        }
+        else
+        {
+            foundId = _suppliers.OrderByDescending(s => s.Id).First().Id;
+        }
+
+        var performedBy = (await AuthService.GetAuthenticatedUserAsync())?.FullName ?? "system";
+        await ExpenseService.AssignSupplierAsync(InvoiceId, foundId, performedBy);
+
+        Snackbar.Add("Tiekėjas priskirtas sėkmingai", Severity.Success);
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private async Task ReloadSuppliersAsync()
+    {
+        try
+        {
+            await using var context = DbFactory.CreateDbContext();
+            _suppliers = await context.BusinessPartners
+                .Where(p => (p.PartnerType == PartnerType.ExpenseSupplier ||
+                             p.PartnerType == PartnerType.Both) &&
+                            p.IsActive)
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+        }
+        catch
+        {
+            // Silently fail - suppliers list may be stale but not critical
+        }
+    }
+
+    private async Task ConfirmExistingSupplierAsync()
+    {
+        if (_selectedSupplier == null) return;
+
+        var performedBy = (await AuthService.GetAuthenticatedUserAsync())?.FullName ?? "system";
+        await ExpenseService.AssignSupplierAsync(InvoiceId, _selectedSupplier.Id, performedBy);
+
+        Snackbar.Add("Tiekėjas priskirtas sėkmingai", Severity.Success);
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private async Task CancelAsync()
+    {
+        if (_invoice?.Status == "PENDING_SUPPLIER")
+        {
+            var confirmed = await ConfirmDialog.ShowAsync(
+                DialogService,
+                "Patvirtinti",
+                "Ar tikrai norite atšaukti?",
+                "Atšaukti",
+                Color.Warning);
+            
+            if (!confirmed) return;
+        }
+        
+        MudDialog?.Cancel();
+    }
+}

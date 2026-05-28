@@ -1,0 +1,136 @@
+@page "/settings/honey-types"
+@rendermode InteractiveServer
+@using NordicBeesERP.Components.Dialogs
+@inject IHoneyTypeService HoneyTypeService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Medaus rūšys</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h5">Medaus rūšys</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti rūšį</MudButton>
+    </MudStack>
+
+    <MudTable T="HoneyType" Items="_honeyTypes" Dense="true" Hover="true" Striped="true" Loading="_loading">
+        <HeaderContent>
+            <MudTh>Kodas</MudTh>
+            <MudTh>Pavadinimas</MudTh>
+            <MudTh>Pavadinimas EN</MudTh>
+            <MudTh>Aktyvus</MudTh>
+            <MudTh>Rūšiavimas</MudTh>
+            <MudTh Style="width:120px">Veiksmai</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="item">
+            <MudTd>@item.Code</MudTd>
+            <MudTd>@item.Name</MudTd>
+            <MudTd>@item.NameEn</MudTd>
+            <MudTd><MudSwitch T="bool" Value="@item.IsActive" Color="Color.Success" Disabled="@false" /></MudTd>
+            <MudTd>@item.SortOrder</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteItem(item))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+<!-- Dialog -->
+<MudDialog @bind-Visible="_dialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingItem.Id == 0 ? "Nauja medaus rūšis" : "Redaguoti")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_editingItem.Code" Label="Kodas" Variant="Variant.Outlined" MaxLength="20" />
+            <MudTextField @bind-Value="_editingItem.Name" Label="Pavadinimas" Variant="Variant.Outlined" Required="true" />
+            <MudTextField @bind-Value="_editingItem.NameEn" Label="Pavadinimas EN" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_editingItem.Description" Label="Aprašymas" Variant="Variant.Outlined" Lines="2" />
+            <MudNumericField @bind-Value="_editingItem.SortOrder" Label="Rūšiavimas" Variant="Variant.Outlined" />
+            <MudSwitch @bind-Value="_editingItem.IsActive" Label="Aktyvus" Color="Color.Success" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _dialogVisible = false)" Variant="Variant.Outlined">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveItem">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<HoneyType> _honeyTypes = new();
+    private HoneyType _editingItem = new();
+    private bool _loading = true;
+    private bool _dialogVisible = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _honeyTypes = await HoneyTypeService.GetAllAsync();
+        _loading = false;
+    }
+
+    private void OpenCreateDialog()
+    {
+        _editingItem = new HoneyType { IsActive = true };
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(HoneyType item)
+    {
+        _editingItem = new HoneyType
+        {
+            Id = item.Id, Code = item.Code, Name = item.Name, NameEn = item.NameEn,
+            Description = item.Description, IsActive = item.IsActive, SortOrder = item.SortOrder,
+            CreatedAt = item.CreatedAt
+        };
+        _dialogVisible = true;
+    }
+
+    private async Task SaveItem()
+    {
+        if (string.IsNullOrWhiteSpace(_editingItem.Name))
+        {
+            Snackbar.Add("Pavadinimas privalomas", Severity.Warning);
+            return;
+        }
+
+        if (_editingItem.Id == 0)
+            await HoneyTypeService.CreateAsync(_editingItem);
+        else
+            await HoneyTypeService.UpdateAsync(_editingItem);
+
+        _dialogVisible = false;
+        await LoadData();
+        Snackbar.Add("Išsaugota", Severity.Success);
+    }
+
+    private async Task ToggleActive(HoneyType item, bool value)
+    {
+        item.IsActive = value;
+        await HoneyTypeService.UpdateAsync(item);
+        Snackbar.Add(value ? "Aktyvuota" : "Deaktyvuota", Severity.Info);
+    }
+
+    private async Task DeleteItem(HoneyType item)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { "ContentText", "Ar tikrai norite ištrinti šį medaus tipą?" },
+            { "ButtonText", "Ištrinti" },
+            { "Color", Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        await HoneyTypeService.DeleteAsync(item.Id);
+        await LoadData();
+        Snackbar.Add("Ištrinta", Severity.Success);
+    }
+}

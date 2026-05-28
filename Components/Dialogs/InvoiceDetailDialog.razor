@@ -1,0 +1,935 @@
+@using NordicBeesERP.Data
+@using NordicBeesERP.Models
+@using NordicBeesERP.Models.Expenses
+@using ExpenseCategory = NordicBeesERP.Models.Expenses.ExpenseCategory
+@using NordicBeesERP.Helpers
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+@using NordicBeesERP.Components.Dialogs
+@using Microsoft.Extensions.Logging
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Primary" />
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center align-center pa-8">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+        else
+        {
+            @if (!_isLoading && _invoice != null)
+            {
+                <div class="mb-3">
+                    <MudText Typo="Typo.h6" Style="font-weight:600">@_invoice.InvoiceNumber &nbsp;·&nbsp; @_supplierName</MudText>
+                </div>
+            }
+            <MudTabs Class="mt-2" DefaultPanelIndex="0" FollowOnScroll="false" KeepPanelsAlive="true" @bind-ActivePanelIndex="_activeTab">
+                <MudTabPanel Text="Sąskaita">
+                            <MudGrid Spacing="3">
+                                <!-- RIGHT COLUMN: Sections -->
+                                <MudItem md="12">
+                                    <div>
+                                    <!-- Status Section -->
+                                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Būsena</MudText>
+                                    <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#e3f2fd; border-radius:8px">
+                                        <MudChip T="string" Color="@ExpenseStatusHelper.GetColor(_invoice?.Status)" Size="Size.Small">
+                                            @ExpenseStatusHelper.GetLabel(_invoice?.Status)
+                                        </MudChip>
+                                        @foreach (var flag in ExpenseStatusHelper.ParseFlags(_invoice?.OcrFlags))
+                                        {
+                                            @if (!(flag == "VENDOR_NOT_FOUND" && _invoice?.Status == "PENDING_SUPPLIER"))
+                                            {
+                                                <MudChip T="string" Color="@ExpenseStatusHelper.GetFlagColor(flag)" Size="Size.Small" Variant="Variant.Outlined" Class="ml-2">
+                                                    @ExpenseStatusHelper.GetFlagLabel(flag)
+                                                </MudChip>
+                                            }
+                                        }
+                                        @if (_invoice?.Status == "REJECTED" && !string.IsNullOrEmpty(_invoice.RejectedReason))
+                                        {
+                                            <MudDivider Class="my-2" />
+                                            <div class="d-flex align-center gap-1 mt-2">
+                                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                                                <MudText Typo="Typo.body2" Color="Color.Error">@_invoice.RejectedReason</MudText>
+                                            </div>
+                                        }
+                                    </MudPaper>
+
+                                    <!-- Invoice Information Section -->
+                                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Sąskaitos informacija</MudText>
+                                    <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                                        @if (!_editMode)
+                                        {
+                                            <MudGrid Spacing="2">
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Numeris</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.InvoiceNumber</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Tipas</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.InvoiceType</MudText>
+                                                </MudItem>
+                                                <MudItem xs="12">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Tiekėjas</MudText>
+                                                    @if (_invoice?.Status == "PENDING_SUPPLIER" && !_supplierFound)
+                                                    {
+                                                        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2">
+                                                            <MudText Typo="Typo.body2" Style="font-weight:600; color:#f57c00">⚠ Tiekėjas nerastas sistemoje</MudText>
+                                                            <div class="d-flex gap-1 flex-wrap align-center">
+                                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateSupplierAsync" Margin="Margin.Dense">
+                                                                    Sukurti tiekėją
+                                                                </MudButton>
+                                                                @if (!_showAssignSupplier)
+                                                                {
+                                                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary" OnClick="ToggleAssignSupplier" Margin="Margin.Dense">
+                                                                        Priskirti esamam
+                                                                    </MudButton>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <MudTextField T="string"
+                                                                                  @bind-Value="_searchTerm"
+                                                                                  Variant="Variant.Outlined"
+                                                                                  Margin="Margin.Dense"
+                                                                                  Placeholder="Ieškoti tiekėjo..."
+                                                                                  OnKeyDown="OnSearchKeyDown"
+                                                                                  Style="min-width:160px;" />
+                                                                    @if (_filteredSuppliers.Any())
+                                                                    {
+                                                                        <MudSelect T="BusinessPartner?"
+                                                                                   @bind-Value="_selectedSupplier"
+                                                                                   Variant="Variant.Outlined"
+                                                                                   Margin="Margin.Dense"
+                                                                                   Clearable="true"
+                                                                                   OnClear="(() => { _selectedSupplier = null; StateHasChanged(); })"
+                                                                                   Style="min-width:200px;">
+                                                                             @foreach (var sp in _filteredSuppliers)
+                                                                             {
+                                                                                 <MudSelectItem T="BusinessPartner?" Value="sp">@sp.Name (@sp.VatCode)</MudSelectItem>
+                                                                             }
+                                                                        </MudSelect>
+                                                                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary" OnClick="ConfirmExistingSupplierAsync" Disabled="_selectedSupplier == null" Margin="Margin.Dense">
+                                                                            Priskirti
+                                                                        </MudButton>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudText Typo="Typo.body2" Style="font-weight:600">@(_supplierName ?? "---")</MudText>
+                                                    }
+                                                </MudItem>
+                                                @if (!string.IsNullOrEmpty(_supplierVat))
+                                                {
+                                                    <MudItem xs="6">
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas</MudText>
+                                                        <MudText Typo="Typo.body2" Style="font-weight:600">@_supplierVat</MudText>
+                                                    </MudItem>
+                                                }
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Data</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Terminas</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.DueDate.ToString("yyyy-MM-dd")</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Kategorija</MudText>
+                                                    <MudText Typo="Typo.body2">@(_categories.FirstOrDefault(c => c.Id == _invoice.CategoryId)?.Name ?? "—")</MudText>
+                                                </MudItem>
+                                            </MudGrid>
+                                        }
+                                        else
+                                        {
+                                            <MudGrid Spacing="2">
+                                                <MudItem xs="12">
+                                                    <MudTextField @bind-Value="_invoice!.InvoiceNumber" Label="Nr." Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                                </MudItem>
+                                                <MudItem xs="12">
+                                                    <MudTextField @bind-Value="_invoice!.PendingSupplierName" Label="Tiekėjo pavadinimas (OCR)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudDatePicker @bind-Date="_editInvoiceDate" Label="Data" Variant="Variant.Outlined" />
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudDatePicker @bind-Date="_editDueDate" Label="Terminas" Variant="Variant.Outlined" />
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudSelect @bind-Value="_editCategoryId" Label="Kategorija" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                                        <MudSelectItem T="int?" Value="@((int?)null)">— Nepriskirta —</MudSelectItem>
+                                                        @foreach (var cat in _categories)
+                                                        {
+                                                            <MudSelectItem T="int?" Value="@((int?)cat.Id)">@cat.Name</MudSelectItem>
+                                                        }
+                                                    </MudSelect>
+                                                </MudItem>
+                                                <MudItem xs="12">
+                                                    <MudTextField @bind-Value="_invoice!.Notes" Label="Pastabos" Variant="Variant.Outlined" Lines="2" />
+                                                </MudItem>
+                                            </MudGrid>
+                                        }
+                                    </MudPaper>
+
+                                    <!-- Amounts Section -->
+                                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Sumos</MudText>
+                                    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                                        @if (!_editMode)
+                                        {
+                                            <MudGrid Spacing="2">
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Suma be PVM</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.AmountExclVat.ToString("N2") €</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">PVM%</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@((int)_invoice.VatRate)%</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">PVM suma</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.VatAmount.ToString("N2") €</MudText>
+                                                </MudItem>
+                                                <MudItem xs="6">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Suma su PVM</MudText>
+                                                    <MudText Typo="Typo.subtitle2" Style="font-weight:700; color:#1976d2">@_invoice.AmountInclVat.ToString("N2") €</MudText>
+                                                </MudItem>
+                                            </MudGrid>
+                                        }
+                                        else
+                                        {
+                                            <div>
+                                                <div class="d-flex align-center gap-2 mb-2">
+                                                    @{
+                                                        var activeBg = _calculateFromExclVat ? "#e3f2fd" : "transparent";
+                                                        var inactiveBg = _calculateFromExclVat ? "transparent" : "#e3f2fd";
+                                                    }
+                                                    <MudButton Size="Size.Small"
+                                                               Variant="Variant.Text"
+                                                               Color="Color.Primary"
+                                                               OnClick="(() => SetCalculationDirection(true))"
+                                                               Style=@($"background:{activeBg};font-weight:600;")>
+                                                         Skaičiuoti iš be PVM
+                                                     </MudButton>
+                                                     <MudButton Size="Size.Small"
+                                                               Variant="Variant.Text"
+                                                               Color="Color.Primary"
+                                                               OnClick="(() => SetCalculationDirection(false))"
+                                                               Style=@($"background:{inactiveBg};font-weight:600;")>
+                                                         Skaičiuoti iš su PVM
+                                                    </MudButton>
+                                                </div>
+                                                <MudGrid Spacing="2">
+                                                    <MudItem xs="6">
+                                                        <MudNumericField T="decimal"
+                                                                         Value="_invoice!.AmountExclVat"
+                                                                         ValueChanged="@(v => OnAmountExclVatChanged(v))"
+                                                                         Format="N2"
+                                                                         Label="Be PVM"
+                                                                         Variant="Variant.Outlined" />
+                                                    </MudItem>
+                                                    <MudItem xs="6">
+                                                        <MudNumericField T="int"
+                                                                         Value="_editVatRateLocal"
+                                                                         Label="PVM %"
+                                                                         Variant="Variant.Outlined"
+                                                                         Format="N0"
+                                                                         Min="0" Max="100"
+                                                                         ValueChanged="@(v => { _editVatRateLocal = v; _invoice!.VatRate = v; OnVatRateChanged((decimal)v); })" />
+                                                    </MudItem>
+                                                    <MudItem xs="6">
+                                                        <MudNumericField T="decimal"
+                                                                         Value="_invoice!.VatAmount"
+                                                                         ValueChanged="@(v => { })"
+                                                                         ReadOnly="true"
+                                                                         Label="PVM suma"
+                                                                         Variant="Variant.Outlined"
+                                                                         Format="N2"
+                                                                         Disabled="true" />
+                                                    </MudItem>
+                                                    <MudItem xs="6">
+                                                        <MudNumericField T="decimal"
+                                                                         Value="_invoice!.AmountInclVat"
+                                                                         ValueChanged="@(v => OnAmountInclVatChanged(v))"
+                                                                         Format="N2"
+                                                                         Label="Su PVM"
+                                                                         Variant="Variant.Outlined" />
+                                                    </MudItem>
+                                                </MudGrid>
+                                            </div>
+                                        }
+                                        <MudDivider Class="my-2" />
+                                        <MudText Typo="Typo.caption" Style="font-weight:600; color:#1976d2">
+                                            Sumokėta: @_invoice.PaidAmount.ToString("N2") € | Liko: @((_invoice.AmountInclVat - _invoice.PaidAmount).ToString("N2")) €
+                                        </MudText>
+                                    </MudPaper>
+
+                                    @if (_payments.Count > 0)
+                                    {
+                                        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mt-3 mb-1">Mokėjimai</MudText>
+                                        <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                                            @foreach (var p in _payments)
+                                            {
+                                                <div class="d-flex justify-space-between mb-1">
+                                                    <MudText Typo="Typo.body2">@p.PaymentDate.ToString("yyyy-MM-dd") — @p.PaymentMethod</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@p.Amount.ToString("N2") €</MudText>
+                                                </div>
+                                            }
+                                        </MudPaper>
+                                    }
+
+                                    <!-- Eilutės Section -->
+                                    @if (_lines.Any())
+                                    {
+                                        @if (!LinesMatchHeader)
+                                        {
+                                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+                                                Eilučių suma (@GetLinesTotal().ToString("N2") €) nesutampa su sąskaitos suma (@_invoice?.AmountInclVat.ToString("N2") €)
+                                            </MudAlert>
+                                        }
+                                        <table style="width:100%;font-size:0.83rem;border-collapse:collapse;">
+                                            <thead style="background:#f0f4ff;">
+                                                <tr>
+                                                    <th style="padding:4px 8px;text-align:left;">Aprašymas</th>
+                                                    <th style="padding:4px 8px;text-align:right;">Kiekis</th>
+                                                    <th style="padding:4px 8px;text-align:right;">Be PVM</th>
+                                                    <th style="padding:4px 8px;text-align:right;">PVM%</th>
+                                                    <th style="padding:4px 8px;text-align:right;">Su PVM</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var line in _lines)
+                                                {
+                                                    <tr style="border-bottom:1px solid #e5e7eb;">
+                                                        <td style="padding:4px 8px;">@line.Description</td>
+                                                        <td style="padding:4px 8px;text-align:right;">@(line.Quantity.HasValue ? line.Quantity.Value.ToString("G29") : "")</td>
+                                                        <td style="padding:4px 8px;text-align:right;">@line.AmountExclVat.ToString("N2")</td>
+                                                        <td style="padding:4px 8px;text-align:right;">@((int)line.VatRate)%</td>
+                                                        <td style="padding:4px 8px;text-align:right;">@line.AmountInclVat.ToString("N2")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                            <tfoot style="font-weight:600;background:#f8fafc;">
+                                                <tr>
+                                                    <td colspan="4" style="padding:4px 8px;">Viso:</td>
+                                                    <td style="padding:4px 8px;text-align:right;">@GetLinesTotal().ToString("N2") €</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Eilutės nerastos</MudText>
+                                    }
+
+
+                                    </div>
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="PDF dokumentas">
+                            @if (!string.IsNullOrEmpty(_invoice?.OriginalFilePath))
+                            {
+                                <iframe src="/@_invoice.OriginalFilePath" style="width:100%;height:75vh;border:none;border-radius:4px" />
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-column align-center justify-center gap-2" style="height:75vh;">
+                                    <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" Size="Size.Large" Color="Color.Secondary" />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">PDF failas nepridėtas</MudText>
+                                </div>
+                            }
+                        </MudTabPanel>
+                    </MudTabs>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        @if (_editMode)
+        {
+            <MudButton Variant="Variant.Text" OnClick="CancelEdit">Atšaukti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" StartIcon="@Icons.Material.Filled.Save">Išsaugoti</MudButton>
+        }
+        else
+        {
+            @* Left side: Text/Outlined buttons *@
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelAsync">UŽDARYTI</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" OnClick="EnterEditMode">REDAGUOTI</MudButton>
+            @if (!string.IsNullOrEmpty(_invoice?.OriginalFilePath) && new[] { "NEEDS_REVIEW", "PENDING", "PENDING_SUPPLIER" }.Contains(_invoice.Status))
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RerunOcrAsync"
+                           Disabled="_isRerunningOcr">PAKARTOTI OCR</MudButton>
+            }
+
+            @* Right side: Filled buttons for unconfirmed invoices *@
+            @if (!string.IsNullOrEmpty(_invoice?.Status) && new[] { "NEEDS_REVIEW", "DUPLICATE_PENDING", "PENDING_SUPPLIER" }.Contains(_invoice.Status))
+            {
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ShowRejectConfirmAsync">ATMESTI</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.CheckCircle" OnClick="ApproveAsync">PATVIRTINTI</MudButton>
+            }
+
+            @* Right side: Filled button for payment-eligible statuses *@
+            @if (!string.IsNullOrEmpty(_invoice?.Status) && new[] { "PENDING", "PARTIAL", "OVERDUE" }.Contains(_invoice.Status))
+            {
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Payments" OnClick="RegisterPaymentAsync">REGISTRUOTI MOKĖJIMĄ</MudButton>
+            }
+
+            @* PAID status: Show payments button *@
+            @if (!string.IsNullOrEmpty(_invoice?.Status) && _invoice.Status == "PAID")
+            {
+                <MudSpacer />
+                <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Payments" OnClick="ShowPaymentsAsync">MOKĖJIMAI</MudButton>
+            }
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] IExpenseService ExpenseService { get; set; } = default!;
+    [Inject] IExpenseOcrService ExpenseOcrService { get; set; } = default!;
+    [Inject] IAuthService AuthService { get; set; } = default!;
+    [Inject] IDialogService DialogService { get; set; } = default!;
+    [Inject] IDbContextFactory<NordicBeesERPContext> DbFactory { get; set; } = default!;
+    [Inject] ISnackbar Snackbar { get; set; } = default!;
+    [Inject] ILogger<InvoiceDetailDialog> Logger { get; set; } = default!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int InvoiceId { get; set; }
+
+    private int? _duplicateOfId;
+
+    private ExpenseInvoice? _invoice;
+    private List<ExpenseInvoiceLine> _lines = new();
+    private List<BusinessPartner> _suppliers = new();
+    private BusinessPartner? _selectedSupplier;
+    private bool _isLoading = true;
+    private bool _editMode = false;
+    private string _rejectReason = "";
+    private int _loadedInvoiceId = 0;
+    private bool _isRerunningOcr = false;
+    private int _activeTab = 0;
+    private string _supplierName = "";
+    private string? _supplierVat;
+    private bool _supplierFound = false;
+    private List<ExpensePayment> _payments = new();
+    private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
+    private int? _editCategoryId;
+
+    // Assign supplier dropdown fields
+    private bool _showAssignSupplier = false;
+    private string _searchTerm = "";
+    private List<BusinessPartner> _filteredSuppliers = new();
+
+    private void ToggleAssignSupplier()
+    {
+        _showAssignSupplier = !_showAssignSupplier;
+        if (!_showAssignSupplier)
+        {
+            _selectedSupplier = null;
+            _searchTerm = "";
+        }
+        StateHasChanged();
+    }
+
+    private void OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e?.Key == "Enter")
+        {
+            _ = SearchSupplierAsync();
+        }
+    }
+
+    private async Task SearchSupplierAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _filteredSuppliers = _suppliers.ToList();
+        }
+        else
+        {
+            var term = _searchTerm.ToLower();
+            _filteredSuppliers = _suppliers.Where(s =>
+                s.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                (s.VatCode != null && s.VatCode.Contains(term, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+        StateHasChanged();
+    }
+
+    // Edit mode fields (kept for HTML compatibility)
+    private string _editInvoiceNumber = "";
+    private DateTime? _editInvoiceDate;
+    private DateTime? _editDueDate;
+    private decimal _editAmountExclVat;
+    private decimal _editVatRate;
+    private decimal _editVatAmount;
+    private decimal _editAmountInclVat;
+    private string _editNotes = "";
+    private BusinessPartner? _editSelectedSupplier;
+
+    // Local field for VAT rate binding
+    private int _editVatRateLocal;
+
+    // VAT calculation direction: true = calculate from AmountExclVat, false = calculate from AmountInclVat
+    private bool _calculateFromExclVat = true;
+
+    private void SetCalculationDirection(bool fromExclVat)
+    {
+        _calculateFromExclVat = fromExclVat;
+        StateHasChanged();
+    }
+
+    private void OnAmountExclVatChanged(decimal newValue)
+    {
+        if (_invoice == null) return;
+        _invoice.AmountExclVat = newValue;
+        RecalculateFromExclVat();
+    }
+
+    private void OnVatRateChanged(decimal newValue)
+    {
+        if (_invoice == null) return;
+        _invoice.VatRate = (int)newValue;
+        if (_calculateFromExclVat)
+            RecalculateFromExclVat();
+        else
+            RecalculateFromInclVat();
+    }
+
+    private void OnAmountInclVatChanged(decimal newValue)
+    {
+        if (_invoice == null) return;
+        _invoice.AmountInclVat = newValue;
+        RecalculateFromInclVat();
+    }
+
+    private void RecalculateFromExclVat()
+    {
+        if (_invoice == null) return;
+        var exclVat = _invoice.AmountExclVat;
+        var vatRate = _invoice.VatRate;
+        _invoice.VatAmount = Math.Round(exclVat * vatRate / 100m, 2);
+        _invoice.AmountInclVat = Math.Round(exclVat + _invoice.VatAmount, 2);
+    }
+
+    private void RecalculateFromInclVat()
+    {
+        if (_invoice == null) return;
+        var inclVat = _invoice.AmountInclVat;
+        var vatRate = _invoice.VatRate;
+        if (vatRate > 0)
+        {
+            _invoice.AmountExclVat = Math.Round(inclVat / (1 + vatRate / 100m), 2);
+        }
+        else
+        {
+            _invoice.AmountExclVat = inclVat;
+        }
+        _invoice.VatAmount = Math.Round(inclVat - _invoice.AmountExclVat, 2);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Load categories ALWAYS — needed for edit mode, category selector, and display
+        await using var categoriesCtx = DbFactory.CreateDbContext();
+        _categories = await categoriesCtx.Set<NordicBeesERP.Models.Expenses.ExpenseCategory>()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.SortOrder)
+            .ToListAsync();
+
+        if (_loadedInvoiceId == InvoiceId) return;
+        _loadedInvoiceId = InvoiceId;
+        _isLoading = true;
+
+        _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(InvoiceId);
+        if (_invoice == null)
+        {
+            _isLoading = false;
+            return;
+        }
+        _lines = await ExpenseService.GetInvoiceLinesAsync(InvoiceId);
+        if (_invoice?.Status == "PENDING_SUPPLIER")
+        {
+            await using var dbContext = DbFactory.CreateDbContext();
+            _suppliers = await dbContext.BusinessPartners
+                .Where(b => (b.PartnerType == PartnerType.ExpenseSupplier || b.PartnerType == PartnerType.Both) && b.IsActive)
+                .OrderBy(b => b.Name).ToListAsync();
+        }
+
+        // Load supplier name if SupplierId has value, else use PendingSupplierName
+        if (_invoice?.SupplierId.HasValue == true && _invoice.SupplierId.Value > 0)
+        {
+            _supplierFound = true;
+            await using var dbContext2 = DbFactory.CreateDbContext();
+            var supplier = await dbContext2.BusinessPartners.FindAsync(_invoice.SupplierId.Value);
+            if (supplier != null)
+            {
+                _supplierName = supplier.Name;
+                _supplierVat = supplier.VatCode;
+            }
+        }
+        else if (!string.IsNullOrEmpty(_invoice.PendingSupplierName))
+        {
+            _supplierFound = false;
+            _supplierName = _invoice.PendingSupplierName;
+        }
+
+        // Load payment history
+        _payments = await ExpenseService.GetPaymentsAsync(InvoiceId);
+
+        _isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            // Copy edit date fields back to invoice
+            if (_editInvoiceDate.HasValue) _invoice!.InvoiceDate = _editInvoiceDate.Value;
+            if (_editDueDate.HasValue) _invoice!.DueDate = _editDueDate.Value;
+            _invoice!.CategoryId = _editCategoryId;
+
+            await ExpenseService.UpdateInvoiceAsync(_invoice!);
+            Snackbar.Add("Sąskaita atnaujinta sėkmingai", Severity.Success);
+            _editMode = false;
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ApproveAsync()
+    {
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        await ExpenseService.ApproveAsync(InvoiceId, user?.FullName ?? "system");
+        Snackbar.Add("Sąskaita patvirtinta", Severity.Success);
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private async Task ShowRejectConfirmAsync()
+    {
+        var confirmed = await ConfirmDialog.ShowAsync(
+            DialogService,
+            "Atmesti sąskaitą",
+            "Ar tikrai norite atmesti šią sąskaitą? Ji bus pažymėta kaip atmesta.",
+            "Atmesti",
+            Color.Error,
+            Icons.Material.Filled.Cancel);
+        if (!confirmed) return;
+
+        var dialogRef = await DialogService.ShowAsync<RejectReasonDialog>(
+            "Atmetimo priežastis",
+            new DialogParameters { { nameof(RejectReasonDialog.InvoiceId), InvoiceId } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+        var result = await dialogRef.Result;
+
+        if (result.Canceled) return;
+
+        Snackbar.Add("Sąskaita atmesta", Severity.Info);
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private async Task ApproveAsDuplicateAsync()
+    {
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        await ExpenseService.ApproveAsync(InvoiceId, user?.FullName ?? "system");
+        Snackbar.Add("Sąskaita patvirtinta kaip originali", Severity.Success);
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private async Task RejectAsDuplicateAsync()
+    {
+        var confirmed = await ConfirmDialog.ShowAsync(
+            DialogService,
+            "Atmesti kaip dublikatą",
+            "Ar tikrai norite atmesti šią sąskaitą kaip dublikatą? Ji bus pažymėta kaip atmesta.",
+            "Atmesti",
+            Color.Error,
+            Icons.Material.Filled.ContentCopy);
+        if (!confirmed) return;
+
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        await ExpenseService.RejectAsync(InvoiceId, "Atmesta kaip dublikatas", user?.FullName ?? "system");
+        Snackbar.Add("Dublikatas atmestas", Severity.Info);
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    private async Task<IEnumerable<BusinessPartner>> SearchSuppliers(string val, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(val))
+            return _suppliers;
+        return _suppliers.Where(s => s.Name.Contains(val, StringComparison.OrdinalIgnoreCase) || (s.VatCode != null && s.VatCode.Contains(val, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private decimal GetLinesTotal() => _lines.Sum(l => l.AmountInclVat);
+    private bool LinesMatchHeader => Math.Abs(GetLinesTotal() - (_invoice?.AmountInclVat ?? 0m)) < 0.01m;
+
+    private async Task CreateSupplierAsync()
+    {
+        try
+        {
+            var parameters = new DialogParameters();
+            if (_invoice != null)
+            {
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledName), _invoice.PendingSupplierName);
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledVatCode), _invoice.PendingSupplierVat);
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledAddress), _invoice.PendingSupplierAddress);
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledCity), _invoice.PendingSupplierCity);
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledPostalCode), _invoice.PendingSupplierPostalCode);
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledCountryCode), _invoice.PendingSupplierCountryCode);
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledCompanyCode), _invoice.PendingSupplierCompanyCode);
+                parameters.Add(nameof(SupplierCreateDialog.PrefilledBankAccount), _invoice.PendingSupplierBankAccount);
+            }
+            var dialog = await DialogService.ShowAsync<SupplierCreateDialog>("Sukurti tiekėją", parameters);
+            var result = await dialog.Result;
+            if (result is { Canceled: false } && result.Data is Supplier newSupplier && newSupplier.Id > 0)
+            {
+                // Auto-assign this supplier to all PENDING_SUPPLIER invoices with matching VAT code or name
+                await ExpenseService.AutoAssignSupplierAsync(_invoice.PendingSupplierVat, _invoice.PendingSupplierName, newSupplier.Id);
+
+                _loadedInvoiceId = 0;
+                await OnParametersSetAsync();
+                Snackbar.Add("Tiekėjas sukurtas ir priskirtas", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida kuriant tiekėją: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ConfirmExistingSupplierAsync()
+    {
+        if (_selectedSupplier == null)
+        {
+            Snackbar.Add("Pasirinkite tiekėją", Severity.Warning);
+            return;
+        }
+        try
+        {
+            var user = await AuthService.GetAuthenticatedUserAsync();
+            await ExpenseService.AssignSupplierAsync(_loadedInvoiceId, _selectedSupplier.Id, user?.FullName ?? "system");
+            _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(_loadedInvoiceId);
+            _lines = await ExpenseService.GetInvoiceLinesAsync(_loadedInvoiceId);
+            _supplierFound = true;
+            _showAssignSupplier = false;
+            _selectedSupplier = null;
+            _searchTerm = "";
+            Snackbar.Add("Tiekėjas priskirtas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida priskiriant tiekėją: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void CancelAsync()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task RegisterPaymentAsync()
+    {
+        var p = new DialogParameters();
+        p.Add("Invoice", _invoice);
+        p.Add("SupplierName", _supplierName);
+        p.Add("DialogService", DialogService);
+            var dlg = await DialogService.ShowAsync<ExpensePaymentDialog>(
+                "Registruoti mokėjimą", p,
+                new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
+        var result = await dlg.Result;
+        if (result is { Canceled: false })
+        {
+            _loadedInvoiceId = 0;
+            await OnParametersSetAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void CancelEdit()
+    {
+        _editMode = false;
+        RestoreEditModeFields();
+    }
+
+    private async Task ShowPaymentsAsync()
+    {
+        var p = new DialogParameters();
+        p.Add("Invoice", _invoice);
+        p.Add("SupplierName", _supplierName);
+        p.Add("DialogService", DialogService);
+        var dlg = await DialogService.ShowAsync<ExpensePaymentDialog>(
+            "Mokėjimai", p,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
+        await dlg.Result;
+    }
+
+    private async Task OpenDuplicateDialog()
+    {
+        if (_invoice == null) return;
+
+        // Get DuplicateOfId from invoice or find original
+        int originalId = _invoice.DuplicateOfId ?? _duplicateOfId ?? 0;
+        if (originalId == 0)
+        {
+            await using var ctx = DbFactory.CreateDbContext();
+
+            if (_invoice.SupplierId.HasValue && _invoice.SupplierId.Value > 0)
+            {
+                // Match by invoice_number + supplier_id
+                originalId = await ctx.ExpenseInvoices
+                    .Where(i => i.InvoiceNumber == _invoice.InvoiceNumber
+                             && i.SupplierId == _invoice.SupplierId
+                             && i.Id != _invoice.Id
+                             && i.Status != "DUPLICATE_PENDING"
+                             && i.Status != "CANCELLED")
+                    .OrderBy(i => i.Id)
+                    .Select(i => i.Id)
+                    .FirstOrDefaultAsync();
+            }
+            else
+            {
+                // Match by invoice_number only (supplier_id is null)
+                originalId = await ctx.ExpenseInvoices
+                    .Where(i => i.InvoiceNumber == _invoice.InvoiceNumber
+                             && i.Id != _invoice.Id
+                             && i.Status != "DUPLICATE_PENDING"
+                             && i.Status != "CANCELLED")
+                    .OrderBy(i => i.Id)
+                    .Select(i => i.Id)
+                    .FirstOrDefaultAsync();
+            }
+
+            Logger.LogInformation("[DUPLICATE] Looking for original of {Number} supplier={SupplierId}, found={FoundId}",
+                _invoice.InvoiceNumber,
+                _invoice.SupplierId ?? 0,
+                originalId);
+
+            if (originalId == 0)
+            {
+                Snackbar.Add("Nerastas dublikato originalas", Severity.Warning);
+                return;
+            }
+            _duplicateOfId = originalId;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { nameof(DuplicateInvoiceDialog.ThisInvoiceId), _invoice.Id },
+            { nameof(DuplicateInvoiceDialog.OriginalInvoiceId), originalId }
+        };
+        var dialog = await DialogService.ShowAsync<DuplicateInvoiceDialog>(
+            "Spręsti dublikatą",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled) return;
+
+        // Handle different result types from DuplicateInvoiceDialog
+        if (result.Data is string strResult)
+        {
+            if (strResult == "deleted")
+            {
+                // Dublikatas pašalintas - uždaryti šią sąskaitos detalę
+                MudDialog.Close();
+            }
+            else if (strResult == "different")
+            {
+                // Tai ne dublikatas - perkrauti sąskaitą
+                _loadedInvoiceId = 0;
+                await OnParametersSetAsync();
+                StateHasChanged();
+            }
+        }
+        else if (result.Data is int invoiceId && invoiceId > 0)
+        {
+            // Nurodyta kita sąskaita - atidaryti ją
+            OpenInvoiceDialog(invoiceId);
+        }
+    }
+
+    private void OpenInvoiceDialog(int invoiceId)
+    {
+        InvoiceId = invoiceId;
+        _loadedInvoiceId = 0;
+        _ = InvokeAsync(async () =>
+        {
+            await OnParametersSetAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task RerunOcrAsync()
+    {
+        if (_invoice == null || string.IsNullOrEmpty(_invoice.OriginalFilePath)) return;
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                { nameof(ExpenseUploadDialog.ExistingFilePath), _invoice.OriginalFilePath },
+                { nameof(ExpenseUploadDialog.ExistingInvoiceId), _invoice.Id }
+            };
+            var dialog = await DialogService.ShowAsync<ExpenseUploadDialog>(
+                "Pakartotinis OCR nuskaitymas",
+                parameters);
+            var result = await dialog.Result;
+            if (result is { Canceled: false })
+            {
+                _loadedInvoiceId = 0;
+                await OnParametersSetAsync();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void EnterEditMode()
+    {
+        _editMode = true;
+        InitializeEditFields();
+    }
+
+    private void InitializeEditFields()
+    {
+        if (_invoice == null) return;
+        _editInvoiceDate = _invoice.InvoiceDate == default ? (DateTime?)null : _invoice.InvoiceDate.Date;
+        _editDueDate = _invoice.DueDate == default ? (DateTime?)null : _invoice.DueDate.Date;
+        _editVatRateLocal = (int)_invoice.VatRate;
+        _invoice.VatRate = _editVatRateLocal;
+        _editCategoryId = _invoice.CategoryId;
+    }
+
+
+    private void RestoreEditModeFields()
+    {
+        if (_invoice != null)
+        {
+            _editInvoiceNumber = _invoice.InvoiceNumber;
+            _editInvoiceDate = _invoice.InvoiceDate;
+            _editDueDate = _invoice.DueDate;
+            _editVatRate = _invoice.VatRate;
+            _editVatAmount = _invoice.VatAmount;
+            _editAmountInclVat = _invoice.AmountInclVat;
+            _editNotes = _invoice.Notes ?? "";
+            _editSelectedSupplier = _invoice.Supplier != null ? new BusinessPartner { Id = _invoice.Supplier.Id, Name = _invoice.Supplier.Name, VatCode = _invoice.Supplier.VatCode } : null;
+        }
+    }
+}

@@ -1,0 +1,439 @@
+@page "/credit-notes/{Id:int}/edit"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
+@using NordicBeesERP.Components.Dialogs
+@using MudBlazor
+@inject ICreditNoteService _creditNoteService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ICustomerService CustomerService
+@inject IProductService ProductService
+@inject IRawMaterialTypeService RawMaterialTypeService
+@inject IAuthService AuthService
+
+<PageTitle>Redaguoti kredito sąskaitą</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">📝 Redaguoti kredito sąskaitą</MudText>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
+    }
+
+    <!-- ANTRAŠTĖ -->
+    <MudPaper Class="mb-3">
+        <MudToolBar Dense="true" Class="mud-theme-primary">
+            <MudText Typo="Typo.h6">Pagrindinė informacija</MudText>
+        </MudToolBar>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="3">
+                    <MudTextField T="string" Label="Kredito sąskaitos numeris *" @bind-Value="_creditNoteNumber" 
+                                  ReadOnly="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudDatePicker Label="Kredito data *" @bind-Date="_creditDate"
+                                   Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
+                                  Variant="Variant.Outlined" ReadOnly="true" 
+                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined">
+                        <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("EN")">EN</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudTextField T="string" Label="PVM" @bind-Value="_reverseChargeDisplay" ReadOnly="true" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- EILUČIŲ LENTELĖ -->
+    <MudPaper Class="mb-3">
+        <MudToolBar Dense="true" Class="mud-success">
+            <MudText Typo="Typo.h6">Kredito eilutės</MudText>
+        </MudToolBar>
+        <MudCardContent>
+            <MudTable T="CreditNoteLineInput" Items="@_lines" Hover="true" Dense="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh Style="width: 5%;">Nr.</MudTh>
+                    <MudTh Style="width: 35%;">Prekė / Paslauga *</MudTh>
+                    <MudTh Style="width: 10%;">Kiekis *</MudTh>
+                    <MudTh Style="width: 8%;">Vnt.</MudTh>
+                    <MudTh Style="width: 12%;">Kaina (be PVM) *</MudTh>
+                    <MudTh Style="width: 8%;">PVM %</MudTh>
+                    <MudTh Style="width: 12%;">Suma (su PVM)</MudTh>
+                    <MudTh Style="width: 8%;"></MudTh>
+                </HeaderContent>
+                <RowTemplate Context="line">
+                    <MudTd DataLabel="Nr.">@(_lines.IndexOf(line) + 1)</MudTd>
+                    <MudTd DataLabel="Prekė">
+                        <MudTextField T="string" @bind-Value="line.Description" Variant="Variant.Text" 
+                                      Margin="Margin.Dense"
+                                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                      OnAdornmentClick="@(async () => await OpenProductDialog(line))" />
+                    </MudTd>
+                    <MudTd DataLabel="Kiekis">
+                        <MudNumericField T="decimal" 
+                            Value="@line.Quantity" 
+                            Variant="Variant.Outlined"
+                            Format="F0",
+                            Culture="@(new System.Globalization.CultureInfo("lt-LT"))"
+                            HideSpinButtons="false"
+                            Margin="Margin.Dense" Min="0" Step="1M"
+                            ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
+                    </MudTd>
+                    <MudTd DataLabel="Vnt.">
+                        <MudTextField T="string" @bind-Value="line.Unit" Variant="Variant.Outlined" 
+                                      Margin="Margin.Dense" ReadOnly="true" />
+                    </MudTd>
+                    <MudTd DataLabel="Kaina">
+                        <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" Min="0" Step="0.01M" Format="F2"
+                                         ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
+                    </MudTd>
+                    <MudTd DataLabel="PVM %">
+                        <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
+                                         ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
+                    </MudTd>
+                    <MudTd DataLabel="Suma">
+                        <MudNumericField T="decimal" Value="@(-line.LineTotal)" Variant="Variant.Outlined" 
+                                         Margin="Margin.Dense" ReadOnly="true" Format="F2" />
+                    </MudTd>
+                    <MudTd DataLabel="">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => RemoveLine(line))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" 
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="@AddLine">
+                Pridėti eilutę
+            </MudButton>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- SUMOS -->
+    <MudPaper Class="mb-3">
+        <MudCardContent>
+            <MudGrid Justify="Justify.FlexEnd">
+                <MudItem xs="12" sm="4">
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td class="mud-typography-align-right"><strong>Suma be PVM:</strong></td>
+                                <td class="mud-typography-align-right">@_totalExclVat.ToString("F2") €</td>
+                            </tr>
+                            <tr>
+                                <td class="mud-typography-align-right"><strong>PVM:</strong></td>
+                                <td class="mud-typography-align-right">@_totalVat.ToString("F2") €</td>
+                            </tr>
+                            <tr style="background-color: var(--mud-palette-success-lighten);">
+                                <td class="mud-typography-align-right"><strong>IŠ VISO:</strong></td>
+                                <td class="mud-typography-align-right"><strong>@_totalInclVat.ToString("F2") €</strong></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudPaper>
+
+    <!-- MYGTUKAI -->
+    <MudStack Row="true" Class="mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveCreditNote">
+            Atnaujinti kredito sąskaitą
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large" 
+                   OnClick="@Cancel">
+            Atšaukti
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private DialogOptions _stdOpt = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
+    private List<Customer> _customers = new();
+    private List<Product> _products = new();
+    private List<RawMaterialType> _rawMaterials = new();
+    private List<CreditNoteLineInput> _lines = new();
+    
+    private int _creditNoteId;
+    [Parameter]
+    public int Id { get; set; }
+    private string _creditNoteNumber = "";
+    private DateTime? _creditDate = DateTime.Today;
+    private int _selectedCustomerId;
+    private string _selectedClientDisplay = "";
+    private string _language = "LT";
+    private CreditNoteStatus _status = CreditNoteStatus.Draft;
+    private bool _reverseCharge = false;
+    private string _reverseChargeDisplay = "Ne";
+    
+    private decimal _totalExclVat = 0;
+    private decimal _totalVat = 0;
+    private decimal _totalInclVat = 0;
+    
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _customers = await CustomerService.GetCustomersAsync();
+            _products = await ProductService.GetAllProductsAsync();
+            
+            _creditNoteId = Id;  // Get the route parameter
+            await LoadCreditNote();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida kraunant duomenis: {ex.Message}";
+        }
+    }
+
+    private async Task LoadCreditNote()
+    {
+        var creditNote = await _creditNoteService.GetCreditNoteAsync(_creditNoteId);
+        if (creditNote is not null)
+        {
+            _creditNoteNumber = creditNote.CreditNoteNumber;
+            _creditDate = creditNote.CreditDate;
+            _selectedCustomerId = creditNote.CustomerId;
+            _selectedClientDisplay = creditNote.CustomerName;
+            _language = creditNote.Language ?? "LT";
+            _status = creditNote.Status;
+            _reverseCharge = creditNote.ReverseCharge;
+            _reverseChargeDisplay = _reverseCharge ? "Taip" : "Ne";
+            
+            // Populate lines
+            _lines.Clear();
+            foreach (var line in creditNote.Lines)
+            {
+                _lines.Add(new CreditNoteLineInput
+                {
+                    Id = line.Id,
+                    InvoiceLineId = line.InvoiceLineId,
+                    InvoiceLineDescription = line.InvoiceLineDescription,
+                    ProductCode = line.ProductCode,
+                    Description = line.Description,
+                    Quantity = line.Quantity,
+                    Unit = line.Unit,
+                    PriceExclVat = line.PriceExclVat,
+                    VatRate = line.VatRate
+                });
+            }
+            
+            // Calculate line totals after loading
+            foreach (var line in _lines)
+            {
+                CalculateLine(line);
+            }
+            
+            CalculateTotals();
+        }
+    }
+
+    private void AddLine()
+    {
+        _lines.Add(new CreditNoteLineInput
+        {
+            Quantity = 1,
+            Unit = "vnt",
+            VatRate = 21m,
+            PriceExclVat = 0,
+            Description = ""
+        });
+    }
+
+    private async Task RemoveLine(CreditNoteLineInput line)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Ar tikrai norite ištrinti šią eilutę?" },
+            { x => x.ButtonText, "Ištrinti" },
+            { x => x.Color, Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+        
+        _lines.Remove(line);
+        CalculateTotals();
+    }
+
+    private void CalculateLine(CreditNoteLineInput line)
+    {
+        var subtotal = line.Quantity * line.PriceExclVat;
+        var vatAmount = subtotal * (line.VatRate / 100m);
+        line.LineTotal = subtotal + vatAmount;
+        
+        CalculateTotals();
+    }
+
+    private void CalculateTotals()
+    {
+        _totalExclVat = 0;
+        _totalVat = 0;
+        
+        foreach (var line in _lines)
+        {
+            var subtotal = line.Quantity * line.PriceExclVat;
+            var vat = subtotal * (line.VatRate / 100m);
+            
+            _totalExclVat += subtotal;
+            _totalVat += vat;
+        }
+        
+        _totalInclVat = _totalExclVat + _totalVat;
+        
+        // Force UI refresh for real-time totals update
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OpenClientDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
+        var parameters = new DialogParameters<ClientSelectDialog>();
+        parameters.Add("Customers", _customers);
+        
+        var dialog = await DialogService.ShowAsync<ClientSelectDialog>("Pasirinkite klientą", parameters, _stdOpt);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is Customer selectedCustomer)
+        {
+            _selectedCustomerId = selectedCustomer.Id;
+            _selectedClientDisplay = $"{selectedCustomer.Name} ({selectedCustomer.City})";
+            _language = selectedCustomer.DefaultLanguage;
+            
+            // Force UI refresh after dialog returns
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OpenProductDialog(CreditNoteLineInput line)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
+        var parameters = new DialogParameters<ProductSelectDialog>();
+        parameters.Add("Products", _products);
+        
+        var dialog = await DialogService.ShowAsync<ProductSelectDialog>("Pasirinkite prekę", parameters, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled && result.Data is Product selectedProduct)
+        {
+            line.ProductCode = selectedProduct.Code;
+            line.Description = selectedProduct.Name;
+            line.Unit = selectedProduct.Unit;
+            line.PriceExclVat = selectedProduct.SalePrice;
+            
+            CalculateLine(line);
+            
+            // Force UI refresh after dialog returns
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SaveCreditNote()
+    {
+        Console.WriteLine($"[DEBUG] SaveCreditNote called, customerId={_selectedCustomerId}, lines={_lines.Count}");
+        if (!ValidateCreditNote()) return;
+        Console.WriteLine("[DEBUG] Validation passed");
+        
+        try
+        {
+            var request = BuildCreditNoteRequest();
+            await _creditNoteService.UpdateCreditNoteAsync(request, await AuthService.GetUserIdAsync());
+            await InvokeAsync(() => Navigation.NavigateTo($"/credit-notes/{_creditNoteId}"));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida išsaugant: {ex.Message}";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool ValidateCreditNote()
+    {
+        if (_selectedCustomerId == 0)
+        {
+            _errorMessage = "Prašome pasirinkti klientą!";
+            return false;
+        }
+        
+        if (!_lines.Any())
+        {
+            _errorMessage = "Prašome pridėti bent vieną eilutę!";
+            return false;
+        }
+        
+        _errorMessage = null;
+        return true;
+    }
+
+        private UpdateCreditNoteRequest BuildCreditNoteRequest()
+        {
+            var request = new UpdateCreditNoteRequest
+            {
+                Id = _creditNoteId,
+                CustomerId = _selectedCustomerId,
+                CreditDate = _creditDate ?? DateTime.Today,
+                 Language = _language,
+                // Status NOT changed via edit form — only through action buttons (Issue, Apply, Cancel, etc.)
+                Notes = null,
+                SubtotalExclVat = _totalExclVat,
+                TotalVat = _totalVat,
+                TotalInclVat = _totalInclVat
+            };
+            
+            request.Lines = new List<CreditNoteLineRequest>();
+            
+            foreach (var lineInput in _lines.Where(l => !string.IsNullOrEmpty(l.Description)))
+            {
+                request.Lines.Add(new CreditNoteLineRequest
+                {
+                    Id = lineInput.Id,
+                    InvoiceLineId = lineInput.InvoiceLineId,
+                    Quantity = lineInput.Quantity,
+                    PriceExclVat = lineInput.PriceExclVat,
+                    VatRate = lineInput.VatRate,
+                    Description = lineInput.Description,
+                    Unit = lineInput.Unit,
+                    ProductCode = lineInput.ProductCode
+                });
+            }
+            
+            return request;
+        }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo($"/credit-notes/{_creditNoteId}");
+    }
+
+    public class CreditNoteLineInput
+    {
+        public int? Id { get; set; }
+        public int? InvoiceLineId { get; set; }
+        public string? InvoiceLineDescription { get; set; }
+        public string? ProductCode { get; set; }
+        public string Description { get; set; } = "";
+        public decimal Quantity { get; set; } = 1;
+        public string Unit { get; set; } = "vnt";
+        public decimal PriceExclVat { get; set; } = 0;
+        public decimal VatRate { get; set; } = 21;
+        public decimal LineTotal { get; set; } = 0;
+    }
+}

@@ -1,0 +1,753 @@
+@page "/bank-import"
+@rendermode InteractiveServer
+@inject IPaymentService PaymentService
+@inject IExpenseService ExpenseService
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject IDbContextFactory<NordicBeesERPContext> DbContextFactory
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
+@using NordicBeesERP.Models
+@using NordicBeesERP.Data
+@using MudBlazor
+@implements IDisposable
+
+<PageTitle>Įplaukų banko importas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudPaper Class="pa-4" Elevation="2">
+        <MudText Typo="Typo.h5" Class="mb-4">Įplaukų banko importas</MudText>
+        
+        @if (_showList)
+        {
+            <MudTable T="BankImportViewModel" Items="@_bankImports" Hover="true" Dense="true" Loading="@_loading" LoadingProgressColor="Color.Info">
+                <HeaderContent>
+                    <MudTh>Data</MudTh>
+                    <MudTh>Failas</MudTh>
+                    <MudTh>Iš viso</MudTh>
+                    <MudTh>Susieta</MudTh>
+                    <MudTh>Nesusieta</MudTh>
+                    <MudTh>Statusas</MudTh>
+                    <MudTh>Veiksmai</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="import">
+                    <MudTd DataLabel="Data">@import.ImportDate.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                    <MudTd DataLabel="Failas">@import.FileName</MudTd>
+                    <MudTd DataLabel="Iš viso">@import.TotalRows</MudTd>
+                    <MudTd DataLabel="Susieta">@import.MatchedRows</MudTd>
+                    <MudTd DataLabel="Nesusieta">@import.UnmatchedRows</MudTd>
+                    <MudTd DataLabel="Statusas">
+                        <MudChip T="string" Color="@GetStatusColor(import.Status)" Size="Size.Small">@GetStatusDisplay(import.Status)</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Veiksmai">
+                        <MudTooltip Text="Peržiūrėti">
+                            <MudIconButton OnClick="@(async () => await ViewImport(import.Id))" Color="Color.Secondary" Icon="@Icons.Material.Filled.Visibility" />
+                        </MudTooltip>
+                        @if (import.Status == "pending" || import.Status == "processing")
+                        {
+                            <MudTooltip Text="Tęsti">
+                                <MudIconButton OnClick="@(async () => await ContinueImport(import.Id))" Color="Color.Primary" Icon="@Icons.Material.Filled.Edit" />
+                            </MudTooltip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+            
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="async () => await StartImport()" Icon="@Icons.Material.Filled.FileUpload">Importuoti naują</MudButton>
+            </MudStack>
+        }
+        else if (_showWizard)
+        {
+            <InputFile id="bankFileInput" OnChange="OnInputFileChange" accept=".xls,.xlsx" style="display:none" />
+            @if (_wizardStep == 0)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">1 žingsnis: Failo įkėlimas</MudText>
+                <MudText Class="mb-3">Įkelkite Artea banko išrašų XLS failą</MudText>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.AttachFile"
+                           OnClick="@(() => JS.InvokeVoidAsync("triggerClick", "bankFileInput"))">
+                    @(_selectedFile != null ? _importFileName : "Pasirinkti failą")
+                </MudButton>
+                @if (_selectedFile is not null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Success" Class="mt-2">
+                        ✓ @_selectedFile.Name (@FormatFileSize(_selectedFile.Size))
+                    </MudText>
+                }
+                <MudTextField @bind-Value="_importDescription" Label="Aprašymas (neprivaloma)"
+                              Variant="Variant.Outlined" Class="mt-3" />
+                <MudStack Row="true" Class="mt-3">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="async () => await UploadFile()"
+                               Disabled="@(_selectedFile == null)">Tęsti →</MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="CancelWizard">Atšaukti</MudButton>
+                </MudStack>
+            }
+            else if (_wizardStep == 1)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">2 žingsnis: Susiejimas</MudText>
+                <MudText Class="mb-3">Susiekite banko išrašus su sąskaitomis</MudText>
+                <MudTable T="BankImportRowViewModel" Items="@(_importRows.Where(r => r.Amount > 0).ToList())" Hover="true" Dense="true" Loading="@_rowsLoading">
+                    <HeaderContent>
+                        <MudTh>Sąskaita</MudTh>
+                        <MudTh>Data</MudTh>
+                        <MudTh>Tipas</MudTh>
+                        <MudTh>Suma</MudTh>
+                        <MudTh>Aprašymas</MudTh>
+                        <MudTh>Referencė</MudTh>
+                        <MudTh>Klientas</MudTh>
+                        <MudTh>Susieti</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="row">
+                        <MudTd DataLabel="Sąskaita">@row.Id</MudTd>
+                        <MudTd DataLabel="Data">@row.RowDate.ToString("yyyy-MM-dd")</MudTd>
+                        <MudTd DataLabel="Tipas">@row.Description</MudTd>
+                        <MudTd DataLabel="Suma" Style="@(row.Amount > 0 ? "color:green;font-weight:bold" : "color:red;font-weight:bold")">@row.Amount.ToString("N2") €</MudTd>
+                        <MudTd DataLabel="Aprašymas">@row.Description</MudTd>
+                        <MudTd DataLabel="Referencė">@row.Reference</MudTd>
+                        <MudTd DataLabel="Klientas">@row.PayerName</MudTd>
+                        <MudTd DataLabel="Susieti">
+                            <MudSelect T="int?" Label="Sąskaita" Value="@row.MatchedInvoiceId" ValueChanged="@(async (int? id) => await OnRowMatchChanged(row, id))" Clearable="true" Variant="Variant.Outlined" Dense="true">
+                                @foreach (var invoice in _unmatchedInvoices)
+                                {
+                                    <MudSelectItem T="int?" Value="@invoice.Id">@invoice.InvoiceNumber - @invoice.CustomerName (@invoice.RemainingAmount.ToString("N2") €)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Išlaidos (debetinės operacijos)</MudText>
+                @if (_importRows.Any(r => r.Amount < 0))
+                {
+                    <MudTable T="BankImportRowViewModel" Items="@(_importRows.Where(r => r.Amount < 0).ToList())" Hover="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Data</MudTh>
+                            <MudTh>Suma</MudTh>
+                            <MudTh>Aprašymas</MudTh>
+                            <MudTh>Referencė</MudTh>
+                            <MudTh>Gavėjas</MudTh>
+                            <MudTh>Susieti su išlaidų sąskaita</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="expRow">
+                            <MudTd DataLabel="Data">@expRow.RowDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd DataLabel="Suma" Style="color:red;font-weight:bold">@expRow.Amount.ToString("N2") €</MudTd>
+                            <MudTd DataLabel="Aprašymas">@expRow.Description</MudTd>
+                            <MudTd DataLabel="Referencė">@expRow.Reference</MudTd>
+                            <MudTd DataLabel="Gavėjas">@expRow.PayerName</MudTd>
+                            <MudTd DataLabel="Susieti su išlaidų sąskaita">
+                                <MudSelect T="int?" Label="Išlaidų sąskaita" Value="@expRow.MatchedExpenseInvoiceId" ValueChanged="@(async (int? id) => await OnExpenseRowMatchChanged(expRow, id))" Clearable="true" Dense="true">
+                                    @foreach (var inv in _unmatchedExpenseInvoices)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)inv.Id)">@inv.InvoiceNumber — @(inv.PendingSupplierName ?? "Tiekėjas") (@inv.AmountInclVat.ToString("N2") €)</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Nėra debetinių operacijų šiame faile</MudText>
+                }
+            }
+            else if (_wizardStep == 2)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">3 žingsnis: Mokėjimų kūrimas</MudText>
+                <MudText Class="mb-3">Sukurti mokėjimus iš sutapdintų išrašų</MudText>
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    Bus sukurti mokėjimai tik tiems išrašams, kurie sėkmingai sutapdyti su sąskaitomis.
+                </MudAlert>
+                <MudPaper Class="pa-3 mb-3" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">Sutapdyta eilučių:</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_matchedRowsCount</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">Bus sukurtų mokėjimų:</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_matchedRowsCount</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+                <MudStack Row="true" Class="mt-3">
+                    <MudButton Variant="Variant.Filled" Color="Color.Success"
+                               OnClick="async () => await CreatePayments()" Disabled="@_creatingPayments">
+                        Sukurti mokėjimus
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="CancelWizard">Atšaukti</MudButton>
+                </MudStack>
+            }
+        }
+        else if (_showView)
+        {
+            <MudPaper Class="pa-3 mb-3" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2">Importo data:</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_currentImport?.ImportDate.ToString("yyyy-MM-dd HH:mm")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2">Failas:</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_currentImport?.FileName</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2">Būsena:</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">
+                            <MudChip T="string" Color="@GetStatusColor(_currentImport?.Status)" Size="Size.Small">@GetStatusDisplay(_currentImport?.Status)</MudChip>
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+            
+            <MudTable T="BankImportRowViewModel" Items="@_importRows" Hover="true" Dense="true" Loading="@_rowsLoading">
+                <HeaderContent>
+                    <MudTh>Sąskaita</MudTh>
+                    <MudTh>Data</MudTh>
+                    <MudTh>Suma</MudTh>
+                    <MudTh>Aprašymas</MudTh>
+                    <MudTh>Referencė</MudTh>
+                    <MudTh>Klientas</MudTh>
+                    <MudTh>Sutapdinta</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="row">
+                    <MudTd DataLabel="Sąskaita">@row.Id</MudTd>
+                    <MudTd DataLabel="Data">@row.RowDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd DataLabel="Suma">@row.Amount.ToString("N2") €</MudTd>
+                    <MudTd DataLabel="Aprašymas">@(row.Description ?? "")</MudTd>
+                    <MudTd DataLabel="Referencė">@(row.Reference ?? "")</MudTd>
+                    <MudTd DataLabel="Klientas">@(row.PayerName ?? "")</MudTd>
+                    <MudTd DataLabel="Sutapdinta">
+                        @if (row.MatchedInvoiceId.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">@row.MatchedInvoiceNumber</MudChip>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+            
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="async () => await ShowListAsync()">Grįžti į sąrašą</MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool _showList = true;
+    private bool _showWizard = false;
+    private bool _showView = false;
+    private int _wizardStep = 0;
+    private bool _disposed = false;
+    
+    private List<BankImportViewModel> _bankImports = new();
+    private List<BankImportRowViewModel> _importRows = new();
+    private List<BankImportRowViewModel> _parsedRows = new();
+    private List<InvoiceWithPaymentInfo> _unmatchedInvoices = new();
+    private List<NordicBeesERP.Models.Expenses.ExpenseInvoice> _unmatchedExpenseInvoices = new();
+    private string? _pendingHash;
+    
+    private BankImportViewModel? _currentImport;
+    private IBrowserFile? _selectedFile;
+    private string? _importDescription;
+    private string? _importFileName;
+    private int _importId;
+    
+    private bool _loading = true;
+    private bool _rowsLoading = false;
+    private bool _savingMatches = false;
+    private bool _creatingPayments = false;
+    
+    private int _matchedRowsCount = 0;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadImportsAsync();
+    }
+    
+    protected override void OnParametersSet()
+    {
+        _disposed = false;
+    }
+    
+    public void Dispose()
+    {
+        _disposed = true;
+    }
+    
+    private async Task LoadImportsAsync()
+    {
+        _loading = true;
+        try
+        {
+            var imports = await PaymentService.GetBankImportsAsync();
+            _bankImports = imports.Select(i => new BankImportViewModel
+            {
+                Id = i.Id,
+                ImportDate = i.ImportDate,
+                FileName = i.FileName,
+                TotalRows = i.TotalRows,
+                MatchedRows = i.MatchedRows,
+                UnmatchedRows = i.UnmatchedRows,
+                ProcessedRows = i.ProcessedRows,
+                Status = i.Status,
+                CreatedByName = i.CreatedByUser?.FullName ?? "Nežinomas",
+                CreatedAt = i.CreatedAt
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add("Klaida įkeliant banko išrašus", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+    
+    private Color GetStatusColor(string? status)
+    {
+        return (status ?? "").ToLower() switch
+        {
+            "completed" => Color.Success,
+            "failed" => Color.Error,
+            "processing" => Color.Warning,
+            _ => Color.Info
+        };
+    }
+    
+    private string GetStatusDisplay(string? status)
+    {
+        return (status ?? "").ToLower() switch
+        {
+            "pending" => "Laukiama",
+            "completed" => "Atlikta",
+            "failed" => "Klaida",
+            "processing" => "Vykdoma",
+            _ => status
+        };
+    }
+    
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+    
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _importFileName = e.File.Name;
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task UploadFile()
+    {
+        if (_selectedFile is null)
+        {
+            Snackbar.Add("Pasirinkite failą", Severity.Warning);
+            return;
+        }
+
+        _rowsLoading = true;
+        try
+        {
+            using var memStream = new MemoryStream();
+            using (var fileStream = _selectedFile.OpenReadStream(1024 * 1024 * 10))
+            {
+                await fileStream.CopyToAsync(memStream);
+            }
+            var bytes = memStream.ToArray();
+
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            _pendingHash = Convert.ToHexString(sha256.ComputeHash(bytes)).ToLowerInvariant();
+
+            using var ctxCheck = DbContextFactory.CreateDbContext();
+            var existing = await ctxCheck.BankImports.FirstOrDefaultAsync(b => b.FileHash == _pendingHash);
+            if (existing != null)
+            {
+                Snackbar.Add($"Šis failas jau importuotas {existing.ImportDate:yyyy-MM-dd}", Severity.Warning);
+                return;
+            }
+
+            memStream.Position = 0;
+            _parsedRows = ArteaBankStatementParser.Parse(memStream, _selectedFile.Name);
+
+            if (_parsedRows.Count == 0)
+            {
+                Snackbar.Add("Faile nerasta eilučių", Severity.Warning);
+                return;
+            }
+
+            _unmatchedInvoices = await PaymentService.GetUnpaidInvoicesAsync();
+
+            using var ctxExp = DbContextFactory.CreateDbContext();
+            _unmatchedExpenseInvoices = await ctxExp.ExpenseInvoices
+                .Where(e => e.Status != "PAID" && e.Status != "APPROVED_PAID" && e.Status != "PENDING_SUPPLIER")
+                .OrderBy(e => e.DueDate)
+                .ToListAsync();
+
+            int matchedCount = 0;
+            foreach (var row in _parsedRows.Where(r => r.Reference != null &&
+                r.Reference.StartsWith("LAK", StringComparison.OrdinalIgnoreCase)))
+            {
+                var matchedInvoice = _unmatchedInvoices
+                    .FirstOrDefault(i => i.InvoiceNumber.Equals(row.Reference, StringComparison.OrdinalIgnoreCase));
+                if (matchedInvoice != null)
+                {
+                    row.MatchedInvoiceId = matchedInvoice.Id;
+                    row.MatchedInvoiceNumber = matchedInvoice.InvoiceNumber;
+                    row.MatchStatus = "auto_match_pending";
+                    matchedCount++;
+                }
+            }
+
+            _matchedRowsCount = matchedCount;
+            _importRows = _parsedRows;
+            _wizardStep = 1;
+            _showWizard = true;
+            _showList = false;
+            await InvokeAsync(StateHasChanged);
+            Snackbar.Add($"Failas sėkmingai įkeltas ({_parsedRows.Count} įrašų)", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add($"Klaida įkeliant failą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _rowsLoading = false;
+        }
+    }
+
+
+    private async Task SaveBankImportRowAsync(BankImportRowViewModel rowViewModel)
+    {
+        using var context = DbContextFactory.CreateDbContext();
+        
+        var row = new BankImportRow
+        {
+            ImportId = _importId,
+            RowDate = rowViewModel.RowDate,
+            Amount = rowViewModel.Amount,
+            Description = rowViewModel.Description,
+            Reference = rowViewModel.Reference,
+            PayerName = rowViewModel.PayerName,
+            MatchStatus = rowViewModel.MatchStatus,
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        context.BankImportRows.Add(row);
+        await context.SaveChangesAsync();
+        
+        rowViewModel.Id = row.Id;
+    }
+    
+    private async Task OnRowMatchChanged(BankImportRowViewModel row, int? invoiceId)
+    {
+        if (invoiceId.HasValue)
+        {
+            row.MatchedInvoiceId = invoiceId;
+            row.MatchedInvoiceNumber = _unmatchedInvoices.FirstOrDefault(i => i.Id == invoiceId.Value)?.InvoiceNumber;
+            row.MatchStatus = "manual_match";
+            _matchedRowsCount++;
+        }
+        else
+        {
+            row.MatchedInvoiceId = null;
+            row.MatchedInvoiceNumber = null;
+            row.MatchStatus = "unmatched";
+            _matchedRowsCount--;
+        }
+    }
+
+    private async Task OnExpenseRowMatchChanged(BankImportRowViewModel row, int? invoiceId)
+    {
+        row.MatchedExpenseInvoiceId = invoiceId;
+        row.MatchStatus = invoiceId.HasValue ? "manual_match_expense" : "unmatched";
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task SaveMatches()
+    {
+        _savingMatches = true;
+        try
+        {
+            // Persist to DB now that user confirmed
+            _importId = await PaymentService.CreateBankImportAsync(
+                _importFileName ?? string.Empty,
+                _pendingHash ?? string.Empty,
+                _parsedRows.Count,
+                1
+            );
+
+            foreach (var row in _parsedRows)
+            {
+                row.ImportId = _importId;
+                await SaveBankImportRowAsync(row);
+            }
+
+            // Write all matches (auto + manual) to DB and finalize status
+            int matchedCount = 0;
+            using var ctxMatch = DbContextFactory.CreateDbContext();
+            foreach (var row in _parsedRows.Where(r => r.MatchedInvoiceId.HasValue))
+            {
+                await ctxMatch.Database.ExecuteSqlRawAsync(
+                    "UPDATE bank_import_rows SET matched_invoice_id = {0}, match_status = 'matched' WHERE id = {1}",
+                    row.MatchedInvoiceId!.Value, row.Id);
+                matchedCount++;
+            }
+
+            using var ctxUpdate = DbContextFactory.CreateDbContext();
+            await ctxUpdate.Database.ExecuteSqlRawAsync(
+                "UPDATE bank_imports SET matched_rows={0}, unmatched_rows={1} WHERE id={2}",
+                matchedCount,
+                _parsedRows.Count - matchedCount,
+                _importId);
+
+            // Create expense payments for matched expense rows
+            foreach (var row in _parsedRows.Where(r => r.MatchedExpenseInvoiceId.HasValue))
+            {
+                var payment = new NordicBeesERP.Models.Expenses.ExpensePayment
+                {
+                    InvoiceId = row.MatchedExpenseInvoiceId!.Value,
+                    PaymentDate = row.RowDate,
+                    Amount = Math.Abs(row.Amount),
+                    PaymentMethod = "BANK",
+                    Reference = row.Reference ?? "",
+                    Notes = $"Banko importas: {row.Description}"
+                };
+                await ExpenseService.AddPaymentAsync(payment);
+            }
+
+            _matchedRowsCount = matchedCount;
+            _wizardStep = 2;
+            Snackbar.Add($"Susiejimai išsaugoti ({matchedCount} eilutės)", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add("Klaida išsaugant sutapdinimus", Severity.Error);
+        }
+        finally
+        {
+            _savingMatches = false;
+        }
+    }
+    
+    private async Task CreatePayments()
+    {
+        _creatingPayments = true;
+        try
+        {
+            int paymentsCreated = 0;
+            int errors = 0;
+            
+            // If _importId lost, find latest import
+            if (_importId == 0)
+            {
+                using var ctx2 = DbContextFactory.CreateDbContext();
+                var latest = await ctx2.BankImports.OrderByDescending(b => b.Id).FirstOrDefaultAsync();
+                if (latest != null) _importId = latest.Id;
+            }
+            
+            // Read matched rows directly from DB
+            using var context = DbContextFactory.CreateDbContext();
+            var matchedRows = await context.BankImportRows
+                .Where(r => r.ImportId == _importId && r.MatchedInvoiceId != null)
+                .ToListAsync();
+            
+            Snackbar.Add($"_importId={_importId}, matched={matchedRows.Count}", Severity.Info);
+            
+            foreach (var row in matchedRows)
+            {
+                try
+                {
+                    await PaymentService.CreatePaymentFromBankImportAsync(row.Id, 1);
+                    paymentsCreated++;
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("jau apmokėta iš banko importo"))
+                {
+                    // Invoice already paid - skip without counting as error
+                    Snackbar.Add($"Sąskaita jau apmokėta - praleidžiama", Severity.Info);
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    errors++;
+                    Snackbar.Add($"Klaida: {ex.Message}", Severity.Warning);
+                }
+            }
+            
+            // Refresh import data
+            await LoadImportsAsync();
+            
+            // Update bank_imports status to completed after payments created
+            using var ctxDone = DbContextFactory.CreateDbContext();
+            await ctxDone.Database.ExecuteSqlRawAsync(
+                "UPDATE bank_imports SET status='completed', processed_rows={0}, matched_rows={1} WHERE id={2}",
+                paymentsCreated,
+                paymentsCreated,
+                _importId);
+            
+            await ShowListAsync();
+            Snackbar.Add($"Sukurta {paymentsCreated} mokėjimų", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add("Klaida kuriant mokėjimus", Severity.Error);
+        }
+        finally
+        {
+            _creatingPayments = false;
+        }
+    }
+    
+    private async Task ShowListAsync()
+    {
+        _showList = true;
+        _showWizard = false;
+        _showView = false;
+        _wizardStep = 0;
+        _importRows.Clear();
+        _currentImport = null;
+        var imports = await PaymentService.GetBankImportsAsync();
+        _bankImports = imports.Select(i => new BankImportViewModel
+        {
+            Id = i.Id,
+            ImportDate = i.ImportDate,
+            FileName = i.FileName,
+            TotalRows = i.TotalRows,
+            MatchedRows = i.MatchedRows,
+            UnmatchedRows = i.UnmatchedRows,
+            ProcessedRows = i.ProcessedRows,
+            Status = i.Status,
+            CreatedByName = i.CreatedByUser?.FullName ?? "Nežinomas",
+            CreatedAt = i.CreatedAt
+        }).ToList();
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task ViewImport(int importId)
+    {
+        _showView = true;
+        _showList = false;
+        _showWizard = false;
+        
+        try
+        {
+            var import = await PaymentService.GetBankImportWithRowsAsync(importId);
+            if (import is not null)
+            {
+                _currentImport = new BankImportViewModel
+                {
+                    Id = import.Id,
+                    ImportDate = import.ImportDate,
+                    FileName = import.FileName,
+                    TotalRows = import.TotalRows,
+                    MatchedRows = import.MatchedRows,
+                    UnmatchedRows = import.UnmatchedRows,
+                    ProcessedRows = import.ProcessedRows,
+                    Status = import.Status,
+                    CreatedByName = import.CreatedByUser?.FullName ?? "Nežinomas",
+                    CreatedAt = import.CreatedAt
+                };
+                
+                _importRows = import.Rows.Select(r => new BankImportRowViewModel
+                {
+                    Id = r.Id,
+                    ImportId = r.ImportId,
+                    RowDate = r.RowDate,
+                    Amount = r.Amount,
+                    Currency = r.Currency,
+                    Description = r.Description,
+                    Reference = r.Reference,
+                    PayerName = r.PayerName,
+                    PayerAccount = r.PayerAccount,
+                    MatchStatus = r.MatchStatus,
+                    MatchedInvoiceId = r.MatchedInvoiceId,
+                    MatchedInvoiceNumber = r.MatchedInvoiceId.HasValue ? $"S-{r.MatchedInvoiceId.Value}" : null
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add("Klaida įkeliant importo duomenis", Severity.Error);
+        }
+    }
+    
+    private async Task ContinueImport(int importId)
+    {
+        try
+        {
+            await ViewImport(importId);
+            
+            // Load unmatched invoices for matching
+            _unmatchedInvoices = await PaymentService.GetUnpaidInvoicesAsync();
+            
+            _wizardStep = 1;
+            _showWizard = true;
+            _showView = false;
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add("Klaida tęsiant importą", Severity.Error);
+        }
+    }
+    
+    private async Task CancelWizard()
+    {
+        if (_importId > 0)
+        {
+            using var ctx = DbContextFactory.CreateDbContext();
+            await ctx.Database.ExecuteSqlRawAsync(
+                "DELETE FROM bank_import_rows WHERE import_id = {0}", _importId);
+            await ctx.Database.ExecuteSqlRawAsync(
+                "DELETE FROM bank_imports WHERE id = {0}", _importId);
+            _importId = 0;
+        }
+        _parsedRows.Clear();
+        _showWizard = false;
+        _showList = true;
+        _wizardStep = 0;
+        _importRows.Clear();
+        _currentImport = null;
+    }
+    
+    private async Task StartImport()
+    {
+        _selectedFile = null;
+        _importFileName = null;
+        _importDescription = string.Empty;
+        _importRows = new List<BankImportRowViewModel>();
+        _parsedRows = new List<BankImportRowViewModel>();
+        _unmatchedInvoices = new List<InvoiceWithPaymentInfo>();
+        _matchedRowsCount = 0;
+        _importId = 0;
+        _pendingHash = null;
+        _wizardStep = 0;
+        _showWizard = true;
+        _showList = false;
+    }
+}

@@ -1,0 +1,161 @@
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+@inject IPaymentService PaymentService
+@inject ICustomerService CustomerService
+@inject IDbContextFactory<NordicBeesERPContext> DbFactory
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px">
+    <MudText Typo="Typo.h6" Class="mb-3">Sąskaitų mokėjimų sąrašas</MudText>
+    
+    <MudGrid Class="mb-3">
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField @bind-Value="_searchTerm" Label="Paieška (numeris/arba klientas)" Variant="Variant.Outlined" Immediate="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string?" Label="Mokėjimo būsena" Value="_selectedStatus" ValueChanged="OnStatusChanged" Clearable="true">
+                <MudSelectItem T="string?" Value="@((string?)null)">Visos</MudSelectItem>
+                <MudSelectItem T="string?" Value="@("unpaid")">Neapmokėtos</MudSelectItem>
+                <MudSelectItem T="string?" Value="@("partial")">Dalinai apmokėtos</MudSelectItem>
+                <MudSelectItem T="string?" Value="@("paid")">Apmokėtos</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudDatePicker @bind-Date="_fromDate" Label="Nuo" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudDatePicker @bind-Date="_toDate" Label="Iki" Variant="Variant.Outlined" />
+        </MudItem>
+    </MudGrid>
+    
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadInvoicesAsync">Filtruoti</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFilters">Valyti</MudButton>
+    </MudStack>
+
+    <MudTable T="InvoiceWithPaymentInfo" Items="@_invoices" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" @bind-RowsPerPage="_rowsPerPage">
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+        </PagerContent>
+        <HeaderContent>
+            <MudTh>Nr.</MudTh>
+            <MudTh>Klientas</MudTh>
+            <MudTh>Data</MudTh>
+            <MudTh>Terminas</MudTh>
+            <MudTh>Suma (€)</MudTh>
+            <MudTh>Sumokėta (€)</MudTh>
+            <MudTh>Likęs mokėjimas (€)</MudTh>
+            <MudTh>Būsena</MudTh>
+            <MudTh>Veiksmai</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="invoice">
+            <MudTd DataLabel="Nr.">@invoice.InvoiceNumber</MudTd>
+            <MudTd DataLabel="Klientas">@invoice.CustomerName</MudTd>
+            <MudTd DataLabel="Data">@invoice.InvoiceDate.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Terminas">@invoice.DueDate?.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Suma" Style="text-align:right">@invoice.TotalInclVat.ToString("N2")</MudTd>
+            <MudTd DataLabel="Sumokėta" Style="text-align:right">@invoice.PaidAmount.ToString("N2")</MudTd>
+            <MudTd DataLabel="Likęs mokėjimas" Style="text-align:right; font-weight:600">@invoice.RemainingAmount.ToString("N2")</MudTd>
+            <MudTd DataLabel="Būsena">
+                <MudChip T="string" Color="@GetStatusColor(invoice.PaymentStatus)" Size="Size.Small">@invoice.PaymentStatus</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Veiksmai">
+                <MudTooltip Text="Registruoti mokėjimą">
+                    <MudIconButton OnClick="@(() => RegisterPayment(invoice.Id))" Color="Color.Primary" Icon="@Icons.Material.Filled.Payment" />
+                </MudTooltip>
+                <MudTooltip Text="Peržiūrėti">
+                    <MudIconButton OnClick="@(() => ViewInvoice(invoice.Id))" Color="Color.Secondary" Icon="@Icons.Material.Filled.Visibility" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <FooterContent>
+            <MudTd DataLabel="Iš viso" colspan="8">@_invoices.Count įrašai</MudTd>
+        </FooterContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private List<InvoiceWithPaymentInfo> _invoices = new();
+    private bool _loading = true;
+    private string? _selectedStatus;
+    private string? _searchTerm;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private int _rowsPerPage = 25;
+
+        private bool _disposed = false;
+
+        protected override async Task OnInitializedAsync()
+        {
+            await LoadInvoicesAsync();
+        }
+
+        protected override void OnParametersSet()
+        {
+            _disposed = false;
+        }
+
+        private async Task LoadInvoicesAsync()
+        {
+            _loading = true;
+            try
+            {
+                _invoices = await PaymentService.GetUnpaidInvoicesAsync(
+                    customerId: null,
+                    status: _selectedStatus,
+                    fromDate: _fromDate,
+                    toDate: _toDate
+                );
+            }
+            catch (Exception ex)
+            {
+                if (_disposed) return;
+                Snackbar.Add("Klaida įkeliant sąskaitų sąrašą", Severity.Error, options => {
+                    options.Icon = Icons.Material.Filled.Error;
+                });
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+
+    private void OnStatusChanged(string? status)
+    {
+        _selectedStatus = status;
+        LoadInvoicesAsync();
+    }
+
+    private void ClearFilters()
+    {
+        _selectedStatus = null;
+        _searchTerm = null;
+        _fromDate = null;
+        _toDate = null;
+        LoadInvoicesAsync();
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "paid" => Color.Success,
+            "partial" => Color.Warning,
+            _ => Color.Error
+        };
+    }
+
+    private void RegisterPayment(int invoiceId)
+    {
+        // Open payment register dialog
+        // This will be implemented in the PaymentRegisterDialog component
+    }
+
+    private void ViewInvoice(int invoiceId)
+    {
+        // Navigate to invoice view page
+        // Navigation.NavigateTo($"/invoices/{invoiceId}");
+    }
+}

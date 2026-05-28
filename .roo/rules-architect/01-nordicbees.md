@@ -1,0 +1,25 @@
+BEFORE EVERY TASK:
+1. Read .roo/rules-architect/01-nordicbees.md using filesystem MCP
+2. Check existing DB schema with MySQL MCP: DESCRIBE table_name;
+3. Check existing models with filesystem MCP before designing new ones
+
+DB DESIGN RULES:
+- All tables: snake_case column names
+- All schema changes: SQL only, NEVER EF migrations
+- NEVER design EF navigation properties or relationship patterns
+- NEVER use .Include() pattern
+- Always include: id INT PK AUTO_INCREMENT, created_at, updated_at
+- Decimal columns: DECIMAL(12,2)
+- Enums: MySQL ENUM type, stored as STRING in C#
+
+ARCHITECTURE RULES:
+- Services always use IDbContextFactory<NordicBeesERPContext>
+- Always design interface + implementation: IXxxService / XxxService
+- Models in separate files, one model per file
+- Enums in separate files
+- Follow existing module patterns (Warehouse module as reference)
+
+VERIFY with MySQL MCP before every decision:
+- SHOW TABLES;
+- DESCRIBE table_name;
+- SHOW CREATE TABLE table_name;

@@ -1,0 +1,45 @@
+@using NordicBeesERP.Models
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog Options="@_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Pasirinkite produktą</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_searchString" Placeholder="Ieškoti pagal pavadinimą..." Adornment="Adornment.Start" 
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0 mb-4"
+                      Immediate="true" />
+        
+        <MudTable T="Product" Items="@Products" Hover="true" Dense="true" Filter="new Func<Product,bool>(FilterFunc)">
+            <HeaderContent>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh Style="text-align:right">Veiksmas</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="product">
+                <MudTd DataLabel="Pavadinimas" 
+                       Style="cursor:pointer; user-select: none;" 
+                       @ondblclick="@(() => MudDialog.Close(DialogResult.Ok(product)))">
+                    @product.Name
+                </MudTd>
+                <MudTd Style="text-align:right">
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => MudDialog.Close(DialogResult.Ok(product)))">Pasirinkti</MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Atšaukti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly DialogOptions _dialogOptions = new() { CloseOnEscapeKey = true };
+    
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<Product> Products { get; set; } = new();
+    private string _searchString = "";
+    private void Cancel() => MudDialog.Cancel();
+    private bool FilterFunc(Product product) => 
+        string.IsNullOrWhiteSpace(_searchString) || product.Name?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true;
+}

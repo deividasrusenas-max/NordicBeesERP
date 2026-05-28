@@ -1,0 +1,76 @@
+@page "/credit-notes/pdf/{Id:int}"
+
+@* =====================================================
+   NORDIC BEES ERP - CREDIT NOTE PDF GENERATOR PAGE
+   Framework: .NET 10
+   Generates and downloads credit note PDF using QuestPDF
+   ===================================================== *@
+@inject ICreditNoteService CreditNoteService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<NordicBeesERPContext> DbContextFactory
+
+<PageTitle>Kreditinės sąskaitos spausdinimas</PageTitle>
+
+<MudPaper Elevation="2" Class="pa-8 text-center">
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+    <MudText Typo="Typo.subtitle1" Class="mb-2">Kuriamas PDF...</MudText>
+    <MudText Color="Color.Secondary">Prašome palaukite</MudText>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private bool _firstRender = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !_firstRender) return;
+        _firstRender = false;
+
+        try
+        {
+            var creditNote = await CreditNoteService.GetCreditNoteAsync(Id);
+            var pdfBytes = await CreditNoteService.GeneratePdfAsync(Id);
+            
+            if (pdfBytes is not null && pdfBytes.Length > 0)
+            {
+                await CreditNoteService.SetPrintedAsync(Id);
+                var fileName = $"{(creditNote?.CreditNoteNumber ?? Id.ToString())}.pdf";
+                await DownloadPdfAsync(pdfBytes, fileName);
+                await Task.Delay(3000);
+                Navigation.NavigateTo($"/credit-notes/{Id}");
+            }
+            else
+            {
+                ShowError("Nepavyko sukurti PDF");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"PDF kūrimo klaida: {ex.Message}");
+        }
+    }
+
+    private async Task DownloadPdfAsync(byte[] pdfBytes, string fileName)
+    {
+        var base64 = Convert.ToBase64String(pdfBytes);
+        var link = $"data:application/pdf;base64,{base64}";
+        
+        // Naudojame JavaScript interoperability PDF atsisiųimui
+        await JsInteropDownload(link, fileName);
+    }
+
+    private async Task JsInteropDownload(string link, string fileName)
+    {
+        await JsRuntime.InvokeVoidAsync("downloadPdf", link, fileName);
+    }
+
+    private void ShowError(string message)
+    {
+        Navigation.NavigateTo($"/credit-notes?error={Uri.EscapeDataString(message)}");
+    }
+
+    [Inject]
+    public IJSRuntime JsRuntime { get; set; } = default!;
+}

@@ -1,0 +1,207 @@
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Data
+@using MudBlazor
+@using System.Globalization
+@inject IDbContextFactory<NordicBeesERPContext> DbFactory
+
+<MudDialog>
+    <DialogContent>
+        <div class="d-flex flex-column" style="min-width: 400px; max-width: 600px;">
+            <div class="text-center mb-4">
+                <MudText Typo="Typo.h5" Color="Color.Primary">Tvarkyti tiekėją</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Pasirinkite veiksmą šiai sąskaitai</MudText>
+            </div>
+
+            <!-- Invoice Details -->
+            <MudPaper Elevation="1" Class="pa-4 mb-4">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Default">Sąskaitos nr.</MudText>
+                        <MudText Typo="Typo.body1">@Invoice.InvoiceNumber</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Default">Data</MudText>
+                        <MudText Typo="Typo.body1">@Invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Default">Suma su PVM</MudText>
+                        <MudText Typo="Typo.body1">@Invoice.AmountInclVat.ToString("F2", CultureInfo.InvariantCulture) €</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.body2" Color="Color.Default">OCR aptiktas tiekėjas</MudText>
+                        <MudText Typo="Typo.body1">@Invoice.PendingSupplierName</MudText>
+                        @if (!string.IsNullOrEmpty(Invoice.PendingSupplierVat))
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@Invoice.PendingSupplierVat</MudText>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Options -->
+            <MudRadioGroup T="string" @bind-Value="_selectedOption" Class="mb-4">
+                <MudRadio T="string" Value="@("create")">Sukurti naują tiekėją</MudRadio>
+                <MudRadio T="string" Value="@("link")">Susieti su esamu tiekėju</MudRadio>
+                <MudRadio T="string" Value="@("none")">Palikti be tiekėjo</MudRadio>
+            </MudRadioGroup>
+
+            <!-- Create New Supplier Form -->
+            @if (_selectedOption == "create")
+            {
+                <MudPaper Elevation="1" Class="pa-4 mb-4">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField Label="Tiekėjo pavadinimas" @bind-Value="_newSupplierName" Variant="Variant.Filled" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="PVM kodas" @bind-Value="_newSupplierVat" Variant="Variant.Filled" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Adresas" @bind-Value="_newSupplierAddress" Variant="Variant.Filled" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+
+            <!-- Link to Existing Supplier -->
+            @if (_selectedOption == "link")
+            {
+                <MudPaper Elevation="1" Class="pa-4 mb-4">
+                    <MudSelect T="int" Label="Pasirinkite tiekėją" @bind-Value="_selectedExistingSupplierId" Variant="Variant.Filled">
+                        @foreach (var supplier in _suppliers)
+                        {
+                            <MudSelectItem Value="@supplier.Id">@supplier.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudPaper>
+            }
+
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="CloseDialog" FullWidth="@true">
+                    Atšaukti
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmResolve" FullWidth="@true">
+                    Patvirtinti
+                </MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [Parameter] public ExpenseInvoice Invoice { get; set; } = default!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _selectedOption = "create";
+    private string _newSupplierName = "";
+    private string _newSupplierVat = "";
+    private string _newSupplierAddress = "";
+    private int _selectedExistingSupplierId = 0;
+    private List<SupplierDto> _suppliers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSuppliers();
+        
+        // Pre-fill OCR detected values
+        _newSupplierName = Invoice.PendingSupplierName ?? "";
+        _newSupplierVat = Invoice.PendingSupplierVat ?? "";
+    }
+
+    private async Task LoadSuppliers()
+    {
+        try
+        {
+            await using var context = DbFactory.CreateDbContext();
+            _suppliers = await context.BusinessPartners
+                .Where(p => p.PartnerType == PartnerType.ExpenseSupplier || p.PartnerType == PartnerType.Both || p.PartnerType == PartnerType.Supplier)
+                .Select(p => new SupplierDto { Id = p.Id, Name = p.Name })
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading suppliers: {ex.Message}");
+        }
+    }
+
+    private void CloseDialog()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task ConfirmResolve()
+    {
+        try
+        {
+            using var context = DbFactory.CreateDbContext();
+
+            if (_selectedOption == "create")
+            {
+                // Create new business partner
+                var partner = new BusinessPartner
+                {
+                    Name = _newSupplierName,
+                    VatCode = _newSupplierVat,
+                    Address = _newSupplierAddress,
+                    PartnerType = PartnerType.ExpenseSupplier,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                context.BusinessPartners.Add(partner);
+                await context.SaveChangesAsync();
+
+                // Update invoice
+                context.Entry(Invoice).Property(p => p.SupplierId).IsModified = true;
+                context.Entry(Invoice).Property(p => p.Status).IsModified = true;
+                context.Entry(Invoice).Property(p => p.PendingSupplierName).IsModified = true;
+                context.Entry(Invoice).Property(p => p.PendingSupplierVat).IsModified = true;
+
+                Invoice.SupplierId = partner.Id;
+                Invoice.Status = "PENDING";
+                Invoice.PendingSupplierName = null;
+                Invoice.PendingSupplierVat = null;
+                await context.SaveChangesAsync();
+            }
+            else if (_selectedOption == "link")
+            {
+                // Link to existing supplier
+                context.Entry(Invoice).Property(p => p.SupplierId).IsModified = true;
+                context.Entry(Invoice).Property(p => p.Status).IsModified = true;
+                context.Entry(Invoice).Property(p => p.PendingSupplierName).IsModified = true;
+                context.Entry(Invoice).Property(p => p.PendingSupplierVat).IsModified = true;
+
+                Invoice.SupplierId = _selectedExistingSupplierId;
+                Invoice.Status = "PENDING";
+                Invoice.PendingSupplierName = null;
+                Invoice.PendingSupplierVat = null;
+                await context.SaveChangesAsync();
+            }
+            else if (_selectedOption == "none")
+            {
+                // Save as PENDING without supplier
+                context.Entry(Invoice).Property(p => p.Status).IsModified = true;
+                context.Entry(Invoice).Property(p => p.PendingSupplierName).IsModified = true;
+                context.Entry(Invoice).Property(p => p.PendingSupplierVat).IsModified = true;
+
+                Invoice.Status = "PENDING";
+                Invoice.PendingSupplierName = null;
+                Invoice.PendingSupplierVat = null;
+                await context.SaveChangesAsync();
+            }
+
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error resolving supplier: {ex.Message}");
+            // In a real app, you'd show an error message
+        }
+    }
+
+    public class SupplierDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+    }
+}

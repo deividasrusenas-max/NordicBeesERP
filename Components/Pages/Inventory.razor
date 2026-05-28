@@ -1,0 +1,34 @@
+@page "/inventory"
+@inject IWarehouseService WarehouseService
+
+<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">Sandėlio inventorius</MudText>
+
+<MudTable T="WarehouseStock" Items="@stocks" Hover="true" Dense="true">
+    <HeaderContent>
+        <MudTh>Kodas</MudTh>
+        <MudTh>Pavadinimas</MudTh>
+        <MudTh>Kiekis</MudTh>
+        <MudTh>Likutis</MudTh>
+        <MudTh>Atnaujinta</MudTh>
+        <MudTh>HoneyBatch ID (LOT Numeris)</MudTh>
+        <MudTh>Galioti iki</MudTh>
+    </HeaderContent>
+    <RowTemplate Context="stock">
+        <MudTd>@stock.Warehouse.Code</MudTd>
+        <MudTd>@stock.Product.Name</MudTd>
+        <MudTd>@stock.Quantity</MudTd>
+        <MudTd>@stock.AvailableQuantity</MudTd>
+        <MudTd>@stock.LastMovementDate?.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+        <MudTd>@stock.HoneyBatchId</MudTd>
+        <MudTd>@stock.ExpirationDate?.ToString("yyyy-MM-dd")</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<WarehouseStock> stocks = new List<WarehouseStock>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        stocks = (await WarehouseService.GetAllStocksAsync()).ToList();
+    }
+}

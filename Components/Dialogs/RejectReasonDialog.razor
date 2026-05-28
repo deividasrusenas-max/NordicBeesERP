@@ -1,0 +1,51 @@
+@using MudBlazor
+@using NordicBeesERP.Data
+@using NordicBeesERP.Helpers
+@using NordicBeesERP.Services
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Direction="Direction.Row" Justify="Justify.Center" AlignItems="AlignItems.Center" Gutter="Size.Medium">
+            <MudIcon Icon="@Icons.Material.Filled.Cancel" Margin="Margin.End" />
+            <MudText Typo="Typo.h6">Atmetimo priežastis</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string"
+                      @bind-Value="_reason"
+                      Label="Priežastis"
+                      Placeholder="Įveskite atmetimo priežastį..."
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      MinRows="3"
+                      MaxRows="5"
+                      Textarea="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelAsync">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ConfirmAsync" Disabled="string.IsNullOrWhiteSpace(_reason)">Patvirtinti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int InvoiceId { get; set; }
+
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Inject] private IExpenseService ExpenseService { get; set; } = default!;
+    [Inject] private IAuthService AuthService { get; set; } = default!;
+
+    private string _reason = "";
+
+    private async Task ConfirmAsync()
+    {
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        await ExpenseService.RejectAsync(InvoiceId, _reason, user?.FullName ?? "system");
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+}

@@ -1,0 +1,566 @@
+@page "/invoices/{Id:int}"
+
+@* =====================================================
+   NORDIC BEES ERP - VIEW INVOICE PAGE
+   Framework: .NET 10
+   Modern Clean ERP Style (Xero/QuickBooks inspired)
+   ===================================================== *@
+@inject IInvoiceService InvoiceService
+@inject IPaymentService PaymentService
+@inject IDialogService DialogService
+@inject IAuthService AuthService
+@using NordicBeesERP.Services.Dtos
+@using NordicBeesERP.Components.Dialogs
+@using Microsoft.AspNetCore.Components.Web
+@inject NavigationManager Navigation
+
+<PageTitle>Sąskaitos peržiūra</PageTitle>
+
+<MudPaper Elevation="2" Class="mb-4">
+    <!-- TOP BAR: Invoice number + status chip LEFT, action buttons RIGHT -->
+    <div class="d-flex flex-wrap justify-space-between align-center pa-4">
+        <div class="d-flex flex-column gap-1">
+            <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Primary">Sąskaita</MudText>
+            @if (_invoice is not null)
+            {
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.h3" Class="font-weight-bold" Style="font-size: 2rem !important;" Color="Color.Primary">@_invoice.InvoiceNumber</MudText>
+                    <MudChip Color="GetStatusColor(_invoice.Status)" T="string">@GetStatusText(_invoice.Status)</MudChip>
+                </div>
+            }
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0 flex-wrap">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleBack">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-2" />
+                Atgal
+            </MudButton>
+            @if (_invoice?.Status == InvoiceStatus.Draft)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@HandleConfirm" StartIcon="@Icons.Material.Filled.CheckCircle">
+                    Patvirtinti
+                </MudButton>
+            }
+            @if (_invoice?.Status == InvoiceStatus.Confirmed)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@HandleDispute" StartIcon="@Icons.Material.Filled.ReportProblem">
+                    Ginčijama
+                </MudButton>
+            }
+            @if (_invoice?.Status == InvoiceStatus.Disputed)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@HandleConfirm" StartIcon="@Icons.Material.Filled.Undo">
+                    Atstatyti
+                </MudButton>
+            }
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@HandleEdit">
+                <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
+                Redaguoti
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandlePrint">
+                <MudIcon Icon="@Icons.Material.Filled.Print" Class="mr-2" />
+                Spausdinti
+            </MudButton>
+             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" StartIcon="@Icons.Material.Filled.ContentCopy">
+                 Kopijuoti
+             </MudButton>
+             @if (_invoice?.PaymentStatus != "paid")
+             {
+                 <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@RegisterPayment" StartIcon="@Icons.Material.Filled.Money">
+                     Registruoti mokėjimą
+                 </MudButton>
+             }
+         </div>
+    </div>
+
+    @if (_invoice is not null)
+    {
+        <!-- TWO COLUMN GRID -->
+        <MudContainer Class="pa-4">
+            <MudGrid Class="mb-4">
+                <!-- LEFT COLUMN: Customer Information -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="1" Class="pa-4 h-100">
+                        <MudText Typo="Typo.h6" Class="font-weight-bold mb-3 d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+                            @(_invoice?.InvoiceType?.Contains("6%") == true ? "Tiekėjas" : "Klientas")
+                        </MudText>
+                        <div class="d-flex flex-column gap-2">
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">@(_invoice?.InvoiceType?.Contains("6%") == true ? "Tiekėjas:" : "Klientas:")</span>
+                                <MudText Typo="Typo.body2">@_invoice.Customer?.Name</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">El. paštas:</span>
+                                <MudText Typo="Typo.body2">@_invoice.Customer?.Email</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Phone" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Telefonas:</span>
+                                <MudText Typo="Typo.body2">@_invoice.Customer?.Phone</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Home" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Adresas:</span>
+                                <MudText Typo="Typo.body2">@_invoice.Customer?.Address</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Mokėjimo sąlygos:</span>
+                                <MudText Typo="Typo.body2">@(_invoice.PaymentTermDays > 0 ? $"{_invoice.PaymentTermDays} dienų" : "-")</MudText>
+                            </MudText>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- RIGHT COLUMN: Invoice Details -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="1" Class="pa-4 h-100">
+                        <MudText Typo="Typo.h6" Class="font-weight-bold mb-3 d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" />
+                            Sąskaitos informacija
+                        </MudText>
+                        <div class="d-flex flex-column gap-2">
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Sąskaitos data:</span>
+                                <MudText Typo="Typo.body2">@_invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Mokėjimo terminas:</span>
+                                <MudText Typo="Typo.body2">@(_invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? "-")</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Sąskaitos tipas:</span>
+                                <MudText Typo="Typo.body2">@_invoice.InvoiceType</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.CurrencyExchange" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Valiuta:</span>
+                                <MudText Typo="Typo.body2">EUR</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Percent" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">PVM reverse charge:</span>
+                                <MudText Typo="Typo.body2">@(_invoice.ReverseCharge ? "Taikoma" : "Ne")</MudText>
+                            </MudText>
+                            <MudText Class="d-flex flex-row align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.LocalShipping" Class="mr-2" Size="Size.Small" />
+                                <span class="font-weight-bold">Pristatymas:</span>
+                                @if (_invoice?.DeliveryId.HasValue == true && !string.IsNullOrEmpty(_invoice.Delivery?.DeliveryNumber))
+                                {
+                                    <MudText Typo="Typo.body2">@_invoice.Delivery.DeliveryNumber</MudText>
+                                }
+                            </MudText>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <!-- INVOICE LINES TABLE -->
+            <MudPaper Elevation="1" Class="mb-4">
+                <div class="pa-3 border-bottom">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold">@(_invoice?.InvoiceType?.Contains("6%") == true ? "Žaliavų sąrašas" : "Prekių sąrašas")</MudText>
+                </div>
+                @if (_invoiceLines is not null && _invoiceLines.Any())
+                {
+                    <MudTable T="InvoiceLine" Items="@_invoiceLines" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Nr</MudTh>
+                            <MudTh>Aprašymas</MudTh>
+                            <MudTh Class="text-center">Kiekis</MudTh>
+                            <MudTh Class="text-center">Vnt</MudTh>
+                            <MudTh Class="text-right">Kaina</MudTh>
+                            <MudTh Class="text-center">PVM%</MudTh>
+                            <MudTh Class="text-right">Suma</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="line">
+                            <MudTd>@line.LineNumber</MudTd>
+                            <MudTd>
+                                @if (_invoice?.InvoiceType?.Contains("6%") == true && _invoice?.Delivery != null)
+                                {
+                                    @($"{line.Description}. Pristatymo nr.: {_invoice.Delivery.DeliveryNumber}")
+                                }
+                                else
+                                {
+                                    @(line.Description ?? line.ProductCode)
+                                }
+                            </MudTd>
+                            <MudTd Class="text-center">@line.Quantity</MudTd>
+                            <MudTd Class="text-center">@line.Unit</MudTd>
+                            <MudTd Class="text-right">@line.PriceExclVat.ToString("C2")</MudTd>
+                            <MudTd Class="text-center">@line.VatRate.ToString("F1")%</MudTd>
+                            <MudTd Class="text-right">@line.LineTotal.ToString("C2")</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                    <div class="d-flex flex-column align-end pa-4" style="gap:4px;">
+                        <div class="d-flex gap-4">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">Suma be PVM:</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@_invoice.SubtotalExclVat.ToString("N2") €</MudText>
+                        </div>
+                        <div class="d-flex gap-4">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">PVM:</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@_invoice.TotalVat.ToString("N2") €</MudText>
+                        </div>
+                        <MudDivider Class="my-1" Style="width:250px;" />
+                        <div class="d-flex gap-4">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold">Iš viso:</MudText>
+                            <MudText Typo="Typo.h6" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@_invoice.TotalInclVat.ToString("N2") €</MudText>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="pa-4 text-center">
+                        <MudText Color="Color.Secondary">Prekių sąrašas yra tuščias</MudText>
+                    </div>
+                }
+            </MudPaper>
+
+            <!-- Payment Information Section -->
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-3 d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Money" Class="mr-2" />
+                    Mokėjimo informacija
+                </MudText>
+                
+                <!-- Payment Status Cards -->
+                <MudGrid>
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background:#f5f5f5; border-radius:8px; height:80px; display:flex; flex-direction:column; justify-content:center">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Būsena</MudText>
+                            <MudChip Color="GetPaymentStatusColor()" T="string" Size="Size.Small" Class="mt-1">@GetPaymentStatusText()</MudChip>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background:#f5f5f5; border-radius:8px; height:80px; display:flex; flex-direction:column; justify-content:center">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo sąlygos</MudText>
+                            <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@(_invoice.PaymentTermDays > 0 ? $"{_invoice.PaymentTermDays} dienų" : "-")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background:#f5f5f5; border-radius:8px; height:80px; display:flex; flex-direction:column; justify-content:center">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėti iki</MudText>
+                            <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@(_invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? "-")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+                
+                 <!-- Payment History Table -->
+                 @if (_paymentHistory is not null && _paymentHistory.Any())
+                 {
+                     <MudTable T="PaymentHistoryItem" Items="@_paymentHistory" Hover="true" Elevation="0" Class="mt-4">
+                          <HeaderContent>
+                              <MudTh Style="width:48px; min-width:48px;"></MudTh>
+                              <MudTh>Data</MudTh>
+                             <MudTh Class="text-right">Suma (€)</MudTh>
+                             <MudTh>Mokėjimo būdas</MudTh>
+                             <MudTh Class="text-center">Veiksmai</MudTh>
+                         </HeaderContent>
+                          <RowTemplate Context="payment">
+                              <MudTd Style="white-space:nowrap; width:48px;">
+                                  @if (!string.IsNullOrEmpty(payment.Reference) || !string.IsNullOrEmpty(payment.Notes))
+                                  {
+                                      <MudIconButton Icon="@(expandedRows.Contains(payment.PaymentId) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                          Size="Size.Small" OnClick="@(() => ToggleRow(payment.PaymentId))" />
+                                  }
+                              </MudTd>
+                             <MudTd>@payment.Date.ToString("yyyy-MM-dd")</MudTd>
+                             <MudTd Class="text-right">@payment.Amount.ToString("N2")</MudTd>
+                             <MudTd>@GetPaymentMethodLabel(payment.Method)</MudTd>
+                             <MudTd Class="text-center">
+                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="() => OpenEditPayment(payment)" />
+                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="() => DeletePayment(payment.PaymentId)" />
+                             </MudTd>
+                         </RowTemplate>
+                          <ChildRowContent>
+                              @if (expandedRows.Contains(context.PaymentId))
+                              {
+                                  <MudTr>
+                                      <MudTd colspan="6">
+                                          <div style="padding: 8px 8px 8px 56px; background:#f5f5f5; border-radius:4px; margin: 0 8px 8px 8px;">
+                                              @if (!string.IsNullOrEmpty(context.Reference))
+                                              {
+                                                  <div style="margin-bottom:4px">
+                                                      <span style="color:#666; font-size:0.8rem">Nuorodos nr.:</span>
+                                                      <span style="margin-left:8px; font-size:0.9rem">@context.Reference</span>
+                                                  </div>
+                                              }
+                                              @if (!string.IsNullOrEmpty(context.Notes))
+                                              {
+                                                  <div>
+                                                      <span style="color:#666; font-size:0.8rem">Pastabos:</span>
+                                                      <span style="margin-left:8px; font-size:0.9rem">@context.Notes</span>
+                                                  </div>
+                                              }
+                                          </div>
+                                      </MudTd>
+                                  </MudTr>
+                              }
+                          </ChildRowContent>
+                     </MudTable>
+                 }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-4">
+                        Mokėjimų nėra
+                    </MudAlert>
+                }
+            </MudPaper>
+        </MudContainer>
+    }
+    else
+    {
+        <div class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Color="Color.Error" />
+            <MudText Class="mt-2" Typo="Typo.subtitle1">Sąskaita nerasta</MudText>
+            <MudText Color="Color.Secondary">Sąskaitos su ID @Id neaptikta</MudText>
+            <MudButton OnClick="@HandleBack" Variant="Variant.Outlined" Color="Color.Default" Class="mt-3">
+                Grįžti į sąskaitas
+            </MudButton>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Invoice? _invoice;
+    private List<InvoiceLine> _invoiceLines = new List<InvoiceLine>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInvoiceAsync();
+        await LoadPaymentHistoryAsync();
+    }
+
+    private async Task LoadInvoiceAsync()
+    {
+        _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+        if (_invoice is not null)
+        {
+            _invoiceLines = _invoice.Lines.ToList();
+        }
+    }
+
+    private string GetStatusText(InvoiceStatus status)
+    {
+        return status switch
+        {
+            InvoiceStatus.Draft => "Juodraštas",
+            InvoiceStatus.Confirmed => "Patvirtinta",
+            InvoiceStatus.Paid => "Apmokėta",
+            InvoiceStatus.Disputed => "Ginčijama",
+            _ => "Nežinoma"
+        };
+    }
+
+    private Color GetStatusColor(InvoiceStatus status)
+    {
+        return status switch
+        {
+            InvoiceStatus.Draft => Color.Warning,
+            InvoiceStatus.Confirmed => Color.Primary,
+            InvoiceStatus.Paid => Color.Success,
+            InvoiceStatus.Disputed => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetPaymentStatusColor()
+    {
+        if (_invoice is null) return Color.Error;
+        
+        // Use invoice.PaymentStatus from DB, not calculated from Payments collection
+        return _invoice.PaymentStatus switch
+        {
+            "paid" => Color.Success,
+            "partial" => Color.Warning,
+            "unpaid" => Color.Error,
+            _ => Color.Default
+        };
+    }
+    
+    private string GetPaymentStatusText()
+    {
+        if (_invoice is null) return "Neapmokėta";
+        
+        return _invoice.PaymentStatus switch
+        {
+            "paid" => "Apmokėta",
+            "partial" => "Dalinai apmokėta",
+            "unpaid" => "Neapmokėta",
+            _ => "Neapmokėta"
+        };
+    }
+    
+    private string GetPaymentMethodLabel(string method)
+    {
+        return method switch {
+            "BankTransfer" or "bank_transfer" => "Banko pavedimas",
+            "Cash" or "cash" => "Grynais",
+            "Card" or "card" => "Kortelė",
+            "Other" or "other" => "Kita",
+            _ => method
+        };
+    }
+    
+    private List<PaymentHistoryItem> _paymentHistory = new List<PaymentHistoryItem>();
+    private HashSet<int> expandedRows = new();
+    private void ToggleRow(int paymentId)
+    {
+        if (!expandedRows.Add(paymentId)) expandedRows.Remove(paymentId);
+    }
+
+    private async Task LoadPaymentHistoryAsync()
+    {
+        if (_invoice is not null)
+        {
+            _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(_invoice.Id);
+        }
+    }
+
+    private async Task OpenEditPayment(PaymentHistoryItem p)
+    {
+        var parameters = new DialogParameters
+        {
+            ["PaymentId"] = p.PaymentId,
+            ["CurrentAmount"] = p.Amount,
+            ["CurrentDate"] = p.Date,
+            ["CurrentMethod"] = p.Method
+        };
+        var dialog = await DialogService.ShowAsync<EditPaymentDialog>(
+            "Redaguoti mokėjimą", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
+            _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DeletePayment(int paymentId)
+    {
+        var payment = _paymentHistory.FirstOrDefault(p => p.PaymentId == paymentId);
+        if (payment == null) return;
+
+        var confirmed = await ConfirmDialog.ShowAsync(
+            DialogService,
+            "Ištrinti mokėjimą",
+            $"Ar tikrai norite ištrinti mokėjimą {payment.Amount:F2} €?",
+            "Ištrinti");
+
+        if (!confirmed) return;
+
+        var userId = await AuthService.GetUserIdAsync();
+        await PaymentService.DeletePaymentAsync(paymentId, userId!.Value);
+        _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
+        _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RegisterPayment()
+    {
+        if (_invoice is null) return;
+
+        // Calculate fresh RemainingAmount from current invoice state
+        var remainingAmount = _invoice.TotalInclVat - _invoice.PaidAmount;
+
+        var parameters = new DialogParameters
+        {
+            ["InvoiceId"] = _invoice.Id,
+            ["InvoiceNumber"] = _invoice.InvoiceNumber,
+            ["RemainingAmount"] = remainingAmount,
+            ["ExistingPayments"] = _paymentHistory
+        };
+
+        var dialog = await DialogService.ShowAsync<PaymentDialog>(
+             "Registruoti mokėjimą", parameters,
+             new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            // Reload invoice and payment history after successful payment registration
+            _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+            _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (_invoice is null) return;
+        await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, InvoiceStatus.Confirmed);
+        await LoadInvoiceAsync();
+    }
+
+    private async Task HandleDispute()
+    {
+        if (_invoice is null) return;
+        await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, InvoiceStatus.Disputed);
+        await LoadInvoiceAsync();
+    }
+
+    private void HandleBack()
+    {
+        Navigation.NavigateTo("/invoices");
+    }
+
+    private void HandleEdit()
+    {
+        if (_invoice is not null)
+        {
+            Navigation.NavigateTo($"/invoices/edit/{_invoice.Id}");
+        }
+    }
+
+    private void HandlePrint()
+    {
+        if (_invoice is not null)
+        {
+            Navigation.NavigateTo($"/invoices/pdf/{_invoice.Id}");
+        }
+    }
+
+    private async Task HandleCopy()
+    {
+        var source = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+        if (source == null) return;
+        
+        var newInvoice = new Invoice
+        {
+            InvoiceNumber = await InvoiceService.GenerateNextInvoiceNumberAsync(DateTime.Now, source.InvoiceType),
+            InvoiceDate = DateTime.Now,
+            PaymentTermDays = source.PaymentTermDays,
+            PaymentDueDate = DateTime.Now.AddDays(source.PaymentTermDays),
+            Status = InvoiceStatus.Draft,
+            CustomerId = source.CustomerId,
+            InvoiceType = source.InvoiceType,
+            Language = source.Language,
+            ReverseCharge = source.ReverseCharge,
+            Lines = source.Lines.Select(l => new InvoiceLine
+            {
+                Description = l.Description,
+                ProductCode = l.ProductCode,
+                ProductId = l.ProductId,
+                Quantity = l.Quantity,
+                Unit = l.Unit,
+                PriceExclVat = l.PriceExclVat,
+                VatRate = l.VatRate,
+                LineSubtotal = l.LineSubtotal,
+                VatAmount = l.VatAmount,
+                LineTotal = l.LineTotal
+            }).ToList()
+        };
+        
+        var newId = await InvoiceService.CreateInvoiceAsync(newInvoice);
+        Navigation.NavigateTo($"/invoices/edit/{newId}");
+    }
+}

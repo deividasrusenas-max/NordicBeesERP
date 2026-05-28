@@ -1,0 +1,354 @@
+@page "/suppliers"
+@inject ISupplierService SupplierService
+@inject IExpenseService ExpenseService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Models.Expenses
+@using MudBlazor
+
+<PageTitle>Tiekėjai</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Tiekėjai</MudText>
+        @if (_isAdmin || _isManager)
+        {
+            <MudButton OnClick="@(() => OpenCreateDialog(PartnerType.Both))" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary">Naujas tiekėjas</MudButton>
+        }
+        else if (_isWarehouse)
+        {
+            <MudButton OnClick="@(() => OpenCreateDialog(PartnerType.Supplier))" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary">Naujas ūkininkas</MudButton>
+        }
+    </div>
+
+    @if (suppliers == null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudTextField @bind-Value="_searchText"
+                      Placeholder="Ieškoti pagal pavadinimą, kodą..."
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      FullWidth="true"
+                      Clearable="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Adornment="Adornment.Start" />
+    </MudPaper>
+
+    <MudTabs @bind-ActivePanelIndex="_tabIndex" Elevation="0" Rounded="true" Square="false" Class="mt-2 mb-0">
+        @if (!_isWarehouse)
+        {
+            <MudTabPanel Text="VISI" />
+        }
+        <MudTabPanel Text="ŪKININKAI" />
+        @if (!_isWarehouse)
+        {
+            <MudTabPanel Text="ĮMONĖS" />
+        }
+    </MudTabs>
+
+    <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
+        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">PVM:</MudText>
+        @foreach (var rate in new decimal[] { 0, 6, 21 })
+        {
+            var isVatSelected = _selectedVatRates.Contains(rate);
+            <MudChip T="string"
+                     Color="@(isVatSelected ? Color.Primary : Color.Default)"
+                     Variant="@(isVatSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleVatRate(rate))"
+                     Size="Size.Small"
+                     Style="@(isVatSelected ? "" : "opacity:0.7")">
+                @rate%
+            </MudChip>
+        }
+        @if (_tabIndex == 2 && !_isWarehouse)
+        {
+            <MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
+            var isActiveSelected = _filterActive == true;
+            var isInactiveSelected = _filterActive == false;
+            <MudChip T="string"
+                     Color="@(isActiveSelected ? Color.Success : Color.Default)"
+                     Variant="@(isActiveSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleActiveFilter(true))"
+                     Size="Size.Small"
+                     Style="@(isActiveSelected ? "" : "opacity:0.7")">
+                Aktyvus
+            </MudChip>
+            <MudChip T="string"
+                     Color="@(isInactiveSelected ? Color.Error : Color.Default)"
+                     Variant="@(isInactiveSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleActiveFilter(false))"
+                     Size="Size.Small"
+                     Style="@(isInactiveSelected ? "" : "opacity:0.7")">
+                Neaktyvus
+            </MudChip>
+        }
+    </div>
+
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        @if (_tabIndex == 1 || _isWarehouse)
+        {
+            <MudTable T="Supplier" Items="@FilteredSuppliers" Hover="true" Dense="true" Elevation="0"
+                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => await OpenEditDialog(args.Item))"
+                      Style="cursor:pointer" RowsPerPage="25">
+                <HeaderContent>
+                    <MudTh>Vardas</MudTh>
+                    <MudTh>Asmens kodas</MudTh>
+                    <MudTh>PVM%</MudTh>
+                    <MudTh>Mokėjimo term.</MudTh>
+                    <MudTh>Aktyvus</MudTh>
+                    <MudTh Style="width:120px;">Veiksmai</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="supplier">
+                    <MudTd>@supplier.Name</MudTd>
+                    <MudTd>@(supplier.NationalIdNumber ?? "—")</MudTd>
+                    <MudTd>@supplier.DefaultVatRate.ToString("N0")%</MudTd>
+                    <MudTd>@supplier.PaymentTermDays d.</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(supplier.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(supplier.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <div @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(supplier))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => DeleteSupplier(supplier))" />
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else if (_tabIndex == 2)
+        {
+            <MudTable T="Supplier" Items="@FilteredSuppliers" Hover="true" Dense="true" Elevation="0"
+                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => await OpenEditDialog(args.Item))"
+                      Style="cursor:pointer" RowsPerPage="25">
+                <HeaderContent>
+                    <MudTh>Pavadinimas</MudTh>
+                    <MudTh>Įm. kodas</MudTh>
+                    <MudTh>PVM kodas</MudTh>
+                    <MudTh>Numatyta kategorija</MudTh>
+                    <MudTh>Mokėjimo term.</MudTh>
+                    <MudTh>Aktyvus</MudTh>
+                    <MudTh Style="width:120px;">Veiksmai</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="supplier">
+                    <MudTd>@supplier.Name</MudTd>
+                    <MudTd>@(supplier.CompanyCode ?? "—")</MudTd>
+                    <MudTd>@(supplier.VatCode ?? "—")</MudTd>
+                    <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
+                    <MudTd>@supplier.PaymentTermDays d.</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(supplier.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(supplier.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <div @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(supplier))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => DeleteSupplier(supplier))" />
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else
+        {
+            <MudTable T="Supplier" Items="@FilteredSuppliers" Hover="true" Dense="true" Elevation="0"
+                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => await OpenEditDialog(args.Item))"
+                      Style="cursor:pointer" RowsPerPage="25">
+                <HeaderContent>
+                    <MudTh>Pavadinimas</MudTh>
+                    <MudTh>Kodas</MudTh>
+                    <MudTh>PVM%</MudTh>
+                    <MudTh>Mokėjimo term.</MudTh>
+                    <MudTh>Aktyvus</MudTh>
+                    <MudTh Style="width:120px;">Veiksmai</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="supplier">
+                    <MudTd>@supplier.Name</MudTd>
+                    <MudTd>@(supplier.CompanyCode ?? supplier.NationalIdNumber ?? "—")</MudTd>
+                    <MudTd>@supplier.DefaultVatRate.ToString("N0")%</MudTd>
+                    <MudTd>@supplier.PaymentTermDays d.</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(supplier.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(supplier.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <div @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(supplier))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => DeleteSupplier(supplier))" />
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+    [CascadingParameter] Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private List<Supplier>? suppliers;
+    private int _tabIndex = 0;
+    private string? _searchText;
+    private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
+    private HashSet<decimal> _selectedVatRates = new();
+    private bool? _filterActive;
+    private bool _isWarehouse;
+    private bool _isAdmin;
+    private bool _isManager;
+
+    private IEnumerable<Supplier> FilteredSuppliers
+    {
+        get
+        {
+            IEnumerable<Supplier> list;
+            if (_isWarehouse)
+            {
+                list = suppliers?.Where(s => s.PartnerType.ToString() == "Supplier") ?? [];
+            }
+            else
+            {
+                list = _tabIndex switch
+                {
+                    1 => suppliers?.Where(s => s.PartnerType.ToString() == "Supplier") ?? [],
+                    2 => suppliers?.Where(s => s.PartnerType.ToString() == "Both" || s.PartnerType.ToString() == "ExpenseSupplier") ?? [],
+                    _ => suppliers ?? []
+                };
+            }
+
+            if (!string.IsNullOrWhiteSpace(_searchText))
+                list = list.Where(s =>
+                    (s.Name?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) == true) ||
+                    (s.CompanyCode?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) == true) ||
+                    (s.NationalIdNumber?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) == true));
+
+            if (_selectedVatRates.Any())
+                list = list.Where(s => _selectedVatRates.Contains(s.DefaultVatRate));
+
+            if (_tabIndex == 2 && !_isWarehouse && _filterActive.HasValue)
+                list = list.Where(s => s.IsActive == _filterActive.Value);
+
+            return list;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateTask;
+        _isWarehouse = authState.User.IsInRole("Warehouse");
+        _isAdmin = authState.User.IsInRole("Admin");
+        _isManager = authState.User.IsInRole("Manager");
+        if (_isWarehouse) _tabIndex = 0;
+        _categories = await ExpenseService.GetCategoriesAsync(isActive: true);
+        await LoadSuppliers();
+        StateHasChanged();
+    }
+
+    private async Task LoadSuppliers()
+    {
+        suppliers = await SupplierService.GetSuppliersAsync();
+    }
+
+    private void ToggleVatRate(decimal rate)
+    {
+        if (!_selectedVatRates.Remove(rate))
+            _selectedVatRates.Add(rate);
+    }
+
+    private void ToggleActiveFilter(bool value)
+    {
+        _filterActive = _filterActive == value ? null : value;
+    }
+
+    private async Task OpenCreateDialog(PartnerType partnerType)
+    {
+        var supplier = new Supplier { PartnerType = partnerType };
+        var parameters = new DialogParameters
+        {
+            { "Supplier", supplier }
+        };
+
+        var dialog = await DialogService.ShowAsync<SupplierCreateDialog>("Naujas tiekėjas", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is not null)
+        {
+            var savedSupplier = (Supplier)result.Data;
+            Snackbar.Add("Tiekėjas sėkmingai sukurtas!", Severity.Success);
+            await LoadSuppliers();
+        }
+    }
+
+    private async Task OpenEditDialog(Supplier supplier)
+    {
+        var fullSupplier = await SupplierService.GetSupplierByIdAsync(supplier.Id) ?? supplier;
+        
+        var parameters = new DialogParameters
+        {
+            { "Supplier", fullSupplier }
+        };
+
+        var dialog = await DialogService.ShowAsync<SupplierEditDialog>("Redaguoti tiekėją", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is not null)
+        {
+            var savedSupplier = (Supplier)result.Data;
+            Snackbar.Add("Tiekėjas sėkmingai atnaujintas!", Severity.Success);
+            await LoadSuppliers();
+        }
+    }
+
+    private async Task DeleteSupplier(Supplier supplier)
+    {
+        if (supplier is null)
+        {
+            Snackbar.Add("Klaida: tiekėjas nerastas!", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Ar tikrai norite ištrinti tiekėją '{supplier.Name}'?" },
+            { "ButtonText", "Trinti" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinti", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var deleted = await SupplierService.DeleteBusinessPartnerAsync(supplier.Id);
+            if (deleted)
+            {
+                Snackbar.Add("Tiekėjas sėkmingai ištrintas!", Severity.Success);
+                await LoadSuppliers();
+            }
+            else
+            {
+                Snackbar.Add("Nepavyko ištrinti tiekėjo: bandykite dar kartą", Severity.Error);
+            }
+        }
+    }
+}

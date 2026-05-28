@@ -1,0 +1,221 @@
+@page "/expense-settings"
+@using MudBlazor
+@using NordicBeesERP.Services
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Models
+@using NordicBeesERP.Components.Dialogs
+@inject IExpenseService ExpenseService
+@inject SnackbarService Snackbar
+@inject DialogService DialogService
+
+<MudText Typo="Typo.h3" GutterBottom="true">Išlaidų nustatymai</MudText>
+
+<MudTabs Raised="true" PoweredBy="false">
+    <MudTabPanel TabText="Kategorijos">
+        <MudCard>
+            <MudCardHeader>
+                <MudText Typo="Typo.h6">Išlaidų Kategorijos</MudText>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCategoryDialog">
+                        + Nauja kategorija
+                    </MudButton>
+                </MudCardActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTable Items="@_categories" Dense="true" Striped="true" Hover="true" Bordered="true" Responsive="true">
+                    <HeaderContent>
+                        <MudTh>Pavadinimas</MudTh>
+                        <MudTh>Kodas</MudTh>
+                        <MudTh>Aktyvus</MudTh>
+                        <MudTh>Eilės nr</MudTh>
+                        <MudTh>Veiksmai</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd Data="@context.Name">@context.Name</MudTd>
+                        <MudTd Data="@context.Code">@context.Code</MudTd>
+                        <MudTd>
+                            <MudSwitch T="bool" Checked="@context.IsActive" CheckedChanged="(bool val) => ToggleCategoryActive(context, val)" Disabled="!context.IsActive" Size="Size.Small" Color="context.IsActive ? Color.Success : Color.Warning" />
+                        </MudTd>
+                        <MudTd Data="@context.SortOrder">
+                            <MudText Typo="Typo.body2">@context.SortOrder</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenCategoryEditDialog(context))" Title="Redaguoti" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCategory(context.Id))" Title="Ištrinti" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+
+    <MudTabPanel TabText="Išlaidos Centrai">
+        <MudCard>
+            <MudCardHeader>
+                <MudText Typo="Typo.h6">Išlaidos Centrai</MudText>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCostCenterDialog">
+                        + Naujas centras
+                    </MudButton>
+                </MudCardActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTable Items="@_costCenters" Hover="true" Bordered="true" Striped="true" Responsive="true">
+                    <HeaderContent>
+                        <MudTh>Id</MudTh>
+                        <MudTh>Pavadinimas</MudTh>
+                        <MudTh>Kodas</MudTh>
+                        <MudTh>Aktyvi</MudTh>
+                        <MudTh>Veiksmos</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd Data="@context.Id">@context.Id</MudTd>
+                        <MudTd Data="@context.Name">@context.Name</MudTd>
+                        <MudTd Data="@context.Code">@context.Code</MudTd>
+                        <MudTd>
+                            <MudChip Size="Size.Small" T="string" Color="context.IsActive ? Color.Success : Color.Default">
+                                @context.IsActive.ToString()
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenCostCenterEditDialog(context))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCostCenter(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private List<Models.Expenses.ExpenseCategory> _categories = new();
+    private List<Models.Expenses.ExpenseCostCenter> _costCenters = new();
+    private Dictionary<int, string> _parentNames = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _categories = await ExpenseService.GetCategoriesAsync();
+        _costCenters = await ExpenseService.GetCostCentersAsync();
+
+        // Build parent name lookup
+        foreach (var cat in _categories)
+        {
+            _parentNames[cat.Id] = cat.Name;
+        }
+    }
+
+    // ===================== CATEGORIES =====================
+
+    private async Task OpenCategoryDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            { "CategoryId", 0 }
+        };
+
+        var dialog = await DialogService.ShowAsync<ExpenseCategoryEditDialog>("Nauja kategorija", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task OpenCategoryEditDialog(Models.Expenses.ExpenseCategory category)
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            { "CategoryId", category.Id },
+            { "Name", category.Name },
+            { "Code", category.Code },
+            { "ParentId", category.ParentId },
+            { "IsActive", category.IsActive },
+            { "SortOrder", category.SortOrder }
+        };
+
+        var dialog = await DialogService.ShowAsync<ExpenseCategoryEditDialog>("Redaguoti kategoriją", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            await ExpenseService.UpdateCategoryAsync((Models.Expenses.ExpenseCategory?)result.Data);
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task ToggleCategoryActive(Models.Expenses.ExpenseCategory category, bool value)
+    {
+        category.IsActive = value;
+        await ExpenseService.UpdateCategoryAsync(category);
+        await LoadDataAsync();
+    }
+
+    private async Task DeleteCategory(int id)
+    {
+        var confirmed = await ConfirmDialog.ShowAsync(DialogService, "Patvirtinti ištrynimą", "Ar tikrai norite ištrinti šią kategoriją? Veiksmo atšaukti negalima.", "Ištrinti");
+        if (!confirmed) return;
+
+        await ExpenseService.DeleteCategoryAsync(id);
+        Snackbar.Add("Kategorija ištrinta", Severity.Success);
+        await LoadDataAsync();
+    }
+
+    // ===================== COST CENTERS =====================
+
+    private async Task OpenCostCenterDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            { "CostCenterId", 0 }
+        };
+
+        var dialog = await DialogService.ShowAsync<ExpenseCostCenterEditDialog>("Naujas centras", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task OpenCostCenterEditDialog(Models.Expenses.ExpenseCostCenter center)
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            { "CostCenterId", center.Id },
+            { "Name", center.Name },
+            { "Code", center.Code },
+            { "IsActive", center.IsActive }
+        };
+
+        var dialog = await DialogService.ShowAsync<ExpenseCostCenterEditDialog>("Redaguoti centras", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            await ExpenseService.UpdateCostCenterAsync((Models.Expenses.ExpenseCostCenter?)result.Data);
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task DeleteCostCenter(int id)
+    {
+        var confirmed = await ConfirmDialog.ShowAsync(DialogService, "Patvirtinti ištrynimą", "Ar tikrai norite ištrinti šią išlaidų centrą? Veiksmo atšaukti negalima.", "Ištrinti");
+        if (!confirmed) return;
+
+        await ExpenseService.DeleteCostCenterAsync(id);
+        Snackbar.Add("Išlaidų centras ištrintas", Severity.Success);
+        await LoadDataAsync();
+    }
+}

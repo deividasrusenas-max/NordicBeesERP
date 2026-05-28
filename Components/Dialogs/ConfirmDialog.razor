@@ -1,0 +1,62 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Direction="Direction.Row" Justify="Justify.Center" AlignItems="AlignItems.Center" Gutter="Size.Medium">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <MudIcon Icon="@Icon" Margin="Margin.End" />
+            }
+            <MudText Typo="Typo.h6">@(ContentText ?? Title)</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1">@(Message)</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelAsync">@CancelText</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@ActualColor" OnClick="ConfirmAsync">@ButtonText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string ConfirmText { get; set; } = "Taip";
+    [Parameter] public string CancelText { get; set; } = "Atšaukti";
+    [Parameter] public Color ConfirmColor { get; set; } = Color.Error;
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? ContentText { get; set; }
+    [Parameter] public string ButtonText { get; set; } = "Taip";
+    [Parameter] public Color Color { get; set; } = Color.Error;
+
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private Color ActualColor => Color != Color.Default ? Color : ConfirmColor;
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void ConfirmAsync()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    public static async Task<bool> ShowAsync(IDialogService dialogService, string title, string message, string confirmText = "Taip", Color confirmColor = Color.Error, string? icon = null)
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(Title)] = title,
+            [nameof(Message)] = message,
+            [nameof(ConfirmText)] = confirmText,
+            [nameof(ConfirmColor)] = confirmColor,
+            [nameof(Icon)] = icon ?? Icons.Material.Filled.Warning
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, CloseOnEscapeKey = true };
+        var dialog = await dialogService.ShowAsync<ConfirmDialog>(title, parameters, options);
+        var result = await dialog.Result;
+        return result is { Canceled: false };
+    }
+}

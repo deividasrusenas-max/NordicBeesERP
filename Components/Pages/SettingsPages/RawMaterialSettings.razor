@@ -1,0 +1,168 @@
+@page "/settings/raw-materials"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Components.Dialogs
+@inject IRawMaterialTypeService RawMaterialTypeService
+@inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>Žaliavų tipai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h5">Žaliavų tipai</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Add" OnClick="AddNew">
+            Pridėti naują
+        </MudButton>
+    </MudStack>
+
+    <!-- Save indicator -->
+    @if (_saveIndicatorVisible)
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.Check"
+            Style="position:fixed; top:16px; right:16px; z-index:9999">
+            Išsaugota
+        </MudChip>
+    }
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable T="RawMaterialType" Items="_items" Dense="true" Hover="true">
+            <HeaderContent>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>Medus?</MudTh>
+                <MudTh>Aktyvus</MudTh>
+                <MudTh Style="text-align:right">Rikiavimas</MudTh>
+                <MudTh Style="width:50px"></MudTh>
+            </HeaderContent>
+            <RowTemplate Context="item">
+                <MudTd>
+                    <MudTextField T="string" Value="item.Name"
+                        ValueChanged="@((string val) => { item.Name = val; OnChanged(item); })"
+                        Variant="Variant.Text" Style="min-width:200px" />
+                </MudTd>
+                <MudTd>
+                    <MudSwitch T="bool" Value="item.IsHoney"
+                        ValueChanged="@((bool val) => { item.IsHoney = val; OnChanged(item); })"
+                        Color="Color.Primary" />
+                </MudTd>
+                <MudTd>
+                    <MudSwitch T="bool" Value="item.IsActive"
+                        ValueChanged="@((bool val) => { item.IsActive = val; OnChanged(item); })"
+                        Color="Color.Success" />
+                </MudTd>
+                <MudTd Style="text-align:right">
+                    <MudNumericField T="int" Value="item.SortOrder"
+                        ValueChanged="@((int val) => { item.SortOrder = val; OnChanged(item); })"
+                        Variant="Variant.Text" Style="max-width:80px" />
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                        Color="Color.Error" OnClick="@(async () => await DeleteItem(item))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<RawMaterialType> _items = new();
+    private bool _loading = true;
+    private System.Threading.Timer? _autoSaveTimer;
+    private bool _saveIndicatorVisible = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        using var context = await ContextFactory.CreateDbContextAsync();
+        _items = await context.RawMaterialTypes.OrderBy(r => r.SortOrder).ToListAsync();
+        _loading = false;
+    }
+
+    private async Task AddNew()
+    {
+        using var context = await ContextFactory.CreateDbContextAsync();
+        var maxSort = _items.Any() ? _items.Max(i => i.SortOrder) + 1 : 1;
+        var newItem = new RawMaterialType
+        {
+            Name = "Nauja žaliava",
+            IsHoney = false,
+            IsActive = true,
+            SortOrder = maxSort,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
+        };
+        context.RawMaterialTypes.Add(newItem);
+        await context.SaveChangesAsync();
+        _items.Add(newItem);
+        Snackbar.Add("Pridėta nauja žaliava", Severity.Success);
+    }
+
+    private void OnChanged(RawMaterialType item)
+    {
+        _autoSaveTimer?.Dispose();
+        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    using var context = await ContextFactory.CreateDbContextAsync();
+                    item.UpdatedAt = DateTime.Now;
+                    context.RawMaterialTypes.Update(item);
+                    await context.SaveChangesAsync();
+                    _saveIndicatorVisible = true;
+                    StateHasChanged();
+                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error);
+                    StateHasChanged();
+                }
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task DeleteItem(RawMaterialType item)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Ar tikrai norite ištrinti \"{item.Name}\"?" },
+            { x => x.ButtonText, "Ištrinti" },
+            { x => x.Color, Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        try
+        {
+            using var context = await ContextFactory.CreateDbContextAsync();
+            context.RawMaterialTypes.Remove(item);
+            await context.SaveChangesAsync();
+            _items.Remove(item);
+            Snackbar.Add($"\"{item.Name}\" ištrintas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko ištrinti: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        _autoSaveTimer?.Dispose();
+    }
+}

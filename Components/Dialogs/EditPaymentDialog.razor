@@ -1,0 +1,142 @@
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid Class="mt-3">
+            <MudItem xs="12">
+                <MudNumericField T="decimal"
+                                 Value="_amount"
+                                 ValueChanged="@((decimal v) => _amount = v)"
+                                 Label="Suma (€)"
+                                 Min="0.01m" Max="999999999.99m" Required="true"
+                                 Format="F2" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudDatePicker 
+                    Label="Data"
+                    Date="_date"
+                    DateChanged="@((DateTime? d) => _date = d)"
+                    DateFormat="yyyy-MM-dd"
+                    Variant="Variant.Text"
+                    PickerVariant="PickerVariant.Inline" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudSelect T="string" @bind-Value="_method" Label="Mokėjimo būdas" Required="true">
+                    <MudSelectItem T="string" Value="@("BankTransfer")">Banko pavedimas</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Cash")">Grynais</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Card")">Kortelė</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Other")">Kita</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_reference" Label="Nuorodos nr." />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_notes" Label="Pastabos" Lines="2" MaxLength="500" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" 
+                   OnClick="@SavePayment" StartIcon="@Icons.Material.Filled.Save">
+            Išsaugoti
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" 
+                   OnClick="@CancelDialog" StartIcon="@Icons.Material.Filled.Close">
+            Atšaukti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private IPaymentService PaymentService { get; set; } = default!;
+    [Inject] private IAuthService AuthService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance? MudDialogInstance { get; set; }
+
+    [Parameter] public int PaymentId { get; set; }
+    [Parameter] public decimal CurrentAmount { get; set; }
+    [Parameter] public DateTime CurrentDate { get; set; }
+    [Parameter] public string CurrentMethod { get; set; } = string.Empty;
+
+    private decimal _amount;
+    private DateTime? _date;
+    private string _method = "BankTransfer";
+    private string _reference = string.Empty;
+    private string _notes = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _amount = CurrentAmount;
+        _date = CurrentDate;
+        _method = CurrentMethod;
+        
+        // Load payment details including reference and notes
+        var payment = await PaymentService.GetPaymentDetailAsync(PaymentId);
+        if (payment != null)
+        {
+            _reference = payment.ReferenceNumber ?? string.Empty;
+            _notes = payment.Notes ?? string.Empty;
+        }
+        
+        await Task.Delay(1);
+        StateHasChanged();
+    }
+
+    private async Task SavePayment()
+    {
+        try
+        {
+            if (_amount <= 0)
+            {
+                Snackbar.Add("Suma turi būti didesnė nei 0", Severity.Error);
+                return;
+            }
+
+            var userId = await AuthService.GetUserIdAsync();
+            if (!userId.HasValue)
+            {
+                Snackbar.Add("Nepavyko nustatyti vartotojo", Severity.Error);
+                return;
+            }
+
+            await PaymentService.UpdatePaymentAsync(
+                paymentId: PaymentId,
+                amount: _amount,
+                date: _date ?? DateTime.Today,
+                method: _method switch { "BankTransfer" => "bank_transfer", "Cash" => "cash", "Card" => "card", "Other" => "other", _ => _method },
+                reference: string.IsNullOrEmpty(_reference) ? null : _reference,
+                notes: string.IsNullOrEmpty(_notes) ? null : _notes,
+                userId: userId.Value);
+
+            Snackbar.Add("Mokėjimas atnaujintas", Severity.Success);
+            MudDialogInstance?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida atnaujinant mokėjimą: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CancelDialog()
+    {
+        MudDialogInstance?.Close(DialogResult.Cancel());
+    }
+
+    private string GetPaymentMethodLabel(string method)
+    {
+        return method switch {
+            "BankTransfer" or "bank_transfer" => "Banko pavedimas",
+            "Cash" or "cash" => "Grynais",
+            "Card" or "card" => "Kortelė",
+            "Other" or "other" => "Kita",
+            _ => method
+        };
+    }
+}

@@ -1,0 +1,80 @@
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Services
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudPaper Elevation="1" Rounded="true" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-4">@(_isEditMode ? "Redaguoti išlaidų centrą" : "Naujas išlaidų centras")</MudText>
+            
+            <MudTextField T="string" @bind-Value="_center.Name" Label="Pavadinimas *" Dense="true" FullWidth="true" Required="true" />
+            
+            <MudTextField T="string" @bind-Value="_center.Code" Label="Kodas *" Dense="true" FullWidth="true" Required="true" />
+            
+            <MudSwitch T="bool" @bind-Value="_center.IsActive" Label="Aktyvus" Color="Color.Primary" />
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="SaveCenter" Color="Color.Primary" Variant="Variant.Filled">@(_isEditMode ? "Atnaujinti" : "Sukurti")</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Atšaukti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public bool IsEditMode { get; set; } = false;
+    [Parameter] public NordicBeesERP.Models.Expenses.ExpenseCostCenter? ExistingCenter { get; set; }
+
+    private NordicBeesERP.Models.Expenses.ExpenseCostCenter _center = new();
+    private bool _isEditMode;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isEditMode = IsEditMode;
+        
+        if (_isEditMode && ExistingCenter != null)
+        {
+            _center = new NordicBeesERP.Models.Expenses.ExpenseCostCenter
+            {
+                Id = ExistingCenter.Id,
+                Name = ExistingCenter.Name,
+                Code = ExistingCenter.Code,
+                IsActive = ExistingCenter.IsActive
+            };
+        }
+    }
+
+    private async Task SaveCenter()
+    {
+        if (string.IsNullOrWhiteSpace(_center.Name) || string.IsNullOrWhiteSpace(_center.Code))
+        {
+            Snackbar.Add("Pavadinimas ir kodas yra privalomi!", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            if (_isEditMode)
+            {
+                await ExpenseService.UpdateCostCenterAsync(_center);
+                Snackbar.Add("Išlaidų centras atnaujintas ✓", Severity.Success);
+            }
+            else
+            {
+                await ExpenseService.AddCostCenterAsync(_center);
+                Snackbar.Add("Išlaidų centras sukurtas ✓", Severity.Success);
+            }
+
+            MudDialog.Close();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    [Inject] private IExpenseService ExpenseService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+}

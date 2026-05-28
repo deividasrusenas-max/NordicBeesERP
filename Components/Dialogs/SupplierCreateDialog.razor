@@ -1,0 +1,279 @@
+@using NordicBeesERP.Models
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Data
+@using MudBlazor
+@inject IDialogService DialogService
+@inject ISupplierService SupplierService
+@inject NordicBeesERP.Data.NordicBeesERPContext context
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Business" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">
+                @(string.IsNullOrEmpty(PrefilledName) ? "Sukurti tiekėją" : "Sukurti tiekėją iš OCR")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:500px">
+            <EditForm FormName="SupplierCreateForm" Model="@supplier" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+
+                @if (!string.IsNullOrEmpty(PrefilledName))
+                {
+                    <MudText Typo="Typo.overline" Style="color:#6b7280; font-size:0.7rem; letter-spacing:0.08em" Class="mb-1">OCR aptikti duomenys</MudText>
+                    <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#fff8e1; border-radius:8px; border-left:4px solid #f9a825">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Style="color:#f9a825" />
+                            <div>
+                                <MudText Typo="Typo.body1" Style="font-weight:500">@PrefilledName</MudText>
+                                @if (!string.IsNullOrEmpty(PrefilledVatCode))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas: @PrefilledVatCode</MudText>
+                                }
+                            </div>
+                        </div>
+                    </MudPaper>
+                }
+
+                <MudText Typo="Typo.overline" Style="color:#6b7280; font-size:0.7rem; letter-spacing:0.08em" Class="mb-1">Pagrindinė informacija</MudText>
+                <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                    <MudGrid>
+                        @if (string.IsNullOrEmpty(PrefilledName))
+                        {
+                            <MudItem xs="12">
+                                <MudSelect T="PartnerType" @bind-Value="supplier.PartnerType" Label="Partnerio tipas"
+                                           Required="true" Variant="Variant.Outlined">
+                                    <MudSelectItem Value="@PartnerType.ExpenseSupplier">🏢 Išlaidų tiekėjas</MudSelectItem>
+                                    <MudSelectItem Value="@PartnerType.Supplier">🐝 Bitininkas / ūkininkas</MudSelectItem>
+                                    <MudSelectItem Value="@PartnerType.Both">🔄 Abu</MudSelectItem>
+                                    <MudSelectItem Value="@PartnerType.Customer">👤 Klientas</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        }
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="supplier.Name" Label="Pavadinimas" Required="true"
+                                          Variant="Variant.Outlined" MaxLength="255" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="supplier.CompanyCode" Label="Įmonės kodas"
+                                          Variant="Variant.Outlined" MaxLength="20" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="supplier.VatCode" Label="PVM mokėtojo kodas"
+                                          Variant="Variant.Outlined" MaxLength="20" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <MudText Typo="Typo.overline" Style="color:#6b7280; font-size:0.7rem; letter-spacing:0.08em" Class="mb-1">Finansai</MudText>
+                <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="supplier.BankAccount" Label="Banko sąskaita"
+                                          Variant="Variant.Outlined" MaxLength="50" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudNumericField T="int" @bind-Value="supplier.PaymentTermDays"
+                                             Label="Mokėjimo terminas (d.)"
+                                             Variant="Variant.Outlined" Min="0" Max="365" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSelect T="int" @bind-Value="_vatRate" Label="PVM tarifas %" Variant="Variant.Outlined">
+                                @foreach (var rate in new[]{ 0, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27 })
+                                {
+                                    <MudSelectItem T="int" Value="@rate">@rate%</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect @bind-Value="supplier.DefaultExpenseCategoryId" T="int?" Label="Numatyta išlaidų kategorija" Variant="Variant.Outlined" Clearable="true">
+                                @foreach (var cat in _categories)
+                                {
+                                    <MudSelectItem T="int?" Value="@((int?)cat.Id)">@cat.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudSelect T="string" @bind-Value="supplier.DefaultLanguage" Label="Kalba" Variant="Variant.Outlined">
+                                <MudSelectItem T="string" Value="@("lt")">Lietuvių</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("lv")">Latviešu</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("ee")">Eesti</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("ru")">Русский</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <MudText Typo="Typo.overline" Style="color:#6b7280; font-size:0.7rem; letter-spacing:0.08em" Class="mb-1">Kontaktai</MudText>
+                <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="supplier.Address" Label="Adresas"
+                                          Variant="Variant.Outlined" Lines="2" />
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudTextField @bind-Value="supplier.City" Label="Miestas"
+                                          Variant="Variant.Outlined" MaxLength="100" />
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudTextField @bind-Value="supplier.PostalCode" Label="Pašto kodas"
+                                          Variant="Variant.Outlined" MaxLength="20" />
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudTextField @bind-Value="supplier.CountryCode" Label="Šalies kodas"
+                                          Required="true" Variant="Variant.Outlined" MaxLength="2"
+                                          Placeholder="LT" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="supplier.Country" Label="Šalis"
+                                          Variant="Variant.Outlined" MaxLength="100" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="supplier.Phone" Label="Telefonas"
+                                          Variant="Variant.Outlined" MaxLength="50" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="supplier.Email" Label="El. paštas"
+                                          Variant="Variant.Outlined" MaxLength="100" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <MudText Typo="Typo.overline" Style="color:#6b7280; font-size:0.7rem; letter-spacing:0.08em" Class="mb-1">Kita</MudText>
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                    <MudTextField @bind-Value="supplier.Notes" Label="Pastabos"
+                                  Variant="Variant.Outlined" Lines="3" MaxLength="1000" Class="mb-2" />
+                    <MudSwitch @bind-Value="supplier.IsActive" Label="Aktyvus" Color="Color.Success" />
+                </MudPaper>
+
+            </EditForm>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@CloseDialog">
+            Atšaukti
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SubmitForm"
+                   StartIcon="@Icons.Material.Filled.Save">
+            Išsaugoti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private ISnackbar snackbar { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance? Dialog { get; set; }
+    [Parameter] public Supplier? Supplier { get; set; }
+    [Parameter] public EventCallback<Supplier> OnSupplierCreated { get; set; }
+    [Parameter] public string? PrefilledName { get; set; }
+    [Parameter] public string? PrefilledVatCode { get; set; }
+    [Parameter] public string? PrefilledAddress { get; set; }
+    [Parameter] public string? PrefilledCity { get; set; }
+    [Parameter] public string? PrefilledPostalCode { get; set; }
+    [Parameter] public string? PrefilledCountryCode { get; set; }
+    [Parameter] public string? PrefilledCompanyCode { get; set; }
+    [Parameter] public string? PrefilledBankAccount { get; set; }
+
+    private Supplier supplier = new();
+    private int _vatRate = 21;
+    private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
+
+    private static string CountryFromCode(string code)
+    {
+        if (string.IsNullOrEmpty(code)) return "";
+        try
+        {
+            var region = new System.Globalization.RegionInfo(code.ToUpper());
+            return region.DisplayName;
+        }
+        catch
+        {
+            return code;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+                _categories = await context.Set<NordicBeesERP.Models.Expenses.ExpenseCategory>()
+                    .Where(c => c.IsActive)
+                    .OrderBy(c => c.SortOrder)
+                    .ToListAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(supplier.Name) && supplier.Name == PrefilledName) return;
+
+        if (!string.IsNullOrEmpty(PrefilledName))
+        {
+            var countryCode = (PrefilledCountryCode ?? "LT").ToUpper();
+            supplier = new Supplier
+            {
+                Name = PrefilledName,
+                VatCode = PrefilledVatCode,
+                Address = PrefilledAddress ?? "",
+                City = PrefilledCity ?? "",
+                PostalCode = PrefilledPostalCode ?? "",
+                CountryCode = countryCode,
+                Country = CountryFromCode(countryCode),
+                CompanyCode = PrefilledCompanyCode ?? "",
+                BankAccount = PrefilledBankAccount ?? "",
+                PartnerType = PartnerType.ExpenseSupplier,
+                PaymentTermDays = 30,
+                DefaultVatRate = 21m,
+                DefaultLanguage = "lt",
+                IsActive = true
+            };
+        }
+        else
+        {
+            supplier = Supplier ?? new Supplier
+            {
+                PartnerType = PartnerType.Supplier,
+                PaymentTermDays = 30,
+                DefaultVatRate = 21m,
+                DefaultLanguage = "lt",
+                CountryCode = "LT",
+                Country = CountryFromCode("LT"),
+                IsActive = true
+            };
+        }
+        _vatRate = (int)supplier.DefaultVatRate;
+    }
+
+    private async Task SubmitForm()
+    {
+        try
+        {
+            supplier.DefaultVatRate = _vatRate;
+            // Auto-fill country name from code if empty
+            if (string.IsNullOrEmpty(supplier.Country) && !string.IsNullOrEmpty(supplier.CountryCode))
+                supplier.Country = CountryFromCode(supplier.CountryCode.ToUpper());
+
+            var savedSupplier = await SupplierService.SaveSupplierAsync(supplier);
+            Dialog?.Close(savedSupplier);
+        }
+        catch (Exception ex)
+        {
+            snackbar?.Add($"Klaida išsaugant tiekėją: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CloseDialog()
+    {
+        Dialog?.Cancel();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var existingByName = await SupplierService.GetAllSuppliersAsync();
+        if (existingByName.Any(bp => bp.Name == supplier.Name && bp.Id != supplier.Id))
+        {
+            snackbar?.Add("Tiekėjas su šiuo pavadinimu jau egzistuoja!", Severity.Warning);
+            return;
+        }
+    }
+}

@@ -1,0 +1,45 @@
+@using NordicBeesERP.Models
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog Options="@_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Pasirinkite žaliavą</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_searchString" Placeholder="Ieškoti pagal pavadinimą..." Adornment="Adornment.Start" 
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0 mb-4"
+                      Immediate="true" />
+        
+        <MudTable T="RawMaterialType" Items="@RawMaterials" Hover="true" Dense="true" Filter="new Func<RawMaterialType,bool>(FilterFunc)">
+            <HeaderContent>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh Style="text-align:right">Veiksmas</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="material">
+                <MudTd DataLabel="Pavadinimas" 
+                       Style="cursor:pointer; user-select: none;" 
+                       @ondblclick="@(() => MudDialog.Close(DialogResult.Ok(material)))">
+                    @material.Name
+                </MudTd>
+                <MudTd Style="text-align:right">
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" 
+                               OnClick="@(() => MudDialog.Close(DialogResult.Ok(material)))">Pasirinkti</MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Atšaukti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly DialogOptions _dialogOptions = new() { CloseOnEscapeKey = true };
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<RawMaterialType> RawMaterials { get; set; } = new();
+    private string _searchString = "";
+    private void Cancel() => MudDialog.Cancel();
+    private bool FilterFunc(RawMaterialType m) => 
+        string.IsNullOrWhiteSpace(_searchString) || m.Name?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) == true;
+}

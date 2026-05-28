@@ -1,0 +1,261 @@
+@page "/payments/history"
+@rendermode InteractiveServer
+@inject IPaymentService PaymentService
+@inject ISnackbar Snackbar
+@inject IAuthService AuthService
+@inject IDialogService DialogService
+@using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
+@using NordicBeesERP.Models
+@using MudBlazor
+
+<PageTitle>Įplaukų istorija</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Įplaukų istorija</MudText>
+    
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField Value="@_searchTerm" 
+                              ValueChanged="@(async (string val) => { _searchTerm = val; await LoadPaymentsAsync(); })"
+                              Label="Paieška pagal numerį arba klientą" 
+                              Variant="Variant.Outlined" 
+                              Immediate="true"
+                              FullWidth="@true"
+                              Clearable="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Adornment="Adornment.Start" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudDateRangePicker DateRange="@_dateRange"
+                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadPaymentsAsync(); })"
+                                    Label="Data (nuo / iki)"
+                                    Variant="Variant.Outlined"
+                                    FullWidth="@true"
+                                    Clearable="true" />
+            </MudItem>
+            @if (!string.IsNullOrEmpty(_searchTerm) || (_dateRange?.Start != null))
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                               OnClick="@(async () => { _searchTerm = null; _dateRange = null; await LoadPaymentsAsync(); })">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
+    
+    <MudTable T="PaymentWithDetails" Items="@_payments" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" @bind-RowsPerPage="_rowsPerPage" SortMode="SortMode.Serverbind" OnSort="HandleSortAsync">
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+        </PagerContent>
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="@(new Func<PaymentWithDetails, object>(x => x.InvoiceNumber ?? ""))">Sąskaitos Nr.</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="@(new Func<PaymentWithDetails, object>(x => x.PaymentDate))">Apmokėjimo data</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="@(new Func<PaymentWithDetails, object>(x => x.DaysFromDue ?? 0))">Vėlavimas</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="@(new Func<PaymentWithDetails, object>(x => x.Amount))">Suma (€)</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="@(new Func<PaymentWithDetails, object>(x => x.CustomerName ?? ""))">Klientas</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="@(new Func<PaymentWithDetails, object>(x => x.PaymentMethod))">Būdas</MudTableSortLabel></MudTh>
+            <MudTh>Veiksmai</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="payment">
+            <MudTd DataLabel="Sąskaitos Nr.">
+                @if (!string.IsNullOrEmpty(payment.InvoiceNumber))
+                {
+                    <MudText Typo="Typo.body2">@payment.InvoiceNumber</MudText>
+                }
+                else if (payment.Allocations.Any())
+                {
+                    <MudText Typo="Typo.body2">@string.Join(", ", payment.Allocations.Select(a => a.InvoiceNumber))</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Apmokėjimo data">
+                <MudText Typo="Typo.body2">@payment.PaymentDate.ToShortDateString()</MudText>
+            </MudTd>
+            <MudTd DataLabel="Vėlavimas">
+                @if (payment.DueDate.HasValue)
+                {
+                    var daysFromDue = (payment.PaymentDate - payment.DueDate.Value).Days;
+                    var timingInfo = GetPaymentTiming(daysFromDue);
+                    <MudText Typo="Typo.body2" Color="@timingInfo.Color">@timingInfo.Text</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Suma" Style="text-align:right">@payment.Amount.ToString("N2")</MudTd>
+            <MudTd DataLabel="Klientas">@payment.CustomerName</MudTd>
+             <MudTd DataLabel="Būdas">
+                 <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@payment.PaymentMethod</MudChip>
+             </MudTd>
+             <MudTd>
+                <MudTooltip Text="Mokėjimo peržiūra" Origin="TooltipOrigin.TopCenter" Anchor="TooltipAnchor.Center" AnchorOrigin="TooltipOrigin.TopCenter" Adornment="Adornment.Icon">
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" OnClick="@(() => OpenDetailDialog(payment.Id))" Size="Size.Small"/>
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <FooterContent>
+            <MudTd DataLabel="Iš viso" @attributes='@(new Dictionary<string, object> { { "colspan", 6 } })'>@_payments.Count įrašai</MudTd>
+        </FooterContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<PaymentWithDetails> _payments = new();
+    private bool _loading = true;
+    private string? _searchTerm;
+    private DateRange? _dateRange;
+    private int _rowsPerPage = 25;
+    private bool _disposed = false;
+    // Default sort: newest payment first (PaymentDate descending)
+    private string? _sortBy = "paymentdate";
+    private SortDirection _sortDirection = SortDirection.Descending;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPaymentsAsync();
+    }
+
+    private async Task LoadPaymentsAsync()
+    {
+        _loading = true;
+        try
+        {
+            DateTime? fromDate = null;
+            DateTime? toDate = null;
+
+            if (_dateRange != null && _dateRange.Start.HasValue && _dateRange.End.HasValue)
+            {
+                fromDate = _dateRange.Start.Value.Date;
+                toDate = _dateRange.End.Value.Date;
+            }
+
+            var sortDirection = _sortDirection == SortDirection.Descending ? "desc" : "asc";
+            var result = await PaymentService.GetPaymentHistoryAsync(
+                customerId: null,
+                fromDate: fromDate,
+                toDate: toDate,
+                paymentMethod: null,
+                source: null,
+                searchTerm: _searchTerm,
+                sortBy: _sortBy,
+                sortDirection: sortDirection,
+                take: _rowsPerPage,
+                skip: 0
+            );
+            _payments = result.Payments;
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            _payments = new();
+            Snackbar.Add("Klaida įkeliant mokėjimų istoriją", Severity.Error, options => {
+                options.Icon = Icons.Material.Filled.Error;
+            });
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSearchChangedAsync()
+    {
+        await LoadPaymentsAsync();
+    }
+
+    private async Task OnDateRangeChangedAsync()
+    {
+        await LoadPaymentsAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        _searchTerm = null;
+        _dateRange = null;
+        await LoadPaymentsAsync();
+    }
+
+    private async Task HandleSortAsync(SortDirection sortDirection, string sortLabel)
+    {
+        _sortDirection = sortDirection;
+        _sortBy = sortLabel;
+        await LoadPaymentsAsync();
+    }
+
+    private async Task OpenDetailDialog(int paymentId)
+    {
+        var detail = await PaymentService.GetPaymentDetailAsync(paymentId);
+        var parameters = new DialogParameters { ["Payment"] = detail };
+        await DialogService.ShowAsync<PaymentDetailDialog>("Mokėjimo detalės", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+    }
+
+    private (string Text, Color Color) GetPaymentTiming(int daysFromDue)
+    {
+        if (daysFromDue < 0)
+        {
+            return ($"-{Math.Abs(daysFromDue)}d. anksčiau", Color.Success);
+        }
+        else if (daysFromDue == 0)
+        {
+            return ("Laiku", Color.Success);
+        }
+        else if (daysFromDue > 0 && daysFromDue <= 7)
+        {
+            return ($"+{daysFromDue}d.", Color.Warning);
+        }
+        else
+        {
+            return ($"+{daysFromDue}d.", Color.Error);
+        }
+    }
+
+    private async Task DeletePaymentAsync(int paymentId)
+    {
+        if (_disposed) return;
+        
+        try
+        {
+            var currentUser = await AuthService.GetAuthenticatedUserAsync();
+            if (currentUser == null)
+            {
+                Snackbar.Add("Nesaugus prisijungimo būsena", Severity.Warning, options => {
+                    options.Icon = Icons.Material.Filled.Warning;
+                });
+                return;
+            }
+            
+            var result = await PaymentService.DeletePaymentAsync(paymentId, currentUser.Id);
+            if (result)
+            {
+                Snackbar.Add("Mokėjimas sėkmingai ištrintas", Severity.Success, options => {
+                    options.Icon = Icons.Material.Filled.CheckCircle;
+                });
+                await LoadPaymentsAsync();
+            }
+            else
+            {
+                Snackbar.Add("Nepavyko ištrinti mokėjimo", Severity.Error, options => {
+                    options.Icon = Icons.Material.Filled.Error;
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_disposed) return;
+            Snackbar.Add("Klaida trinant mokėjimą", Severity.Error, options => {
+                options.Icon = Icons.Material.Filled.Error;
+            });
+        }
+    }
+}

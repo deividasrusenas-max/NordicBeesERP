@@ -1,0 +1,161 @@
+@page "/customers"
+@inject ICustomerService CustomerService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@using NordicBeesERP.Components.Dialogs
+
+<PageTitle>Klientai</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">🛒 Klientai</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
+           OnClick="@OpenCreateDialog" Class="mb-4">
+    Naujas klientas
+</MudButton>
+
+@if (customers == null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (!customers.Any())
+{
+    <MudPaper Class="pa-8 text-center">
+        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Color="Color.Default" Class="mb-4" />
+        <MudText Typo="Typo.h6" Class="mb-2">Klientų sąrašas tuščias</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog">
+            + Pridėti pirmą klientą
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudTable T="Customer" Items="@customers" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Pavadinimas</MudTh>
+            <MudTh>Kodas</MudTh>
+            <MudTh>Miestas</MudTh>
+            <MudTh>Adresas</MudTh>
+            <MudTh>Telefonas</MudTh>
+            <MudTh>El. paštas</MudTh>
+            <MudTh>PVM</MudTh>
+            <MudTh>Mokėjimo terminas</MudTh>
+            <MudTh Style="width: 150px;">Veiksmai</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="customer">
+            <MudTd>
+                <MudText Typo="Typo.subtitle1" Color="Color.Primary"><strong>@(customer!.Name)</strong></MudText>
+            </MudTd>
+            <MudTd>
+                @if (!string.IsNullOrEmpty(customer!.CompanyCode))
+                {
+                    <MudText Typo="Typo.caption">@customer!.CompanyCode</MudText>
+                }
+            </MudTd>
+            <MudTd>@(customer!.City)</MudTd>
+            <MudTd>@(customer!.Address)</MudTd>
+            <MudTd>@(customer!.Phone)</MudTd>
+            <MudTd>@(customer!.Email)</MudTd>
+            <MudTd>@(customer!.DefaultVatRate.ToString())%</MudTd>
+            <MudTd>@(customer!.PaymentTermDays) d.</MudTd>
+            <MudTd>
+                <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Color="Color.Primary" 
+                                   OnClick="@(() => OpenEditDialog(customer!))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Color="Color.Error" 
+                                   OnClick="@(() => DeleteCustomer(customer!))" />
+                </MudButtonGroup>
+            </MudTd>
+        </RowTemplate>
+        <FooterContent>
+            <MudTd @attributes='@(new Dictionary<string, object> { { "colspan", 6 } })'>
+                <MudText Typo="Typo.caption">Iš viso: @customers.Count klientai</MudText>
+            </MudTd>
+        </FooterContent>
+    </MudTable>
+}
+
+@code {
+    private List<Customer>? customers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        customers = await CustomerService.GetCustomersAsync();
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Customer", new Customer() }
+        };
+
+        var dialog = await DialogService.ShowAsync<CustomerCreateDialog>("Naujas klientas", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is not null)
+        {
+            var savedCustomer = (Customer)result.Data;
+            Snackbar.Add("Klientas sėkmingai sukurtas!", Severity.Success);
+            await LoadCustomers();
+        }
+    }
+
+    private async Task OpenEditDialog(Customer customer)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Customer", customer }
+        };
+
+        var dialog = await DialogService.ShowAsync<CustomerCreateDialog>("Redaguoti klientą", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is not null)
+        {
+            var savedCustomer = (Customer)result.Data;
+            Snackbar.Add("Klientas sėkmingai atnaujintas!", Severity.Success);
+            await LoadCustomers();
+        }
+    }
+
+    private async Task DeleteCustomer(Customer customer)
+    {
+        if (customer is null)
+        {
+            Snackbar.Add("Klaida: klientas nerastas!", Severity.Error);
+            return;
+        }
+        
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Ar tikrai norite ištrinti klientą '{customer.Name}'?" },
+            { "ButtonText", "Trinti" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinti", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var deleted = await CustomerService.DeleteBusinessPartnerAsync(customer.Id);
+            if (deleted)
+            {
+                Snackbar.Add("Klientas sėkmingai ištrintas!", Severity.Success);
+                await LoadCustomers();
+            }
+            else
+            {
+                Snackbar.Add("Nepavyko ištrinti kliento: bandykite dar kartą", Severity.Error);
+            }
+        }
+    }
+}

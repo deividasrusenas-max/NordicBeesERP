@@ -1,0 +1,482 @@
+@page "/expense-invoices"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Services
+@using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
+@using MudBlazor
+@using System.Globalization
+@inject IExpenseService ExpenseService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IDbContextFactory<NordicBeesERPContext> DbFactory
+
+<PageTitle>Išlaidų sąskaitos</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+
+    <!-- Header row -->
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Išlaidų sąskaitos</MudText>
+        <div class="d-flex align-center gap-2">
+            <MudButton OnClick="OpenUploadDialog" StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Filled" Color="Color.Primary">Įkelti</MudButton>
+            <!-- Export button temporarily disabled - TODO: Re-enable -->
+            @* <MudButton OnClick="ExportCsv" StartIcon="@Icons.Material.Filled.Download" Variant="Variant.Filled" Color="Color.Primary">Eksportuoti</MudButton> *@
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+
+    <!-- Attention alert -->
+    @if (_attentionInvoices.Any())
+    {
+        <MudAlert Severity="Severity.Warning" Class="mt-3 mb-3">
+            <MudText Typo="Typo.body1">@_attentionInvoices.Count sąskaita(-os) reikalauja dėmesio</MudText>
+        </MudAlert>
+    }
+
+    <!-- Filters -->
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField Value="@_filterSearch"
+                              ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
+                              Label="Paieška pagal Nr. arba tiekėją"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              FullWidth="@true"
+                              Clearable="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Adornment="Adornment.Start" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudDateRangePicker DateRange="@_dateRange"
+                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadDataAsync(); })"
+                                    Label="Data (nuo / iki)"
+                                    Variant="Variant.Outlined"
+                                    FullWidth="@true"
+                                    Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4" Class="d-flex align-center">
+                @if (!string.IsNullOrEmpty(_filterSearch) || (_dateRange?.Start != null))
+                {
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                               OnClick="@(async () => { _filterSearch = null; _dateRange = null; await LoadDataAsync(); StateHasChanged(); })">
+                        Išvalyti filtrus
+                    </MudButton>
+                }
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Year toggle -->
+    <div class="d-flex align-center mb-3">
+        <MudSwitch Label="Rodyti tik dabartinį metą" Checked="@_showCurrentYear" CheckedChanged="OnYearToggleChanged" Color="Color.Primary" T="bool" />
+    </div>
+
+    <!-- Status filter chips -->
+    <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
+        @if (_selectedStatuses.Any())
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       OnClick="@(() => { _selectedStatuses.Clear(); StateHasChanged(); })">
+                Rodyti visas
+            </MudButton>
+        }
+        @foreach (var status in new[]{ "PENDING", "PARTIAL", "OVERDUE", "PAID", "NEEDS_REVIEW", "PENDING_SUPPLIER", "REJECTED" })
+        {
+            var isSelected = _selectedStatuses.Contains(status);
+            <MudChip T="string"
+                     Color="@(isSelected ? ExpenseStatusHelper.GetColor(status) : Color.Default)"
+                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleStatus(status))"
+                     Size="Size.Small"
+                     Style="@(isSelected ? "" : "opacity:0.7")">
+                @ExpenseStatusHelper.GetLabel(status)
+            </MudChip>
+        }
+    </div>
+
+    <!-- MudTabs with 6 tabs -->
+    <MudTabs ActivePanelIndex="_selectedTab" ActivePanelIndexChanged="OnTabChanged" Elevation="0" Rounded="true" Square="false" Class="mt-2">
+        <MudTabPanel Text="Visos" />
+        <MudTabPanel Text="Nesumokėtos" />
+        <MudTabPanel Text="Vėluojančios" />
+        <MudTabPanel Text="Šis mėnuo" />
+        <MudTabPanel Text="ULAK" />
+        <MudTabPanel Text="Reikia dėmesio" />
+    </MudTabs>
+
+    <!-- MudTable -->
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable Items="@FilteredInvoices" Dense="@true" Hover="@true" Striped="@true" RowsPerPage="25" Elevation="0" RowStyleFunc="@((inv, _) => GetRowStyle(inv))" OnRowClick="@(async (TableRowClickEventArgs<ExpenseInvoice> args) => await OpenInvoiceDetail(args.Item))" Style="cursor:pointer">
+            <HeaderContent>
+                <MudTh>Nr.</MudTh>
+                <MudTh>Tiekėjas</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Terminas</MudTh>
+                <MudTh>Suma</MudTh>
+                <MudTh>Liko</MudTh>
+                <MudTh>Statusas</MudTh>
+                <MudTh>Problemos</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.InvoiceNumber</MudTd>
+                <MudTd>
+                    @GetSupplierName(context)
+                    @{ var cat = _expenseCategories.FirstOrDefault(c => c.Id == (context as NordicBeesERP.Models.Expenses.ExpenseInvoice)?.CategoryId); }
+                    @if (cat != null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Style="height:18px;font-size:0.65rem">@cat.Name</MudChip>
+                    }
+                </MudTd>
+                <MudTd>@context.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd>
+                    @{
+                        var dueDateLabel = GetDueDateLabel(context);
+                        var isOverdue = context.DueDate < DateTime.Today && context.Status != "PAID";
+                    }
+                    @if (isOverdue)
+                    {
+                        var daysOverdue = (DateTime.Today - context.DueDate.Date).Days;
+                        <div>
+                            <span>@context.DueDate.ToString("MM-dd")</span>
+                            <div style="font-size:0.7rem;color:#dc2626;">Vėluoja @daysOverdue d.</div>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(dueDateLabel) && dueDateLabel != "—")
+                    {
+                        @context.DueDate.ToString("MM-dd")
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </MudTd>
+                <MudTd>@context.AmountInclVat.ToString("F2", CultureInfo.InvariantCulture) €</MudTd>
+                <MudTd>@GetRemainingAmount(context)</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@ExpenseStatusHelper.GetColor(context.Status)">
+                        @ExpenseStatusHelper.GetLabel(context.Status)
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    @{
+                        var flags = ExpenseStatusHelper.ParseFlags(context.OcrFlags);
+                    }
+                    @if (flags.Any())
+                    {
+                        <MudTooltip Text="@string.Join(", ", flags.Select(ExpenseStatusHelper.GetFlagLabel))">
+                            <div class="d-flex align-center gap-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Warning"
+                                         Style="@(flags.Any(ExpenseStatusHelper.IsCriticalFlag) ? "color:#dc2626;font-size:18px" : "color:#f59e0b;font-size:18px")" />
+                                @if (flags.Count > 1)
+                                {
+                                    <MudText Typo="Typo.caption" Style="color:#6b7280">@flags.Count</MudText>
+                                }
+                            </div>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudText Style="color:#d1d5db">—</MudText>
+                    }
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText>Įrašų nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private int _selectedTab = 0;
+    private List<ExpenseInvoice> _invoices = new();
+    private List<ExpenseInvoice> _pendingSupplierInvoices = new();
+    private bool _isLoading = false;
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? TabParam { get; set; }
+
+    private Dictionary<int, string> _supplierNames = new();
+    private string? _filterSearch = null;
+    private DateRange? _dateRange;
+    private bool _showCurrentYear = false;
+    private HashSet<string> _selectedStatuses = new();
+    private List<Models.Expenses.ExpenseCategory> _expenseCategories = new();
+
+    private List<ExpenseInvoice> _attentionInvoices => _invoices
+        .Where(i => ExpenseStatusHelper.NeedsAttention(i.Status, i.OcrFlags, i.DueDate))
+        .ToList();
+
+    private List<ExpenseInvoice> FilteredInvoices => GetFilteredInvoices();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (TabParam == "attention")
+            _selectedTab = 5;
+
+        _expenseCategories = await ExpenseService.GetCategoriesAsync(isActive: true);
+        await LoadDataAsync();
+    }
+
+    private async Task OpenUploadDialog()
+    {
+        var dialog = await DialogService.ShowAsync<ExpenseUploadDialog>("Įkelti sąskaitą-faktūrą", new DialogParameters(), new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is ExpenseUploadData uploadData)
+        {
+            _isLoading = true;
+            StateHasChanged();
+            await LoadDataAsync();
+            _isLoading = false;
+            StateHasChanged();
+            Console.WriteLine($"Uploaded: {uploadData.FileName}");
+        }
+        else if (result.Data is InvoiceAddResult addResult && addResult.IsDuplicate)
+        {
+            var parameters = new DialogParameters
+            {
+                { "ThisInvoiceId", addResult.ThisInvoiceId },
+                { "OriginalInvoiceId", addResult.OriginalInvoiceId }
+            };
+            var dupDialog = await DialogService.ShowAsync<DuplicateInvoiceDialog>("Sąskaita jau egzistuoja", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+            var dialogResult = await dupDialog.Result;
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _invoices = await ExpenseService.GetInvoicesAsync();
+
+        // Load supplier names fresh from all invoices (not just filtered ones)
+        var allInvoiceSupplierIds = _invoices
+            .Where(i => i.SupplierId.HasValue && i.SupplierId > 0)
+            .Select(i => i.SupplierId!.Value)
+            .Distinct()
+            .ToList();
+
+        Console.WriteLine($"Loading supplier names for IDs: {string.Join(",", allInvoiceSupplierIds)}");
+
+        if (allInvoiceSupplierIds.Any())
+        {
+            await using var ctx = DbFactory.CreateDbContext();
+            _supplierNames = await ctx.BusinessPartners
+                .Where(b => allInvoiceSupplierIds.Contains(b.Id))
+                .ToDictionaryAsync(b => b.Id, b => b.Name);
+        }
+
+        Console.WriteLine($"Loaded {_supplierNames.Count} supplier names");
+
+        _pendingSupplierInvoices = _invoices
+            .Where(i => ExpenseStatusHelper.NeedsAttention(i.Status))
+            .ToList();
+    }
+
+    // TODO: Re-enable export functionality
+    // private async Task ExportInvoices(string format)
+    // {
+    //     try
+    //     {
+    //         var filteredInvoices = GetFilteredInvoices();
+    //         var fileBytes = await ExportService.ExportInvoicesAsync(filteredInvoices, format);
+    //         string fileName = $"islaidos_sąskaitos_{DateTime.Now:yyyyMMdd_HHmmss}.{format}";
+    //         await JS.InvokeVoidAsync("downloadFile", Convert.ToBase64String(fileBytes), format == "csv" ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Console.WriteLine($"Export error: {ex.Message}");
+    //     }
+    // }
+
+    // TODO: Re-enable export functionality
+    // private async Task ExportCsv()
+    // {
+    //     await ExportInvoices("csv");
+    // }
+
+    // private async Task ExportExcel()
+    // {
+    //     await ExportInvoices("xlsx");
+    // }
+
+    private List<ExpenseInvoice> GetFilteredInvoices()
+    {
+        List<ExpenseInvoice> result;
+        switch (_selectedTab)
+        {
+            case 1: // Nesumokėtos
+                result = _invoices.Where(i =>
+                    i.Status == "PENDING" ||
+                    i.Status == "PARTIAL" ||
+                    i.Status == "OVERDUE"
+                ).ToList();
+                break;
+            case 2: // Vėluojančios
+                result = _invoices.Where(i =>
+                    i.DueDate < DateTime.Today &&
+                    i.Status != "PAID" &&
+                    i.Status != "PENDING_SUPPLIER"
+                ).ToList();
+                break;
+            case 3: // Šis mėnuo
+                result = _invoices.Where(i =>
+                    i.InvoiceDate.Month == DateTime.Today.Month &&
+                    i.InvoiceDate.Year == DateTime.Today.Year
+                ).ToList();
+                break;
+            case 4: // ULAK
+                result = _invoices.Where(i => i.InvoiceType == "ULAK").ToList();
+                break;
+            case 5: // Reikia dėmesio
+                result = _attentionInvoices.ToList();
+                break;
+            default: // Visos
+                result = _invoices.ToList();
+                break;
+        }
+
+        // Apply status filter chips
+        if (_selectedStatuses.Any())
+        {
+            result = result.Where(i => _selectedStatuses.Contains(i.Status)).ToList();
+        }
+
+        // Apply year filter
+        if (_showCurrentYear)
+        {
+            result = result.Where(i => i.InvoiceDate.Year == DateTime.Today.Year).ToList();
+        }
+
+        // Apply date filter from _dateRange
+        if (_dateRange?.Start != null)
+            result = result.Where(i => i.InvoiceDate >= _dateRange.Start.Value.Date).ToList();
+        if (_dateRange?.End != null)
+            result = result.Where(i => i.InvoiceDate <= _dateRange.End.Value.Date).ToList();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(_filterSearch))
+            result = result.Where(i =>
+                (i.InvoiceNumber?.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase) == true) ||
+                (_supplierNames.TryGetValue(i.SupplierId ?? 0, out var sn) && sn.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)) ||
+                (i.PendingSupplierName?.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase) == true)
+            ).ToList();
+
+        return result;
+    }
+
+    private void OnTabChanged(int index)
+    {
+        _selectedTab = index;
+        StateHasChanged();
+    }
+
+    private async Task OnYearToggleChanged(bool checkedValue)
+    {
+        _showCurrentYear = checkedValue;
+        StateHasChanged();
+    }
+
+    private void ToggleStatus(string status)
+    {
+        if (_selectedStatuses.Contains(status))
+            _selectedStatuses.Remove(status);
+        else
+            _selectedStatuses.Add(status);
+        StateHasChanged();
+    }
+
+    private string GetSupplierName(ExpenseInvoice invoice)
+    {
+        if (invoice.SupplierId.HasValue && invoice.SupplierId.Value > 0)
+        {
+            return _supplierNames.GetValueOrDefault(invoice.SupplierId.Value, "Nežinomas");
+        }
+        return invoice.PendingSupplierName ?? "Nežinomas";
+    }
+
+    private string GetDueDateLabel(ExpenseInvoice invoice)
+    {
+        if (invoice.DueDate == default) return "—";
+        if (invoice.DueDate < DateTime.Today && invoice.Status != "PAID")
+        {
+            var daysOverdue = (DateTime.Today - invoice.DueDate.Date).Days;
+            return $"Vėluoja {daysOverdue}d.";
+        }
+        return invoice.DueDate.ToString("MM-dd");
+    }
+
+    private string GetRowStyle(ExpenseInvoice inv)
+    {
+        var flags = ExpenseStatusHelper.ParseFlags(inv.OcrFlags);
+        bool hasCritical = flags.Any(ExpenseStatusHelper.IsCriticalFlag)
+                        || inv.Status == "PENDING_SUPPLIER"
+                        || inv.Status == "DUPLICATE_PENDING";
+        bool hasWarning = inv.Status == "NEEDS_REVIEW"
+                       || (inv.DueDate < DateTime.Today && inv.Status != "PAID");
+        if (hasCritical) return "background:#fff5f5;";
+        if (hasWarning) return "background:#fffbeb;";
+        return "";
+    }
+
+    private string GetRemainingAmount(ExpenseInvoice invoice)
+    {
+        var remaining = invoice.AmountInclVat - invoice.PaidAmount;
+        if (remaining <= 0)
+        {
+            return "–";
+        }
+        return $"{remaining.ToString("F2", CultureInfo.InvariantCulture)} €";
+    }
+
+    private async Task OpenAssignSupplierDialog(ExpenseInvoice invoice)
+    {
+        var parameters = new DialogParameters { ["InvoiceId"] = invoice.Id };
+        var dialog = await DialogService.ShowAsync<AssignSupplierDialog>("Priskirti tiekėją", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadDataAsync();
+    }
+
+    private async Task OpenPaymentDialog(ExpenseInvoice invoice)
+    {
+        Console.WriteLine($"Opening payment dialog for invoice id: {invoice.Id}");
+        var supplierName = invoice.SupplierId.HasValue
+            ? _supplierNames.GetValueOrDefault(invoice.SupplierId.Value, invoice.PendingSupplierName ?? "Nežinomas")
+            : (invoice.PendingSupplierName ?? "Nežinomas");
+        var parameters = new DialogParameters
+        {
+            { "Invoice", invoice },
+            { "SupplierName", supplierName }
+        };
+        var dialog = await DialogService.ShowAsync<ExpensePaymentDialog>("Registruoti mokėjimą", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+        if (result != null)
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenInvoiceDetail(ExpenseInvoice invoice)
+    {
+        var parameters = new DialogParameters { ["InvoiceId"] = invoice.Id };
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true, BackdropClick = true };
+        var dialog = await DialogService.ShowAsync<InvoiceDetailDialog>($"Sąskaita {invoice.InvoiceNumber}", parameters, options);
+        var result = await dialog.Result;
+
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+}

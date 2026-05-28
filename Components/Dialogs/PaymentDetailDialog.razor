@@ -1,0 +1,60 @@
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Mokėjimo detalės</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Payment != null)
+        {
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Mokėjimo data</MudText>
+                    <MudText>@Payment.PaymentDate.ToString("yyyy-MM-dd")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Suma</MudText>
+                    <MudText>@Payment.Amount.ToString("C")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Mokėjimo būdas</MudText>
+                    <MudText>@Payment.PaymentMethod</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption">Referencinis numeris</MudText>
+                    <MudText>@Payment.ReferenceNumber</MudText>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.caption">Pastabos</MudText>
+                    <MudText>@Payment.Notes</MudText>
+                </MudItem>
+            </MudGrid>
+
+            @if (Payment.Allocations.Any())
+            {
+                <MudTable Items="@Payment.Allocations" Dense="true" Hover="true" Class="mt-4">
+                    <HeaderContent>
+                        <MudTh>Sąskaitos Nr.</MudTh>
+                        <MudTh>Paskirstyta suma</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Sąskaitos Nr.">@context.InvoiceNumber</MudTd>
+                        <MudTd DataLabel="Paskirstyta suma">@context.AllocatedAmount.ToString("C")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Uždaryti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public PaymentWithDetails Payment { get; set; }
+
+    void Cancel() => MudDialog.Cancel();
+}

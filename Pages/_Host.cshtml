@@ -1,0 +1,43 @@
+@page "/"
+@using MudBlazor
+@using NordicBeesERP.Components
+
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nordic Bees ERP</title>
+    <base href="~/" />
+    
+    <!-- MudBlazor CSS -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    
+    <!-- App CSS -->
+    <link href="app.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    
+    <!-- Blazor start options -->
+    <script type="text/javascript">
+        window.Blazor = {
+            startOptions: {
+                config: [
+                    "blazorEnableFeatures: {'WebAssemblyDisableTelemetry':true}"
+                ]
+            }
+        };
+    </script>
+</head>
+<body>
+    <app>
+        <component type="typeof(App)" render-mode="ServerPrerendered" />
+    </app>
+    
+    <!-- MudBlazor JS -->
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    
+    <!-- Blazor JS -->
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>

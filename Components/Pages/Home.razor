@@ -1,0 +1,259 @@
+@page "/"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject IDeliveryService DeliveryService
+@inject IContainerService ContainerService
+@inject IHoneyTypeService HoneyTypeService
+@inject ICustomerService CustomerService
+@inject IWarehouseService WarehouseService
+@inject NavigationManager Navigation
+
+<PageTitle>Lakštena ERP</PageTitle>
+
+@if (_dbError)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        ⚠️ Nepavyko prisijungti prie duomenų bazės. Patikrinkite ryšį.
+    </MudAlert>
+}
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-2" Style="font-weight:700">Sveiki!</MudText>
+    <MudText Typo="Typo.body1" Class="mb-4" Style="color:#64748b">Lakštena ERP — medaus apskaitos sistema</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <!-- Admin / Manager: full dashboard -->
+        <AuthorizeView Roles="Admin,Manager">
+            <MudGrid Class="mb-6">
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="0" Style="background:#dbeafe; border-radius:12px; cursor:pointer"
+                        @onclick="@(() => Navigation.NavigateTo("/warehouse/stock"))">
+                        <MudText Typo="Typo.caption" Style="color:#64748b">Statinės sandėlyje</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700">@_barrelCount vnt.</MudText>
+                        <MudText Typo="Typo.body2" Style="color:#64748b">@_barrelNetWeight.ToString("N0") kg netto</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="0" Style="background:#f0fdf4; border-radius:12px; cursor:pointer"
+                        @onclick="@(() => Navigation.NavigateTo("/warehouse/stock"))">
+                        <MudText Typo="Typo.caption" Style="color:#64748b">Kibirai sandėlyje</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700">@_bucketCount vnt.</MudText>
+                        <MudText Typo="Typo.body2" Style="color:#64748b">@_bucketNetWeight.ToString("N0") kg netto</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="0" Style="background:#fef3c7; border-radius:12px; cursor:pointer"
+                        @onclick="@(() => Navigation.NavigateTo("/warehouse/delivery-pricing"))">
+                        <MudText Typo="Typo.caption" Style="color:#64748b">Neįkainotos</MudText>
+                        <MudText Typo="Typo.h4" Style="@GetUnpricedStyle()">@_unpricedDeliveries</MudText>
+                        <MudText Typo="Typo.body2" Style="color:#64748b">Laukia kainų</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="pa-4" Elevation="0" Style="@GetDebtBackgroundStyle()"
+                        @onclick="@(() => Navigation.NavigateTo("/warehouse/supplier-debts"))">
+                        <MudText Typo="Typo.caption" Style="color:#64748b">Skolos tiekėjams</MudText>
+                        <MudText Typo="Typo.h4" Style="@GetDebtStyle()">@_totalDebt.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.body2" Style="color:#64748b">@_suppliersWithDebt tiekėjų</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600">Paskutiniai pristatymai</MudText>
+            <MudTable T="Delivery" Items="_recentDeliveries" Dense="true" Hover="true" Striped="true"
+                OnRowClick="@((TableRowClickEventArgs<Delivery> args) => Navigation.NavigateTo($"/warehouse/deliveries/{args.Item.Id}"))"
+                Style="cursor:pointer" Class="mb-4">
+                <HeaderContent>
+                    <MudTh>Nr.</MudTh>
+                    <MudTh>Data</MudTh>
+                    <MudTh>Tiekėjas</MudTh>
+                    <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                    <MudTh Style="text-align:right">Suma (€)</MudTh>
+                    <MudTh>Statusas</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="d">
+                    <MudTd>@d.DeliveryNumber</MudTd>
+                    <MudTd>@d.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd>@GetSupplierName(d.SupplierId)</MudTd>
+                    <MudTd Style="text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
+                    <MudTd Style="text-align:right">@d.TotalAmount.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(d.Status)" Style="font-size:0.75rem">
+                            @GetStatusText(d.Status)
+                        </MudChip>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600">Greiti veiksmai</MudText>
+            <MudGrid>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/deliveries/new"
+                        StartIcon="@Icons.Material.Filled.Add">Naujas pristatymas</MudButton>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/stock"
+                        StartIcon="@Icons.Material.Filled.Inventory">Sandėlio likučiai</MudButton>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/delivery-pricing"
+                        StartIcon="@Icons.Material.Filled.PriceCheck">Kainos</MudButton>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/supplier-debts"
+                        StartIcon="@Icons.Material.Filled.AccountBalance">Skolos</MudButton>
+                </MudItem>
+            </MudGrid>
+        </AuthorizeView>
+
+        <!-- Warehouse: simplified dashboard -->
+        <AuthorizeView Roles="Warehouse">
+            <MudGrid Class="mb-6">
+                <MudItem xs="6" md="6">
+                    <MudPaper Class="pa-4" Elevation="0" Style="background:#dbeafe; border-radius:12px; cursor:pointer"
+                        @onclick="@(() => Navigation.NavigateTo("/warehouse/stock"))">
+                        <MudText Typo="Typo.caption" Style="color:#64748b">Statinės sandėlyje</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700">@_barrelCount vnt.</MudText>
+                        <MudText Typo="Typo.body2" Style="color:#64748b">@_barrelNetWeight.ToString("N0") kg netto</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="6">
+                    <MudPaper Class="pa-4" Elevation="0" Style="background:#f0fdf4; border-radius:12px; cursor:pointer"
+                        @onclick="@(() => Navigation.NavigateTo("/warehouse/stock"))">
+                        <MudText Typo="Typo.caption" Style="color:#64748b">Kibirai sandėlyje</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700">@_bucketCount vnt.</MudText>
+                        <MudText Typo="Typo.body2" Style="color:#64748b">@_bucketNetWeight.ToString("N0") kg netto</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600">Greiti veiksmai</MudText>
+            <MudGrid>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/deliveries/new"
+                        StartIcon="@Icons.Material.Filled.Add">Naujas pristatymas</MudButton>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/stock"
+                        StartIcon="@Icons.Material.Filled.Inventory">Sandėlio likučiai</MudButton>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/deliveries"
+                        StartIcon="@Icons.Material.Filled.LocalShipping">Pristatymai</MudButton>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
+                        Style="height:60px; border-radius:12px" Href="/warehouse/transfers"
+                        StartIcon="@Icons.Material.Filled.SwapHoriz">Perkėlimai</MudButton>
+                </MudItem>
+            </MudGrid>
+        </AuthorizeView>
+
+        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Medaus rūšys sandėlyje</MudText>
+        <MudGrid>
+        @foreach (var ht in _honeyTypeStock)
+        {
+            var totalKg = ht.BarrelKg + ht.BucketKg;
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="1" Style="@($"background:{ht.Color}; border-radius:12px; border-left:4px solid #4f7cac;")">
+                    <MudCardContent Class="pa-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:600">@ht.Name</MudText>
+                        <MudText Typo="Typo.body2">Statinėse: @(totalKg > 0 ? ht.BarrelKg.ToString("N1") : "0") kg</MudText>
+                        <MudText Typo="Typo.body2">Kibiruose: @(totalKg > 0 ? ht.BucketKg.ToString("N1") : "0") kg</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private bool _dbError = false;
+    private bool _loading = true;
+    private int _barrelCount;
+    private decimal _barrelNetWeight;
+    private int _bucketCount;
+    private decimal _bucketNetWeight;
+    private int _unpricedDeliveries;
+    private decimal _totalDebt;
+    private int _suppliersWithDebt;
+    private List<Delivery> _recentDeliveries = new();
+    private List<NordicBeesERP.Models.BusinessPartner> _suppliers = new();
+    private List<(string Name, string Color, decimal BarrelKg, decimal BucketKg)> _honeyTypeStock = new();
+
+    private static readonly string[] _cardColors = {
+        "#dbeafe", "#f0fdf4", "#fef3c7", "#fce7f3", "#ede9fe", "#ffedd5", "#cffafe", "#dcfce7"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var deliveries = await DeliveryService.GetAllAsync();
+            _suppliers = await CustomerService.GetSuppliersAsync();
+
+            var allContainers = await ContainerService.GetFilteredAsync(null, null, null, "IN_STOCK", null);
+            _barrelCount = allContainers.Count(c => c.ContainerType == "BARREL");
+            _barrelNetWeight = allContainers.Where(c => c.ContainerType == "BARREL").Sum(c => c.NetWeight);
+            _bucketCount = allContainers.Count(c => c.ContainerType == "BUCKET_GROUP");
+            _bucketNetWeight = allContainers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight);
+            _unpricedDeliveries = deliveries.Count(d => d.Status == "RECEIVED");
+            _totalDebt = deliveries.Sum(d => Math.Max(0, d.TotalAmount - d.PaidAmount));
+            _suppliersWithDebt = deliveries.Where(d => d.TotalAmount - d.PaidAmount > 0).Select(d => d.SupplierId).Distinct().Count();
+            _recentDeliveries = deliveries.Take(10).ToList();
+
+            var honeyTypes = await HoneyTypeService.GetAllAsync();
+            _honeyTypeStock = honeyTypes.Select(ht => (
+                Name: ht.Name,
+                Color: ht.Color ?? "#f8fafc",
+                BarrelKg: allContainers.Where(c => c.HoneyTypeId == ht.Id && c.ContainerType == "BARREL").Sum(c => c.NetWeight),
+                BucketKg: allContainers.Where(c => c.HoneyTypeId == ht.Id && c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight)
+            )).ToList();
+
+            _loading = false;
+        }
+        catch (Exception ex)
+        {
+            _dbError = true;
+            _ = ex;
+        }
+    }
+
+    private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "RECEIVED" => Color.Default, "PRICED" => Color.Info,
+        "PARTIAL_PAID" => Color.Warning, "PAID" => Color.Success, _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "RECEIVED" => "Priimtas", "PRICED" => "Įkainotas",
+        "PARTIAL_PAID" => "Dalinai", "PAID" => "Apmokėtas", _ => status
+    };
+
+    private string GetUnpricedStyle() => _unpricedDeliveries > 0 ? "font-weight:700; color:#d97706" : "font-weight:700";
+
+    private string GetDebtBackgroundStyle() => _totalDebt > 0
+        ? "background:#fee2e2; border-radius:12px; cursor:pointer"
+        : "background:#f0fdf4; border-radius:12px; cursor:pointer";
+
+    private string GetDebtStyle() => _totalDebt > 0
+        ? "font-weight:700; color:#dc2626"
+        : "font-weight:700; color:#16a34a";
+}

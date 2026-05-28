@@ -1,0 +1,501 @@
+// =====================================================
+// NORDIC BEES ERP - DbContext
+// Framework: .NET 10 + Entity Framework Core
+// =====================================================
+
+using Microsoft.EntityFrameworkCore;
+using NordicBeesERP.Models;
+using NordicBeesERP.Models.Honey;
+using NordicBeesERP.Models.WarehouseModule;
+
+namespace NordicBeesERP.Data
+{
+    public class NordicBeesERPContext : DbContext
+    {
+        public NordicBeesERPContext(DbContextOptions<NordicBeesERPContext> options)
+            : base(options)
+        {
+        }
+
+        // =====================================================
+        // DBSETS
+        // =====================================================
+
+        // Authentication & Users
+        public DbSet<User> Users { get; set; }
+        public DbSet<Company> Companies { get; set; }
+        public DbSet<ErpUser> ErpUsers { get; set; }
+
+        // Business Partners
+        public DbSet<BusinessPartner> BusinessPartners { get; set; }
+
+        // Currencies
+        public DbSet<Currency> Currencies { get; set; }
+
+        // Payment Terms
+        public DbSet<PaymentTerm> PaymentTerms { get; set; }
+
+        // Products
+        public DbSet<ProductCategory> ProductCategories { get; set; }
+        public DbSet<Product> Products { get; set; }
+
+        // Warehouses
+        public DbSet<Warehouse> Warehouses { get; set; }
+        public DbSet<WarehouseStock> WarehouseStocks { get; set; }
+
+        // Honey Procurement
+        public DbSet<HoneyType> HoneyTypes { get; set; }
+        public DbSet<HoneyDelivery> HoneyDeliveries { get; set; }
+
+        // Production
+        public DbSet<ProductionBatch> ProductionBatches { get; set; }
+        public DbSet<ProductionBatchIngredient> ProductionBatchIngredients { get; set; }
+
+        // Honey Batch (LOT tracking)
+        public DbSet<HoneyBatch> HoneyBatches { get; set; }
+        public DbSet<HoneyBatchIngredient> HoneyBatchIngredients { get; set; }
+
+        // Warehouse Module
+        public DbSet<Container> Containers { get; set; }
+        public DbSet<Delivery> Deliveries { get; set; }
+        public DbSet<DeliveryLine> DeliveryLines { get; set; }
+        public DbSet<StockMovement> StockMovements { get; set; }
+        public DbSet<SupplierPayment> SupplierPayments { get; set; }
+        public DbSet<Lot> Lots { get; set; }
+        public DbSet<WarehouseType> WarehouseTypes { get; set; }
+        public DbSet<QualityParamConfig> QualityParamConfigs { get; set; }
+        public DbSet<RawMaterialType> RawMaterialTypes { get; set; }
+
+        // Sales
+        public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<InvoiceLine> InvoiceLines { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderLine> OrderLines { get; set; }
+
+        // Finance
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
+        public DbSet<Expense> Expenses { get; set; }
+
+        // Expense Module
+        public DbSet<NordicBeesERP.Models.Expenses.ExpenseCostCenter> ExpenseCostCenters { get; set; }
+        public DbSet<NordicBeesERP.Models.Expenses.ExpenseInvoice> ExpenseInvoices { get; set; }
+        public DbSet<ExpenseInvoiceLine> ExpenseInvoiceLines { get; set; }
+        public DbSet<ExpenseLineAllocation> ExpenseLineAllocations { get; set; }
+        public DbSet<ExpensePayment> ExpensePayments { get; set; }
+        public DbSet<ExpenseBudget> ExpenseBudgets { get; set; }
+        public DbSet<ExpenseOcrQueue> ExpenseOcrQueue { get; set; }
+        public DbSet<AppSetting> AppSettings { get; set; }
+
+        // Units
+        public DbSet<Unit> Units { get; set; }
+
+        // Company Settings
+        public DbSet<CompanySettings> CompanySettings { get; set; }
+
+        // =====================================================
+        // MODEL CONFIGURATION
+        // =====================================================
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // ===== USERS =====
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasIndex(e => e.Username).IsUnique();
+                entity.HasIndex(e => e.Email);
+            });
+
+            // ===== BUSINESS PARTNERS =====
+            modelBuilder.Entity<BusinessPartner>(entity =>
+            {
+                entity.HasIndex(e => e.PartnerType);
+                entity.HasIndex(e => e.Name);
+                entity.HasIndex(e => e.VatCode);
+                entity.HasIndex(e => new { e.IsActive, e.PartnerType });
+
+                // Convert enum to string
+                entity.Property(e => e.PartnerType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+            });
+
+            // ===== CURRENCIES =====
+            modelBuilder.Entity<Currency>(entity =>
+            {
+                entity.HasIndex(e => e.Code).IsUnique();
+                entity.HasIndex(e => e.IsActive);
+            });
+
+            // ===== PAYMENT TERMS =====
+            modelBuilder.Entity<PaymentTerm>(entity =>
+            {
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.HasIndex(e => e.Days);
+                entity.HasIndex(e => e.IsActive);
+            });
+
+            // ===== PRODUCT CATEGORIES =====
+            modelBuilder.Entity<ProductCategory>(entity =>
+            {
+                entity.HasIndex(e => e.Code).IsUnique();
+
+                entity.HasOne(e => e.Parent)
+                    .WithMany(e => e.Children)
+                    .HasForeignKey(e => e.ParentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ===== PRODUCTS =====
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.HasIndex(e => e.Code).IsUnique();
+                entity.HasIndex(e => e.ProductType);
+                // entity.HasIndex(e => e.CategoryId); // Column doesn't exist in MySQL
+                entity.HasIndex(e => new { e.WarehouseManaged, e.IsActive });
+
+                // Convert enum to string
+                entity.Property(e => e.ProductType)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                // Decimal precision
+                entity.Property(e => e.CostPrice).HasPrecision(10, 2);
+                entity.Property(e => e.SalePrice).HasPrecision(10, 2);
+                entity.Property(e => e.PurchasePrice).HasPrecision(10, 2);
+                entity.Property(e => e.MinStockLevel).HasPrecision(10, 2);
+            });
+
+            // ===== WAREHOUSES =====
+            modelBuilder.Entity<Warehouse>(entity =>
+            {
+                entity.HasIndex(e => e.Code).IsUnique();
+            });
+
+            // ===== WAREHOUSE STOCKS =====
+            modelBuilder.Entity<WarehouseStock>(entity =>
+            {
+                entity.HasIndex(e => new { e.WarehouseId, e.ProductId, e.LotNumber })
+                    .IsUnique();
+                entity.HasIndex(e => e.WarehouseId);
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.LotNumber);
+
+                // Decimal precision
+                entity.Property(e => e.Quantity).HasPrecision(10, 3);
+                entity.Property(e => e.ReservedQuantity).HasPrecision(10, 3);
+
+                // Computed column - read-only
+                entity.Property(e => e.AvailableQuantity)
+                    .HasComputedColumnSql("(quantity - reserved_quantity)", stored: true);
+            });
+
+            // ===== HONEY TYPES =====
+            modelBuilder.Entity<HoneyType>(entity =>
+            {
+                entity.HasIndex(e => e.Code).IsUnique();
+            });
+
+            // ===== HONEY DELIVERIES =====
+            modelBuilder.Entity<HoneyDelivery>(entity =>
+            {
+                entity.HasIndex(e => e.DeliveryDate);
+                entity.HasIndex(e => e.SupplierId);
+                entity.HasIndex(e => e.WarehouseId);
+                entity.HasIndex(e => e.HoneyTypeId);
+                entity.HasIndex(e => new { e.SupplierId, e.DeliveryDate });
+
+                // Decimal precision
+                entity.Property(e => e.GrossWeight).HasPrecision(10, 3);
+                entity.Property(e => e.TareWeight).HasPrecision(10, 3);
+                entity.Property(e => e.NetWeight).HasPrecision(10, 3);
+                entity.Property(e => e.PricePerKg).HasPrecision(10, 2);
+                entity.Property(e => e.TotalCost).HasPrecision(10, 2);
+                entity.Property(e => e.TransportCost).HasPrecision(10, 2);
+
+                // Relationships
+                entity.HasOne(e => e.Supplier)
+                    .WithMany(e => e.HoneyDeliveries)
+                    .HasForeignKey(e => e.SupplierId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== PRODUCTION BATCHES =====
+            modelBuilder.Entity<ProductionBatch>(entity =>
+            {
+                entity.HasIndex(e => e.BatchNumber).IsUnique();
+                entity.HasIndex(e => e.WarehouseId);
+                entity.HasIndex(e => e.ProductionDate);
+                entity.HasIndex(e => e.BatchStatus);
+                entity.HasIndex(e => new { e.ProductCode, e.ProductionDate });
+
+                // Convert enum to string
+                entity.Property(e => e.BatchStatus)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                // Decimal precision
+                entity.Property(e => e.Quantity).HasPrecision(10, 3);
+            });
+
+            // ===== PRODUCTION BATCH INGREDIENTS =====
+            modelBuilder.Entity<ProductionBatchIngredient>(entity =>
+            {
+                entity.HasIndex(e => e.BatchId);
+                entity.HasIndex(e => e.HoneyDeliveryId);
+                entity.HasIndex(e => e.Quantity);
+
+                // Decimal precision
+                entity.Property(e => e.Quantity).HasPrecision(10, 3);
+
+                // Relationships
+                entity.HasOne(e => e.Batch)
+                    .WithMany(e => e.Ingredients)
+                    .HasForeignKey(e => e.BatchId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.HoneyDelivery)
+                    .WithMany(e => e.UsedInBatches)
+                    .HasForeignKey(e => e.HoneyDeliveryId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== INVOICES =====
+            modelBuilder.Entity<Invoice>(entity =>
+            {
+                entity.HasIndex(e => e.InvoiceNumber).IsUnique();
+                entity.HasIndex(e => e.InvoiceDate);
+                entity.HasIndex(e => e.CustomerId);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => new { e.InvoiceDate, e.CustomerId });
+                entity.HasIndex(e => new { e.Status, e.InvoiceDate });
+
+                // Convert enum to string
+                entity.Property(e => e.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                // Decimal precision
+                entity.Property(e => e.SubtotalExclVat).HasPrecision(10, 2);
+                entity.Property(e => e.TotalVat).HasPrecision(10, 2);
+                entity.Property(e => e.TotalInclVat).HasPrecision(10, 2);
+
+                // Relationships - navigation properties that are NOT mapped
+                entity.Ignore(e => e.CreatorId);
+                entity.Ignore(e => e.DueDate);
+                entity.Ignore(e => e.PaymentTermId);
+                entity.Ignore(e => e.Creator);
+                entity.Ignore(e => e.Lines);
+                entity.Ignore(e => e.Payments);
+
+                // Currency relationship
+                entity.HasOne(e => e.Currency)
+                    .WithMany(e => e.Invoices)
+                    .HasForeignKey(e => e.CurrencyId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Customer relationship (BusinessPartner)
+                entity.HasOne(e => e.Customer)
+                    .WithMany(e => e.Invoices)
+                    .HasForeignKey(e => e.CustomerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== INVOICE LINES =====
+            modelBuilder.Entity<InvoiceLine>(entity =>
+            {
+                entity.HasIndex(e => e.InvoiceId);
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.LotNumber);
+
+                // Decimal precision
+                entity.Property(e => e.Quantity).HasPrecision(10, 3);
+                entity.Property(e => e.PriceExclVat).HasPrecision(10, 4);
+                entity.Property(e => e.VatRate).HasPrecision(5, 2);
+                entity.Property(e => e.LineSubtotal).HasPrecision(10, 2);
+                entity.Property(e => e.VatAmount).HasPrecision(10, 2);
+                entity.Property(e => e.LineTotal).HasPrecision(10, 2);
+
+                // Relationships
+                entity.HasOne(e => e.Invoice)
+                    .WithMany(e => e.Lines)
+                    .HasForeignKey(e => e.InvoiceId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ===== ORDERS =====
+            modelBuilder.Entity<Order>(entity =>
+            {
+                entity.HasIndex(e => e.OrderNumber).IsUnique();
+                entity.HasIndex(e => e.CustomerId);
+                entity.HasIndex(e => e.Status);
+
+                // Convert enum to string
+                entity.Property(e => e.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+            });
+
+            // ===== ORDER LINES =====
+            modelBuilder.Entity<OrderLine>(entity =>
+            {
+                entity.HasIndex(e => e.OrderId);
+                entity.HasIndex(e => e.ProductId);
+
+                // Decimal precision
+                entity.Property(e => e.Quantity).HasPrecision(10, 3);
+                entity.Property(e => e.Price).HasPrecision(10, 4);
+
+                // Relationships
+                entity.HasOne(e => e.Order)
+                    .WithMany(e => e.Lines)
+                    .HasForeignKey(e => e.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ===== PAYMENTS =====
+            modelBuilder.Entity<Payment>(entity =>
+            {
+                entity.HasIndex(e => e.PaymentDate);
+                entity.HasIndex(e => e.InvoiceId);
+                entity.HasIndex(e => e.CustomerId);
+
+                // Convert enum to string
+                entity.Property(e => e.PaymentMethod)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+
+                // Decimal precision
+                entity.Property(e => e.Amount).HasPrecision(10, 2);
+
+                // Relationships
+                entity.HasOne(e => e.Invoice)
+                    .WithMany(e => e.Payments)
+                    .HasForeignKey(e => e.InvoiceId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ===== EXPENSE CATEGORIES =====
+            modelBuilder.Entity<ExpenseCategory>(entity =>
+            {
+                entity.HasIndex(e => e.Code).IsUnique();
+
+                entity.HasOne(e => e.Parent)
+                    .WithMany(e => e.Children)
+                    .HasForeignKey(e => e.ParentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ===== EXPENSES =====
+            modelBuilder.Entity<Expense>(entity =>
+            {
+                entity.HasIndex(e => e.ExpenseDate);
+                entity.HasIndex(e => e.CategoryId);
+                entity.HasIndex(e => e.SupplierId);
+
+                // Decimal precision
+                entity.Property(e => e.Amount).HasPrecision(10, 2);
+                entity.Property(e => e.VatAmount).HasPrecision(10, 2);
+            });
+
+            // ===== HONEY BATCHES (LOT TRACKING) =====
+            modelBuilder.Entity<HoneyBatch>(entity =>
+            {
+                entity.HasIndex(e => e.LotNumber).IsUnique();
+                entity.HasIndex(e => e.ProcessingDate);
+                entity.HasIndex(e => e.WarehouseId);
+                entity.HasIndex(e => new { e.ProcessingDate, e.LotNumber });
+
+                // Decimal precision
+                entity.Property(e => e.Quantity).HasPrecision(10, 3);
+
+                // Relationships
+                entity.HasOne(e => e.Warehouse)
+                    .WithMany(e => e.HoneyBatches)
+                    .HasForeignKey(e => e.WarehouseId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== HONEY BATCH INGREDIENTS =====
+            modelBuilder.Entity<HoneyBatchIngredient>(entity =>
+            {
+                entity.HasIndex(e => e.BatchId);
+                entity.HasIndex(e => e.HoneyDeliveryId);
+                entity.HasIndex(e => e.Quantity);
+
+                // Decimal precision
+                entity.Property(e => e.Quantity).HasPrecision(10, 3);
+
+                // Relationships
+                entity.HasOne(e => e.Batch)
+                    .WithMany(e => e.HoneyBatchIngredients)
+                    .HasForeignKey(e => e.BatchId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.HoneyDelivery)
+                    .WithMany(e => e.UsedInHoneyBatches)
+                    .HasForeignKey(e => e.HoneyDeliveryId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ===== RAW MATERIAL TYPES =====
+            modelBuilder.Entity<RawMaterialType>(entity =>
+            {
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => e.SortOrder);
+
+                // Convert enum to string
+                entity.Property(e => e.IsHoney)
+                    .HasConversion<bool>();
+            });
+
+            // Seed data for RawMaterialTypes
+            modelBuilder.Entity<RawMaterialType>().HasData(
+                new RawMaterialType { Id = 1, Name = "Medus", IsHoney = true, SortOrder = 1 },
+                new RawMaterialType { Id = 2, Name = "Bičių duona", IsHoney = false, SortOrder = 2 },
+                new RawMaterialType { Id = 3, Name = "Pikis", IsHoney = false, SortOrder = 3 },
+                new RawMaterialType { Id = 4, Name = "Propolis", IsHoney = false, SortOrder = 4 },
+                new RawMaterialType { Id = 5, Name = "Vaškas", IsHoney = false, SortOrder = 5 }
+            );
+        }
+
+        // =====================================================
+        // HELPER METHODS
+        // =====================================================
+
+        public override int SaveChanges()
+        {
+            UpdateTimestamps();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            UpdateTimestamps();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void UpdateTimestamps()
+        {
+            var entries = ChangeTracker.Entries()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
+
+            foreach (var entry in entries)
+            {
+                if (entry.Entity.GetType().GetProperty("UpdatedAt") != null)
+                {
+                    entry.Property("UpdatedAt").CurrentValue = DateTime.UtcNow;
+                }
+
+                if (entry.State == EntityState.Added &&
+                    entry.Entity.GetType().GetProperty("CreatedAt") != null)
+                {
+                    entry.Property("CreatedAt").CurrentValue = DateTime.UtcNow;
+                }
+            }
+        }
+    }
+}

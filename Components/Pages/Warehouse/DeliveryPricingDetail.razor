@@ -1,0 +1,460 @@
+@page "/warehouse/deliveries/{Id:int}/pricing"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Components.Dialogs
+@inject IDeliveryService DeliveryService
+@inject ISupplierPaymentService PaymentService
+@inject ICustomerService CustomerService
+@inject IHoneyTypeService HoneyTypeService
+@inject IProductService ProductService
+@inject IRawMaterialTypeService RawMaterialTypeService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
+@implements IDisposable
+
+<PageTitle>Pristatymo kainos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_delivery == null)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Typo="Typo.h5" Style="font-weight:600">Kainos: @_delivery.DeliveryNumber</MudText>
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                Href="/warehouse/delivery-pricing">Atgal</MudButton>
+        </MudStack>
+
+        <!-- Save indicator -->
+        @if (_saveIndicatorVisible)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.Check"
+                Style="position:fixed; top:16px; right:16px; z-index:9999">
+                Išsaugota
+            </MudChip>
+        }
+
+        <!-- Info -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="6" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+                    <MudText Typo="Typo.caption">Tiekėjas</MudText>
+                    <MudText Typo="Typo.h6">@_supplierName</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+                    <MudText Typo="Typo.caption">Data</MudText>
+                    <MudText Typo="Typo.h6">@_delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+                    <MudText Typo="Typo.caption">Netto</MudText>
+                    <MudText Typo="Typo.h6">@_delivery.TotalNetWeight.ToString("N1") kg</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Class="pa-3" Elevation="0" Style="@(_skola > 0 ? "background:#ffebee; border-radius:8px" : "background:#e8f5e9; border-radius:8px")">
+                    <MudText Typo="Typo.caption">Skola</MudText>
+                    <MudText Typo="Typo.h6">@_skola.ToString("N2") €</MudText>
+                    @if (_permoka > 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Success">Permoka: @_permoka.ToString("N2") €</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Kainos -->
+        <MudText Typo="Typo.h6" Class="mb-2">Eilučių kainos</MudText>
+        <MudTable T="DeliveryLine" Items="_lines" Dense="true" Hover="true" Class="mb-4">
+            <HeaderContent>
+                <MudTh>Žaliava</MudTh>
+                <MudTh>Rūšis</MudTh>
+                <MudTh>Tipas</MudTh>
+                <MudTh Style="text-align:right">Kiekis</MudTh>
+                <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                <MudTh Style="text-align:right; width:150px">Kaina €/kg</MudTh>
+                <MudTh Style="text-align:right">Suma €</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="line">
+                <MudTd>@GetRawMaterialName(_delivery?.RawMaterialTypeId)</MudTd>
+                <MudTd>@GetHoneyTypeName(line.HoneyTypeId)</MudTd>
+                <MudTd>@GetContainerTypeName(line.ContainerType)</MudTd>
+                <MudTd Style="text-align:right">@line.ContainerCount</MudTd>
+                <MudTd Style="text-align:right">@((line.TotalNetWeight ?? 0m).ToString("N2"))</MudTd>
+                <MudTd Style="text-align:right">
+                <MudNumericField T="decimal?" Value="@line.UnitPrice"
+                    ValueChanged="@((decimal? val) => { line.UnitPrice = val; OnPriceChanged(); })"
+                    Variant="Variant.Outlined" Style="max-width:130px"
+                    Step="0.01m"
+                    Format="F2"
+                    Culture="@(new System.Globalization.CultureInfo("lt-LT"))"
+                    HideSpinButtons="true" />
+                </MudTd>
+                <MudTd Style="text-align:right">
+                    <strong>@(((line.TotalNetWeight ?? 0m) * (line.UnitPrice ?? 0m)).ToString("N2"))</strong>
+                </MudTd>
+            </RowTemplate>
+            <FooterContent>
+                <MudTFootRow>
+                    <MudTd colspan="4"></MudTd>
+                    <MudTd Style="text-align:right"><strong>@_lines.Sum(l => l.TotalNetWeight ?? 0m).ToString("N2")</strong></MudTd>
+                    <MudTd></MudTd>
+                    <MudTd Style="text-align:right"><strong>@_lines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m)).ToString("N2") €</strong></MudTd>
+                </MudTFootRow>
+            </FooterContent>
+        </MudTable>
+
+        <!-- Payment Summary -->
+        <style>
+            .card-overpaid { background:#fff8e1; border-radius:12px; height:100px; }
+            .card-fully-paid { background:#f1f8e9; border-radius:12px; height:100px; }
+            .card-debt { background:#ffebee; border-radius:12px; height:100px; }
+            .card-title { font-weight:600; }
+            .color-orange { color:#f57c00; }
+            .color-green { color:#388e3c; }
+            .color-red { color:#c62828; }
+        </style>
+        <MudGrid Spacing="3">
+            <MudItem xs="4">
+                <MudPaper Elevation="0" Class="pa-4 card-summary" Style="background:#f1f8e9; border-radius:12px; height:100px">
+                    <MudText Typo="Typo.caption" Style="color:#666">Bendra suma</MudText>
+                    <MudText Typo="Typo.h5" Style="font-weight:600">@_totalAmountDisplay.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="4">
+                <MudPaper Elevation="0" Class="pa-4 card-summary" Style="background:#e3f2fd; border-radius:12px; height:100px">
+                    <MudText Typo="Typo.caption" Style="color:#666">Sumokėta</MudText>
+                    <MudText Typo="Typo.h5" Style="font-weight:600">@_paidAmountDisplay.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="4">
+                <MudPaper Elevation="0" Class="pa-4 card-summary card-debt" Style="height:100px">
+                    <MudText Typo="Typo.caption" Style="color:#666">@GetStatusText(_delivery?.Status ?? "RECEIVED")</MudText>
+                    <MudText Typo="Typo.h5" Style="font-weight:600; color:#c62828">
+                        @(_debtDisplay.ToString("N2")) €
+                    </MudText>
+                    @if (_permoka > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Permokėta</MudChip>
+                    }
+                    else if (_skola == 0 && _totalAmountDisplay > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Apmokėta</MudChip>
+                    }
+                    else if (_isPartiallyPaid)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Dalinai</MudChip>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <MudText Typo="Typo.h6">Mokėjimai</MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                StartIcon="@Icons.Material.Filled.Add"
+                OnClick="OpenPaymentDialog">+ Pridėti mokėjimą</MudButton>
+        </div>
+
+        @if (_payments.Any())
+        {
+            <MudTable T="SupplierPayment" Items="_payments" Dense="true" Hover="true" Class="mb-4">
+                <HeaderContent>
+                    <MudTh>Data</MudTh>
+                    <MudTh Style="text-align:right">Suma (€)</MudTh>
+                    <MudTh>Būdas</MudTh>
+                    <MudTh>Pastabos</MudTh>
+                    <MudTh Style="width:50px"></MudTh>
+                </HeaderContent>
+                <RowTemplate Context="p">
+                    <MudTd>@p.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd Style="text-align:right">@p.Amount.ToString("N2")</MudTd>
+                    <MudTd>@GetPaymentMethodText(p.PaymentMethod)</MudTd>
+                    <MudTd>@p.Notes</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                            Color="Color.Primary" OnClick="@(() => OpenEditPaymentDialog(p))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                            Color="Color.Error" OnClick="@(() => DeletePayment(p.Id))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    }
+</MudContainer>
+
+<!-- Payment Dialog -->
+<MudDialog @bind-Visible="_paymentDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent><MudText Typo="Typo.h6">Naujas mokėjimas</MudText></TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudNumericField T="decimal" @bind-Value="_newPaymentAmount" Label="Suma (€)" Variant="Variant.Outlined" />
+            <MudDatePicker @bind-Date="_newPaymentDate" Label="Data" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
+            <MudSelect T="string" @bind-Value="_newPaymentMethod" Label="Mokėjimo būdas" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>
+                <MudSelectItem Value="@("cash")">Grynais</MudSelectItem>
+                <MudSelectItem Value="@("offset")">Užskaita</MudSelectItem>
+            </MudSelect>
+            <MudTextField T="string" @bind-Value="_newPaymentNotes" Label="Pastabos" Variant="Variant.Outlined" Lines="2" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Secondary" OnClick="@(() => _paymentDialogVisible = false)">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SavePayment"
+            Disabled="@(_newPaymentAmount <= 0)">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Edit Payment Dialog -->
+<MudDialog @bind-Visible="_editPaymentDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent><MudText Typo="Typo.h6">Redaguoti mokėjimą</MudText></TitleContent>
+    <DialogContent>
+        <div @onkeydown="@((KeyboardEventArgs e) => { if (e.Key == "Escape") _editPaymentDialogVisible = false; if (e.Key == "Enter") _ = SaveEditPayment(); })" tabindex="0">
+            <MudStack Spacing="3">
+                <MudNumericField T="decimal" 
+                    Value="@(_editingPayment?.Amount ?? 0)"
+                    ValueChanged="@((decimal val) => { if (_editingPayment != null) _editingPayment.Amount = val; })"
+                    Label="Suma (€)" Variant="Variant.Outlined"
+                    Format="F2"
+                    Culture="@(new System.Globalization.CultureInfo("lt-LT"))" />
+                <MudDatePicker @bind-Date="_editingPaymentDate" Label="Data" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
+                <MudSelect T="string" @bind-Value="_editingPayment.PaymentMethod" Label="Mokėjimo būdas" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>
+                    <MudSelectItem Value="@("cash")">Grynais</MudSelectItem>
+                    <MudSelectItem Value="@("offset")">Užskaita</MudSelectItem>
+                </MudSelect>
+                <MudTextField T="string" @bind-Value="_editingPayment.Notes" Label="Pastabos" Variant="Variant.Outlined" Lines="2" />
+            </MudStack>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Secondary" OnClick="@(() => _editPaymentDialogVisible = false)">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEditPayment">
+            Išsaugoti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Delivery? _delivery;
+    private List<DeliveryLine> _lines = new();
+    private List<SupplierPayment> _payments = new();
+    private string _supplierName = "";
+    private decimal _totalAmount => _delivery?.TotalAmount ?? 0;
+    private decimal _paidAmount => _delivery?.PaidAmount ?? 0;
+    private decimal _skola => Math.Max(0, _totalAmount - _paidAmount);
+    private decimal _permoka => _paidAmount > _totalAmount ? _paidAmount - _totalAmount : 0;
+    private bool _isPartiallyPaid => _totalAmount > 0 && _paidAmount > 0 && _paidAmount < _totalAmount;
+    private decimal _totalAmountDisplay => _delivery?.TotalAmount ?? 0m;
+    private decimal _paidAmountDisplay => _delivery?.PaidAmount ?? 0m;
+    private decimal _debtDisplay => Math.Max(0, _totalAmountDisplay - _paidAmountDisplay);
+
+    private List<Product> _products = new();
+    private List<HoneyType> _honeyTypes = new();
+    private List<RawMaterialType> _rawMaterialTypes = new();
+
+    // Payment dialog
+    private bool _paymentDialogVisible;
+    private decimal _newPaymentAmount;
+    private DateTime? _newPaymentDate = DateTime.Today;
+    private string _newPaymentMethod = "bank_transfer";
+    private string _newPaymentNotes = "";
+
+    // Edit payment dialog
+    private bool _editPaymentDialogVisible;
+    private SupplierPayment? _editingPayment;
+    private DateTime? _editingPaymentDate;
+
+    private async void OpenEditPaymentDialog(SupplierPayment payment)
+    {
+        _editPaymentDialogVisible = false;
+        _editingPayment = null;
+        await Task.Delay(50);
+        _editingPayment = new SupplierPayment
+        {
+            Id = payment.Id,
+            DeliveryId = payment.DeliveryId,
+            SupplierId = payment.SupplierId,
+            Amount = payment.Amount,
+            PaymentDate = payment.PaymentDate,
+            PaymentMethod = payment.PaymentMethod,
+            Notes = payment.Notes ?? ""
+        };
+        _editingPaymentDate = payment.PaymentDate;
+        _editPaymentDialogVisible = true;
+        StateHasChanged();
+    }
+
+    private async Task SaveEditPayment()
+    {
+        if (_editingPayment == null) return;
+        try
+        {
+            if (_editingPaymentDate.HasValue)
+            {
+                _editingPayment.PaymentDate = _editingPaymentDate.Value;
+            }
+            await PaymentService.UpdateAsync(_editingPayment);
+            _editPaymentDialogVisible = false;
+            await LoadData();
+            Snackbar.Add("Mokėjimas atnaujintas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+        }
+    }
+
+    // Autosave
+    private System.Threading.Timer? _autoSaveTimer;
+    private bool _saveIndicatorVisible = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _products = await ProductService.GetAllProductsAsync();
+        _honeyTypes = await HoneyTypeService.GetAllAsync();
+        _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _payments = await PaymentService.GetByDeliveryAsync(Id);
+        _delivery = await DeliveryService.GetByIdAsync(Id);
+        if (_delivery != null)
+        {
+            _delivery.PaidAmount = _payments.Sum(p => p.Amount);
+            _lines = await DeliveryService.GetLinesByDeliveryIdAsync(Id);
+            var suppliers = await CustomerService.GetSuppliersAsync();
+            _supplierName = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId)?.Name ?? "";
+        }
+    }
+
+    private void OnPriceChanged()
+    {
+        _autoSaveTimer?.Dispose();
+        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    await DeliveryService.UpdatePricesAsync(Id, _lines, _delivery!.BarrelsOwed);
+                    
+                    // Perkraunam delivery kad gautum atnaujintą TotalAmount
+                    _delivery = await DeliveryService.GetByIdAsync(Id);
+                    
+                    _saveIndicatorVisible = true;
+                    StateHasChanged();
+                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Nepavyko išsaugoti kainų: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+                    StateHasChanged();
+                }
+            });
+        }, null, 800, Timeout.Infinite);
+    }
+
+    private void OpenPaymentDialog()
+    {
+        _newPaymentAmount = _skola > 0 ? _skola : 0;
+        _newPaymentDate = DateTime.Today;
+        _newPaymentMethod = "bank_transfer";
+        _newPaymentNotes = "";
+        _paymentDialogVisible = true;
+    }
+
+    private async Task SavePayment()
+    {
+        try
+        {
+            var payment = new SupplierPayment
+            {
+                DeliveryId = Id,
+                SupplierId = _delivery!.SupplierId,
+                Amount = _newPaymentAmount,
+                PaymentDate = _newPaymentDate ?? DateTime.Today,
+                PaymentMethod = _newPaymentMethod,
+                Notes = _newPaymentNotes
+            };
+            await PaymentService.CreatePaymentAsync(payment);
+            _paymentDialogVisible = false;
+            
+            // Perkraunam TIK mokėjimus, ne viską
+            _payments = await PaymentService.GetByDeliveryAsync(Id);
+            _delivery!.PaidAmount = _payments.Sum(p => p.Amount);
+            
+            Snackbar.Add("Mokėjimas pridėtas", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko pridėti mokėjimo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeletePayment(int paymentId)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Ar tikrai norite ištrinti šį mokėjimą?" },
+            { x => x.ButtonText, "Ištrinti" },
+            { x => x.Color, Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        await PaymentService.DeletePaymentAsync(paymentId);
+        
+        // Perkraunam TIK mokėjimus
+        _payments = await PaymentService.GetByDeliveryAsync(Id);
+        _delivery!.PaidAmount = _payments.Sum(p => p.Amount);
+        
+        Snackbar.Add("Mokėjimas ištrintas", Severity.Success);
+        StateHasChanged();
+    }
+
+    private string GetRawMaterialName(int? id) => id.HasValue ? _rawMaterialTypes.FirstOrDefault(r => r.Id == id.Value)?.Name ?? "-" : "-";
+    private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
+    private string GetContainerTypeName(string? type) => type switch {
+        "BARREL" => "Statinė",
+        "BUCKET_GROUP" => "Kibirai",
+        "BUCKET" => "Kibiras",
+        _ => type ?? "-"
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "RECEIVED" => Color.Default, "PRICED" => Color.Info,
+        "PARTIAL_PAID" => Color.Warning, "PAID" => Color.Success, _ => Color.Default
+    };
+
+    private string GetStatusText(string status) => status switch
+    {
+        "RECEIVED" => "Priimtas", "PRICED" => "Įkainotas",
+        "PARTIAL_PAID" => "Dalinai apmokėtas", "PAID" => "Apmokėtas", _ => status
+    };
+
+    private string GetPaymentMethodText(string method) => method switch
+    {
+        "bank_transfer" => "Banko pavedimas", "cash" => "Grynais",
+        "offset" => "Užskaita", _ => method
+    };
+
+    public void Dispose()
+    {
+        _autoSaveTimer?.Dispose();
+    }
+}

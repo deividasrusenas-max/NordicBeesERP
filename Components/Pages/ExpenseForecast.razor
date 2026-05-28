@@ -1,0 +1,244 @@
+@page "/expenses/forecast"
+@rendermode InteractiveServer
+@inject IExpenseService ExpenseService
+@inject ISupplierService SupplierService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Services
+@using MudBlazor
+@implements IDisposable
+
+<PageTitle>Išlaidų prognozė</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 mb-8">
+    <MudText Typo="Typo.h5" Class="mb-4">Išlaidų prognozė</MudText>
+
+    <!-- Toggle buttons row -->
+    <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small" Class="mb-4">
+        <MudButton Color="@(_days==7?Color.Primary:Color.Default)" OnClick="@(()=>SetDays(7))">7 dienų</MudButton>
+        <MudButton Color="@(_days==30?Color.Primary:Color.Default)" OnClick="@(()=>SetDays(30))">30 dienų</MudButton>
+        <MudButton Color="@(_days==90?Color.Primary:Color.Default)" OnClick="@(()=>SetDays(90))">90 dienų</MudButton>
+    </MudButtonGroup>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <!-- 3 KPI Cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="4">
+                <MudPaper Elevation="1" Class="pa-4" Style="background:#dcfce7; border-radius:12px;">
+                    <MudText Typo="Typo.caption">Per @_days dienų</MudText>
+                    <MudText Typo="Typo.h4">@_nextPeriodExclVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">PVM: @_nextPeriodVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">Su PVM: @_nextPeriodInclVat.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Elevation="1" Class="pa-4" Style="background:#fee2e2; border-radius:12px;">
+                    <MudText Typo="Typo.caption" Color="Color.Error">Pradelsta</MudText>
+                    <MudText Typo="Typo.h4">@_overdueExclVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">PVM: @_overdueVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">Su PVM: @_overdueInclVat.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Elevation="1" Class="pa-4" Style="background:#dbeafe; border-radius:12px;">
+                    <MudText Typo="Typo.caption">Viso laukiama</MudText>
+                    <MudText Typo="Typo.h4">@_totalExclVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">PVM: @_totalVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.caption">Su PVM: @_totalInclVat.ToString("N2") €</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Chart.js Bar Chart -->
+        @if (_chartData.Count > 0)
+        {
+            <MudPaper Elevation="1" Class="pa-4 mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Laukiamų išlaidų grafikas</MudText>
+                <canvas id="cashFlowChart" style="max-height:280px;width:100%"></canvas>
+            </MudPaper>
+
+            <MudPaper Elevation="1" Class="pa-2 mb-4">
+                <MudStack Row="true" Class="mt-2" Justify="Justify.Center">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <div style="width:12px;height:12px;background:#ef4444;border-radius:2px"></div>
+                        <MudText Typo="Typo.caption">Pradelsta</MudText>
+                    </MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <div style="width:12px;height:12px;background:#2563eb;border-radius:2px"></div>
+                        <MudText Typo="Typo.caption">Ši savaitė</MudText>
+                    </MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <div style="width:12px;height:12px;background:#93c5fd;border-radius:2px"></div>
+                        <MudText Typo="Typo.caption">Ateitis</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+
+        <!-- Upcoming expense invoices table -->
+        <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Artimiausi mokėjimai</MudText>
+        <MudPaper Elevation="1" Class="pa-0">
+            <MudTable T="ExpenseInvoice" Items="@_upcomingInvoices.Take(10).ToList()" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Nr.</MudTh>
+                    <MudTh>Tiekėjas</MudTh>
+                    <MudTh Style="text-align:right">Suma (€)</MudTh>
+                    <MudTh Style="text-align:center">Terminas</MudTh>
+                    <MudTh Style="text-align:center">Liko</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="inv">
+                    <MudTd>@inv.InvoiceNumber</MudTd>
+                    <MudTd>@GetSupplierName(inv)</MudTd>
+                    <MudTd Style="text-align:right">@((inv.AmountInclVat - inv.PaidAmount).ToString("N2")) €</MudTd>
+                    <MudTd Style="text-align:center">@inv.DueDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd Style="text-align:center">
+                        @{
+                            var d = (inv.DueDate.Date - DateTime.Today).Days;
+                            var lbl = d == 0 ? "Šiandien" : d > 0 ? $"-{d}d." : $"+{Math.Abs(d)}d.";
+                            var clr = d < 0 ? "#ef4444" : d <= 7 ? "#f97316" : "#16a34a";
+                        }
+                        <MudText Style="@($"color:{clr};font-weight:600")">@lbl</MudText>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+
+    <div style="height:48px"></div>
+</MudContainer>
+
+@code {
+    private int _days = 30;
+    private decimal _nextPeriodExclVat = 0m;
+    private decimal _nextPeriodVat = 0m;
+    private decimal _nextPeriodInclVat = 0m;
+    private decimal _overdueExclVat = 0m;
+    private decimal _overdueVat = 0m;
+    private decimal _overdueInclVat = 0m;
+    private decimal _totalExclVat = 0m;
+    private decimal _totalVat = 0m;
+    private decimal _totalInclVat = 0m;
+    private List<ExpenseInvoice> _upcomingInvoices = new();
+    private List<ExpenseInvoice> _allInvoices = new();
+    private List<(string Label, decimal Amount, bool IsPast, bool IsCurrentWeek)> _chartData = new();
+    private Dictionary<int, string> _supplierNames = new();
+    private bool _loading = true;
+    private bool _disposed = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_chartData.Any())
+            await JS.InvokeVoidAsync("renderCashFlowChart",
+                _chartData.Select(d => d.Label).ToArray(),
+                _chartData.Select(d => (double)d.Amount).ToArray(),
+                _chartData.Select(d => d.IsPast ? "#ef4444" : d.IsCurrentWeek ? "#2563eb" : "#93c5fd").ToArray());
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected override void OnParametersSet()
+    {
+        _disposed = false;
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+    }
+
+    private string GetSupplierName(ExpenseInvoice inv)
+    {
+        if (inv.SupplierId.HasValue && _supplierNames.TryGetValue(inv.SupplierId.Value, out var name))
+            return name;
+        return inv.PendingSupplierName ?? "-";
+    }
+
+    private async Task SetDays(int days)
+    {
+        _days = days;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var today = DateTime.Today;
+
+            var suppliers = await SupplierService.GetSuppliersAsync();
+            _supplierNames = suppliers.ToDictionary(s => s.Id, s => s.Name);
+
+            _allInvoices = await ExpenseService.GetInvoicesAsync();
+            _allInvoices = _allInvoices
+                .Where(i => i.Status == "PENDING" || i.Status == "PARTIAL" || i.Status == "OVERDUE")
+                .ToList();
+
+            var overdueInvoices = _allInvoices
+                .Where(i => i.DueDate.Date < today)
+                .ToList();
+
+            var rangeEnd = today.AddDays(_days);
+            var nextPeriodInvoices = _allInvoices
+                .Where(i => i.DueDate.Date >= today && i.DueDate.Date <= rangeEnd)
+                .ToList();
+
+            decimal Remaining(ExpenseInvoice i) => i.AmountInclVat - i.PaidAmount;
+            decimal ProportionalExcl(ExpenseInvoice i) => i.AmountInclVat > 0 ? Remaining(i) * i.AmountExclVat / i.AmountInclVat : 0;
+            decimal ProportionalVat(ExpenseInvoice i) => i.AmountInclVat > 0 ? Remaining(i) * i.VatAmount / i.AmountInclVat : 0;
+
+            _nextPeriodExclVat = nextPeriodInvoices.Sum(ProportionalExcl);
+            _nextPeriodVat = nextPeriodInvoices.Sum(ProportionalVat);
+            _nextPeriodInclVat = nextPeriodInvoices.Sum(Remaining);
+
+            _overdueExclVat = overdueInvoices.Sum(ProportionalExcl);
+            _overdueVat = overdueInvoices.Sum(ProportionalVat);
+            _overdueInclVat = overdueInvoices.Sum(Remaining);
+
+            _totalExclVat = _allInvoices.Sum(ProportionalExcl);
+            _totalVat = _allInvoices.Sum(ProportionalVat);
+            _totalInclVat = _allInvoices.Sum(Remaining);
+
+            _upcomingInvoices = _allInvoices
+                .OrderBy(i => i.DueDate)
+                .ToList();
+
+            _chartData = new();
+
+            var overdueSum = overdueInvoices.Sum(Remaining);
+            if (overdueSum > 0)
+                _chartData.Add(("Pradelsta", overdueSum, true, false));
+
+            for (int w = 0; w < (_days / 7) + 1; w++)
+            {
+                var weekStart = today.AddDays(w * 7);
+                var weekEnd = weekStart.AddDays(6);
+                var label = weekStart.ToString("dd.MM") + "-" + weekEnd.ToString("dd.MM");
+                var sum = _allInvoices
+                    .Where(i => i.DueDate.Date >= weekStart && i.DueDate.Date <= weekEnd)
+                    .Sum(Remaining);
+                _chartData.Add((label, sum, false, w == 0));
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!_disposed)
+                Snackbar.Add($"Klaida įkeliant išlaidų prognozę: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

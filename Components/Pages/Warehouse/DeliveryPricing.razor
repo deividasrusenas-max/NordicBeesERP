@@ -1,0 +1,108 @@
+@page "/warehouse/delivery-pricing"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Components.Dialogs
+@inject IDeliveryService DeliveryService
+@inject ISupplierPaymentService PaymentService
+@inject ICustomerService CustomerService
+@inject IHoneyTypeService HoneyTypeService
+@inject IProductService ProductService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Pristatymų kainos ir mokėjimai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Pristatymų kainos ir mokėjimai</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable T="Delivery" Items="_deliveries" Dense="true" Hover="true" Striped="true"
+            OnRowClick="@((TableRowClickEventArgs<Delivery> args) => OpenPricingDetail(args.Item.Id))"
+            Style="cursor:pointer">
+            <HeaderContent>
+                <MudTh>Nr.</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Tiekėjas</MudTh>
+                <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                <MudTh>Statusas</MudTh>
+                <MudTh Style="text-align:right">Suma €</MudTh>
+                <MudTh Style="text-align:right">Sumokėta €</MudTh>
+                <MudTh Style="text-align:right">Skola €</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="d">
+                <MudTd>@d.DeliveryNumber</MudTd>
+                <MudTd>@d.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd>@GetSupplierName(d.SupplierId)</MudTd>
+                <MudTd Style="text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
+                <MudTd>
+                    @{
+                        var badge = GetStatusBadge(d);
+                    }
+                    <MudChip T="string" Size="Size.Small" Color="@badge.Color">@badge.Label</MudChip>
+                </MudTd>
+                <MudTd Style="text-align:right">@d.TotalAmount.ToString("N2")</MudTd>
+                <MudTd Style="text-align:right">@d.PaidAmount.ToString("N2")</MudTd>
+                <MudTd @attributes='new Dictionary<string, object> { 
+                    { "style", $"text-align:right; {GetDebtStyle(d.TotalAmount - d.PaidAmount)}" } 
+                }'>
+                    @((d.TotalAmount - d.PaidAmount).ToString("N2"))
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<Delivery> _deliveries = new();
+    private List<BusinessPartner> _suppliers = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        await LoadData();
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await LoadData();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadData()
+    {
+        _suppliers = await CustomerService.GetSuppliersAsync();
+        _deliveries = await DeliveryService.GetAllAsync();
+        _loading = false;
+    }
+
+    private void OpenPricingDetail(int deliveryId)
+    {
+        // Kol kas navigacija į esamą delivery view — vėliau bus atskiras pricing dialog
+        Navigation.NavigateTo($"/warehouse/deliveries/{deliveryId}/pricing");
+    }
+
+    private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+
+    private (string Label, Color Color) GetStatusBadge(Delivery d) => (d.TotalAmount, d.PaidAmount) switch {
+        _ when d.TotalAmount <= 0 => ("Priimtas", Color.Default),
+        _ when d.PaidAmount <= 0 => ("Neapmokėtas", Color.Error),
+        _ when d.PaidAmount >= d.TotalAmount => ("Apmokėtas", Color.Success),
+        _ => ("Dalinai", Color.Warning)
+    };
+
+    private string GetDebtStyle(decimal debt) => debt > 0 ? "color:red;font-weight:bold" : "";
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

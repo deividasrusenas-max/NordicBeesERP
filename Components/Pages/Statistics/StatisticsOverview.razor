@@ -1,0 +1,245 @@
+@page "/statistics"
+@rendermode InteractiveServer
+@inject IDeliveryService DeliveryService
+@inject ICustomerService CustomerService
+@using NordicBeesERP.Services
+@using NordicBeesERP.Models
+@using MudBlazor.Charts
+
+<PageTitle>Statistika</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Statistika</MudText>
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#dbeafe; border-radius:12px">
+                    <MudText Typo="Typo.caption">Pristatymai</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@_count</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#f0fdf4; border-radius:12px">
+                    <MudText Typo="Typo.caption">Netto (kg)</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@_totalKg.ToString("N0")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#fef3c7; border-radius:12px">
+                    <MudText Typo="Typo.caption">Suma (€)</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@_totalAmount.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-4" Style="background:#fee2e2; border-radius:12px">
+                    <MudText Typo="Typo.caption">Skola (€)</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700; color:#dc2626">@_totalDebt.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+
+    <MudText Typo="Typo.subtitle1" Class="mb-2">@_selectedYear metų supirkimo dinamika</MudText>
+    <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px; min-height:550px">
+        <MudChart ChartType="ChartType.Bar"
+            ChartSeries="@_chartSeries"
+            XAxisLabels="@_chartLabels"
+            Width="100%"
+            Height="500px"
+            ChartOptions="@(new ChartOptions {
+                YAxisFormat = "N0",
+                ChartPalette = new string[] { "#4f7cac", "#ef4444" }
+            })" />
+    </MudPaper>
+    </MudContainer>
+
+    <MudGrid Class="mb-3" AlignItems="AlignItems.Center">
+        <MudItem xs="12" md="2">
+            <MudSelect T="int" Value="_selectedYear" Label="Metai" Variant="Variant.Outlined"
+                ValueChanged="@(async (int y) => { _selectedYear = y; await LoadData(); })">
+                @foreach (var y in Enumerable.Range(2023, DateTime.Now.Year - 2023 + 1).Reverse())
+                {
+                    <MudSelectItem T="int" Value="@y">@y</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.h6" Class="mb-2" Style="font-weight:600">Mėnesiai</MudText>
+    <MudTable T="MonthRow" Items="_monthly" Dense="true" Hover="true" Striped="true" Class="mb-4">
+        <HeaderContent>
+            <MudTh>Mėnuo</MudTh>
+            <MudTh Style="text-align:right">Pristatymai</MudTh>
+            <MudTh Style="text-align:right">Netto (kg)</MudTh>
+            <MudTh Style="text-align:right">Suma (€)</MudTh>
+            <MudTh Style="text-align:right">Sumokėta (€)</MudTh>
+            <MudTh Style="text-align:right">Skola (€)</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <MudTd>@row.Month</MudTd>
+            <MudTd Style="text-align:right">@row.Count</MudTd>
+            <MudTd Style="text-align:right">@row.NetWeight.ToString("N1")</MudTd>
+            <MudTd Style="text-align:right">@row.Amount.ToString("N2")</MudTd>
+            <MudTd Style="text-align:right">@row.Paid.ToString("N2")</MudTd>
+            <MudTd Style="@GetDebtStyle(row.Debt)">@row.Debt.ToString("N2")</MudTd>
+        </RowTemplate>
+        <FooterContent>
+            <MudTd><b>Iš viso</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_count</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_totalKg.ToString("N1")</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_totalAmount.ToString("N2")</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_monthly.Sum(r => r.Paid).ToString("N2")</b></MudTd>
+            <MudTd Style="@GetTotalDebtStyle"><b>@_totalDebt.ToString("N2")</b></MudTd>
+        </FooterContent>
+    </MudTable>
+
+    <MudText Typo="Typo.h6" Class="mb-2 mt-4" Style="font-weight:600">Top tiekėjai</MudText>
+    <MudTable T="SupplierRow" Items="_topSuppliers" Dense="true" Hover="true" Striped="true">
+        <HeaderContent>
+            <MudTh>Tiekėjas</MudTh>
+            <MudTh Style="text-align:right">Pristatymai</MudTh>
+            <MudTh Style="text-align:right">Netto (kg)</MudTh>
+            <MudTh Style="text-align:right">Suma (€)</MudTh>
+            <MudTh Style="text-align:right">Skola (€)</MudTh>
+            <MudTh Style="text-align:right">Vid. kaina (€/kg)</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <MudTd><strong>@row.Name</strong></MudTd>
+            <MudTd Style="text-align:right">@row.Count</MudTd>
+            <MudTd Style="text-align:right">@row.NetWeight.ToString("N1")</MudTd>
+            <MudTd Style="text-align:right">@row.Amount.ToString("N2")</MudTd>
+            <MudTd Style="@GetSupplierDebtStyle(row.Debt)">@row.Debt.ToString("N2")</MudTd>
+            <MudTd Style="text-align:right">@row.AvgPrice.ToString("N2")</MudTd>
+        </RowTemplate>
+        <FooterContent>
+            <MudTd><b>Iš viso</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.Count)</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.NetWeight).ToString("N1")</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.Amount).ToString("N2")</b></MudTd>
+            <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.Debt).ToString("N2")</b></MudTd>
+            <MudTd Style="text-align:right">
+                <b>@(_totalKg > 0 ? (_totalAmount / _totalKg).ToString("N2") : "0,00")</b>
+            </MudTd>
+        </FooterContent>
+    </MudTable>
+
+@code {
+    private bool _loading = true;
+    private int _count;
+    private decimal _totalKg;
+    private decimal _totalAmount;
+    private decimal _totalDebt;
+    private int _selectedYear = DateTime.Now.Year;
+    private List<MonthRow> _monthly = new();
+    private List<SupplierRow> _topSuppliers = new();
+    private List<NordicBeesERP.Models.BusinessPartner> _suppliers = new();
+    private List<ChartSeries> _chartSeries = new();
+    private string[] _chartLabels = Array.Empty<string>();
+
+    private class MonthRow
+    {
+        public string Month { get; set; } = "";
+        public int Count { get; set; }
+        public decimal NetWeight { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Paid { get; set; }
+        public decimal Debt { get; set; }
+    }
+
+    private class SupplierRow
+    {
+        public string Name { get; set; } = "";
+        public int Count { get; set; }
+        public decimal NetWeight { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Debt { get; set; }
+        public decimal AvgPrice { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        var all = await DeliveryService.GetAllAsync();
+        var d = all.Where(x => x.DeliveryDate.Year == _selectedYear).ToList();
+        _count = d.Count;
+        _totalKg = d.Sum(x => x.TotalNetWeight);
+        _totalAmount = d.Sum(x => x.TotalAmount);
+        _totalDebt = d.Sum(x => Math.Max(0, x.TotalAmount - x.PaidAmount));
+        var allMonths = Enumerable.Range(1, 12).Select(m => new MonthRow
+        {
+            Month = new DateTime(_selectedYear, m, 1).ToString("MMMM", new System.Globalization.CultureInfo("lt-LT")),
+            Count = 0, NetWeight = 0, Amount = 0, Paid = 0, Debt = 0
+        }).ToList();
+
+        var grouped = d.GroupBy(x => x.DeliveryDate.Month).ToDictionary(g => g.Key, g => g);
+        foreach (var row in allMonths)
+        {
+            var monthNum = allMonths.IndexOf(row) + 1;
+            if (grouped.TryGetValue(monthNum, out var g))
+            {
+                row.Count = g.Count();
+                row.NetWeight = g.Sum(x => x.TotalNetWeight);
+                row.Amount = g.Sum(x => x.TotalAmount);
+                row.Paid = g.Sum(x => x.PaidAmount);
+                row.Debt = g.Sum(x => Math.Max(0, x.TotalAmount - x.PaidAmount));
+            }
+        }
+        _monthly = allMonths;
+
+        _chartLabels = _monthly.Select(m => m.Month[..3]).ToArray();
+        _chartSeries = new List<ChartSeries>
+        {
+            new ChartSeries { Name = "Supirkta (€)", Data = _monthly.Select(m => (double)m.Amount).ToArray() },
+            new ChartSeries { Name = "Skola (€)", Data = _monthly.Select(m => (double)m.Debt).ToArray() }
+        };
+        _suppliers = await CustomerService.GetSuppliersAsync();
+        _topSuppliers = d.GroupBy(x => x.SupplierId)
+            .Select(g => new SupplierRow
+            {
+                Name = _suppliers.FirstOrDefault(s => s.Id == g.Key)?.Name ?? $"#{g.Key}",
+                Count = g.Count(),
+                NetWeight = g.Sum(x => x.TotalNetWeight),
+                Amount = g.Sum(x => x.TotalAmount),
+                Debt = g.Sum(x => Math.Max(0, x.TotalAmount - x.PaidAmount)),
+                AvgPrice = g.Sum(x => x.TotalNetWeight) > 0 
+                    ? g.Sum(x => x.TotalAmount) / g.Sum(x => x.TotalNetWeight) 
+                    : 0
+            })
+            .OrderByDescending(r => r.NetWeight)
+            .Take(10)
+            .ToList();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private string GetDebtStyle(decimal debt)
+    {
+        if (debt > 0)
+            return "text-align:right; color:#dc2626; font-weight:bold";
+        return "text-align:right; color:#16a34a";
+    }
+
+    private string GetTotalDebtStyle
+    {
+        get
+        {
+            if (_totalDebt > 0)
+                return "text-align:right; color:#dc2626";
+            return "text-align:right; color:#16a34a";
+        }
+    }
+
+    private string GetSupplierDebtStyle(decimal debt)
+    {
+        if (debt > 0)
+            return "text-align:right; color:#dc2626; font-weight:bold";
+        return "text-align:right; color:#16a34a";
+    }
+}

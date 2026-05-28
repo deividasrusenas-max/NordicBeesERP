@@ -1,0 +1,64 @@
+@page "/production/newbatch"
+@using NordicBeesERP.Components.Dialogs
+@inject IProductionService ProductionService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Nauja Porcija</PageTitle>
+
+<EditForm Model="@newBatch" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <MudTextField @bind-Value="newBatch.ProductName" Label="Prekė" Required="true" />
+    <MudNumericField @bind-Value="newBatch.Quantity" Label="Kiekis" Required="true" Min="1" />
+
+    <MudSelect @bind-Value="newBatch.WarehouseId" Label="Sandėlis" Required="true">
+        @foreach (var warehouse in warehouses)
+        {
+            <MudSelectItem Value="@warehouse.Id">@warehouse.Name</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudButton ButtonType="ButtonType.Button" Color="Color.Primary" Variant="Variant.Filled" OnClick="@OpenBatchSelectDialog">Pasirinkti partiją</MudButton>
+
+    <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary" Variant="Variant.Filled">Išsaugoti</MudButton>
+</EditForm>
+
+@code {
+    private NewBatchViewModel newBatch = new NewBatchViewModel();
+    private List<Warehouse> warehouses = new List<Warehouse>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = await ProductionService.GetWarehousesAsync();
+    }
+
+    private async Task HandleSubmit()
+    {
+        var result = await ProductionService.CreateBatchAsync(newBatch);
+        if (result.Success)
+        {
+            Navigation.NavigateTo("/inventory");
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage, Severity.Error);
+        }
+    }
+
+    private async Task OpenBatchSelectDialog()
+    {
+        var parameters = new DialogParameters<BatchSelectDialog>();
+        var dialog = await DialogService.ShowAsync<BatchSelectDialog>("Pasirinkite partiją", parameters);
+        var dialogResult = await dialog.Result;
+        if (!dialogResult.Canceled)
+        {
+            var selectedBatch = (WarehouseStockViewModel)dialogResult.Data;
+            newBatch.ProductName = selectedBatch.ProductName;
+            newBatch.Quantity = selectedBatch.Quantity;
+            newBatch.WarehouseId = selectedBatch.WarehouseId;
+        }
+    }
+}
