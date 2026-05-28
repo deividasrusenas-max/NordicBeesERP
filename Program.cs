@@ -111,4 +111,19 @@ using (var scope = app.Services.CreateScope())
 }
 
 // PDF Download Endpoints - Removed: Use CreditNotePdfPage.razor instead to avoid route conflict
+
+// EF Core auto-migration — run before app starts, but don't crash if tables exist
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<NordicBeesERPContext>();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Migration warning: {msg}", ex.Message);
+    }
+}
+
 app.Run();
