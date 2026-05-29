@@ -298,10 +298,7 @@ namespace NordicBeesERP.Data
                 entity.Property(e => e.TotalInclVat).HasPrecision(10, 2);
 
                 // Relationships - navigation properties that are NOT mapped
-                entity.Ignore(e => e.CreatorId);
                 entity.Property(e => e.DueDate).HasColumnName("due_date");
-                entity.Ignore(e => e.PaymentTermId);
-                entity.Ignore(e => e.Creator);
                 entity.Ignore(e => e.Lines);
                 entity.Ignore(e => e.Payments);
 

@@ -331,8 +331,6 @@ public class Invoice
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
-    [Column("payment_term_id")]
-    public int? PaymentTermId { get; set; }
 
     [Column("delivery_id")]
     public int? DeliveryId { get; set; }
@@ -340,20 +338,15 @@ public class Invoice
     [Column("due_date")]
     public DateTime? DueDate { get; set; }
     
-    [Column("creator_id")]
-    public int? CreatorId { get; set; }
     [ForeignKey("CustomerId")]
     public virtual BusinessPartner? Customer { get; set; }
     [ForeignKey("CurrencyId")]
     public virtual Currency? Currency { get; set; }
-    [NotMapped] public virtual User? Creator { get; set; }
     public virtual ICollection<InvoiceLine> Lines { get; set; } = new List<InvoiceLine>();
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public virtual ICollection<PaymentAllocation> PaymentAllocations { get; set; } = new List<PaymentAllocation>();
 
     // Navigation
-    [ForeignKey("PaymentTermId")]
-    public virtual PaymentTerm? PaymentTerm { get; set; }
     [ForeignKey("DeliveryId")]
     public virtual Delivery? Delivery { get; set; }
 }
