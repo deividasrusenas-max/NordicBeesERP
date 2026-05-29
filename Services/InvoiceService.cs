@@ -287,6 +287,16 @@ namespace NordicBeesERP.Services
             if (invoice == null)
                 return 0;
 
+            // Validate: block confirmation when total is zero but lines exist
+            if (newStatus == InvoiceStatus.Confirmed &&
+                invoice.TotalInclVat == 0 &&
+                invoice.Lines != null &&
+                invoice.Lines.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "Invoice has lines but total is zero. Please check invoice lines before confirming.");
+            }
+
             invoice.Status = newStatus;
             invoice.UpdatedAt = DateTime.UtcNow;
             return await context.SaveChangesAsync();
