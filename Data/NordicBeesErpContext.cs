@@ -34,9 +34,6 @@ namespace NordicBeesERP.Data
         // Currencies
         public DbSet<Currency> Currencies { get; set; }
 
-        // Payment Terms
-        public DbSet<PaymentTerm> PaymentTerms { get; set; }
-
         // Products
         public DbSet<ProductCategory> ProductCategories { get; set; }
         public DbSet<Product> Products { get; set; }
@@ -141,14 +138,6 @@ namespace NordicBeesERP.Data
             modelBuilder.Entity<Currency>(entity =>
             {
                 entity.HasIndex(e => e.Code).IsUnique();
-                entity.HasIndex(e => e.IsActive);
-            });
-
-            // ===== PAYMENT TERMS =====
-            modelBuilder.Entity<PaymentTerm>(entity =>
-            {
-                entity.HasIndex(e => e.Name).IsUnique();
-                entity.HasIndex(e => e.Days);
                 entity.HasIndex(e => e.IsActive);
             });
 

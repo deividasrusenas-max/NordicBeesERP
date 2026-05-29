@@ -88,7 +88,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("bank_imports");
+                    b.ToTable("bank_imports", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.BankImportRow", b =>
@@ -160,7 +160,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("RowDate");
 
-                    b.ToTable("bank_import_rows");
+                    b.ToTable("bank_import_rows", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.BusinessPartner", b =>
@@ -307,7 +307,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("IsActive", "PartnerType");
 
-                    b.ToTable("business_partners");
+                    b.ToTable("business_partners", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Company", b =>
@@ -409,7 +409,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("companies");
+                    b.ToTable("companies", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.CompanySettings", b =>
@@ -483,7 +483,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("company_settings");
+                    b.ToTable("company_settings", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.CreditNote", b =>
@@ -712,7 +712,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.ToTable("currencies");
+                    b.ToTable("currencies", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.ErpUser", b =>
@@ -753,7 +753,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("erp_users");
+                    b.ToTable("erp_users", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expense", b =>
@@ -814,7 +814,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("SupplierId");
 
-                    b.ToTable("expenses");
+                    b.ToTable("expenses", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.AppSetting", b =>
@@ -836,7 +836,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("app_settings");
+                    b.ToTable("app_settings", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseBudget", b =>
@@ -864,7 +864,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("expense_budgets");
+                    b.ToTable("expense_budgets", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseCategory", b =>
@@ -903,7 +903,7 @@ namespace NordicBeesERP.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("expense_categories");
+                    b.ToTable("expense_categories", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseCostCenter", b =>
@@ -931,7 +931,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("expense_cost_centers");
+                    b.ToTable("expense_cost_centers", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseInvoice", b =>
@@ -1114,7 +1114,7 @@ namespace NordicBeesERP.Migrations
                     b.HasIndex("SupplierId", "InvoiceNumber")
                         .HasDatabaseName("IX_expense_invoices_supplier_invoice");
 
-                    b.ToTable("expense_invoices");
+                    b.ToTable("expense_invoices", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseInvoiceAudit", b =>
@@ -1163,7 +1163,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("expense_invoice_audit");
+                    b.ToTable("expense_invoice_audit", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseInvoiceLine", b =>
@@ -1217,7 +1217,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("expense_invoice_lines");
+                    b.ToTable("expense_invoice_lines", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseLineAllocation", b =>
@@ -1249,7 +1249,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("expense_line_allocations");
+                    b.ToTable("expense_line_allocations", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpenseOcrQueue", b =>
@@ -1300,7 +1300,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("expense_ocr_queue");
+                    b.ToTable("expense_ocr_queue", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Expenses.ExpensePayment", b =>
@@ -1343,7 +1343,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("expense_payments");
+                    b.ToTable("expense_payments", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Honey.HoneyBatch", b =>
@@ -1383,7 +1383,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("ProcessingDate", "LotNumber");
 
-                    b.ToTable("honey_batches");
+                    b.ToTable("honey_batches", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Honey.HoneyBatchIngredient", b =>
@@ -1414,7 +1414,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("Quantity");
 
-                    b.ToTable("honey_batch_ingredients");
+                    b.ToTable("honey_batch_ingredients", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.HoneyDelivery", b =>
@@ -1520,7 +1520,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("SupplierId", "DeliveryDate");
 
-                    b.ToTable("honey_deliveries");
+                    b.ToTable("honey_deliveries", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.HoneyType", b =>
@@ -1577,7 +1577,7 @@ namespace NordicBeesERP.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("honey_types");
+                    b.ToTable("honey_types", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Invoice", b =>
@@ -1706,7 +1706,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("Status", "InvoiceDate");
 
-                    b.ToTable("invoices");
+                    b.ToTable("invoices", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.InvoiceLine", b =>
@@ -1797,7 +1797,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("invoice_lines");
+                    b.ToTable("invoice_lines", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Order", b =>
@@ -1852,7 +1852,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("orders");
+                    b.ToTable("orders", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.OrderLine", b =>
@@ -1916,7 +1916,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("order_lines");
+                    b.ToTable("order_lines", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Payment", b =>
@@ -1993,7 +1993,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("PaymentDate");
 
-                    b.ToTable("payments");
+                    b.ToTable("payments", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.PaymentAllocation", b =>
@@ -2028,7 +2028,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("PaymentId", "InvoiceId");
 
-                    b.ToTable("payment_allocations");
+                    b.ToTable("payment_allocations", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.PaymentAuditLog", b =>
@@ -2082,7 +2082,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("PaymentId");
 
-                    b.ToTable("payment_audit_log");
+                    b.ToTable("payment_audit_log", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.PaymentTerm", b =>
@@ -2119,7 +2119,7 @@ namespace NordicBeesERP.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("payment_terms");
+                    b.ToTable("payment_terms", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Product", b =>
@@ -2222,7 +2222,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("WarehouseManaged", "IsActive");
 
-                    b.ToTable("products");
+                    b.ToTable("products", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.ProductCategory", b =>
@@ -2267,7 +2267,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("product_categories");
+                    b.ToTable("product_categories", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.ProductionBatch", b =>
@@ -2337,7 +2337,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("ProductCode", "ProductionDate");
 
-                    b.ToTable("production_batches");
+                    b.ToTable("production_batches", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.ProductionBatchIngredient", b =>
@@ -2372,7 +2372,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("Quantity");
 
-                    b.ToTable("production_batch_ingredients");
+                    b.ToTable("production_batch_ingredients", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Unit", b =>
@@ -2404,7 +2404,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("units");
+                    b.ToTable("units", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.User", b =>
@@ -2455,7 +2455,7 @@ namespace NordicBeesERP.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("users");
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.Warehouse", b =>
@@ -2522,7 +2522,7 @@ namespace NordicBeesERP.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("warehouses");
+                    b.ToTable("warehouses", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.Container", b =>
@@ -2622,7 +2622,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("containers");
+                    b.ToTable("containers", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.Delivery", b =>
@@ -2706,7 +2706,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("RawMaterialTypeId");
 
-                    b.ToTable("deliveries");
+                    b.ToTable("deliveries", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.DeliveryLine", b =>
@@ -2759,7 +2759,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("delivery_lines");
+                    b.ToTable("delivery_lines", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.Lot", b =>
@@ -2802,7 +2802,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("lots");
+                    b.ToTable("lots", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.QualityParamConfig", b =>
@@ -2839,7 +2839,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("quality_param_configs");
+                    b.ToTable("quality_param_configs", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.RawMaterialType", b =>
@@ -2889,7 +2889,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("SortOrder");
 
-                    b.ToTable("raw_material_types");
+                    b.ToTable("raw_material_types", (string)null);
 
                     b.HasData(
                         new
@@ -2999,7 +2999,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("stock_movements");
+                    b.ToTable("stock_movements", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.SupplierPayment", b =>
@@ -3041,7 +3041,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("supplier_payments");
+                    b.ToTable("supplier_payments", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.WarehouseType", b =>
@@ -3073,7 +3073,7 @@ namespace NordicBeesERP.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("warehouse_types");
+                    b.ToTable("warehouse_types", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseStock", b =>
@@ -3139,7 +3139,7 @@ namespace NordicBeesERP.Migrations
                     b.HasIndex("WarehouseId", "ProductId", "LotNumber")
                         .IsUnique();
 
-                    b.ToTable("warehouse_stocks");
+                    b.ToTable("warehouse_stocks", (string)null);
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.BankImport", b =>
