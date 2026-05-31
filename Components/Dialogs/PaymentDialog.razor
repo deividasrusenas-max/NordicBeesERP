@@ -27,9 +27,15 @@
         <!-- SECTION 2: Payment Input Form -->
         <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Įvesti mokėjimą</MudText>
         <MudGrid Spacing="2">
-            <MudItem xs="6">
-                <MudNumericField T="decimal" Label="Suma (€)" Value="_amount" ValueChanged="@((decimal v) => _amount = v)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0.01m" Required="@true" />
-            </MudItem>
+<MudItem xs="6">
+                 <MudTextField T="string" 
+                               Label="Suma (€)" 
+                               Value="@_amountStr"
+                               ValueChanged="@((string v) => { if (decimal.TryParse(v, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d)) _amount = d; _amountStr = v; })"
+                               Variant="Variant.Outlined" 
+                               Margin="Margin.Dense" 
+                               Required="@true" />
+             </MudItem>
             <MudItem xs="6">
                 <MudDatePicker Label="Data" Date="_date" DateChanged="@((DateTime? d) => _date = d)" DateFormat="yyyy-MM-dd" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
@@ -98,20 +104,31 @@
     [Parameter] public decimal RemainingAmount { get; set; }
     [Parameter] public List<PaymentHistoryItem>? ExistingPayments { get; set; }
 
-    private decimal _amount;
-    private DateTime? _date = DateTime.Today;
-    private string _method = "bank_transfer";
-    private string _reference = string.Empty;
-    private string _notes = string.Empty;
+     private decimal _amount;
+     private string _amountStr = "0";
+     private DateTime? _date = DateTime.Today;
+     private string _method = "bank_transfer";
+     private string _reference = string.Empty;
+     private string _notes = string.Empty;
 
-    protected override async Task OnInitializedAsync()
-    {
-        _amount = RemainingAmount;
-        _date = DateTime.Today;
-        _method = "bank_transfer";
-        await Task.Delay(1);
-        StateHasChanged();
-    }
+     protected override void OnParametersSet()
+     {
+         if (_amount == 0 && RemainingAmount > 0)
+         {
+             _amount = RemainingAmount;
+             _amountStr = RemainingAmount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+         }
+     }
+
+     protected override async Task OnInitializedAsync()
+     {
+         _amount = RemainingAmount;
+         _amountStr = RemainingAmount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+         _date = DateTime.Today;
+         _method = "bank_transfer";
+         await Task.Delay(1);
+         StateHasChanged();
+     }
 
     private async Task SavePayment()
     {
