@@ -121,20 +121,20 @@
                         <MudTextField T="string" @bind-Value="line.Unit" Variant="Variant.Outlined" 
                                       Margin="Margin.Dense" ReadOnly="true" />
                     </MudTd>
-                    <MudTd DataLabel="Kaina">
-                        <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
-                                         Margin="Margin.Dense" Min="0" Step="0.01M" Format="F2"
-                                         ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
-                    </MudTd>
+                <MudTd DataLabel="Kaina">
+                    <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
+                                     Margin="Margin.Dense" Min="0" Step="0.01M"
+                                     ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
+                </MudTd>
                     <MudTd DataLabel="PVM %">
                         <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
                                          Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
                                          ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
                     </MudTd>
-                    <MudTd DataLabel="Suma">
-                        <MudTextField T="string" Value="@line.LineTotal.ToString("N2")" Variant="Variant.Outlined" 
-                                      Margin="Margin.Dense" ReadOnly="true" />
-                    </MudTd>
+                <MudTd DataLabel="Suma">
+                    <MudTextField T="string" Value="@(line.LineTotal % 1 == 0 ? line.LineTotal.ToString("N0") : line.LineTotal.ToString("N2"))" Variant="Variant.Outlined" 
+                                  Margin="Margin.Dense" ReadOnly="true" />
+                </MudTd>
                     <MudTd DataLabel="">
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
                                        OnClick="@(() => RemoveLine(line))" />
