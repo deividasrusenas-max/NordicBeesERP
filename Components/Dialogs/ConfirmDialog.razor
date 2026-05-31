@@ -2,20 +2,17 @@
 
 <MudDialog>
     <TitleContent>
-        <MudStack Direction="Direction.Row" Justify="Justify.Center" AlignItems="AlignItems.Center" Gutter="Size.Medium">
-            @if (!string.IsNullOrEmpty(Icon))
-            {
-                <MudIcon Icon="@Icon" Margin="Margin.End" />
-            }
-            <MudText Typo="Typo.h6">@(ContentText ?? Title)</MudText>
-        </MudStack>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(Icon ?? Icons.Material.Filled.Warning)" Color="@ActualColor" />
+            <MudText Typo="Typo.h6">@(Title)</MudText>
+        </div>
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.body1">@(Message)</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">@(Message ?? ContentText)</MudText>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CancelAsync">@CancelText</MudButton>
-        <MudButton Variant="Variant.Filled" Color="@ActualColor" OnClick="ConfirmAsync">@ButtonText</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">@CancelText</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@ActualColor" Style="text-transform:none" OnClick="ConfirmAsync">@ButtonText</MudButton>
     </DialogActions>
 </MudDialog>
 

@@ -109,3 +109,11 @@
 | mt-8 | mt-4 |
 | >1 Filled mygtukas puslapyje | Tik 1 pagrindinis |
 | Console.WriteLine klaidos | Snackbar vartotojui |
+## Patvirtinimo dialogas (ConfirmDialog)
+- TitleContent: MudIcon (spalva pagal veiksmo tipą) + MudText Typo.h6
+- DialogContent: MudText Typo.body1, Color.Secondary
+- DialogActions: Atšaukti (Outlined, Default) KAIRĖJE | Pagrindinis veiksmas (Filled, spalva pagal tipą) DEŠINĖJE
+- Ištrinimo veiksmas: Color.Error
+- Patvirtinimo veiksmas: Color.Primary
+- Dydis: MaxWidth.ExtraSmall
+- DRAUDŽIAMA: caps lock mygtukuose
