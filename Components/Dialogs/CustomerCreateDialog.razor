@@ -215,7 +215,7 @@
         if (_viesResult?.IsValid != true) return;
         if (!string.IsNullOrEmpty(_viesResult.Name))
             customer.Name = _viesResult.Name;
-        if (!string.IsNullOrEmpty(_viesResult.Address))
+        if (!string.IsNullOrWhiteSpace(_viesResult.Address) && _viesResult.Address != "---")
             customer.Address = _viesResult.Address;
         if (!string.IsNullOrEmpty(_viesResult.CountryCode))
             customer.CountryCode = _viesResult.CountryCode;
