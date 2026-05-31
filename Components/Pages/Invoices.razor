@@ -9,11 +9,11 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
-<PageTitle>Sąskaitos-faktūros</PageTitle>
+<PageTitle>Sąskaitos</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <!-- Header row -->
     <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">@(_invoiceType == "LAK" ? "Pardavimų sąskaitos" : "Pirkimų sąskaitos (ULAK)")</MudText>
+        <MudText Typo="Typo.h5">Sąskaitos</MudText>
         <MudButton OnClick="OpenCreateDialog"
                    StartIcon="@Icons.Material.Filled.Add"
                    Variant="Variant.Filled"
@@ -23,21 +23,14 @@
         </MudButton>
     </div>
 
-    <!-- Type switcher -->
-    <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Class="mb-3">
-        <MudButton Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
-                   Color="Color.Primary"
-                   Style="text-transform:none"
-                   OnClick="@(async () => await SetInvoiceType("LAK"))">
-            LAK — Pardavimai
-        </MudButton>
-        <MudButton Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
-                   Color="Color.Primary"
-                   Style="text-transform:none"
-                   OnClick="@(async () => await SetInvoiceType("ULAK"))">
-            ULAK — Pirkimai
-        </MudButton>
-    </MudButtonGroup>
+    <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
+    <MudTabs ActivePanelIndex="@(_invoiceType == "LAK" ? 0 : 1)"
+             ActivePanelIndexChanged="@(async (int i) => await SetInvoiceType(i == 0 ? "LAK" : "ULAK"))"
+             Elevation="0" Rounded="true" Square="false" Class="mb-2"
+             Color="Color.Primary">
+        <MudTabPanel Text="LAK — Pardavimai" />
+        <MudTabPanel Text="ULAK — Pirkimai" />
+    </MudTabs>
 
     <!-- Loading indicator -->
     @if (_isLoading)
@@ -82,7 +75,7 @@
         </MudGrid>
     </MudPaper>
 
-    <!-- Status chip filters -->
+    <!-- Status chip filters (Level 2 - below type tabs) -->
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
         <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būsena:</MudText>
         @if (_selectedStatuses.Any())
@@ -209,12 +202,12 @@
 
         try
         {
-            var toDate = _dateRange?.End ?? DateTime.Today;
+            
             var invoices = await InvoiceService.GetInvoicesAsync(
                 fromDate: _dateRange?.Start,
-                toDate: toDate,
+                toDate: _dateRange?.End,
                 searchTerm: _filterSearch,
-                type: _invoiceType.ToLower());
+                type: _invoiceType == "LAK" ? "sales" : "purchase");
 
             _items = invoices;
         }
