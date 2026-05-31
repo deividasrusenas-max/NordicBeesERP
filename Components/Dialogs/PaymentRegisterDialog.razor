@@ -9,33 +9,79 @@
 @inject ISnackbar Snackbar
 
 <MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Payments" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Registruoti mokėjimą</MudText>
+        </div>
+    </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.h6" Class="mb-3">Registruoti mokėjimą</MudText>
-        
-        <MudPaper Elevation="1" Rounded="@true" Square="false" Class="pa-3 mb-3">
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudDatePicker @bind-Date="_paymentDate" Label="Mokėjimo data" Variant="Variant.Outlined" />
+        <!-- SECTION 1: Invoice Info Card -->
+        <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px; margin-bottom:16px;">
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Tiekėjas / Klientas</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600">@_partnerName</MudText>
                 </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudSelect T="string" Label="Mokėjimo būdas" Value="_paymentMethod" ValueChanged="OnPaymentMethodChanged" Variant="Variant.Outlined">
-                        @foreach (var method in Enum.GetNames(typeof(PaymentMethod)))
-                        {
-                            <MudSelectItem Value="@method">@method</MudSelectItem>
-                        }
-                    </MudSelect>
+                <MudItem xs="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nr.</MudText>
+                    <MudText Typo="Typo.body2">@_invoiceNumber</MudText>
                 </MudItem>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="_referenceNumber" Label="Referencinis numeris" Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="_notes" Label="Pastabos" Variant="Variant.Outlined" multiline="true" Rows="3" />
+                <MudItem xs="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Terminas</MudText>
+                    <MudText Typo="Typo.body2" Style="@(_isOverdue ? "color:#dc2626;font-weight:600" : "")">@_dueDate</MudText>
                 </MudItem>
             </MudGrid>
         </MudPaper>
 
-        <MudText Typo="Typo.h6" Class="mb-2">Pasirinkti sąskaitas</MudText>
-        <MudPaper Elevation="1" Rounded="@true" Square="false" Class="pa-3 mb-3">
+        <!-- SECTION 2: Amounts Summary -->
+        <MudGrid Spacing="2" Class="mb-3">
+            <MudItem xs="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Suma su PVM</MudText>
+                <MudText Typo="Typo.body1" Style="font-weight:600">@_totalAmount.ToString("N2") €</MudText>
+            </MudItem>
+            <MudItem xs="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Sumokėta</MudText>
+                <MudText Typo="Typo.body1" Style="color:#16a34a;font-weight:600">@_paidAmount.ToString("N2") €</MudText>
+            </MudItem>
+            <MudItem xs="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Liko</MudText>
+                <MudText Typo="Typo.body1" Style="color:#dc2626;font-weight:600">@_remainingAmount.ToString("N2") €</MudText>
+            </MudItem>
+            <MudItem xs="3">
+                <MudChip T="string" Color="@_statusColor" Size="Size.Small">@_statusLabel</MudChip>
+            </MudItem>
+        </MudGrid>
+        <MudDivider Class="mb-3" />
+
+        <!-- SECTION 3: Payment Input Form -->
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Įvesti mokėjimą</MudText>
+        <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px; margin-bottom:16px;">
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudDatePicker Label="Mokėjimo data" Date="_paymentDate" DateChanged="@((DateTime? d) => _paymentDate = d)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudNumericField T="decimal" Label="Suma (€)" @bind-Value="_paymentAmount" Min="0.01m" Max="999999999.99m" Format="F2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="string" Label="Mokėjimo būdas" Value="_paymentMethod" ValueChanged="OnPaymentMethodChanged" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelectItem T="string" Value="@("BANK")">Banko pavedimas</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("CASH")">Grynaisi</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("OTHER")">Kita</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField Label="Nuorodos nr." @bind-Value="_referenceNumber" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Label="Pastabos" @bind-Value="_notes" Variant="Variant.Outlined" Margin="Margin.Dense" multiline="true" Rows="2" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pasirinkti sąskaitas</MudText>
+        <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px; margin-bottom:16px;">
             @if (_invoices.Any())
             {
                 <MudTable T="InvoiceWithPaymentInfo" Items="@_invoices" Hover="true" Dense="true" Striped="true" SelectionChanged="OnInvoiceSelected">
@@ -73,15 +119,15 @@
             }
         </MudPaper>
 
-        <MudPaper Elevation="1" Rounded="@true" Square="false" Class="pa-3 mb-3 bg-light">
+        <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px; margin-bottom:16px;">
             <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.body2">Iš viso pasirinkta</MudText>
-                    <MudText Typo="Typo.h5">@_totalAllocated.ToString("N2") €</MudText>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Iš viso pasirinkta</MudText>
+                    <MudText Typo="Typo.body1">@_totalAllocated.ToString("N2") €</MudText>
                 </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.body2">Mokėjimo suma</MudText>
-                    <MudText Typo="Typo.h5" Color="Color.Primary">@_paymentAmount.ToString("N2") €</MudText>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo suma</MudText>
+                    <MudText Typo="Typo.body1" Style="color:#2563eb">@_paymentAmount.ToString("N2") €</MudText>
                 </MudItem>
             </MudGrid>
             @if (_totalAllocated > _paymentAmount)
@@ -99,14 +145,14 @@
         </MudPaper>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CloseDialog">Atšaukti</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RegisterPayment">Registruoti</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CloseDialog">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="RegisterPayment">Išsaugoti</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     private DateTime? _paymentDate = DateTime.Today;
-    private string _paymentMethod = "bank_transfer";
+    private string _paymentMethod = "BANK";
     private string? _referenceNumber;
     private string? _notes;
     private decimal _paymentAmount = 0m;
@@ -121,6 +167,17 @@
 
     [Parameter]
     public int? InvoiceId { get; set; }
+
+    // Invoice info fields
+    private string? _partnerName = "";
+    private string? _invoiceNumber = "";
+    private DateTime? _dueDate;
+    private bool _isOverdue;
+    private decimal _totalAmount = 0m;
+    private decimal _paidAmount = 0m;
+    private decimal _remainingAmount = 0m;
+    private string _statusLabel = "";
+    private Color _statusColor;
 
     private bool _disposed = false;
 
