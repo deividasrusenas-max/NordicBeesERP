@@ -4,97 +4,104 @@
 @inject ICustomerService CustomerService
 
 <MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(Customer?.Id > 0 ? "Redaguoti partnerį" : "Naujas partneris")</MudText>
+        </div>
+    </TitleContent>
     <DialogContent>
-        <EditForm FormName="CustomerCreateForm" Model="@customer" OnValidSubmit="@HandleValidSubmit">
-            <DataAnnotationsValidator />
+        <MudGrid>
+            <MudItem xs="12">
+                <MudSelect T="string" @bind-Value="customer.PartnerType" Label="Partnerio tipas" Required="true"
+                           Variant="Variant.Outlined" Margin="Margin.Dense">
+                    <MudSelectItem T="string" Value="@("Customer")">Klientas</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Supplier")">Tiekėjas</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Both")">Abu (Klientas ir Tiekėjas)</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("ExpenseSupplier")">Išlaidų tiekėjas</MudSelectItem>
+                </MudSelect>
+            </MudItem>
             
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudSelect T="string" @bind-Value="customer.PartnerType" Label="Partnerio tipas" Required="true">
-                        <MudSelectItem T="string" Value="@("Tiekėjas")">📦 Tiekėjas</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("Klientas")">🛒 Klientas</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("Abu")">📦🛒 Tiekėjas ir Klientas</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
-                
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="customer.Name" Label="Pavadinimas" Required="true" 
-                                 MaxLength="255" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="customer.CompanyCode" Label="Įmonės kodas" 
-                                 MaxLength="20" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="customer.VatCode" Label="PVM mokėtojo kodas" 
-                                 MaxLength="20" />
-                </MudItem>
-                
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="customer.Address" Label="Adresas" Lines="2" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="customer.City" Label="Miestas" MaxLength="100" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="customer.PostalCode" Label="Pašto kodas" MaxLength="20" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="customer.Phone" Label="Telefonas" MaxLength="50" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="customer.Email" Label="El. paštas" MaxLength="100" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="customer.BankAccount" Label="Banko sąskaita" MaxLength="50" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudNumericField T="int" @bind-Value="customer.PaymentTermDays" Label="Mokėjimo terminas (dienos)" 
-                                     Min="0" Max="365" />
-                </MudItem>
-                
-                <MudItem xs="12" md="6">
-                    <MudNumericField T="decimal" @bind-Value="customer.DefaultVatRate" Label="Numatytasis PVM (%)"
-                                     Step="0.1m" Min="0m" Max="100m" />
-                </MudItem>
-                
-                <MudItem xs="12">
-                    <MudSelect T="string" @bind-Value="customer.DefaultLanguage" Label="Kalba">
-                        <MudSelectItem T="string" Value="@("lt")">Lietuvių</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("lv")">Latviešu</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("ee")">Eesti</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("ru")">Русский</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
-                
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="customer.Notes" Label="Pastabos" Lines="3" MaxLength="1000" />
-                </MudItem>
-                
-                <MudItem xs="12">
-                    <MudSwitch @bind-Value="customer.IsActive" Label="Aktyvus" Color="Color.Success" />
-                </MudItem>
-            </MudGrid>
-        </EditForm>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="customer.Name" Label="Pavadinimas" Required="true"
+                              MaxLength="255" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudTextField @bind-Value="customer.CompanyCode" Label="Įmonės kodas"
+                              MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudTextField @bind-Value="customer.VatCode" Label="PVM mokėtojo kodas"
+                              MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="customer.Address" Label="Adresas" Lines="2"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudTextField @bind-Value="customer.City" Label="Miestas" MaxLength="100"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudTextField @bind-Value="customer.PostalCode" Label="Pašto kodas" MaxLength="20"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudTextField @bind-Value="customer.Phone" Label="Telefonas" MaxLength="50"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudTextField @bind-Value="customer.Email" Label="El. paštas" MaxLength="100"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudTextField @bind-Value="customer.BankAccount" Label="Banko sąskaita" MaxLength="50"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudNumericField T="int" @bind-Value="customer.PaymentTermDays" Label="Mokėjimo terminas (dienos)"
+                                 Min="0" Max="365" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudNumericField T="decimal" @bind-Value="customer.DefaultVatRate" Label="Numatytasis PVM (%)"
+                                 Step="0.1m" Min="0m" Max="100m" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudSelect T="string" @bind-Value="customer.DefaultLanguage" Label="Kalba"
+                           Variant="Variant.Outlined" Margin="Margin.Dense">
+                    <MudSelectItem T="string" Value="@("lt")">Lietuvių</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("lv")">Latviešu</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("ee")">Eesti</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("en")">English</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("ru")">Русский</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="customer.Notes" Label="Pastabos" Lines="3" MaxLength="1000"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudSwitch @bind-Value="customer.IsActive" Label="Aktyvus" Color="Color.Success" />
+            </MudItem>
+        </MudGrid>
+        <DataAnnotationsValidator />
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Filled" Color="Color.Success" 
-                   OnClick="@SubmitForm" StartIcon="@Icons.Material.Filled.Save">
-            Išsaugoti
-        </MudButton>
-        <MudButton Variant="Variant.Outlined" Color="Color.Default" 
-                   OnClick="@CloseDialog" StartIcon="@Icons.Material.Filled.Close">
-            Atšaukti
-        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@CloseDialog">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SubmitForm">Išsaugoti</MudButton>
     </DialogActions>
 </MudDialog>
 

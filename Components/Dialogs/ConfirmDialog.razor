@@ -8,7 +8,7 @@
         </div>
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.body1" Color="Color.Secondary">@(Message ?? ContentText)</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">@(ContentText ?? Message ?? "Ar tikrai?")</MudText>
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">@CancelText</MudButton>
