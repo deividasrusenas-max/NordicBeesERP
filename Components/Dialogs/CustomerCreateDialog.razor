@@ -2,6 +2,7 @@
 @using MudBlazor
 @inject IDialogService DialogService
 @inject ICustomerService CustomerService
+@inject IViesService ViesService
 
 <MudDialog>
     <TitleContent>
@@ -32,9 +33,42 @@
                               MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
-            <MudItem xs="6">
-                <MudTextField @bind-Value="customer.VatCode" Label="PVM mokėtojo kodas"
-                              MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="customer.VatCode"
+                              Label="PVM mokėtojo kodas"
+                              MaxLength="20"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Immediate="@true"
+                              DebounceInterval="800"
+                              OnDebounceIntervalElapsed="@OnVatCodeChanged"
+                              Adornment="@(_viesLoading ? Adornment.End : Adornment.None)"
+                              AdornmentIcon="@Icons.Material.Filled.HourglassTop" />
+                @if (_viesLoading)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Tikrinama VIES...</MudText>
+                }
+                else if (_viesResult != null)
+                {
+                    @if (_viesResult.IsValid)
+                    {
+                        <div class="d-flex align-center gap-1 mt-1">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                            <MudText Typo="Typo.caption" Style="color:#16a34a">@_viesResult.Name</MudText>
+                            @if (string.IsNullOrEmpty(customer.Name))
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Style="text-transform:none;padding:0;min-width:0" OnClick="ApplyViesData">Užpildyti</MudButton>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-center gap-1 mt-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                            <MudText Typo="Typo.caption" Style="color:#dc2626">Nerasta VIES registre</MudText>
+                        </div>
+                    }
+                }
             </MudItem>
             
             <MudItem xs="12">
@@ -112,6 +146,8 @@
     [Parameter] public EventCallback<Customer> OnCustomerCreated { get; set; }
 
     private Customer customer = new();
+    private bool _viesLoading = false;
+    private ViesResult? _viesResult = null;
 
     protected override void OnParametersSet()
     {
@@ -161,5 +197,31 @@
             snackbar?.Add("Partneris su šiuo pavadinimu jau egzistuoja!", Severity.Warning);
             return;
         }
+    }
+
+    private async Task OnVatCodeChanged()
+    {
+        if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4)
+        {
+            _viesResult = null;
+            return;
+        }
+        _viesLoading = true;
+        StateHasChanged();
+        _viesResult = await ViesService.LookupAsync(customer.VatCode);
+        _viesLoading = false;
+        StateHasChanged();
+    }
+
+    private void ApplyViesData()
+    {
+        if (_viesResult?.IsValid != true) return;
+        if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(_viesResult.Name))
+            customer.Name = _viesResult.Name;
+        if (string.IsNullOrEmpty(customer.Address) && !string.IsNullOrEmpty(_viesResult.Address))
+            customer.Address = _viesResult.Address;
+        if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(_viesResult.CountryCode))
+            customer.CountryCode = _viesResult.CountryCode;
+        StateHasChanged();
     }
 }
