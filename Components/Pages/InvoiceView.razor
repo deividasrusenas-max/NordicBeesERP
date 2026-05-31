@@ -236,10 +236,10 @@
                                 @(line.Description ?? line.ProductCode)
                             }
                         </MudTd>
-                        <MudTd Class="text-center">@line.Quantity</MudTd>
+                        <MudTd Class="text-center">@FormatQuantity(line.Quantity)</MudTd>
                         <MudTd Class="text-center">@line.Unit</MudTd>
                         <MudTd Class="text-right">@line.PriceExclVat.ToString("N2")</MudTd>
-                        <MudTd Class="text-center">@line.VatRate.ToString("F1")%</MudTd>
+                        <MudTd Class="text-center">@FormatVatRate(line.VatRate)</MudTd>
                         <MudTd Class="text-right">@line.LineTotal.ToString("N2")</MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -468,6 +468,9 @@
         "ULAK" => "ULAK pirkimo aktas",
         _ => type ?? "—"
     };
+
+    private string FormatQuantity(decimal qty) => qty == Math.Floor(qty) ? qty.ToString("N0") : qty.ToString("G29");
+    private string FormatVatRate(decimal rate) => rate == Math.Floor(rate) ? rate.ToString("N0") + "%" : rate.ToString("G29") + "%";
     
     private List<PaymentHistoryItem> _paymentHistory = new List<PaymentHistoryItem>();
     private HashSet<int> expandedRows = new();
