@@ -126,11 +126,11 @@
                 <MudTd>@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
                 <MudTd>@GetCustomerName(invoice)</MudTd>
                 <MudTd Style="@GetDueDateStyle(invoice)">
-                    @invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? "-"
+                    @(invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? "-")
                 </MudTd>
                 <MudTd>@invoice.TotalInclVat.ToString("N2") €</MudTd>
                 <MudTd Style="font-weight:bold;color:#1976d2">
-                    @(invoice.TotalInclVat - invoice.PaidAmount).ToString("N2") €
+                    @((invoice.TotalInclVat - invoice.PaidAmount).ToString("N2")) €
                 </MudTd>
                 <MudTd>
                     <MudChip T="string"
