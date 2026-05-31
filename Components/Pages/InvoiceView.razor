@@ -102,6 +102,19 @@
                                 </MudItem>
                             </MudGrid>
                         </MudItem>
+                        @if (!string.IsNullOrEmpty(_invoice.Customer?.VatCode))
+                        {
+                            <MudItem xs="6">
+                                <MudGrid Spacing="0">
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas</MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">@_invoice.Customer.VatCode</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudItem>
+                        }
                         @if (!string.IsNullOrEmpty(_invoice.Customer?.Email))
                         {
                             <MudItem xs="12">
@@ -174,7 +187,7 @@
                                      <MudText Typo="Typo.caption" Color="Color.Secondary">Tipas</MudText>
                                  </MudItem>
                                  <MudItem xs="7">
-                                     <MudText Typo="Typo.body2">@_invoice.InvoiceType</MudText>
+                                     <MudText Typo="Typo.body2">@GetInvoiceTypeLabel(_invoice.InvoiceType)</MudText>
                                  </MudItem>
                              </MudGrid>
                          </MudItem>
@@ -231,24 +244,24 @@
                     </RowTemplate>
                 </MudTable>
                 
-                <!-- Totals block - right-aligned -->
-                <div class="d-flex justify-end mt-3">
-                    <div style="background:#eff6ff; border-radius:8px; padding:16px;">
-                        <div class="d-flex gap-3 mb-1">
-                            <MudText Typo="Typo.body2">Suma be PVM:</MudText>
-                            <MudText Typo="Typo.body2" Style="min-width:100px; text-align:right;">@_invoice.SubtotalExclVat.ToString("N2") €</MudText>
+                        <!-- Totals block - right-aligned -->
+                        <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+                            <div style="background:#eff6ff; border-radius:8px; padding:16px; min-width:280px;">
+                                <div class="d-flex justify-space-between gap-4">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Suma be PVM:</MudText>
+                                    <MudText Typo="Typo.body2">@_invoice.SubtotalExclVat.ToString("N2") €</MudText>
+                                </div>
+                                <div class="d-flex justify-space-between gap-4 mt-1">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">PVM:</MudText>
+                                    <MudText Typo="Typo.body2">@_invoice.TotalVat.ToString("N2") €</MudText>
+                                </div>
+                                <MudDivider Class="my-2" />
+                                <div class="d-flex justify-space-between gap-4">
+                                    <MudText Typo="Typo.body1" Style="font-weight:600">Iš viso:</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight:600">@_invoice.TotalInclVat.ToString("N2") €</MudText>
+                                </div>
+                            </div>
                         </div>
-                        <div class="d-flex gap-3 mb-1">
-                            <MudText Typo="Typo.body2">PVM:</MudText>
-                            <MudText Typo="Typo.body2" Style="min-width:100px; text-align:right;">@_invoice.TotalVat.ToString("N2") €</MudText>
-                        </div>
-                        <MudDivider Class="my-1" Style="width:250px;" />
-                        <div class="d-flex gap-3">
-                            <MudText Typo="Typo.h6">Iš viso:</MudText>
-                            <MudText Typo="Typo.h6" Style="min-width:100px; text-align:right;">@_invoice.TotalInclVat.ToString("N2") €</MudText>
-                        </div>
-                    </div>
-                </div>
             }
             else
             {
@@ -265,23 +278,23 @@
             
             <!-- Payment Status Cards -->
             <MudGrid>
-                <MudItem xs="12" sm="4">
+                <MudItem xs="12" md="4">
                     <MudPaper Elevation="0" Class="pa-3" 
-                              Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2;">
+                              Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Būsena</MudText>
                         <MudChip T="string" Color="GetPaymentStatusColor()" Size="Size.Small" Class="mt-1">@GetPaymentStatusText()</MudChip>
                     </MudPaper>
                 </MudItem>
-                <MudItem xs="12" sm="4">
+                <MudItem xs="12" md="4">
                     <MudPaper Elevation="0" Class="pa-3" 
-                              Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2;">
+                              Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo sąlygos</MudText>
                         <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@(_invoice.PaymentTermDays > 0 ? $"{_invoice.PaymentTermDays} dienų" : "-")</MudText>
                     </MudPaper>
                 </MudItem>
-                <MudItem xs="12" sm="4">
+                <MudItem xs="12" md="4">
                     <MudPaper Elevation="0" Class="pa-3" 
-                              Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2;">
+                              Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėti iki</MudText>
                         <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@(_invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? "-")</MudText>
                     </MudPaper>
@@ -446,6 +459,15 @@
             _ => method
         };
     }
+    
+    private string GetInvoiceTypeLabel(string? type) => type switch
+    {
+        "sales" => "PVM sąskaita faktūra",
+        "PVM SĄSKAITA FAKTŪRA" => "PVM sąskaita faktūra",
+        "6% PVM SĄSKAITA FAKTŪRA" => "ULAK 6% PVM",
+        "ULAK" => "ULAK pirkimo aktas",
+        _ => type ?? "—"
+    };
     
     private List<PaymentHistoryItem> _paymentHistory = new List<PaymentHistoryItem>();
     private HashSet<int> expandedRows = new();

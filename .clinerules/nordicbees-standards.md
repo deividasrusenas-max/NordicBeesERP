@@ -481,3 +481,14 @@ feat (naujas funkcionalumas) → minor: v0.9.x.0
 refactor/chore → patch: v0.9.3.x
 
 Kiekvienas commit PRIVALO tureti versijos zyme pabaigoje.
+
+## SKAIČIŲ FORMATAVIMAS
+
+Kiekiai: naudoti G29 formatą - nerodo nulių po kablelio kai jų nėra
+Pvz: 2688.000 → rodo "2688", 2688.500 → rodo "2688.5"
+Suma (EUR): visada 2 skaičiai po kablelio - N2 formatas
+PVM %: naudoti G29 - nerodo 0.0% kai 0
+
+Helper metodas (prideti i kiekviena komponenta arba i bendrą helper klase):
+private string FormatQuantity(decimal qty) => qty == Math.Floor(qty) ? qty.ToString("N0") : qty.ToString("G29");
+private string FormatVatRate(decimal rate) => rate == Math.Floor(rate) ? rate.ToString("N0") + "%" : rate.ToString("G29") + "%";
