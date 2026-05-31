@@ -48,16 +48,12 @@
                 }
                 else if (_viesResult != null)
                 {
-                    @if (_viesResult.IsValid)
-                    {
-                        <div class="d-flex align-center gap-1 mt-1">
-                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
-                            <MudText Typo="Typo.caption" Style="color:#16a34a">@_viesResult.Name</MudText>
-                            @if (string.IsNullOrEmpty(customer.Name))
-                            {
-                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Style="text-transform:none;padding:0;min-width:0" OnClick="ApplyViesData">Užpildyti</MudButton>
-                            }
-                        </div>
+                        @if (_viesResult.IsValid)
+                        {
+                            <div class="d-flex align-center gap-1 mt-1">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                <MudText Typo="Typo.caption" Style="color:#16a34a">@_viesResult.Name</MudText>
+                            </div>
                     }
                     else
                     {
@@ -207,17 +203,21 @@
         StateHasChanged();
         _viesResult = await ViesService.LookupAsync(customer.VatCode);
         _viesLoading = false;
+        if (_viesResult?.IsValid == true)
+        {
+            ApplyViesData();
+        }
         StateHasChanged();
     }
 
     private void ApplyViesData()
     {
         if (_viesResult?.IsValid != true) return;
-        if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(_viesResult.Name))
+        if (!string.IsNullOrEmpty(_viesResult.Name))
             customer.Name = _viesResult.Name;
-        if (string.IsNullOrEmpty(customer.Address) && !string.IsNullOrEmpty(_viesResult.Address))
+        if (!string.IsNullOrEmpty(_viesResult.Address))
             customer.Address = _viesResult.Address;
-        if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(_viesResult.CountryCode))
+        if (!string.IsNullOrEmpty(_viesResult.CountryCode))
             customer.CountryCode = _viesResult.CountryCode;
         StateHasChanged();
     }
