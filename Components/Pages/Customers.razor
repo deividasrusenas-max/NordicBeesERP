@@ -1,4 +1,5 @@
 @page "/customers"
+@rendermode InteractiveServer
 @inject ICustomerService CustomerService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
@@ -7,78 +8,110 @@
 
 <PageTitle>Klientai</PageTitle>
 
-<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">🛒 Klientai</MudText>
-
-<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
-           OnClick="@OpenCreateDialog" Class="mb-4">
-    Naujas klientas
-</MudButton>
-
-@if (customers == null)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-}
-else if (!customers.Any())
-{
-    <MudPaper Class="pa-8 text-center">
-        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Color="Color.Default" Class="mb-4" />
-        <MudText Typo="Typo.h6" Class="mb-2">Klientų sąrašas tuščias</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog">
-            + Pridėti pirmą klientą
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Klientai</MudText>
+        <MudButton OnClick="OpenCreateDialog"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary">
+            Naujas klientas
         </MudButton>
-    </MudPaper>
-}
-else
-{
-    <MudTable T="Customer" Items="@customers" Hover="true" Dense="true">
-        <HeaderContent>
-            <MudTh>Pavadinimas</MudTh>
-            <MudTh>Kodas</MudTh>
-            <MudTh>Miestas</MudTh>
-            <MudTh>Adresas</MudTh>
-            <MudTh>Telefonas</MudTh>
-            <MudTh>El. paštas</MudTh>
-            <MudTh>PVM</MudTh>
-            <MudTh>Mokėjimo terminas</MudTh>
-            <MudTh Style="width: 150px;">Veiksmai</MudTh>
-        </HeaderContent>
-        <RowTemplate Context="customer">
-            <MudTd>
-                <MudText Typo="Typo.subtitle1" Color="Color.Primary"><strong>@(customer!.Name)</strong></MudText>
-            </MudTd>
-            <MudTd>
-                @if (!string.IsNullOrEmpty(customer!.CompanyCode))
-                {
-                    <MudText Typo="Typo.caption">@customer!.CompanyCode</MudText>
-                }
-            </MudTd>
-            <MudTd>@(customer!.City)</MudTd>
-            <MudTd>@(customer!.Address)</MudTd>
-            <MudTd>@(customer!.Phone)</MudTd>
-            <MudTd>@(customer!.Email)</MudTd>
-            <MudTd>@(customer!.DefaultVatRate.ToString())%</MudTd>
-            <MudTd>@(customer!.PaymentTermDays) d.</MudTd>
-            <MudTd>
-                <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                   Color="Color.Primary" 
-                                   OnClick="@(() => OpenEditDialog(customer!))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                   Color="Color.Error" 
-                                   OnClick="@(() => DeleteCustomer(customer!))" />
-                </MudButtonGroup>
-            </MudTd>
-        </RowTemplate>
-        <FooterContent>
-            <MudTd @attributes='@(new Dictionary<string, object> { { "colspan", 6 } })'>
-                <MudText Typo="Typo.caption">Iš viso: @customers.Count klientai</MudText>
-            </MudTd>
-        </FooterContent>
-    </MudTable>
-}
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+    else
+    {
+        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField Value="@_filterSearch"
+                                  ValueChanged="@(async (string val) => { _filterSearch = val; await LoadCustomers(); })"
+                                  Label="Paieška pagal pavadinimą arba kodą"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true"
+                                  FullWidth="true"
+                                  Clearable="true"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Adornment="Adornment.Start" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+            @if (_customers == null || !_customers.Any())
+            {
+                <MudText Class="text-center py-4">Klientų nėra</MudText>
+            }
+            else
+            {
+                <MudTable Items="@FilteredCustomers"
+                          Dense="true"
+                          Hover="true"
+                          Striped="true"
+                          RowsPerPage="25"
+                          Elevation="0"
+                          Style="cursor:pointer"
+                          OnRowClick="@(async (TableRowClickEventArgs<Customer> args) => await OnRowClick(args.Item))">
+                    <HeaderContent>
+                        <MudTh>Pavadinimas</MudTh>
+                        <MudTh>Kodas</MudTh>
+                        <MudTh>Miestas</MudTh>
+                        <MudTh>Adresas</MudTh>
+                        <MudTh>Telefonas</MudTh>
+                        <MudTh>El. paštas</MudTh>
+                        <MudTh>PVM</MudTh>
+                        <MudTh>Mokėjimo terminas</MudTh>
+                        <MudTh Style="width: 150px;">Veiksmai</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="customer">
+                        <MudTd>
+                            <MudText Typo="Typo.subtitle1" Color="Color.Primary"><strong>@(customer!.Name)</strong></MudText>
+                        </MudTd>
+                        <MudTd>
+                            @if (!string.IsNullOrEmpty(customer!.CompanyCode))
+                            {
+                                <MudText Typo="Typo.caption">@customer!.CompanyCode</MudText>
+                            }
+                        </MudTd>
+                        <MudTd>@(customer!.City)</MudTd>
+                        <MudTd>@(customer!.Address)</MudTd>
+                        <MudTd>@(customer!.Phone)</MudTd>
+                        <MudTd>@(customer!.Email)</MudTd>
+                        <MudTd>@(customer!.DefaultVatRate.ToString())%</MudTd>
+                        <MudTd>@(customer!.PaymentTermDays) d.</MudTd>
+                        <MudTd>
+                            <div @onclick:stopPropagation="true">
+                                <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => OpenEditDialog(customer!))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => DeleteCustomer(customer!))" />
+                                </MudButtonGroup>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+                    </PagerContent>
+                    <NoRecordsContent>
+                        <MudText Class="text-center py-4">Klientų nėra</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            }
+        </MudPaper>
+    }
+</MudContainer>
 
 @code {
-    private List<Customer>? customers;
+    private List<Customer> _customers = new();
+    private bool _isLoading = false;
+    private string? _filterSearch = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -87,7 +120,34 @@ else
 
     private async Task LoadCustomers()
     {
-        customers = await CustomerService.GetCustomersAsync();
+        _isLoading = true;
+        StateHasChanged();
+        _customers = await CustomerService.GetCustomersAsync();
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private List<Customer> FilteredCustomers
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_filterSearch))
+                return _customers;
+            var search = _filterSearch.ToLower();
+            return _customers.Where(c =>
+                c.Name.ToLower().Contains(search) ||
+                (!string.IsNullOrEmpty(c.CompanyCode) && c.CompanyCode.ToLower().Contains(search)) ||
+                (!string.IsNullOrEmpty(c.VatCode) && c.VatCode.ToLower().Contains(search)) ||
+                (!string.IsNullOrEmpty(c.City) && c.City.ToLower().Contains(search))).ToList();
+        }
+    }
+
+    private async Task OnRowClick(Customer customer)
+    {
+        if (customer != null)
+        {
+            await OpenEditDialog(customer);
+        }
     }
 
     private async Task OpenCreateDialog()
@@ -133,18 +193,16 @@ else
             Snackbar.Add("Klaida: klientas nerastas!", Severity.Error);
             return;
         }
-        
-        var parameters = new DialogParameters
-        {
-            { "ContentText", $"Ar tikrai norite ištrinti klientą '{customer.Name}'?" },
-            { "ButtonText", "Trinti" },
-            { "Color", Color.Error }
-        };
 
-        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinti", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
-        var result = await dialog.Result;
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti trynimą",
+            $"Ar tikrai norite ištrinti klientą '{customer.Name}'? Šio veiksmo negalima atšaukti.",
+            yesText: "Trinti",
+            cancelText: "Atšaukti");
 
-        if (!result.Canceled)
+        if (confirmed != true) return;
+
+        try
         {
             var deleted = await CustomerService.DeleteBusinessPartnerAsync(customer.Id);
             if (deleted)
@@ -156,6 +214,10 @@ else
             {
                 Snackbar.Add("Nepavyko ištrinti kliento: bandykite dar kartą", Severity.Error);
             }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida trinant: " + ex.Message, Severity.Error);
         }
     }
 }
