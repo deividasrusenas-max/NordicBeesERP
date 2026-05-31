@@ -1,11 +1,13 @@
 @page "/invoices"
+@page "/invoices/sales"
+@page "/invoices/purchases"
 @rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
 @using MudBlazor
 @inject IInvoiceService InvoiceService
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
+@inject NavigationManager Navigation
 
 <PageTitle>Sąskaitos-faktūros</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
@@ -34,9 +36,9 @@
                               ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
                               Label="Paieška pagal Nr. arba klientą"
                               Variant="Variant.Outlined"
-                              Immediate="true"
-                              FullWidth="true"
-                              Clearable="true"
+                               Immediate="true"
+                               FullWidth="@true"
+                               Clearable="true"
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               Adornment="Adornment.Start" />
             </MudItem>
@@ -44,9 +46,9 @@
                 <MudDateRangePicker DateRange="@_dateRange"
                                     DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadDataAsync(); })"
                                     Label="Data (nuo / iki)"
-                                    Variant="Variant.Outlined"
-                                    FullWidth="true"
-                                    Clearable="true" />
+                                     Variant="Variant.Outlined"
+                                     FullWidth="@true"
+                                     Clearable="true" />
             </MudItem>
             @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null)
             {
@@ -140,7 +142,7 @@
                 <MudTd>
                     <div @onclick:stopPropagation="true">
                         <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                       OnClick="@(async () => await ViewInvoice(invoice.Id))"
+                                       OnClick="@(async () => { ViewInvoice(invoice.Id); })"
                                        Color="Color.Primary"
                                        Size="Size.Small" />
                     </div>
@@ -258,25 +260,25 @@
         StateHasChanged();
     }
 
-    // Navigation
-    private async Task OnRowClick(Invoice invoice)
+    private Task OnRowClick(Invoice invoice)
     {
-        await ViewInvoice(invoice.Id);
+        Navigation.NavigateTo($"/invoices/{invoice.Id}");
+        return Task.CompletedTask;
     }
 
-    private async Task ViewInvoice(int invoiceId)
+    private void ViewInvoice(int invoiceId)
     {
-        var parameters = new DialogParameters { { "InvoiceId", invoiceId } };
-        var dialog = await DialogService.ShowAsync<InvoiceView>("Sąskaita", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
-        await dialog.Result;
-        await LoadDataAsync();
+        Navigation.NavigateTo($"/invoices/{invoiceId}");
     }
 
     private void OpenCreateDialog()
     {
-        DialogService.Show<InvoiceCreate>("Sukurti sąskaitą",
-            new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
+        Navigation.NavigateTo("/invoices/create");
+    }
+
+    private void OnCreateClick()
+    {
+        Navigation.NavigateTo("/invoices/create");
     }
 
     // Display helpers
