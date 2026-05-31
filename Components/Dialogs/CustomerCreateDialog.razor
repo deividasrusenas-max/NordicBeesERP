@@ -34,14 +34,12 @@
             </MudItem>
             
             <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="customer.VatCode"
+                <MudTextField Value="@customer.VatCode"
+                              ValueChanged="@(async (string v) => { customer.VatCode = v; await OnVatCodeChanged(); })"
                               Label="PVM mokėtojo kodas"
                               MaxLength="20"
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
-                              Immediate="@true"
-                              DebounceInterval="800"
-                              OnDebounceIntervalElapsed="@OnVatCodeChanged"
                               Adornment="@(_viesLoading ? Adornment.End : Adornment.None)"
                               AdornmentIcon="@Icons.Material.Filled.HourglassTop" />
                 @if (_viesLoading)
@@ -131,7 +129,6 @@
                 <MudSwitch @bind-Value="customer.IsActive" Label="Aktyvus" Color="Color.Success" />
             </MudItem>
         </MudGrid>
-        <DataAnnotationsValidator />
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@CloseDialog">Atšaukti</MudButton>
@@ -153,7 +150,7 @@
     {
         customer = Customer ?? new Customer
         {
-            PartnerType = "Klientas",
+            PartnerType = "Customer",
             PaymentTermDays = 30,
             DefaultVatRate = 21m,
             DefaultLanguage = "lt",
