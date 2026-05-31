@@ -11,10 +11,11 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">Klientai</MudText>
-        <MudButton OnClick="OpenCreateDialog"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Variant="Variant.Filled"
-                   Color="Color.Primary">
+<MudButton OnClick="OpenCreateDialog"
+                    StartIcon="@Icons.Material.Filled.Add"
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    Style="text-transform:none">
             Naujas klientas
         </MudButton>
     </div>
@@ -33,7 +34,7 @@
                                   Label="Paieška pagal pavadinimą arba kodą"
                                   Variant="Variant.Outlined"
                                   Immediate="true"
-                                  FullWidth="true"
+                                  FullWidth="@true"
                                   Clearable="true"
                                   AdornmentIcon="@Icons.Material.Filled.Search"
                                   Adornment="Adornment.Start" />
@@ -56,18 +57,14 @@
                           Elevation="0"
                           Style="cursor:pointer"
                           OnRowClick="@(async (TableRowClickEventArgs<Customer> args) => await OnRowClick(args.Item))">
-                    <HeaderContent>
+                     <HeaderContent>
                         <MudTh>Pavadinimas</MudTh>
                         <MudTh>Kodas</MudTh>
-                        <MudTh>Miestas</MudTh>
-                        <MudTh>Adresas</MudTh>
-                        <MudTh>Telefonas</MudTh>
-                        <MudTh>El. paštas</MudTh>
-                        <MudTh>PVM</MudTh>
+                        <MudTh>PVM kodas</MudTh>
                         <MudTh>Mokėjimo terminas</MudTh>
                         <MudTh Style="width: 150px;">Veiksmai</MudTh>
                     </HeaderContent>
-                    <RowTemplate Context="customer">
+                     <RowTemplate Context="customer">
                         <MudTd>
                             <MudText Typo="Typo.subtitle1" Color="Color.Primary"><strong>@(customer!.Name)</strong></MudText>
                         </MudTd>
@@ -77,11 +74,7 @@
                                 <MudText Typo="Typo.caption">@customer!.CompanyCode</MudText>
                             }
                         </MudTd>
-                        <MudTd>@(customer!.City)</MudTd>
-                        <MudTd>@(customer!.Address)</MudTd>
-                        <MudTd>@(customer!.Phone)</MudTd>
-                        <MudTd>@(customer!.Email)</MudTd>
-                        <MudTd>@(customer!.DefaultVatRate.ToString())%</MudTd>
+                        <MudTd>@(customer!.VatCode)</MudTd>
                         <MudTd>@(customer!.PaymentTermDays) d.</MudTd>
                         <MudTd>
                             <div @onclick:stopPropagation="true">
