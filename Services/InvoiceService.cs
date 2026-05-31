@@ -297,6 +297,14 @@ namespace NordicBeesERP.Services
                     "Invoice has lines but total is zero. Please check invoice lines before confirming.");
             }
 
+            // Calculate payment due date when confirming if not set
+            if (newStatus == InvoiceStatus.Confirmed &&
+                !invoice.PaymentDueDate.HasValue &&
+                invoice.PaymentTermDays > 0)
+            {
+                invoice.PaymentDueDate = invoice.InvoiceDate.AddDays(invoice.PaymentTermDays);
+            }
+
             invoice.Status = newStatus;
             invoice.UpdatedAt = DateTime.UtcNow;
             return await context.SaveChangesAsync();

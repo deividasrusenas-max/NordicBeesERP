@@ -34,8 +34,8 @@
                               Label="Paieška pagal Nr. arba klientą"
                               Variant="Variant.Outlined"
                               Immediate="true"
-                              FullWidth="true"
-                              Clearable="true"
+                              FullWidth="@true"
+                              Clearable="@true"
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               Adornment="Adornment.Start" />
             </MudItem>
@@ -44,8 +44,8 @@
                                     DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadCreditNotesAsync(); })"
                                     Label="Data (nuo / iki)"
                                     Variant="Variant.Outlined"
-                                    FullWidth="true"
-                                    Clearable="true" />
+                                    FullWidth="@true"
+                                    Clearable="@true" />
             </MudItem>
             @if (!string.IsNullOrEmpty(_searchTerm) || _selectedStatuses.Any() || (_dateRange?.Start != null))
             {

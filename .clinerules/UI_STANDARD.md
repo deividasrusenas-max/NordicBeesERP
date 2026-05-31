@@ -65,9 +65,9 @@ Visada po header row, prieš filtrus.
                           ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
                           Label="Paieška pagal Nr. arba pavadinimą"
                           Variant="Variant.Outlined"
-                          Immediate="true"
-                          FullWidth="true"
-                          Clearable="true"
+                          Immediate="@true"
+                          FullWidth="@true"
+                          Clearable="@true"
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           Adornment="Adornment.Start" />
         </MudItem>
@@ -76,8 +76,8 @@ Visada po header row, prieš filtrus.
                                 DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadDataAsync(); })"
                                 Label="Data (nuo / iki)"
                                 Variant="Variant.Outlined"
-                                FullWidth="true"
-                                Clearable="true" />
+                                FullWidth="@true"
+                                Clearable="@true" />
         </MudItem>
         @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null)
         {
@@ -282,3 +282,5 @@ private string GetRowStyle(T item, int index) { ... }
 | `Customers.razor` | Nėra header layout, nėra search, nėra row click, emoji pavadinime, `mt-8` |
 | `Invoices.razor` | Du date picker, nėra chips, nėra tabs, nėra row click, mygtukas ne header |
 | `CreditNotes.razor` | Nėra header layout, nėra chips, nėra tabs, nėra row click, mygtukas ne header |
+
+| `FullWidth="true"` (string) | `FullWidth="@true"` (bool) — **KRITINIS**: visi boolean parametrai Blazor komponentuose PRIVALO turėti `@` prefiksą |
