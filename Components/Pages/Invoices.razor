@@ -13,7 +13,7 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <!-- Header row -->
     <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">Sąskaitos-faktūros</MudText>
+        <MudText Typo="Typo.h5">@(_invoiceType == "LAK" ? "Pardavimų sąskaitos" : "Pirkimų sąskaitos (ULAK)")</MudText>
         <MudButton OnClick="OpenCreateDialog"
                    StartIcon="@Icons.Material.Filled.Add"
                    Variant="Variant.Filled"
@@ -22,6 +22,22 @@
             Sukurti sąskaitą
         </MudButton>
     </div>
+
+    <!-- Type switcher -->
+    <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Class="mb-3">
+        <MudButton Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary"
+                   Style="text-transform:none"
+                   OnClick="@(async () => await SetInvoiceType("LAK"))">
+            LAK — Pardavimai
+        </MudButton>
+        <MudButton Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary"
+                   Style="text-transform:none"
+                   OnClick="@(async () => await SetInvoiceType("ULAK"))">
+            ULAK — Pirkimai
+        </MudButton>
+    </MudButtonGroup>
 
     <!-- Loading indicator -->
     @if (_isLoading)
@@ -163,6 +179,7 @@
     private List<Invoice> _items = new();
     private bool _isLoading = false;
     private int _selectedTab = 0;
+    private string _invoiceType = "LAK";
 
     // Filter state
     private string? _filterSearch = null;
@@ -196,7 +213,8 @@
             var invoices = await InvoiceService.GetInvoicesAsync(
                 fromDate: _dateRange?.Start,
                 toDate: toDate,
-                searchTerm: _filterSearch);
+                searchTerm: _filterSearch,
+                type: _invoiceType.ToLower());
 
             _items = invoices;
         }
@@ -207,6 +225,13 @@
 
         _isLoading = false;
         StateHasChanged();
+    }
+
+    // Type switcher
+    private async Task SetInvoiceType(string type)
+    {
+        _invoiceType = type;
+        await LoadDataAsync();
     }
 
     // Filter logic
