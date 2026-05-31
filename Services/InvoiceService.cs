@@ -380,11 +380,25 @@ namespace NordicBeesERP.Services
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.BusinessPartners
-                .Where(bp => bp.IsActive && 
-                             (bp.PartnerType == PartnerType.Customer || 
+                .Where(bp => bp.IsActive &&
+                             (bp.PartnerType == PartnerType.Customer ||
                               bp.PartnerType == PartnerType.Both))
-                .OrderBy(bp => bp.Name)
-                .Select(bp => new Customer { Id = bp.Id, Name = bp.Name, VatCode = bp.VatCode })
+                .GroupJoin(
+                    context.Invoices,
+                    bp => bp.Id,
+                    i => i.CustomerId,
+                    (bp, invoices) => new { Partner = bp, InvoiceCount = invoices.Count() })
+                .OrderByDescending(x => x.InvoiceCount)
+                .ThenBy(x => x.Partner.Name)
+                .Select(x => new Customer
+                {
+                    Id = x.Partner.Id,
+                    Name = x.Partner.Name,
+                    VatCode = x.Partner.VatCode,
+                    PaymentTermDays = x.Partner.PaymentTermDays,
+                    DefaultLanguage = x.Partner.DefaultLanguage,
+                    DefaultVatRate = x.Partner.DefaultVatRate
+                })
                 .ToListAsync();
         }
 
