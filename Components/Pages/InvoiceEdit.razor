@@ -13,21 +13,21 @@
 
 <PageTitle>Redaguoti sąskaitą</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <!-- STICKY HEADER -->
-    <div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:12px 24px; border-bottom:1px solid #e2e8f0; margin:-16px -24px 16px -24px;">
-        <div class="d-flex justify-space-between align-center">
-            <div>
-                <MudText Typo="Typo.h5">@_invoiceNumber</MudText>
-                <MudText Typo="Typo.body1" Color="Color.Secondary">@(_isPurchase ? "Redaguoti pirkimo sąskaitą" : "Redaguoti pardavimo sąskaitą")</MudText>
-            </div>
-            <div class="d-flex gap-2">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveInvoice">Išsaugoti</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
-            </div>
+<!-- STICKY HEADER - outside MudContainer for proper positioning -->
+<div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:12px 24px; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+    <div class="d-flex justify-space-between align-center" style="max-width:1600px; margin:0 auto;">
+        <div>
+            <MudText Typo="Typo.h5">@_invoiceNumber</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">@(_isPurchase ? "Redaguoti pirkimo sąskaitą" : "Redaguoti pardavimo sąskaitą")</MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveInvoice">Išsaugoti</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
         </div>
     </div>
+</div>
 
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
         <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
