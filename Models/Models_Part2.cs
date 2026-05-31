@@ -615,17 +615,16 @@ public class Invoice
         [NotMapped]
         public virtual BusinessPartner Customer { get; set; } = null!;
 
-        [ForeignKey("BankImportRowId")]
-        public virtual BankImportRow? BankImportRow { get; set; }
-
-        [ForeignKey("CreatedBy")]
-        [NotMapped]
-        public virtual User? CreatedByUser { get; set; }
-
-
-        public virtual ICollection<PaymentAllocation> Allocations { get; set; } = new List<PaymentAllocation>();
-        public virtual ICollection<PaymentAuditLog> AuditLogs { get; set; } = new List<PaymentAuditLog>();
-    }
+         [ForeignKey("BankImportRowId")]
+         public virtual BankImportRow? BankImportRow { get; set; }
+ 
+         [ForeignKey("CreatedBy")]
+         [NotMapped]
+         public virtual ErpUser? CreatedByNavigation { get; set; }
+ 
+          public virtual ICollection<PaymentAllocation> Allocations { get; set; } = new List<PaymentAllocation>();
+         public virtual ICollection<PaymentAuditLog> AuditLogs { get; set; } = new List<PaymentAuditLog>();
+     }
 
     // =====================================================
     // IŠLAIKŲ KATEGORIJOS (EXPENSE CATEGORIES)

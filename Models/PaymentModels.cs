@@ -109,10 +109,7 @@ namespace NordicBeesERP.Models
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
         // Navigation
-        [ForeignKey("CreatedBy")]
-        public virtual User CreatedByUser { get; set; } = null!;
-
-        public virtual ICollection<BankImportRow> Rows { get; set; } = new List<BankImportRow>();
+         public virtual ICollection<BankImportRow> Rows { get; set; } = new List<BankImportRow>();
     }
 
     // =====================================================

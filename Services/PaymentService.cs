@@ -577,7 +577,7 @@ namespace NordicBeesERP.Services
                                      ReferenceNumber = p.ReferenceNumber,
                                      Notes = p.Notes,
                                      CreatedAt = p.CreatedAt,
-                                     CreatedByName = p.CreatedByUser != null ? p.CreatedByUser.FullName : null,
+                                      CreatedByName = p.CreatedByNavigation != null ? p.CreatedByNavigation.FullName : null,
                                      PaymentNumber = $"M-{p.PaymentDate.Year:D4}-{p.Id:D5}",
                                      CanBeDeleted = !p.Allocations.Any(),
                                      DueDate = p.Invoice == null ? null : p.Invoice.DueDate,
@@ -605,22 +605,22 @@ namespace NordicBeesERP.Services
                 .OrderBy(a => a.InvoiceNumber)
                 .ToListAsync();
 
-            payment.AuditLogs = await context.PaymentAuditLogs
-                .Where(a => a.PaymentId == paymentId)
-                .Join(context.Users,
-                    a => a.ChangedBy,
-                    u => u.Id,
-                    (a, u) => new AuditLogEntry
-                    {
-                        Id = a.Id,
-                        Action = a.Action,
-                        OldAmount = a.OldAmount,
-                        NewAmount = a.NewAmount,
-                        UserName = u.FullName ?? u.Username,
-                        ChangedAt = a.ChangedAt
-                    })
-                .OrderBy(a => a.ChangedAt)
-                .ToListAsync();
+             payment.AuditLogs = await context.PaymentAuditLogs
+                 .Where(a => a.PaymentId == paymentId)
+                 .Join(context.ErpUsers,
+                     a => a.ChangedBy,
+                     u => u.Id,
+                     (a, u) => new AuditLogEntry
+                     {
+                         Id = a.Id,
+                         Action = a.Action,
+                         OldAmount = a.OldAmount,
+                         NewAmount = a.NewAmount,
+                         UserName = u.FullName ?? u.Email,
+                         ChangedAt = a.ChangedAt
+                     })
+                 .OrderBy(a => a.ChangedAt)
+                 .ToListAsync();
 
             return payment;
         }

@@ -24,7 +24,6 @@ namespace NordicBeesERP.Data
         // =====================================================
 
         // Authentication & Users
-        public DbSet<User> Users { get; set; }
         public DbSet<Company> Companies { get; set; }
         public DbSet<ErpUser> ErpUsers { get; set; }
 
@@ -109,13 +108,6 @@ namespace NordicBeesERP.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
-            // ===== USERS =====
-            modelBuilder.Entity<User>(entity =>
-            {
-                entity.HasIndex(e => e.Username).IsUnique();
-                entity.HasIndex(e => e.Email);
-            });
 
             // ===== BUSINESS PARTNERS =====
             modelBuilder.Entity<BusinessPartner>(entity =>

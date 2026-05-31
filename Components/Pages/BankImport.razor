@@ -306,7 +306,7 @@
                 UnmatchedRows = i.UnmatchedRows,
                 ProcessedRows = i.ProcessedRows,
                 Status = i.Status,
-                CreatedByName = i.CreatedByUser?.FullName ?? "Nežinomas",
+                 CreatedByName = i.CreatedBy.ToString(),
                 CreatedAt = i.CreatedAt
             }).ToList();
         }
@@ -641,7 +641,7 @@
             UnmatchedRows = i.UnmatchedRows,
             ProcessedRows = i.ProcessedRows,
             Status = i.Status,
-            CreatedByName = i.CreatedByUser?.FullName ?? "Nežinomas",
+             CreatedByName = i.CreatedBy.ToString(),
             CreatedAt = i.CreatedAt
         }).ToList();
         await InvokeAsync(StateHasChanged);
@@ -668,7 +668,7 @@
                     UnmatchedRows = import.UnmatchedRows,
                     ProcessedRows = import.ProcessedRows,
                     Status = import.Status,
-                    CreatedByName = import.CreatedByUser?.FullName ?? "Nežinomas",
+                     CreatedByName = import.CreatedBy.ToString(),
                     CreatedAt = import.CreatedAt
                 };
                 
