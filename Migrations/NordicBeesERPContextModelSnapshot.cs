@@ -1653,9 +1653,6 @@ namespace NordicBeesERP.Migrations
                         .HasColumnType("int")
                         .HasColumnName("payment_term_days");
 
-                    b.Property<int?>("PaymentTermId1")
-                        .HasColumnType("int");
-
                     b.Property<bool>("ReverseCharge")
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("reverse_charge");
@@ -1697,8 +1694,6 @@ namespace NordicBeesERP.Migrations
 
                     b.HasIndex("InvoiceNumber")
                         .IsUnique();
-
-                    b.HasIndex("PaymentTermId1");
 
                     b.HasIndex("Status");
 
@@ -2085,42 +2080,6 @@ namespace NordicBeesERP.Migrations
                     b.ToTable("payment_audit_log", (string)null);
                 });
 
-            modelBuilder.Entity("NordicBeesERP.Models.PaymentTerm", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<int>("Days")
-                        .HasColumnType("int")
-                        .HasColumnName("days");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("longtext")
-                        .HasColumnName("description");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Days");
-
-                    b.HasIndex("IsActive");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("payment_terms", (string)null);
-                });
 
             modelBuilder.Entity("NordicBeesERP.Models.Product", b =>
                 {
@@ -2407,56 +2366,6 @@ namespace NordicBeesERP.Migrations
                     b.ToTable("units", (string)null);
                 });
 
-            modelBuilder.Entity("NordicBeesERP.Models.User", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("email");
-
-                    b.Property<string>("FullName")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("full_name");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("password_hash");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("username");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email");
-
-                    b.HasIndex("Username")
-                        .IsUnique();
-
-                    b.ToTable("users", (string)null);
-                });
 
             modelBuilder.Entity("NordicBeesERP.Models.Warehouse", b =>
                 {
@@ -3142,16 +3051,6 @@ namespace NordicBeesERP.Migrations
                     b.ToTable("warehouse_stocks", (string)null);
                 });
 
-            modelBuilder.Entity("NordicBeesERP.Models.BankImport", b =>
-                {
-                    b.HasOne("NordicBeesERP.Models.User", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CreatedByUser");
-                });
 
             modelBuilder.Entity("NordicBeesERP.Models.BankImportRow", b =>
                 {
@@ -3273,17 +3172,11 @@ namespace NordicBeesERP.Migrations
                         .WithMany()
                         .HasForeignKey("DeliveryId");
 
-                    b.HasOne("NordicBeesERP.Models.PaymentTerm", "PaymentTerm")
-                        .WithMany("Invoices")
-                        .HasForeignKey("PaymentTermId1");
-
                     b.Navigation("Currency");
 
                     b.Navigation("Customer");
 
                     b.Navigation("Delivery");
-
-                    b.Navigation("PaymentTerm");
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.InvoiceLine", b =>
@@ -3443,10 +3336,6 @@ namespace NordicBeesERP.Migrations
                     b.Navigation("AuditLogs");
                 });
 
-            modelBuilder.Entity("NordicBeesERP.Models.PaymentTerm", b =>
-                {
-                    b.Navigation("Invoices");
-                });
 
             modelBuilder.Entity("NordicBeesERP.Models.ProductCategory", b =>
                 {
