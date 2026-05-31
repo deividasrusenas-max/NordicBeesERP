@@ -1,4 +1,5 @@
 @page "/credit-notes"
+@rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos
@@ -7,50 +8,51 @@
 @inject ICreditNoteService _creditNoteService
 @inject NavigationManager Navigation
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-8">
-    <MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">Kreditinės sąskaitos</MudText>
+<PageTitle>Kreditinės sąskaitos</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Kreditinės sąskaitos</MudText>
+        <MudButton OnClick="CreateNewCreditNote"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Style="text-transform:none">
+            Nauja kreditinė
+        </MudButton>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
 
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
         <MudGrid>
-            <MudItem xs="12" sm="6" md="6">
-                <MudTextField Value="@_searchTerm" 
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField Value="@_searchTerm"
                               ValueChanged="@(async (string val) => { _searchTerm = val; await LoadCreditNotesAsync(); })"
-                              Label="Paieška pagal numerį arba klientą" 
-                              Variant="Variant.Outlined" 
+                              Label="Paieška pagal Nr. arba klientą"
+                              Variant="Variant.Outlined"
                               Immediate="true"
-                              FullWidth="@true"
+                              FullWidth="true"
                               Clearable="true"
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               Adornment="Adornment.Start" />
             </MudItem>
-            <MudItem xs="12" sm="6" md="6">
+            <MudItem xs="12" sm="6" md="4">
                 <MudDateRangePicker DateRange="@_dateRange"
                                     DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadCreditNotesAsync(); })"
                                     Label="Data (nuo / iki)"
                                     Variant="Variant.Outlined"
-                                    FullWidth="@true"
+                                    FullWidth="true"
                                     Clearable="true" />
             </MudItem>
-             <MudItem xs="12" sm="6" md="6">
-                 <MudSelect T="string?" 
-                            Value="@_selectedStatus"
-                            ValueChanged="@(async (string? val) => { _selectedStatus = val; await LoadCreditNotesAsync(); })"
-                            Label="Būsena" 
-                            Variant="Variant.Outlined"
-                            FullWidth="@true"
-                            Clearable="true">
-                     <MudSelectItem T="string?" Value="@((string?)null)">Visos</MudSelectItem>
-                     <MudSelectItem T="string?" Value="@("Draft")">Juodraštis</MudSelectItem>
-                     <MudSelectItem T="string?" Value="@("Printed")">Atspausdinta</MudSelectItem>
-                     <MudSelectItem T="string?" Value="@("Disputed")">Ginčijama</MudSelectItem>
-                 </MudSelect>
-             </MudItem>
-            @if (!string.IsNullOrEmpty(_searchTerm) || _selectedStatus != null || (_dateRange?.Start != null))
+            @if (!string.IsNullOrEmpty(_searchTerm) || _selectedStatuses.Any() || (_dateRange?.Start != null))
             {
                 <MudItem xs="12">
                     <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
                                Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                               OnClick="@(async () => { await ClearFilters(); })">
+                               OnClick="@(async () => { ClearFilters(); })">
                         Išvalyti filtrus
                     </MudButton>
                 </MudItem>
@@ -58,60 +60,95 @@
         </MudGrid>
     </MudPaper>
 
-    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateNewCreditNote">
-        NAUJA KREDITINĖ
-    </MudButton>
+    <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būsena:</MudText>
+        @if (_selectedStatuses.Any())
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       OnClick="@(() => { _selectedStatuses.Clear(); StateHasChanged(); })">
+                Rodyti visas
+            </MudButton>
+        }
+        @foreach (var status in _availableStatuses)
+        {
+            var isSelected = _selectedStatuses.Contains(status);
+            <MudChip T="string"
+                     Color="@(isSelected ? GetStatusColor(status) : Color.Default)"
+                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleStatus(status))"
+                     Size="Size.Small"
+                     Style="@(isSelected ? "" : "opacity:0.7")">
+                @GetStatusLabel(status)
+            </MudChip>
+        }
+    </div>
 
-    <MudTable T="CreditNoteListDto" Items="@_creditNotes" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" @bind-RowsPerPage="_rowsPerPage">
-        <PagerContent>
-            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
-        </PagerContent>
-        <HeaderContent>
-            <MudTh>Nr.</MudTh>
-            <MudTh>Klientas</MudTh>
-            <MudTh>Data</MudTh>
-            <MudTh>Būsena</MudTh>
-            <MudTh>Veiksmai</MudTh>
-        </HeaderContent>
-        <RowTemplate Context="creditNote">
-            <MudTd DataLabel="Nr.">@creditNote.CreditNoteNumber</MudTd>
-            <MudTd DataLabel="Klientas">@creditNote.CustomerName</MudTd>
-            <MudTd DataLabel="Data">@creditNote.CreditDate.ToShortDateString()</MudTd>
-            <MudTd DataLabel="Būsena">
-                @{
-                    var (statusLabel, statusColor) = creditNote.Status switch
-                    {
-                        CreditNoteStatus.Draft => ("Juodraštis", Color.Default),
-                        CreditNoteStatus.Printed => ("Atspausdinta", Color.Primary),
-                        CreditNoteStatus.Disputed => ("Ginčijama", Color.Warning),
-                        _ => (creditNote.Status.ToString(), Color.Default)
-                    };
-                }
-                <MudChip T="string" Color="@statusColor" Size="Size.Small">@statusLabel</MudChip>
-            </MudTd>
-            <MudTd DataLabel="Veiksmai">
-                <MudTooltip Text="Peržiūrėti">
-                    <MudIconButton OnClick="@(() => ViewCreditNote(creditNote.Id))" Color="Color.Secondary" Icon="@Icons.Material.Filled.Visibility" />
-                </MudTooltip>
-                <MudTooltip Text="Redaguoti">
-                    <MudIconButton OnClick="@(() => EditCreditNote(creditNote.Id))" Color="Color.Primary" Icon="@Icons.Material.Filled.Edit" />
-                </MudTooltip>
-            </MudTd>
-        </RowTemplate>
-        <FooterContent>
-            <MudTd DataLabel="Iš viso" @attributes='@(new Dictionary<string, object> { { "colspan", 5 } })'>@_creditNotes.Count įrašai</MudTd>
-        </FooterContent>
-    </MudTable>
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable Items="@_filteredCreditNotes"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  RowsPerPage="25"
+                  Elevation="0"
+                  OnRowClick="@(async (TableRowClickEventArgs<CreditNoteListDto> args) => await OnRowClick(args.Item))"
+                  Style="cursor:pointer">
+            <HeaderContent>
+                <MudTh>Nr.</MudTh>
+                <MudTh>Klientas</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Suma</MudTh>
+                <MudTh>Būsena</MudTh>
+                <MudTh>Veiksmai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="creditNote">
+                <MudTd DataLabel="Nr.">@creditNote.CreditNoteNumber</MudTd>
+                <MudTd DataLabel="Klientas">@creditNote.CustomerName</MudTd>
+                <MudTd DataLabel="Data">@creditNote.CreditDate.ToShortDateString()</MudTd>
+                <MudTd DataLabel="Suma">@creditNote.TotalInclVat.ToString("N2") €</MudTd>
+                <MudTd DataLabel="Būsena">
+                    @{
+                        var (statusLabel, statusColor) = creditNote.Status switch
+                        {
+                            CreditNoteStatus.Draft => ("Juodraštis", Color.Default),
+                            CreditNoteStatus.Printed => ("Atspausdinta", Color.Primary),
+                            CreditNoteStatus.Disputed => ("Ginčijama", Color.Warning),
+                            _ => (creditNote.Status.ToString(), Color.Default)
+                        };
+                    }
+                    <MudChip T="string" Color="@statusColor" Size="Size.Small">@statusLabel</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Veiksmai">
+                    <div @onclick:stopPropagation="true">
+                        <MudTooltip Text="Peržiūrėti">
+                            <MudIconButton OnClick="@(() => ViewCreditNote(creditNote.Id))" Color="Color.Secondary" Icon="@Icons.Material.Filled.Visibility" />
+                        </MudTooltip>
+                        <MudTooltip Text="Redaguoti">
+                            <MudIconButton OnClick="@(() => EditCreditNote(creditNote.Id))" Color="Color.Primary" Icon="@Icons.Material.Filled.Edit" />
+                        </MudTooltip>
+                    </div>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Įrašų nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
 </MudContainer>
 
 @code {
     private List<CreditNoteListDto> _creditNotes = new();
+    private List<CreditNoteListDto> _filteredCreditNotes = new();
     private bool _loading = true;
-    private string? _selectedStatus;
     private string? _searchTerm;
     private DateRange? _dateRange;
-    private int _rowsPerPage = 50;
-    private int _currentPage = 1;
+    private int _rowsPerPage = 25;
+
+    private HashSet<string> _selectedStatuses = new();
+    private readonly string[] _availableStatuses = { "Draft", "Printed", "Disputed" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -133,9 +170,9 @@
             }
 
             CreditNoteStatus? statusEnum = null;
-            if (!string.IsNullOrEmpty(_selectedStatus))
+            if (_selectedStatuses.Any())
             {
-                statusEnum = _selectedStatus switch
+                statusEnum = _selectedStatuses.First() switch
                 {
                     "Draft" => CreditNoteStatus.Draft,
                     "Printed" => CreditNoteStatus.Printed,
@@ -145,8 +182,8 @@
             }
 
             var result = await _creditNoteService.GetCreditNotesAsync(
-                currentPage: _currentPage,
-                itemsPerPage: _rowsPerPage,
+                currentPage: 1,
+                itemsPerPage: 10000,
                 filterCustomerName: _searchTerm,
                 filterStatus: statusEnum,
                 filterFromDate: fromDate,
@@ -154,12 +191,14 @@
             );
             _creditNotes = result.Items.ToList();
             
+            FilterData();
             _loading = false;
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Klaida: {ex.Message}");
+            _loading = false;
+            await InvokeAsync(StateHasChanged);
         }
         finally 
         {
@@ -167,16 +206,81 @@
         }
     }
 
-
-    private async Task ClearFilters()
+    private void FilterData()
     {
-        _searchTerm = null;
-        _selectedStatus = null;
-        _dateRange = null;
-        _currentPage = 1;
-        await LoadCreditNotesAsync();
+        var filtered = _creditNotes.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(_searchTerm))
+        {
+            filtered = filtered.Where(c => 
+                c.CreditNoteNumber.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                c.CustomerName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (_selectedStatuses.Any())
+        {
+            var status = _selectedStatuses.First() switch
+            {
+                "Draft" => CreditNoteStatus.Draft,
+                "Printed" => CreditNoteStatus.Printed,
+                "Disputed" => CreditNoteStatus.Disputed,
+                _ => CreditNoteStatus.Draft
+            };
+            filtered = filtered.Where(c => c.Status == status);
+        }
+
+        if (_dateRange != null && _dateRange.Start.HasValue && _dateRange.End.HasValue)
+        {
+            var start = _dateRange.Start.Value.Date;
+            var end = _dateRange.End.Value.Date;
+            filtered = filtered.Where(c => c.CreditDate >= start && c.CreditDate <= end);
+        }
+
+        _filteredCreditNotes = filtered.ToList();
     }
 
+    private async Task OnRowClick(CreditNoteListDto item)
+    {
+        ViewCreditNote(item.Id);
+    }
+
+    private void ClearFilters()
+    {
+        _searchTerm = null;
+        _selectedStatuses.Clear();
+        _dateRange = null;
+        FilterData();
+    }
+
+    private string GetStatusLabel(string status) => status switch
+    {
+        "Draft" => "Juodraštis",
+        "Printed" => "Atspausdinta",
+        "Disputed" => "Ginčijama",
+        _ => status
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Draft" => Color.Default,
+        "Printed" => Color.Primary,
+        "Disputed" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private void ToggleStatus(string status)
+    {
+        if (_selectedStatuses.Contains(status))
+        {
+            _selectedStatuses.Remove(status);
+        }
+        else
+        {
+            _selectedStatuses.Clear();
+            _selectedStatuses.Add(status);
+        }
+        FilterData();
+    }
 
     private void CreateNewCreditNote()
     {
