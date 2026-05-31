@@ -550,8 +550,8 @@
         };
 
         var dialog = await DialogService.ShowAsync<PaymentDialog>(
-             "Registruoti mokėjimą", parameters,
-             new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+              "Registruoti mokėjimą", parameters,
+              new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
 
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
