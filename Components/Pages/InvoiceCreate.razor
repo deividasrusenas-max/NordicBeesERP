@@ -1,5 +1,6 @@
 @page "/invoices/create"
 @page "/invoices/create-purchase"
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using NordicBeesERP.Models
@@ -16,210 +17,191 @@
 
 <PageTitle>@(_isPurchase ? "Nauja pirkimo sąskaita (ULAK)" : "Naujas pardavimas (LAK)")</PageTitle>
 
+<!-- HEADER (sticky, outside MudContainer) -->
+<div style="position:sticky; top:64px; z-index:100; background:#ffffff; padding:12px 24px; border-bottom:1px solid #e2e8f0;">
+    <div class="d-flex justify-space-between align-center" style="max-width:1600px; margin:0 auto;">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:600">@_nextInvoiceNumber</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">@(_isPurchase ? "Nauja pirkimo sąskaita (ULAK)" : "Nauja pardavimo sąskaita (LAK)")</MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveInvoice">Išsaugoti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">Išsaugoti + PDF</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
+        </div>
+    </div>
+</div>
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">📝 @(_isPurchase ? "Nauja pirkimo sąskaita (ULAK)" : "Naujas pardavimas / Sąskaita")</MudText>
 
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
         <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
     }
 
-    <!-- ANTRAŠTĖ -->
-    <MudPaper Class="mb-3">
-        <MudToolBar Dense="true" Class="mud-theme-primary">
-            <MudText Typo="Typo.h6">Pagrindinė informacija</MudText>
-        </MudToolBar>
-        <MudCardContent>
-            <MudGrid>
-                <MudItem xs="12" sm="3">
-                    <MudTextField T="string" Label="Sąskaitos numeris *" @bind-Value="_nextInvoiceNumber" 
-                                  ReadOnly="true" Variant="Variant.Outlined" />
+    <!-- PAGRINDINĖ INFORMACIJA section -->
+    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="3">
+                <MudTextField T="string" Label="Sąskaitos numeris *" @bind-Value="_nextInvoiceNumber" 
+                              ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate"
+                               Variant="Variant.Outlined" Required="true" 
+                               DateChanged="@UpdateDueDate" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudNumericField T="int" Label="Apmokėjimo terminas (dienų) *" Value="@_paymentTermDays" 
+                                 Variant="Variant.Outlined" Min="0" 
+                                 ValueChanged="@UpdateDueDate" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Apmokėti iki</MudText>
+                <MudText Typo="Typo.body2">@(_paymentDueDate?.ToString("yyyy-MM-dd") ?? "—")</MudText>
+            </MudItem>
+            @if (!_isPurchase)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
+                                  Variant="Variant.Outlined" ReadOnly="true" 
+                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" Margin="Margin.Dense" />
                 </MudItem>
-                <MudItem xs="12" sm="3">
-                    <MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate"
-                                   Variant="Variant.Outlined" Required="true" 
-                                   DateChanged="@UpdateDueDate" />
-                </MudItem>
-                <MudItem xs="12" sm="3">
-                    <MudNumericField T="int" Label="Apmokėjimo terminas (dienų) *" Value="@_paymentTermDays" 
-                                     Variant="Variant.Outlined" Min="0" 
-                                     ValueChanged="@UpdateDueDate" />
-                </MudItem>
-                <MudItem xs="12" sm="3">
-                    <MudDatePicker Label="Apmokėti iki" @bind-Date="_paymentDueDate" 
-                                   Variant="Variant.Outlined" ReadOnly="true" />
-                </MudItem>
-                @if (!_isPurchase)
-                {
-                    <MudItem xs="12" sm="6">
-                        <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
-                                      Variant="Variant.Outlined" ReadOnly="true" 
-                                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
-                                      OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" />
-                    </MudItem>
-                }
-                else
-                {
-                    <MudItem xs="12" sm="6">
-                        <MudSelect T="int?" Label="Tiekėjas *" Value="_selectedSupplierId"
-                                   Variant="Variant.Outlined" Required="true" Placeholder="Pasirinkite tiekėją"
-                                   ValueChanged="OnSupplierSelected">
-                            @foreach (var s in _suppliers)
-                            {
-                                <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudSelect T="int?" Label="Pristatymas" 
-                                   Value="_selectedDeliveryId"
-                                   ValueChanged="OnDeliverySelected"
-                                   Variant="Variant.Outlined"
-                                   Placeholder="Pasirinkite pristatymą"
-                                   Disabled="@(_selectedSupplierId == null)">
-                            @foreach (var d in _supplierDeliveries)
-                            {
-                                <MudSelectItem T="int?" Value="@((int?)d.Id)">
-                                    @d.DeliveryNumber — @d.DeliveryDate.ToString("yyyy-MM-dd") — @d.TotalNetWeight kg
-                                </MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                }
-                <MudItem xs="12" sm="2">
-                    <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined">
-                        <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("EN")">EN</MudSelectItem>
+            }
+            else
+            {
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" Label="Tiekėjas *" Value="_selectedSupplierId"
+                               Variant="Variant.Outlined" Required="true" Placeholder="Pasirinkite tiekėją"
+                               ValueChanged="OnSupplierSelected" Margin="Margin.Dense">
+                        @foreach (var s in _suppliers)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                        }
                     </MudSelect>
                 </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudSelect T="string" Label="Sąskaitos tipas" Value="@_invoiceType" 
-                               Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged"
-                               Disabled="@_isPurchase">
-                        <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM SĄSKAITA FAKTŪRA</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">6% PVM SĄSKAITA FAKTŪRA</MudSelectItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" Label="Pristatymas" 
+                               Value="_selectedDeliveryId"
+                               ValueChanged="OnDeliverySelected"
+                               Variant="Variant.Outlined"
+                               Placeholder="Pasirinkite pristatymą"
+                               Disabled="@(_selectedSupplierId == null)" Margin="Margin.Dense">
+                        @foreach (var d in _supplierDeliveries)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)d.Id)">
+                                @d.DeliveryNumber — @d.DeliveryDate.ToString("yyyy-MM-dd") — @d.TotalNetWeight kg
+                            </MudSelectItem>
+                        }
                     </MudSelect>
                 </MudItem>
-            </MudGrid>
-        </MudCardContent>
+            }
+            <MudItem xs="12" sm="2">
+                <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("EN")">EN</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" Label="Sąskaitos tipas" Value="@_invoiceType" 
+                           Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged"
+                           Disabled="@_isPurchase" Margin="Margin.Dense">
+                    <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM SĄSKAITA FAKTŪRA</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">6% PVM SĄSKAITA FAKTŪRA</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
     </MudPaper>
 
-    <!-- PREKIŲ LENTELĖ -->
-    <MudPaper Class="mb-3">
-        <MudToolBar Dense="true" Class="mud-success">
-            <MudText Typo="Typo.h6">@(_isPurchase ? "Žaliavos" : "Prekės")</MudText>
-        </MudToolBar>
-        <MudCardContent>
-            <MudTable T="InvoiceLineInput" Items="@_lines" Hover="true" Dense="true" Bordered="true">
-                <HeaderContent>
-                    <MudTh Style="width: 5%;">Nr.</MudTh>
-                    <MudTh Style="width: 35%;">Prekė *</MudTh>
-                    <MudTh Style="width: 10%;">Kiekis *</MudTh>
-                    <MudTh Style="width: 8%;">Vnt.</MudTh>
-                    <MudTh Style="width: 12%;">Kaina (be PVM) *</MudTh>
-                    <MudTh Style="width: 8%;">PVM %</MudTh>
-                    <MudTh Style="width: 12%;">Suma (su PVM)</MudTh>
-                    <MudTh Style="width: 8%;"></MudTh>
-                </HeaderContent>
-                <RowTemplate Context="line">
-                    <MudTd DataLabel="Nr.">@(_lines.IndexOf(line) + 1)</MudTd>
-                    <MudTd DataLabel="Prekė">
-                        <MudTextField T="string" @bind-Value="line.Description" Variant="Variant.Text" 
-                                      Margin="Margin.Dense"
-                                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
-                                      OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })"
-                                      @ondblclick="@(( MouseEventArgs args) => HandleProductDoubleClick(args, line))" />
-                    </MudTd>
-                    <MudTd DataLabel="Kiekis">
-                        <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined" 
-                                         Margin="Margin.Dense" Min="0" Step="0.001M"
-                                         ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
-                    </MudTd>
-                    <MudTd DataLabel="Vnt.">
-                        <MudTextField T="string" @bind-Value="line.Unit" Variant="Variant.Outlined" 
-                                      Margin="Margin.Dense" ReadOnly="true" />
-                    </MudTd>
-                    <MudTd DataLabel="Kaina">
-                        <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
-                                         Margin="Margin.Dense" Min="0" Step="0.01M" Format="F2"
-                                         ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
-                    </MudTd>
-                    <MudTd DataLabel="PVM %">
-                        <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
-                                         Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
-                                         ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
-                    </MudTd>
-<MudTd DataLabel="Suma">
-    <MudTextField T="string" Value="@line.LineTotal.ToString()" Variant="Variant.Outlined" 
-                  Margin="Margin.Dense" ReadOnly="true" />
-</MudTd>
-                    <MudTd DataLabel="">
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-                                       OnClick="@(() => RemoveLine(line))" />
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" 
-                       StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => { if (_isPurchase) AddLineForPurchase(); else AddLine(); })">
-                Pridėti eilutę
-            </MudButton>
-        </MudCardContent>
-    </MudPaper>
-
-    <!-- SUMOS -->
-    <MudPaper Class="mb-3">
-        <MudCardContent>
-            <MudGrid Justify="Justify.FlexEnd">
-                <MudItem xs="12" sm="4">
-                    <MudSimpleTable Dense="true">
-                        <tbody>
-                            <tr>
-                                <td class="mud-typography-align-right"><strong>Suma be PVM:</strong></td>
-                                <td class="mud-typography-align-right">@_totalExclVat.ToString("F2") €</td>
-                            </tr>
-                            <tr>
-                                <td class="mud-typography-align-right"><strong>PVM:</strong></td>
-                                <td class="mud-typography-align-right">@_totalVat.ToString("F2") €</td>
-                            </tr>
-                            <tr style="background-color: var(--mud-palette-success-lighten);">
-                                <td class="mud-typography-align-right"><strong>IŠ VISO:</strong></td>
-                                <td class="mud-typography-align-right"><strong>@_totalInclVat.ToString("F2") €</strong></td>
-                            </tr>
-                        </tbody>
-                    </MudSimpleTable>
-                </MudItem>
-            </MudGrid>
-        </MudCardContent>
-    </MudPaper>
-
-    <!-- KOMENTARAS -->
-    <MudPaper Class="mb-3">
-        <MudToolBar Dense="true">
-            <MudText Typo="Typo.h6">Komentaras</MudText>
-        </MudToolBar>
-        <MudCardContent>
-            <MudTextField T="string" @bind-Value="_notes" 
-                          Label="Komentaras (rodomas spausdinant)" 
-                          Variant="Variant.Outlined" 
-                          Lines="3" />
-        </MudCardContent>
-    </MudPaper>
-
-    <!-- MYGTUKAI -->
-    <MudStack Row="true" Class="mb-4">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
-                   StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveInvoice">
-            Išsaugoti
+    <!-- PREKIŲ LENTELĖ section -->
+    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">@(_isPurchase ? "Žaliavos" : "Prekės")</MudText>
+        <MudTable T="InvoiceLineInput" Items="@_lines" Hover="true" Dense="true" Bordered="true">
+            <HeaderContent>
+                <MudTh Style="width: 5%;">Nr.</MudTh>
+                <MudTh Style="width: 35%;">Prekė *</MudTh>
+                <MudTh Style="width: 10%;">Kiekis *</MudTh>
+                <MudTh Style="width: 8%;">Vnt.</MudTh>
+                <MudTh Style="width: 12%;">Kaina (be PVM) *</MudTh>
+                <MudTh Style="width: 8%;">PVM %</MudTh>
+                <MudTh Style="width: 12%;">Suma (su PVM)</MudTh>
+                <MudTh Style="width: 8%;"></MudTh>
+            </HeaderContent>
+            <RowTemplate Context="line">
+                <MudTd DataLabel="Nr.">@(_lines.IndexOf(line) + 1)</MudTd>
+                <MudTd DataLabel="Prekė">
+                    <MudTextField T="string" @bind-Value="line.Description" Variant="Variant.Text" 
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })"
+                                  @ondblclick="@(( MouseEventArgs args) => HandleProductDoubleClick(args, line))" />
+                </MudTd>
+                <MudTd DataLabel="Kiekis">
+                    <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined" 
+                                     Margin="Margin.Dense" Min="0" Step="1M"
+                                     ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
+                </MudTd>
+                <MudTd DataLabel="Vnt.">
+                    <MudTextField T="string" @bind-Value="line.Unit" Variant="Variant.Outlined" 
+                                  Margin="Margin.Dense" ReadOnly="true" />
+                </MudTd>
+                <MudTd DataLabel="Kaina">
+                    <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
+                                     Margin="Margin.Dense" Min="0" Step="0.01M" Format="F2"
+                                     ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
+                </MudTd>
+                <MudTd DataLabel="PVM %">
+                    <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
+                                     Margin="Margin.Dense" Min="0" Step="1M" Format="G29"
+                                     ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
+                </MudTd>
+                <MudTd DataLabel="Suma">
+                    <MudTextField T="string" Value="@line.LineTotal.ToString("N2")" Variant="Variant.Outlined" 
+                                  Margin="Margin.Dense" ReadOnly="true" />
+                </MudTd>
+                <MudTd DataLabel="">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => RemoveLine(line))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Style="text-transform:none" 
+                   Class="mt-3" StartIcon="@Icons.Material.Filled.Add" 
+                   OnClick="@(() => { if (_isPurchase) AddLineForPurchase(); else AddLine(); })">
+            Pridėti eilutę
         </MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
-                   StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">
-            Išsaugoti + Generuoti PDF
-        </MudButton>
-        <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large" 
-                   OnClick="@Cancel">
-            Atšaukti
-        </MudButton>
-    </MudStack>
+    </MudPaper>
+
+    <!-- TOTALS section -->
+    <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+        <div style="background:#eff6ff; border-radius:8px; padding:16px; min-width:280px;">
+            <div class="d-flex justify-space-between gap-4">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Suma be PVM:</MudText>
+                <MudText Typo="Typo.body2">@_totalExclVat.ToString("N2") €</MudText>
+            </div>
+            <div class="d-flex justify-space-between gap-4 mt-1">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">PVM:</MudText>
+                <MudText Typo="Typo.body2">@_totalVat.ToString("N2") €</MudText>
+            </div>
+            <MudDivider Class="my-2" />
+            <div class="d-flex justify-space-between gap-4">
+                <MudText Typo="Typo.body1" Style="font-weight:600">Iš viso:</MudText>
+                <MudText Typo="Typo.body1" Style="font-weight:600">@_totalInclVat.ToString("N2") €</MudText>
+            </div>
+        </div>
+    </div>
+
+    <!-- KOMENTARAS section -->
+    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Komentaras</MudText>
+        <MudTextField T="string" @bind-Value="_notes" 
+                      Label="Komentaras (rodomas spausdinant)" 
+                      Variant="Variant.Outlined" 
+                      Lines="3" Margin="Margin.Dense" />
+    </MudPaper>
+
 </MudContainer>
 
 @code {
