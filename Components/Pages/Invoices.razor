@@ -150,11 +150,23 @@
                     @((invoice.TotalInclVat - invoice.PaidAmount).ToString("N2")) €
                 </MudTd>
                 <MudTd>
-                    <MudChip T="string"
-                             Color="GetStatusColor(invoice.Status.ToString())"
-                             Size="Size.Small">
-                        @GetStatusLabel(invoice.Status.ToString())
-                    </MudChip>
+                    @{
+                        var payStatus = invoice.PaymentStatus ?? "unpaid";
+                        var statusString = invoice.Status.ToString();
+                        var payLabel = payStatus switch {
+                            "paid" => "Apmokėta",
+                            "partial" => "Dalinai",
+                            "unpaid" => statusString == "Draft" ? "Juodraštas" : "Neapmokėta",
+                            _ => GetStatusLabel(statusString)
+                        };
+                        var payColor = payStatus switch {
+                            "paid" => Color.Success,
+                            "partial" => Color.Warning,
+                            "unpaid" => statusString == "Draft" ? Color.Default : Color.Error,
+                            _ => GetStatusColor(statusString)
+                        };
+                    }
+                    <MudChip T="string" Color="@payColor" Size="Size.Small" Style="text-transform:none">@payLabel</MudChip>
                 </MudTd>
                 <MudTd>
                     <div @onclick:stopPropagation="true">
