@@ -48,14 +48,14 @@
                               ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="3">
-                <MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate"
-                               Variant="Variant.Outlined" Required="true" 
-                               DateChanged="@UpdateDueDate" Margin="Margin.Dense" />
+<MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate"
+                                Variant="Variant.Outlined" Required="true" 
+                                DateChanged="@(date => UpdateDueDate(date))" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="3">
-                <MudNumericField T="int" Label="Apmokėjimo terminas (dienų) *" Value="@_paymentTermDays" 
-                                 Variant="Variant.Outlined" Min="0" 
-                                 ValueChanged="@UpdateDueDate" Margin="Margin.Dense" />
+<MudNumericField T="int" Label="Apmokėjimo terminas (dienų) *" Value="@_paymentTermDays" 
+                                  Variant="Variant.Outlined" Min="0" 
+                                  ValueChanged="@(days => UpdateDueDate(days))" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="3">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Apmokėti iki</MudText>
@@ -364,12 +364,26 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void UpdateDueDate(DateTime? newDate)
+    {
+        _invoiceDate = newDate;
+        if (_invoiceDate.HasValue)
+            _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
+        StateHasChanged();
+    }
+
+    private void UpdateDueDate(int newDays)
+    {
+        _paymentTermDays = newDays;
+        if (_invoiceDate.HasValue)
+            _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
+        StateHasChanged();
+    }
+
     private void UpdateDueDate()
     {
         if (_invoiceDate.HasValue)
-        {
             _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
-        }
     }
 
     private async Task OnInvoiceTypeChanged(string newType)

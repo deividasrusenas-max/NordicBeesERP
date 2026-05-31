@@ -319,13 +319,26 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private void UpdateDueDate(int newValue)
+    private void UpdateDueDate(DateTime? newDate)
     {
-        _paymentTermDays = newValue;
+        _invoiceDate = newDate;
         if (_invoiceDate.HasValue)
-        {
             _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
-        }
+        StateHasChanged();
+    }
+
+    private void UpdateDueDate(int newDays)
+    {
+        _paymentTermDays = newDays;
+        if (_invoiceDate.HasValue)
+            _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
+        StateHasChanged();
+    }
+
+    private void UpdateDueDate()
+    {
+        if (_invoiceDate.HasValue)
+            _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
     }
 
     private async Task OnInvoiceTypeChanged(string newType)
