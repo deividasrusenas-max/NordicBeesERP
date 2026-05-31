@@ -18,17 +18,23 @@ namespace NordicBeesERP.Services
             using var context = _dbFactory.CreateDbContext();
             return await context.BusinessPartners
                 .Where(bp => bp.PartnerType == PartnerType.Customer || bp.PartnerType == PartnerType.Both)
-                .Select(bp => new Customer
+                .GroupJoin(
+                    context.Invoices,
+                    bp => bp.Id,
+                    i => i.CustomerId,
+                    (bp, invoices) => new { Partner = bp, InvoiceCount = invoices.Count() })
+                .OrderByDescending(x => x.InvoiceCount)
+                .ThenBy(x => x.Partner.Name)
+                .Select(x => new Customer
                 {
-                    Id = bp.Id,
-                    Name = bp.Name,
-                    City = bp.City,
-                    VatCode = bp.VatCode,
-                    PaymentTermDays = bp.PaymentTermDays ,
-                    DefaultLanguage = bp.DefaultLanguage,
-                    DefaultVatRate = bp.DefaultVatRate
+                    Id = x.Partner.Id,
+                    Name = x.Partner.Name,
+                    City = x.Partner.City,
+                    VatCode = x.Partner.VatCode,
+                    PaymentTermDays = x.Partner.PaymentTermDays,
+                    DefaultLanguage = x.Partner.DefaultLanguage,
+                    DefaultVatRate = x.Partner.DefaultVatRate
                 })
-                .OrderBy(c => c.Name)
                 .ToListAsync();
         }
 
