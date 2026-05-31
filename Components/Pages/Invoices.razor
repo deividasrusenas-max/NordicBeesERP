@@ -24,17 +24,20 @@
     </div>
 
     <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
-    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; margin-bottom:16px;">
-        <MudTabs ActivePanelIndex="@(_invoiceType == "LAK" ? 0 : 1)"
-                 ActivePanelIndexChanged="@(async (int i) => await SetInvoiceType(i == 0 ? "LAK" : "ULAK"))"
-                 Elevation="0"
-                 Rounded="@true"
-                 Square="@false"
-                 Color="Color.Primary">
-            <MudTabPanel Text="LAK — Pardavimai" />
-            <MudTabPanel Text="ULAK — Pirkimai" />
-        </MudTabs>
-    </MudPaper>
+    <div class="d-flex gap-2 mb-3">
+        <MudButton Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary"
+                   Style="@(_invoiceType == "LAK" ? "text-transform:none;min-width:180px;background:#1976d2;color:white;" : "text-transform:none;min-width:180px;background:#dbeafe;color:#1e40af;border-color:#93c5fd;")"
+                   OnClick="@(async () => await SetInvoiceType("LAK"))">
+            LAK — Pardavimai
+        </MudButton>
+        <MudButton Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary"
+                   Style="@(_invoiceType == "ULAK" ? "text-transform:none;min-width:180px;background:#1976d2;color:white;" : "text-transform:none;min-width:180px;background:#dbeafe;color:#1e40af;border-color:#93c5fd;")"
+                   OnClick="@(async () => await SetInvoiceType("ULAK"))">
+            ULAK — Pirkimai
+        </MudButton>
+    </div>
 
     <!-- Loading indicator -->
     @if (_isLoading)

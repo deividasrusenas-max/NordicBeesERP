@@ -469,3 +469,15 @@ docs: update standards
 - `performed_by = "system"` hardcoded — visada iš `IAuthService`
 - ULAK sąskaitų logikos keitimas be specialaus leidimo
 - `ZERO_VAT` flag generavimas ULAK sąskaitoms (jų PVM = 6%, tai normalu)
+
+---
+
+## VERSIJŲ SISTEMA
+
+Dabartinė versija: v0.9.3.14
+
+fix (klaidos taisymas) → patch: v0.9.3.x
+feat (naujas funkcionalumas) → minor: v0.9.x.0
+refactor/chore → patch: v0.9.3.x
+
+Kiekvienas commit PRIVALO tureti versijos zyme pabaigoje.
