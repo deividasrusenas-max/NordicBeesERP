@@ -24,13 +24,17 @@
     </div>
 
     <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
-    <MudTabs ActivePanelIndex="@(_invoiceType == "LAK" ? 0 : 1)"
-             ActivePanelIndexChanged="@(async (int i) => await SetInvoiceType(i == 0 ? "LAK" : "ULAK"))"
-             Elevation="1" Rounded="true" Border="true" ApplyEffectsToContainer="true" Class="mb-3"
-             Style="background:#f1f5f9;">
-        <MudTabPanel Text="LAK — Pardavimai" Style="font-weight:600;" />
-        <MudTabPanel Text="ULAK — Pirkimai" Style="font-weight:600;" />
-    </MudTabs>
+    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; margin-bottom:16px;">
+        <MudTabs ActivePanelIndex="@(_invoiceType == "LAK" ? 0 : 1)"
+                 ActivePanelIndexChanged="@(async (int i) => await SetInvoiceType(i == 0 ? "LAK" : "ULAK"))"
+                 Elevation="0"
+                 Rounded="@true"
+                 Square="@false"
+                 Color="Color.Primary">
+            <MudTabPanel Text="LAK — Pardavimai" />
+            <MudTabPanel Text="ULAK — Pirkimai" />
+        </MudTabs>
+    </MudPaper>
 
     <!-- Loading indicator -->
     @if (_isLoading)
