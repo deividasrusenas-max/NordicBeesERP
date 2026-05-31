@@ -122,7 +122,7 @@
             {
                 var confirmed = await DialogService.ShowMessageBox(
                     "Patvirtinimas",
-                    $"Įvedėte {_amount:F2} €, bet likutis tik {RemainingAmount:F2} €. Ar tikrai norite registruoti permokėjimą?",
+                    $"Įvedėte {_amount:N2} €, bet likutis tik {RemainingAmount:N2} €. Ar tikrai norite registruoti permokėjimą?",
                     yesText: "Taip, registruoti", cancelText: "Atšaukti");
                 if (confirmed != true) return;
             }
