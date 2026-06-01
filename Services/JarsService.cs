@@ -63,7 +63,7 @@ public class JarsService : IJarsService
             if (!response.IsSuccessStatusCode) return null;
             
             var json = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation("JARS result: {Json}", json[..Math.Min(200, json.Length)]);
+            _logger.LogInformation("JARS result: {Json}", json[..Math.Min(500, json.Length)]);
             
             return System.Text.Json.JsonSerializer.Deserialize<JarsCompanyResult>(json,
                 new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });

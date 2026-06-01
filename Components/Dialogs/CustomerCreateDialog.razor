@@ -228,16 +228,17 @@
         }
     }
 
-     private async Task OnCompanyCodeChanged()
-     {
-         if (string.IsNullOrWhiteSpace(customer.CompanyCode) || customer.CompanyCode.Length < 6) return;
-         _lookupLoading = true;
-         StateHasChanged();
-         _lookupResult = await CompanyLookupService.LookupByCompanyCodeAsync(customer.CompanyCode);
-         if (_lookupResult.Found) ApplyLookupResult(_lookupResult);
-         _lookupLoading = false;
-         StateHasChanged();
-     }
+      private async Task OnCompanyCodeChanged()
+      {
+          if (string.IsNullOrWhiteSpace(customer.CompanyCode) || customer.CompanyCode.Length < 6) return;
+          _lookupLoading = true;
+          StateHasChanged();
+          _lookupResult = await CompanyLookupService.LookupByCompanyCodeAsync(customer.CompanyCode);
+          if (_lookupResult.Found) ApplyLookupResult(_lookupResult);
+          snackbar?.Add($"JARS: VatCode={_lookupResult?.VatCode}, Name={_lookupResult?.Name}", Severity.Info);
+          _lookupLoading = false;
+          StateHasChanged();
+      }
 
      protected override async Task OnAfterRenderAsync(bool firstRender)
      {
