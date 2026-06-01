@@ -128,7 +128,7 @@ namespace NordicBeesERP.Models
         public string? BankAccount { get; set; }
         public int PaymentTermDays { get; set; } = 7;
         public string DefaultLanguage { get; set; } = "lt";
-        public decimal DefaultVatRate { get; set; } = 21.00m;
+        public decimal DefaultVatRate { get; set; } = 0m;
         public string CountryCode { get; set; } = "LT";
         public string Country { get; set; } = "Lietuva";
         public string? Notes { get; set; }

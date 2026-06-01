@@ -201,15 +201,21 @@
         {
             PartnerType = "Customer",
             PaymentTermDays = 30,
-             DefaultVatRate = 0m,
+            DefaultVatRate = 0m,
             DefaultLanguage = "lt",
-            CountryCode = "LT",
-            Country = "Lietuva",
+            CountryCode = "",
+            Country = "",
             City = "",
             Address = "",
             PostalCode = "",
             IsActive = true
         };
+        if (customer.Id == 0)
+        {
+            customer.DefaultVatRate = 0m;
+            customer.CountryCode = "";
+            customer.Country = "";
+        }
     }
 
     private async Task SubmitForm()
@@ -231,7 +237,7 @@
 
     private void CloseDialog()
     {
-        Dialog?.Close();
+        Dialog?.Close(DialogResult.Cancel());
     }
 
     private async Task HandleValidSubmit()

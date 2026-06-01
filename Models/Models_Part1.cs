@@ -178,7 +178,7 @@ namespace NordicBeesERP.Models
         public string DefaultLanguage { get; set; } = "LT";
 
         [Column("default_vat_rate")]
-        public decimal DefaultVatRate { get; set; } = 21.00m;
+        public decimal DefaultVatRate { get; set; } = 0m;
 
         // Tiekėjo specifiniai laukai
         [MaxLength(255)]
