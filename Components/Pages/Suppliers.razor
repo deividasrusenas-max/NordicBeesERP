@@ -282,7 +282,7 @@
 
     private async Task OpenCreateDialog(PartnerType partnerType)
     {
-        var supplier = new Supplier { PartnerType = partnerType };
+        var supplier = new Supplier { PartnerType = PartnerType.Supplier };
         var parameters = new DialogParameters
         {
             { "Supplier", supplier }

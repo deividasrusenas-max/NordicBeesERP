@@ -50,8 +50,13 @@
             </MudItem>
             
             <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="supplier.VatCode" Label="PVM mokėtojo kodas" 
-                              MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField @key="@supplier.VatCode"
+                              Value="@supplier.VatCode"
+                              ValueChanged="@(async (string v) => { supplier.VatCode = v; await OnVatCodeChanged(); })"
+                              Label="PVM mokėtojo kodas"
+                              MaxLength="20"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
             </MudItem>
             
             <MudItem xs="12">
@@ -84,7 +89,7 @@
             </MudItem>
             
             <MudItem xs="12" md="6">
-                <MudSelect T="int" @bind-Value="_vatRate" Label="PVM tarifas %" Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelect T="int" @key="@_vatRate" @bind-Value="_vatRate" Label="PVM tarifas %" Variant="Variant.Outlined" Margin="Margin.Dense">
                     <MudSelectItem Value="0">0%</MudSelectItem>
                     <MudSelectItem Value="6">6%</MudSelectItem>
                     <MudSelectItem Value="21">21%</MudSelectItem>
@@ -137,7 +142,7 @@
     [Parameter] public EventCallback<Supplier> OnSupplierUpdated { get; set; }
 
     private Supplier supplier = new();
-    private int _vatRate = 21;
+    private int _vatRate = 0;
     private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
     private bool _lookupLoading = false;
     private CompanyLookupResult? _lookupResult = null;
@@ -157,7 +162,7 @@
         {
             PartnerType = PartnerType.Supplier,
             PaymentTermDays = 30,
-            DefaultVatRate = 21m,
+            DefaultVatRate = 0m,
             DefaultLanguage = "lt",
             CountryCode = "LT",
             Country = "Lietuva",
