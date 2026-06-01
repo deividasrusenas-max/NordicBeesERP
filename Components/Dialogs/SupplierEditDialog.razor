@@ -4,7 +4,7 @@
 @using MudBlazor
 @inject IDialogService DialogService
 @inject ISupplierService SupplierService
-@inject NordicBeesERP.Data.NordicBeesERPContext context
+@inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject ICompanyLookupService CompanyLookupService
 
 <MudDialog>
@@ -150,7 +150,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _categories = await context.Set<NordicBeesERP.Models.Expenses.ExpenseCategory>()
+        await using var ctx = DbFactory.CreateDbContext();
+        _categories = await ctx.Set<NordicBeesERP.Models.Expenses.ExpenseCategory>()
             .Where(c => c.IsActive)
             .OrderBy(c => c.SortOrder)
             .ToListAsync();
