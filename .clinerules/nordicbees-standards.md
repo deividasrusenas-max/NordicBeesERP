@@ -492,3 +492,9 @@ PVM %: naudoti G29 - nerodo 0.0% kai 0
 Helper metodas (prideti i kiekviena komponenta arba i bendrą helper klase):
 private string FormatQuantity(decimal qty) => qty == Math.Floor(qty) ? qty.ToString("N0") : qty.ToString("G29");
 private string FormatVatRate(decimal rate) => rate == Math.Floor(rate) ? rate.ToString("N0") + "%" : rate.ToString("G29") + "%";
+
+## EF CORE UPDATE PATTERN
+
+VISADA naudoti ExecuteSqlRawAsync update operacijoms - NE FindAsync + modify + SaveChanges.
+SaveChangesAsync naudoti TIK naujiems INSERT operacijoms.
+Pvz: await context.Database.ExecuteSqlRawAsync("UPDATE ... WHERE id = {0}", ..., id);

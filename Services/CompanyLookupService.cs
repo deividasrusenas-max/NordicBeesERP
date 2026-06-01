@@ -29,18 +29,90 @@ public interface ICompanyLookupService
     Task<CompanyLookupResult> LookupByVatCodeAsync(string vatCode);
 }
 
-public class CompanyLookupService : ICompanyLookupService
-{
-    private readonly IJarsService _jarsService;
-    private readonly IViesService _viesService;
-
-    public CompanyLookupService(IJarsService jarsService, IViesService viesService)
+    public class CompanyLookupService : ICompanyLookupService
     {
-        _jarsService = jarsService;
-        _viesService = viesService;
-    }
+        private readonly IJarsService _jarsService;
+        private readonly IViesService _viesService;
 
-    private (string? city, string? postalCode, string? streetAddress) ParseJarsAddress(string? address)
+        public CompanyLookupService(IJarsService jarsService, IViesService viesService)
+        {
+            _jarsService = jarsService;
+            _viesService = viesService;
+        }
+
+        private string CleanCompanyName(string? name)
+        {
+            if (string.IsNullOrEmpty(name)) return "";
+
+            var replacements = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                // LT
+                { "Uždaroji akcinė bendrovė", "UAB" },
+                { "Uždaroji akcinė bendrove", "UAB" },
+                { "Akcinė bendrovė", "AB" },
+                { "Akcine bendrove", "AB" },
+                { "Mažoji bendrija", "MB" },
+                { "Mazoji bendrija", "MB" },
+                { "Individuali įmonė", "IĮ" },
+                { "Individuali imone", "IĮ" },
+                { "Viešoji įstaiga", "VšĮ" },
+                { "Viesoji istaiga", "VšĮ" },
+                // LV
+                { "Sabiedrība ar ierobežotu atbildību", "SIA" },
+                { "Sabiedriba ar ierobezotu atbildibu", "SIA" },
+                { "Akciju sabiedrība", "AS" },
+                { "Akciju sabiedriba", "AS" },
+                { "Individuālais komersants", "IK" },
+                // EE
+                { "Osaühing", "OÜ" },
+                { "Aktsiaselts", "AS" },
+                { "Tulundusühistu", "TÜ" },
+                // PL
+                { "Spółka z ograniczoną odpowiedzialnością", "Sp. z o.o." },
+                { "Spolka z ograniczona odpowiedzialnoscia", "Sp. z o.o." },
+                { "Spółka akcyjna", "S.A." },
+                { "Spolka akcyjna", "S.A." },
+                { "Spółka jawna", "Sp.j." },
+                { "Spółka komandytowa", "Sp.k." },
+                // DE
+                { "Gesellschaft mit beschränkter Haftung", "GmbH" },
+                { "Gesellschaft mit beschrankter Haftung", "GmbH" },
+                { "Aktiengesellschaft", "AG" },
+                { "Unternehmergesellschaft", "UG" },
+                { "Kommanditgesellschaft", "KG" },
+                { "Offene Handelsgesellschaft", "OHG" },
+                // CZ
+                { "Společnost s ručením omezeným", "s.r.o." },
+                { "Spolecnost s rucenim omezenym", "s.r.o." },
+                { "Akciová společnost", "a.s." },
+                { "Akciova spolecnost", "a.s." },
+                // BE
+                { "Société à responsabilité limitée", "SRL" },
+                { "Naamloze vennootschap", "NV" },
+                { "Besloten vennootschap", "BV" },
+                { "Société anonyme", "SA" },
+                { "Coöperatieve vennootschap", "CV" },
+                // NL
+                { "Besloten Vennootschap", "BV" },
+                { "Naamloze Vennootschap", "NV" },
+                { "Vennootschap onder firma", "VOF" },
+                { "Commanditaire vennootschap", "CV" },
+                { "Eenmanszaak", "Eenmanszaak" },
+            };
+
+            var result = name;
+            foreach (var kvp in replacements)
+            {
+                if (result.StartsWith(kvp.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    result = kvp.Value + result.Substring(kvp.Key.Length);
+                    break;
+                }
+            }
+            return result.Trim();
+        }
+
+        private (string? city, string? postalCode, string? streetAddress) ParseJarsAddress(string? address)
     {
         if (string.IsNullOrEmpty(address)) return (null, null, null);
         
@@ -98,11 +170,11 @@ public class CompanyLookupService : ICompanyLookupService
             {
                 var (city, postalCode, streetAddress) = ParseJarsAddress(jars.Address);
 
-                 return new CompanyLookupResult
-                 {
-                     Found = true,
-                     Source = LookupSource.Jars,
-                     Name = CompanyNameHelper.Normalize(jars.Name ?? "").Replace("\"", "").Replace("\u201e", "").Replace("\u201c", "").Trim(),
+                  return new CompanyLookupResult
+                  {
+                      Found = true,
+                      Source = LookupSource.Jars,
+                      Name = CleanCompanyName(jars.Name ?? ""),
                     Address = streetAddress ?? jars.Address,
                     City = city,
                     PostalCode = postalCode,
@@ -127,11 +199,11 @@ public class CompanyLookupService : ICompanyLookupService
         var vies = await _viesService.LookupAsync(vatCode);
         if (vies?.IsValid == true)
         {
-            return new CompanyLookupResult
-            {
-                Found = true,
-                Source = LookupSource.Vies,
-                Name = vies.Name,
+             return new CompanyLookupResult
+             {
+                 Found = true,
+                 Source = LookupSource.Vies,
+                 Name = CleanCompanyName(vies.Name),
                 Address = string.IsNullOrWhiteSpace(vies.Address) || vies.Address == "---" ? null : vies.Address,
                 VatCode = vatCode,
                 CountryCode = vies.CountryCode,
