@@ -35,10 +35,7 @@
                               Label="Įmonės kodas"
                               MaxLength="20"
                               Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Immediate="@true"
-                              DebounceInterval="600"
-                              OnDebounceIntervalElapsed="@OnCompanyCodeChanged" />
+                              Margin="Margin.Dense" />
                 @if (_lookupLoading)
                 {
                     <div class="d-flex align-center gap-1 mt-1">
@@ -177,8 +174,9 @@
     [Parameter] public EventCallback<Customer> OnCustomerCreated { get; set; }
 
     private Customer customer = new();
-private bool _lookupLoading = false;
-private CompanyLookupResult? _lookupResult = null;
+    private bool _lookupLoading = false;
+    private CompanyLookupResult? _lookupResult = null;
+    private string _lastCompanyCode = "";
 
     protected override void OnParametersSet()
     {
@@ -230,16 +228,25 @@ private CompanyLookupResult? _lookupResult = null;
         }
     }
 
-private async Task OnCompanyCodeChanged()
-{
-    if (string.IsNullOrWhiteSpace(customer.CompanyCode) || customer.CompanyCode.Length < 6) return;
-    _lookupLoading = true;
-    StateHasChanged();
-    _lookupResult = await CompanyLookupService.LookupByCompanyCodeAsync(customer.CompanyCode);
-    if (_lookupResult.Found) ApplyLookupResult(_lookupResult);
-    _lookupLoading = false;
-    StateHasChanged();
-}
+     private async Task OnCompanyCodeChanged()
+     {
+         if (string.IsNullOrWhiteSpace(customer.CompanyCode) || customer.CompanyCode.Length < 6) return;
+         _lookupLoading = true;
+         StateHasChanged();
+         _lookupResult = await CompanyLookupService.LookupByCompanyCodeAsync(customer.CompanyCode);
+         if (_lookupResult.Found) ApplyLookupResult(_lookupResult);
+         _lookupLoading = false;
+         StateHasChanged();
+     }
+
+     protected override async Task OnAfterRenderAsync(bool firstRender)
+     {
+         if (customer.CompanyCode != _lastCompanyCode && !string.IsNullOrWhiteSpace(customer.CompanyCode) && customer.CompanyCode.Length >= 6)
+         {
+             _lastCompanyCode = customer.CompanyCode;
+             await OnCompanyCodeChanged();
+         }
+     }
 
 private async Task OnVatCodeChanged()
 {
