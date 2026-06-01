@@ -30,10 +30,15 @@
             </MudItem>
             
             <MudItem xs="6">
-                <MudTextField Value="@customer.CompanyCode"
-                              ValueChanged="@(async (string v) => { customer.CompanyCode = v; await OnCompanyCodeChanged(); })"
+                <MudTextField T="string"
+                              @bind-Value="customer.CompanyCode"
                               Label="Įmonės kodas"
-                              MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                              MaxLength="20"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Immediate="@true"
+                              DebounceInterval="600"
+                              OnDebounceIntervalElapsed="@OnCompanyCodeChanged" />
                 @if (_lookupLoading)
                 {
                     <div class="d-flex align-center gap-1 mt-1">
