@@ -1,8 +1,9 @@
 @using NordicBeesERP.Models
+@using NordicBeesERP.Services
 @using MudBlazor
 @inject IDialogService DialogService
 @inject ICustomerService CustomerService
-@inject IViesService ViesService
+@inject ICompanyLookupService CompanyLookupService
 
 <MudDialog>
     <TitleContent>
@@ -29,8 +30,32 @@
             </MudItem>
             
             <MudItem xs="6">
-                <MudTextField @bind-Value="customer.CompanyCode" Label="Įmonės kodas"
+                <MudTextField Value="@customer.CompanyCode"
+                              ValueChanged="@(async (string v) => { customer.CompanyCode = v; await OnCompanyCodeChanged(); })"
+                              Label="Įmonės kodas"
                               MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                @if (_lookupLoading)
+                {
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Ieškoma...</MudText>
+                    </div>
+                }
+                else if (_lookupResult != null && _lookupResult.Source == LookupSource.Jars)
+                {
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudIcon Icon="@(_lookupResult.Found ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                 Size="Size.Small"
+                                 Style="@(_lookupResult.Found ? "color:#16a34a" : "color:#dc2626")" />
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="Color.Primary"
+                                 Variant="Variant.Outlined"
+                                 Style="height:18px;font-size:10px;padding:0 6px">
+                            JARS
+                        </MudChip>
+                        <MudText Typo="Typo.caption" Style="color:#16a34a">@_lookupResult.StatusLabel</MudText>
+                    </div>
+                }
             </MudItem>
             
             <MudItem xs="12" md="6">
@@ -40,28 +65,36 @@
                               MaxLength="20"
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
-                              Adornment="@(_viesLoading ? Adornment.End : Adornment.None)"
+                              Adornment="@(_lookupLoading ? Adornment.End : Adornment.None)"
                               AdornmentIcon="@Icons.Material.Filled.HourglassTop" />
-                @if (_viesLoading)
+                @if (_lookupLoading)
                 {
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Tikrinama VIES...</MudText>
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Ieškoma...</MudText>
+                    </div>
                 }
-                else if (_viesResult != null)
+                else if (_lookupResult != null && _lookupResult.Source == LookupSource.Vies)
                 {
-                        @if (_viesResult.IsValid)
-                        {
-                            <div class="d-flex align-center gap-1 mt-1">
-                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
-                                <MudText Typo="Typo.caption" Style="color:#16a34a">@_viesResult.Name</MudText>
-                            </div>
-                    }
-                    else
-                    {
-                        <div class="d-flex align-center gap-1 mt-1">
-                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
-                            <MudText Typo="Typo.caption" Style="color:#dc2626">Nerasta VIES registre</MudText>
-                        </div>
-                    }
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudIcon Icon="@(_lookupResult.Found ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                 Size="Size.Small"
+                                 Style="@(_lookupResult.Found ? "color:#16a34a" : "color:#dc2626")" />
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="Color.Info"
+                                 Variant="Variant.Outlined"
+                                 Style="height:18px;font-size:10px;padding:0 6px">
+                            VIES
+                        </MudChip>
+                        <MudText Typo="Typo.caption" Style="color:#16a34a">@_lookupResult.StatusLabel</MudText>
+                    </div>
+                }
+                else if (_lookupResult != null && !_lookupResult.Found && _lookupResult.Source == LookupSource.Vies)
+                {
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                        <MudText Typo="Typo.caption" Style="color:#dc2626">Nerasta</MudText>
+                    </div>
                 }
             </MudItem>
             
@@ -139,8 +172,8 @@
     [Parameter] public EventCallback<Customer> OnCustomerCreated { get; set; }
 
     private Customer customer = new();
-    private bool _viesLoading = false;
-    private ViesResult? _viesResult = null;
+private bool _lookupLoading = false;
+private CompanyLookupResult? _lookupResult = null;
 
     protected override void OnParametersSet()
     {
@@ -192,33 +225,46 @@
         }
     }
 
-    private async Task OnVatCodeChanged()
-    {
-        if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4)
-        {
-            _viesResult = null;
-            return;
-        }
-        _viesLoading = true;
-        StateHasChanged();
-        _viesResult = await ViesService.LookupAsync(customer.VatCode);
-        _viesLoading = false;
-        if (_viesResult?.IsValid == true)
-        {
-            ApplyViesData();
-        }
-        StateHasChanged();
-    }
+private async Task OnCompanyCodeChanged()
+{
+    if (string.IsNullOrWhiteSpace(customer.CompanyCode) || customer.CompanyCode.Length < 6) return;
+    _lookupLoading = true;
+    StateHasChanged();
+    _lookupResult = await CompanyLookupService.LookupByCompanyCodeAsync(customer.CompanyCode);
+    if (_lookupResult.Found) ApplyLookupResult(_lookupResult);
+    _lookupLoading = false;
+    StateHasChanged();
+}
 
-    private void ApplyViesData()
+private async Task OnVatCodeChanged()
+{
+    if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4) return;
+    _lookupLoading = true;
+    StateHasChanged();
+    var result = await CompanyLookupService.LookupByVatCodeAsync(customer.VatCode);
+    if (result.Found)
     {
-        if (_viesResult?.IsValid != true) return;
-        if (!string.IsNullOrEmpty(_viesResult.Name))
-            customer.Name = _viesResult.Name;
-        if (!string.IsNullOrWhiteSpace(_viesResult.Address) && _viesResult.Address != "---")
-            customer.Address = _viesResult.Address;
-        if (!string.IsNullOrEmpty(_viesResult.CountryCode))
-            customer.CountryCode = _viesResult.CountryCode;
-        StateHasChanged();
+        _lookupResult = result;
+        ApplyLookupResult(result);
     }
+    _lookupLoading = false;
+    StateHasChanged();
+}
+
+private void ApplyLookupResult(CompanyLookupResult result)
+{
+    if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(result.Name))
+        customer.Name = result.Name;
+    if (string.IsNullOrEmpty(customer.Address) && !string.IsNullOrEmpty(result.Address))
+        customer.Address = result.Address;
+    if (string.IsNullOrEmpty(customer.VatCode) && !string.IsNullOrEmpty(result.VatCode))
+        customer.VatCode = result.VatCode;
+    if (string.IsNullOrEmpty(customer.Email) && !string.IsNullOrEmpty(result.Email))
+        customer.Email = result.Email;
+    if (string.IsNullOrEmpty(customer.Phone) && !string.IsNullOrEmpty(result.Phone))
+        customer.Phone = result.Phone;
+    if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(result.CountryCode))
+        customer.CountryCode = result.CountryCode;
+    StateHasChanged();
+}
 }

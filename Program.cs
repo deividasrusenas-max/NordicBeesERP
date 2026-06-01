@@ -68,7 +68,9 @@ builder.Services.AddHttpClient("Default").ConfigureHttpClient(client =>
     client.Timeout = TimeSpan.FromSeconds(300);
 });
 builder.Services.AddScoped<IExpenseOcrService, ExpenseOcrService>();
+builder.Services.AddScoped<IJarsService, JarsService>();
 builder.Services.AddScoped<IViesService, ViesService>();
+builder.Services.AddScoped<ICompanyLookupService, CompanyLookupService>();
 builder.Services.AddHostedService<OcrQueueWorker>();
 
 builder.Services.AddScoped<BlazorAuthStateProvider>();
