@@ -257,14 +257,15 @@
           StateHasChanged();
       }
 
-     protected override async Task OnAfterRenderAsync(bool firstRender)
-     {
-         if (customer.CompanyCode != _lastCompanyCode && !string.IsNullOrWhiteSpace(customer.CompanyCode) && customer.CompanyCode.Length >= 6)
-         {
-             _lastCompanyCode = customer.CompanyCode;
-             await OnCompanyCodeChanged();
-         }
-     }
+      protected override async Task OnAfterRenderAsync(bool firstRender)
+      {
+          if (customer.Id > 0) return; // Don't auto-lookup for existing customers
+          if (customer.CompanyCode != _lastCompanyCode && !string.IsNullOrWhiteSpace(customer.CompanyCode) && customer.CompanyCode.Length >= 6)
+          {
+              _lastCompanyCode = customer.CompanyCode;
+              await OnCompanyCodeChanged();
+          }
+      }
 
 private async Task OnVatCodeChanged()
 {
