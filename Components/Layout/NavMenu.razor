@@ -26,11 +26,7 @@
     {
         <MudNavGroup Title="Tiekėjai ir klientai" Icon="@Icons.Material.Filled.People">
             <MudNavLink Href="/suppliers" Icon="@Icons.Material.Filled.LocalShipping">Tiekėjai</MudNavLink>
-            @if (_isAdmin || _isManager)
-            {
-                <MudNavLink Href="/suppliers/new" Icon="@Icons.Material.Filled.PersonAdd">Naujas tiekėjas</MudNavLink>
-                <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
-            }
+            <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
         </MudNavGroup>
     }
 
