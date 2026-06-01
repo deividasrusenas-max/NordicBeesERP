@@ -234,7 +234,7 @@
           _lookupLoading = true;
           StateHasChanged();
           _lookupResult = await CompanyLookupService.LookupByCompanyCodeAsync(customer.CompanyCode);
-          if (_lookupResult.Found) ApplyLookupResult(_lookupResult);
+           if (_lookupResult.Found) await ApplyLookupResult(_lookupResult);
           snackbar?.Add($"JARS: VatCode={_lookupResult?.VatCode}, Name={_lookupResult?.Name}", Severity.Info);
           _lookupLoading = false;
           StateHasChanged();
@@ -255,16 +255,16 @@ private async Task OnVatCodeChanged()
     _lookupLoading = true;
     StateHasChanged();
     var result = await CompanyLookupService.LookupByVatCodeAsync(customer.VatCode);
-    if (result.Found)
-    {
-        _lookupResult = result;
-        ApplyLookupResult(result);
-    }
+     if (result.Found)
+     {
+         _lookupResult = result;
+         await ApplyLookupResult(result);
+     }
     _lookupLoading = false;
     StateHasChanged();
 }
 
-private void ApplyLookupResult(CompanyLookupResult result)
+private async Task ApplyLookupResult(CompanyLookupResult result)
 {
     if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(result.Name))
         customer.Name = result.Name;
@@ -274,7 +274,7 @@ private void ApplyLookupResult(CompanyLookupResult result)
         customer.City = result.City;
     if (string.IsNullOrEmpty(customer.PostalCode) && !string.IsNullOrEmpty(result.PostalCode))
         customer.PostalCode = result.PostalCode;
-    if (string.IsNullOrEmpty(customer.VatCode) && !string.IsNullOrEmpty(result.VatCode))
+    if (string.IsNullOrWhiteSpace(customer.VatCode) && !string.IsNullOrEmpty(result.VatCode))
         customer.VatCode = result.VatCode;
     if (string.IsNullOrEmpty(customer.Email) && !string.IsNullOrEmpty(result.Email))
         customer.Email = result.Email;
@@ -282,6 +282,6 @@ private void ApplyLookupResult(CompanyLookupResult result)
         customer.Phone = result.Phone;
     if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(result.CountryCode))
         customer.CountryCode = result.CountryCode;
-    StateHasChanged();
+    await InvokeAsync(StateHasChanged);
 }
 }
