@@ -268,21 +268,24 @@
           }
       }
 
-private async Task OnVatCodeChanged()
-{
-    customer.VatCode = customer.VatCode?.Trim() ?? "";
-    if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4) return;
-    _lookupLoading = true;
-    StateHasChanged();
-    var result = await CompanyLookupService.LookupByVatCodeAsync(customer.VatCode);
-     if (result.Found)
-     {
-         _lookupResult = result;
-         await ApplyLookupResult(result);
-     }
-    _lookupLoading = false;
-    StateHasChanged();
-}
+ private async Task OnVatCodeChanged()
+ {
+     customer.VatCode = customer.VatCode?.Trim() ?? "";
+     if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4) return;
+     // Auto-prefix PL NIP if user enters 10-digit number without PL prefix
+     if (customer.VatCode.Length == 10 && customer.VatCode.All(char.IsDigit))
+         customer.VatCode = "PL" + customer.VatCode;
+     _lookupLoading = true;
+     StateHasChanged();
+     var result = await CompanyLookupService.LookupByVatCodeAsync(customer.VatCode);
+      if (result.Found)
+      {
+          _lookupResult = result;
+          await ApplyLookupResult(result);
+      }
+     _lookupLoading = false;
+     StateHasChanged();
+ }
 
     private async Task ApplyLookupResult(CompanyLookupResult result)
     {
