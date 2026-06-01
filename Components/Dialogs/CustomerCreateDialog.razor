@@ -222,7 +222,6 @@
     {
         try
         {
-            snackbar?.Add($"Id={customer.Id}, Name={customer.Name}", Severity.Info);
             // Save the customer
             var savedCustomer = await CustomerService.SaveCustomerAsync(customer);
             
