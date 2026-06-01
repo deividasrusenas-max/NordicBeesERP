@@ -153,7 +153,7 @@
         var dialog = await DialogService.ShowAsync<CustomerCreateDialog>("Naujas klientas", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is not null)
+        if (!result.Canceled)
         {
             var savedCustomer = (Customer)result.Data;
             Snackbar.Add("Klientas sėkmingai sukurtas!", Severity.Success);
@@ -196,7 +196,7 @@
         var dialog = await DialogService.ShowAsync<CustomerCreateDialog>("Redaguoti klientą", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is not null)
+        if (!result.Canceled)
         {
             var savedCustomer = (Customer)result.Data;
             Snackbar.Add("Klientas sėkmingai atnaujintas!", Severity.Success);

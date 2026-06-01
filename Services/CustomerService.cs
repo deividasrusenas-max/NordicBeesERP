@@ -181,37 +181,55 @@ namespace NordicBeesERP.Services
             }
             else
             {
-                // Update existing customer
-                var existing = await context.BusinessPartners.FindAsync(customer.Id);
-                if (existing == null)
-                {
-                    throw new InvalidOperationException($"Klientas su ID {customer.Id} nerastas");
-                }
-                
-                existing.PartnerType = partnerType;
-                existing.Name = customer.Name;
-                existing.CompanyCode = customer.CompanyCode;
-                existing.VatCode = customer.VatCode;
-                existing.Address = customer.Address;
-                existing.City = customer.City;
-                existing.PostalCode = customer.PostalCode;
-                existing.Country = customer.Country ?? "Lithuania";
-                existing.CountryCode = customer.CountryCode ?? "LT";
-                existing.Phone = customer.Phone;
-                existing.Email = customer.Email;
-                existing.BankAccount = customer.BankAccount;
-                existing.PaymentTermDays = customer.PaymentTermDays;
-                existing.DefaultLanguage = customer.DefaultLanguage ?? "LT";
-                existing.DefaultVatRate = customer.DefaultVatRate;
-                existing.Notes = customer.Notes;
-                existing.IsActive = customer.IsActive;
-                existing.UpdatedAt = DateTime.Now;
-                
-                await context.SaveChangesAsync();
+                // Update existing customer using raw SQL to bypass EF tracking issues
+                var rows = await context.Database.ExecuteSqlRawAsync(@"
+                    UPDATE business_partners SET
+                        partner_type = {0},
+                        name = {1},
+                        company_code = {2},
+                        vat_code = {3},
+                        address = {4},
+                        city = {5},
+                        postal_code = {6},
+                        country = {7},
+                        country_code = {8},
+                        phone = {9},
+                        email = {10},
+                        bank_account = {11},
+                        payment_term_days = {12},
+                        default_language = {13},
+                        default_vat_rate = {14},
+                        notes = {15},
+                        is_active = {16},
+                        updated_at = {17}
+                    WHERE id = {18}",
+                    partnerType.ToString().ToLower(),
+                    customer.Name,
+                    customer.CompanyCode ?? "",
+                    customer.VatCode ?? "",
+                    customer.Address ?? "",
+                    customer.City ?? "",
+                    customer.PostalCode ?? "",
+                    customer.Country ?? "Lithuania",
+                    customer.CountryCode ?? "LT",
+                    customer.Phone ?? "",
+                    customer.Email ?? "",
+                    customer.BankAccount ?? "",
+                    customer.PaymentTermDays,
+                    customer.DefaultLanguage ?? "lt",
+                    customer.DefaultVatRate,
+                    customer.Notes ?? "",
+                    customer.IsActive,
+                    DateTime.Now,
+                    customer.Id);
+
+                Console.WriteLine($"ExecuteSqlRaw rows affected: {rows}");
+
+                if (rows == 0) throw new InvalidOperationException($"Klientas su ID {customer.Id} nerastas arba nepakeistas");
+
+                customer.UpdatedAt = DateTime.Now;
                 
                 // Grąžinti su atnaujintais duomenimis
-                customer.Id = existing.Id;
-                customer.CreatedAt = existing.CreatedAt;
                 return customer;
             }
         }
