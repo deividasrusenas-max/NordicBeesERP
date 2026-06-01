@@ -181,20 +181,20 @@ public interface ICompanyLookupService
         return new CompanyLookupResult { Found = false };
     }
 
-    public async Task<CompanyLookupResult> LookupByVatCodeAsync(string vatCode)
-    {
-        vatCode = vatCode?.Trim() ?? "";
-        if (string.IsNullOrEmpty(vatCode)) return new CompanyLookupResult { Found = false };
-        
-        var vies = await _viesService.LookupAsync(vatCode);
-        if (vies?.IsValid == true)
+        public async Task<CompanyLookupResult> LookupByVatCodeAsync(string vatCode)
+        {
+            vatCode = vatCode?.Trim() ?? "";
+            if (string.IsNullOrEmpty(vatCode)) return new CompanyLookupResult { Found = false };
+            
+            var vies = await _viesService.LookupAsync(vatCode);
+            if (vies?.IsValid == true)
         {
              return new CompanyLookupResult
              {
                  Found = true,
                  Source = LookupSource.Vies,
                  Name = CleanCompanyName(vies.Name),
-                Address = string.IsNullOrWhiteSpace(vies.Address) || vies.Address == "---" ? null : vies.Address,
+                Address = string.IsNullOrWhiteSpace(vies.Address) || vies.Address == "---" ? null : vies.Address.Replace("\n", ", ").Replace("\r", "").Trim(),
                 VatCode = vatCode,
                 CountryCode = vies.CountryCode,
                 StatusLabel = "VIES patvirtinta"
