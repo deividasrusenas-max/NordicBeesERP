@@ -135,7 +135,7 @@
             </MudItem>
             
             <MudItem xs="6">
-                <MudNumericField T="decimal" @bind-Value="customer.DefaultVatRate" Label="Numatytasis PVM (%)"
+                <MudNumericField T="decimal" @key="@_vatRateKey" @bind-Value="customer.DefaultVatRate" Label="Numatytasis PVM (%)"
                                  Step="0.1m" Min="0m" Max="100m" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
@@ -176,6 +176,7 @@
     private bool _lookupLoading = false;
     private CompanyLookupResult? _lookupResult = null;
     private string _lastCompanyCode = "";
+    private int _vatRateKey = 0;
 
     protected override void OnParametersSet()
     {
@@ -284,6 +285,7 @@ private async Task ApplyLookupResult(CompanyLookupResult result)
     {
         customer.CountryCode = result.CountryCode;
         customer.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? 21m : 0m;
+        _vatRateKey++;
     }
     await InvokeAsync(StateHasChanged);
 }
