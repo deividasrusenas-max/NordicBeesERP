@@ -41,7 +41,6 @@ public class CompanyLookupService : ICompanyLookupService
     {
         if (string.IsNullOrEmpty(address)) return (null, null, null);
         
-        // JARS LT format: "Kaunas, Vėtrungės g. 5-25, LT-48139"
         var parts = address.Split(',').Select(p => p.Trim()).ToArray();
         
         string? city = null;
@@ -50,13 +49,26 @@ public class CompanyLookupService : ICompanyLookupService
         
         foreach (var part in parts)
         {
-            if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^LT-\d{5}$"))
-                postalCode = part;
-            else if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^\w[\w\s]+$") && part.Length < 30 && !part.Contains('.'))
-                city = part;
-            else if (part.Contains('.') || part.Contains(' '))
+            // Postal code: LT-12345 or 12345
+            if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^LT-\d{5}$") ||
+                System.Text.RegularExpressions.Regex.IsMatch(part, @"^\d{5}$"))
+            {
+                postalCode = part.Replace("LT-", "");
+            }
+            // Street: contains abbreviation like g., pr., al., pl., a.
+            else if (System.Text.RegularExpressions.Regex.IsMatch(part, @"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)\b"))
+            {
                 streetAddress = part;
+            }
+            // City: short word without street abbreviations
+            else if (part.Length > 1 && part.Length < 40 && !part.Contains('.'))
+            {
+                city = part;
+            }
         }
+        
+        // Fallback: if no street found, use full address
+        if (streetAddress == null) streetAddress = address;
         
         return (city, postalCode, streetAddress);
     }
