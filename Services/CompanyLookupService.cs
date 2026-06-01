@@ -44,71 +44,57 @@ public interface ICompanyLookupService
         {
             if (string.IsNullOrEmpty(name)) return "";
 
-            var legalForms = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            var legalForms = new List<(string Full, string Short)>
             {
                 // LT
-                { "Uždaroji akcinė bendrovė", "UAB" },
-                { "Uzdaroji akcine bendrove", "UAB" },
-                { "UŽDAROJI AKCINĖ BENDROVĖ", "UAB" },
-                { "UZDAROJI AKCINE BENDROVE", "UAB" },
-                { "Akcinė bendrovė", "AB" },
-                { "AKCINĖ BENDROVĖ", "AB" },
-                { "Mažoji bendrija", "MB" },
-                { "MAŽOJI BENDRIJA", "MB" },
-                { "Individuali įmonė", "IĮ" },
-                { "INDIVIDUALI ĮMONĖ", "IĮ" },
-                { "Viešoji įstaiga", "VšĮ" },
-                { "VIEŠOJI ĮSTAIGA", "VšĮ" },
+                ("Uždaroji akcinė bendrovė", "UAB"),
+                ("Akcinė bendrovė", "AB"),
+                ("Mažoji bendrija", "MB"),
+                ("Individuali įmonė", "IĮ"),
+                ("Viešoji įstaiga", "VšĮ"),
                 // LV
-                { "Sabiedrība ar ierobežotu atbildību", "SIA" },
-                { "SABIEDRĪBA AR IEROBEŽOTU ATBILDĪBU", "SIA" },
-                { "Akciju sabiedrība", "AS" },
+                ("Sabiedrība ar ierobežotu atbildību", "SIA"),
+                ("Akciju sabiedrība", "AS"),
                 // EE
-                { "Osaühing", "OÜ" },
-                { "OSAÜHING", "OÜ" },
-                { "Aktsiaselts", "AS" },
-                { "AKTSIASELTS", "AS" },
+                ("Osaühing", "OÜ"),
+                ("Aktsiaselts", "AS"),
                 // PL
-                { "Spółka z ograniczoną odpowiedzialnością", "Sp. z o.o." },
-                { "SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ", "Sp. z o.o." },
-                { "Spolka z ograniczona odpowiedzialnoscia", "Sp. z o.o." },
-                { "Spółka akcyjna", "S.A." },
-                { "SPÓŁKA AKCYJNA", "S.A." },
+                ("Spółka z ograniczoną odpowiedzialnością", "Sp. z o.o."),
+                ("Spolka z ograniczona odpowiedzialnoscia", "Sp. z o.o."),
+                ("Spółka akcyjna", "S.A."),
                 // DE
-                { "Gesellschaft mit beschränkter Haftung", "GmbH" },
-                { "GESELLSCHAFT MIT BESCHRÄNKTER HAFTUNG", "GmbH" },
-                { "Aktiengesellschaft", "AG" },
-                { "Unternehmergesellschaft", "UG" },
-                { "Kommanditgesellschaft", "KG" },
+                ("Gesellschaft mit beschränkter Haftung", "GmbH"),
+                ("Aktiengesellschaft", "AG"),
+                ("Unternehmergesellschaft", "UG"),
+                ("Kommanditgesellschaft", "KG"),
                 // CZ
-                { "Společnost s ručením omezeným", "s.r.o." },
-                { "SPOLEČNOST S RUČENÍM OMEZENÝM", "s.r.o." },
-                { "Akciová společnost", "a.s." },
-                // BE/NL
-                { "Société à responsabilité limitée", "SRL" },
-                { "Naamloze vennootschap", "NV" },
-                { "Naamloze Vennootschap", "NV" },
-                { "Besloten vennootschap", "BV" },
-                { "Besloten Vennootschap", "BV" },
-                { "Société anonyme", "SA" },
-                { "Vennootschap onder firma", "VOF" },
+                ("Společnost s ručením omezeným", "s.r.o."),
+                ("Akciová společnost", "a.s."),
+                // BE
+                ("Société à responsabilité limitée", "SRL"),
+                ("Société anonyme", "SA"),
+                // NL
+                ("Naamloze vennootschap", "NV"),
+                ("Besloten vennootschap", "BV"),
+                ("Vennootschap onder firma", "VOF"),
+                ("Commanditaire vennootschap", "CV"),
             };
 
             var result = name.Trim();
 
-            foreach (var kvp in legalForms)
+            foreach (var (full, shortForm) in legalForms)
             {
-                // Check at beginning
-                if (result.StartsWith(kvp.Key + " ", StringComparison.OrdinalIgnoreCase) ||
-                    result.StartsWith(kvp.Key + "\"", StringComparison.OrdinalIgnoreCase))
+                // Check at beginning (case-insensitive)
+                if (result.StartsWith(full + " ", StringComparison.OrdinalIgnoreCase) ||
+                    result.StartsWith(full + "\"", StringComparison.OrdinalIgnoreCase))
                 {
-                    result = kvp.Value + " " + result.Substring(kvp.Key.Length).TrimStart();
+                    result = shortForm + " " + result.Substring(full.Length).TrimStart();
                     break;
                 }
-                // Check at end
-                if (result.EndsWith(" " + kvp.Key, StringComparison.OrdinalIgnoreCase))
+                // Check at end (case-insensitive)
+                if (result.EndsWith(" " + full, StringComparison.OrdinalIgnoreCase))
                 {
-                    result = result.Substring(0, result.Length - kvp.Key.Length).TrimEnd() + " " + kvp.Value;
+                    result = result.Substring(0, result.Length - full.Length).TrimEnd() + " " + shortForm;
                     break;
                 }
             }
