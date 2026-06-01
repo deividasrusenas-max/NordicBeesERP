@@ -238,12 +238,35 @@ namespace NordicBeesERP.Services
             BusinessPartner partner;
             if (supplier.Id > 0)
             {
-                partner = await context.BusinessPartners.FindAsync(supplier.Id);
-                if (partner == null)
-                {
-                    throw new InvalidOperationException($"BusinessPartner with ID {supplier.Id} not found");
-                }
-                context.Entry(partner).State = EntityState.Modified;
+                await context.Database.ExecuteSqlRawAsync(@"
+                    UPDATE business_partners SET
+                        partner_type = {0}, name = {1}, company_code = {2}, vat_code = {3},
+                        address = {4}, city = {5}, postal_code = {6}, country = {7}, country_code = {8},
+                        phone = {9}, email = {10}, bank_account = {11}, payment_term_days = {12},
+                        default_language = {13}, default_vat_rate = {14}, notes = {15}, is_active = {16},
+                        default_expense_category_id = {17}, updated_at = {18}
+                    WHERE id = {19}",
+                    supplier.PartnerType.ToString().ToLower(),
+                    supplier.Name ?? "",
+                    supplier.CompanyCode ?? "",
+                    supplier.VatCode ?? "",
+                    supplier.Address ?? "",
+                    supplier.City ?? "",
+                    supplier.PostalCode ?? "",
+                    supplier.Country ?? "",
+                    supplier.CountryCode ?? "",
+                    supplier.Phone ?? "",
+                    supplier.Email ?? "",
+                    supplier.BankAccount ?? "",
+                    supplier.PaymentTermDays,
+                    supplier.DefaultLanguage ?? "lt",
+                    supplier.DefaultVatRate,
+                    supplier.Notes ?? "",
+                    supplier.IsActive,
+                    supplier.DefaultExpenseCategoryId,
+                    DateTime.Now,
+                    supplier.Id);
+                return supplier;
             }
             else
             {
@@ -284,11 +307,6 @@ namespace NordicBeesERP.Services
                 partner.CreatedAt = DateTime.Now;
                 await context.SaveChangesAsync();
                 supplier.Id = partner.Id;
-            }
-            else
-            {
-                context.Entry(partner).Property(p => p.DefaultExpenseCategoryId).IsModified = true;
-                await context.SaveChangesAsync();
             }
             
             return supplier;
