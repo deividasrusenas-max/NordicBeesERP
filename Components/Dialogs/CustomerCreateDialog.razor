@@ -61,7 +61,7 @@
             </MudItem>
             
             <MudItem xs="12" md="6">
-                <MudTextField Value="@customer.VatCode"
+                <MudTextField @key="@customer.VatCode" Value="@customer.VatCode"
                               ValueChanged="@(async (string v) => { customer.VatCode = v; await OnVatCodeChanged(); })"
                               Label="PVM mokėtojo kodas"
                               MaxLength="20"
@@ -235,7 +235,6 @@
           StateHasChanged();
           _lookupResult = await CompanyLookupService.LookupByCompanyCodeAsync(customer.CompanyCode);
            if (_lookupResult.Found) await ApplyLookupResult(_lookupResult);
-          snackbar?.Add($"JARS: VatCode={_lookupResult?.VatCode}, Name={_lookupResult?.Name}", Severity.Info);
           _lookupLoading = false;
           StateHasChanged();
       }
@@ -281,7 +280,10 @@ private async Task ApplyLookupResult(CompanyLookupResult result)
     if (string.IsNullOrEmpty(customer.Phone) && !string.IsNullOrEmpty(result.Phone))
         customer.Phone = result.Phone;
     if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(result.CountryCode))
+    {
         customer.CountryCode = result.CountryCode;
+        customer.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? 21m : 0m;
+    }
     await InvokeAsync(StateHasChanged);
 }
 }
