@@ -274,7 +274,7 @@ private async Task ApplyLookupResult(CompanyLookupResult result)
         customer.City = result.City;
     if (string.IsNullOrEmpty(customer.PostalCode) && !string.IsNullOrEmpty(result.PostalCode))
         customer.PostalCode = result.PostalCode;
-    if (string.IsNullOrWhiteSpace(customer.VatCode) && !string.IsNullOrEmpty(result.VatCode))
+    if (!string.IsNullOrEmpty(result.VatCode))
         customer.VatCode = result.VatCode;
     if (string.IsNullOrEmpty(customer.Email) && !string.IsNullOrEmpty(result.Email))
         customer.Email = result.Email;
