@@ -222,6 +222,31 @@
     {
         try
         {
+            // Check for duplicates before saving
+            var allPartners = await CustomerService.GetAllBusinessPartnersAsync();
+            var duplicates = allPartners.Where(p => p.Id != customer.Id && (
+                // Check by company code
+                (!string.IsNullOrEmpty(customer.CompanyCode) && !string.IsNullOrEmpty(p.CompanyCode) &&
+                 p.CompanyCode.Trim().Equals(customer.CompanyCode.Trim(), StringComparison.OrdinalIgnoreCase)) ||
+                // Check by VAT code (strip country prefix for comparison)
+                (!string.IsNullOrEmpty(customer.VatCode) && !string.IsNullOrEmpty(p.VatCode) &&
+                 StripCountryPrefix(p.VatCode).Equals(StripCountryPrefix(customer.VatCode), StringComparison.OrdinalIgnoreCase)) ||
+                // Check by name (strip legal form for comparison)
+                (!string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(p.Name) &&
+                 StripLegalForm(p.Name).Trim().Equals(StripLegalForm(customer.Name).Trim(), StringComparison.OrdinalIgnoreCase))
+            )).ToList();
+
+            if (duplicates.Any())
+            {
+                var dupNames = string.Join(", ", duplicates.Select(d => d.Name).Take(3));
+                var confirmed = await DialogService.ShowMessageBox(
+                    "Galimas dublikatas",
+                    $"Rastas panašus partneris: {dupNames}. Ar tikrai norite išsaugoti?",
+                    yesText: "Taip, išsaugoti",
+                    cancelText: "Atšaukti");
+                if (confirmed != true) return;
+            }
+
             // Save the customer
             var savedCustomer = await CustomerService.SaveCustomerAsync(customer);
             
@@ -232,6 +257,24 @@
         {
             snackbar?.Add($"Klaida išsaugant klientą: {ex.Message}", Severity.Error);
         }
+    }
+
+    private string StripCountryPrefix(string vatCode)
+    {
+        if (string.IsNullOrEmpty(vatCode)) return "";
+        return vatCode.Length > 2 && char.IsLetter(vatCode[0]) && char.IsLetter(vatCode[1])
+            ? vatCode.Substring(2)
+            : vatCode;
+    }
+
+    private string StripLegalForm(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "";
+        var prefixes = new[] { "UAB ", "AB ", "MB ", "IĮ ", "VšĮ ", "SIA ", "OÜ ", "AS ", "Sp. z o.o. ", "GmbH ", "s.r.o. ", "BV ", "NV ", "SRL ", "SA " };
+        foreach (var prefix in prefixes)
+            if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return name.Substring(prefix.Length).Trim('"', ' ', '\'');
+        return name.Trim('"', ' ', '\'');
     }
 
     private void CloseDialog()
