@@ -66,7 +66,7 @@
                     </HeaderContent>
                      <RowTemplate Context="customer">
                         <MudTd>
-                            <MudText Typo="Typo.subtitle1" Color="Color.Primary"><strong>@(customer!.Name)</strong></MudText>
+                            <MudText Typo="Typo.body2">@customer!.Name</MudText>
                         </MudTd>
                         <MudTd>
                             @if (!string.IsNullOrEmpty(customer!.CompanyCode))
