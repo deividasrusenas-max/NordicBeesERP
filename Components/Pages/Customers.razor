@@ -163,9 +163,34 @@
 
     private async Task OpenEditDialog(Customer customer)
     {
+        var fullPartner = await CustomerService.GetBusinessPartnerByIdAsync(customer.Id);
+        if (fullPartner == null) { Snackbar.Add("Klaida: klientas nerastas!", Severity.Error); return; }
+
+        var fullCustomer = new Customer
+        {
+            Id = fullPartner.Id,
+            PartnerType = fullPartner.PartnerType.ToString(),
+            Name = fullPartner.Name,
+            CompanyCode = fullPartner.CompanyCode,
+            VatCode = fullPartner.VatCode,
+            Address = fullPartner.Address,
+            City = fullPartner.City,
+            PostalCode = fullPartner.PostalCode,
+            Country = fullPartner.Country,
+            CountryCode = fullPartner.CountryCode,
+            Phone = fullPartner.Phone,
+            Email = fullPartner.Email,
+            BankAccount = fullPartner.BankAccount,
+            PaymentTermDays = fullPartner.PaymentTermDays,
+            DefaultLanguage = fullPartner.DefaultLanguage,
+            DefaultVatRate = fullPartner.DefaultVatRate,
+            Notes = fullPartner.Notes,
+            IsActive = fullPartner.IsActive
+        };
+
         var parameters = new DialogParameters
         {
-            { "Customer", customer }
+            { "Customer", fullCustomer }
         };
 
         var dialog = await DialogService.ShowAsync<CustomerCreateDialog>("Redaguoti klientą", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
