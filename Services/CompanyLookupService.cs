@@ -18,6 +18,7 @@ public class CompanyLookupResult
     public string? Phone { get; set; }
     public string? CountryCode { get; set; }
     public string? StatusLabel { get; set; }
+    public string? RawAddress { get; set; }
 }
 
 public interface ICompanyLookupService
@@ -108,7 +109,8 @@ public class CompanyLookupService : ICompanyLookupService
                     Email = jars.Email,
                     Phone = jars.Phone,
                     CountryCode = country.ToUpper(),
-                    StatusLabel = $"{jars.LegalForm} · {jars.Status}"
+                    StatusLabel = $"{jars.LegalForm} · {jars.Status}",
+                    RawAddress = jars.Address
                 };
             }
         }

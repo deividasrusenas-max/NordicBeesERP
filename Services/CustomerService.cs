@@ -117,16 +117,14 @@ namespace NordicBeesERP.Services
             return true;
         }
 
-        private PartnerType ParsePartnerType(string partnerTypeString)
+        private PartnerType ParsePartnerType(string partnerTypeString) => partnerTypeString.ToLower() switch
         {
-            return partnerTypeString.ToLower() switch
-            {
-                "klientas" => PartnerType.Customer,
-                "tiekėjas" => PartnerType.Supplier,
-                "abu" => PartnerType.Both,
-                _ => PartnerType.Customer
-            };
-        }
+            "customer" or "klientas" => PartnerType.Customer,
+            "supplier" or "tiekėjas" => PartnerType.Supplier,
+            "both" or "abu" => PartnerType.Both,
+            "expensesupplier" or "expense_supplier" or "išlaidų tiekėjas" => PartnerType.ExpenseSupplier,
+            _ => PartnerType.Customer
+        };
 
         public async Task<List<BusinessPartner>> GetSuppliersAsync()
         {

@@ -99,6 +99,18 @@
                 }
             </MudItem>
             
+            @if (!string.IsNullOrEmpty(_lookupResult?.RawAddress) && _lookupResult.Source == LookupSource.Jars)
+            {
+                <MudItem xs="12">
+                    <MudPaper Elevation="0" Style="background:#eff6ff; border-radius:6px; padding:8px 12px;">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">JARS adresas (kopijuokite reikiamus laukus):</MudText>
+                        <MudText Typo="Typo.body2" Style="font-family:monospace; user-select:all; cursor:text">
+                            @_lookupResult.RawAddress
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+            
             <MudItem xs="12">
                 <MudTextField @bind-Value="customer.Address" Label="Adresas" Lines="2"
                               Variant="Variant.Outlined" Margin="Margin.Dense" />
