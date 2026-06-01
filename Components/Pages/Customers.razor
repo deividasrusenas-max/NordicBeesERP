@@ -228,14 +228,15 @@
                 Snackbar.Add("Klientas sėkmingai ištrintas!", Severity.Success);
                 await LoadCustomers();
             }
-            else
-            {
-                Snackbar.Add("Nepavyko ištrinti kliento: bandykite dar kartą", Severity.Error);
-            }
+        }
+        catch (Exception ex) when (ex.InnerException?.Message.Contains("foreign key constraint") == true ||
+                                    ex.Message.Contains("foreign key constraint") == true)
+        {
+            Snackbar.Add("Negalima ištrinti kliento — yra susijusių sąskaitų ar kitų įrašų. Pirmiau ištrinkite susijusius įrašus.", Severity.Warning);
         }
         catch (Exception ex)
         {
-            Snackbar.Add("Klaida trinant: " + ex.Message, Severity.Error);
+            Snackbar.Add($"Klaida trinant: {ex.Message}", Severity.Error);
         }
     }
 }

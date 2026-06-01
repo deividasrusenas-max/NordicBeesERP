@@ -339,15 +339,23 @@
 
         if (!result.Canceled)
         {
-            var deleted = await SupplierService.DeleteBusinessPartnerAsync(supplier.Id);
-            if (deleted)
+            try
             {
-                Snackbar.Add("Tiekėjas sėkmingai ištrintas!", Severity.Success);
-                await LoadSuppliers();
+                var deleted = await SupplierService.DeleteBusinessPartnerAsync(supplier.Id);
+                if (deleted)
+                {
+                    Snackbar.Add("Tiekėjas sėkmingai ištrintas!", Severity.Success);
+                    await LoadSuppliers();
+                }
             }
-            else
+            catch (Exception ex) when (ex.InnerException?.Message.Contains("foreign key constraint") == true ||
+                                        ex.Message.Contains("foreign key constraint") == true)
             {
-                Snackbar.Add("Nepavyko ištrinti tiekėjo: bandykite dar kartą", Severity.Error);
+                Snackbar.Add("Negalima ištrinti tiekėjo — yra susijusių sąskaitų ar kitų įrašų. Pirmiau ištrinkite susijusius įrašus.", Severity.Warning);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Klaida trinant: {ex.Message}", Severity.Error);
             }
         }
     }
