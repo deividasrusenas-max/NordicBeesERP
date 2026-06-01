@@ -101,13 +101,13 @@
                     <MudItem xs="6">
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
                             Style="min-height:100px; font-size:1.3rem" OnClick="@(() => SelectType("BARREL"))">
-                            🛢️ Statinės
+                            Statinės
                         </MudButton>
                     </MudItem>
                     <MudItem xs="6">
                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="@true"
                             Style="min-height:100px; font-size:1.3rem" OnClick="@(() => SelectType("BUCKET_GROUP"))">
-                            🪣 Kibirai
+                            Kibirai
                         </MudButton>
                     </MudItem>
                 </MudGrid>
@@ -471,7 +471,6 @@
     {
         _deliveryNumber = "";  // bus sugeneruotas kai pasirinks žaliavą
         _suppliers = await CustomerService.GetSuppliersAsync();
-        System.Console.WriteLine($"DEBUG: Loaded {_suppliers.Count} suppliers");
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _products = await ProductService.GetAllProductsAsync();
         _honeyTypes = await HoneyTypeService.GetActiveAsync();
