@@ -35,12 +35,21 @@ public class CompanyLookupService : ICompanyLookupService
         _viesService = viesService;
     }
 
-    public async Task<CompanyLookupResult> LookupByCompanyCodeAsync(string companyCode)
+    public async Task<CompanyLookupResult> LookupByCompanyCodeAsync(string input)
     {
+        // Detect if input looks like a VAT code (starts with 2 letters)
+        var isVatCode = input.Length > 2 && char.IsLetter(input[0]) && char.IsLetter(input[1]);
+        
+        if (isVatCode)
+        {
+            // Route to VIES
+            return await LookupByVatCodeAsync(input);
+        }
+
         // Try JARS for LT, LV, EE
         foreach (var country in new[] { "lt", "lv", "ee" })
         {
-            var jars = await _jarsService.GetCompanyAsync(companyCode, country);
+            var jars = await _jarsService.GetCompanyAsync(input, country);
             if (jars != null)
             {
                 return new CompanyLookupResult
