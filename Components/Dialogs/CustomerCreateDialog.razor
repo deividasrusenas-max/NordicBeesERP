@@ -29,36 +29,35 @@
                               MaxLength="255" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
-            <MudItem xs="6">
-                <MudTextField T="string"
-                              @bind-Value="customer.CompanyCode"
-                              Label="Įmonės kodas"
-                              MaxLength="20"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
-                @if (_lookupLoading)
-                {
-                    <div class="d-flex align-center gap-1 mt-1">
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Ieškoma...</MudText>
-                    </div>
-                }
-                else if (_lookupResult != null && _lookupResult.Source == LookupSource.Jars)
-                {
-                    <div class="d-flex align-center gap-1 mt-1">
-                        <MudIcon Icon="@(_lookupResult.Found ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
-                                 Size="Size.Small"
-                                 Style="@(_lookupResult.Found ? "color:#16a34a" : "color:#dc2626")" />
-                        <MudChip T="string" Size="Size.Small"
-                                 Color="Color.Primary"
-                                 Variant="Variant.Outlined"
-                                 Style="height:18px;font-size:10px;padding:0 6px">
-                            JARS
-                        </MudChip>
-                        <MudText Typo="Typo.caption" Style="color:#16a34a">@_lookupResult.StatusLabel</MudText>
-                    </div>
-                }
-            </MudItem>
+             <MudItem xs="6">
+                 <MudTextField T="string"
+                               @bind-Value="customer.CompanyCode"
+                               Label="Įmonės kodas"
+                               MaxLength="20"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense" />
+                 @if (_lookupLoading)
+                 {
+                     <div class="d-flex align-center gap-1 mt-1">
+                         <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                         <MudText Typo="Typo.caption" Color="Color.Secondary">Ieškoma...</MudText>
+                     </div>
+                 }
+                 else if (_lookupResult != null && _lookupResult.Found && _lookupResult.Source == LookupSource.Jars)
+                 {
+                     <div class="d-flex align-center gap-1 mt-1">
+                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                         <MudText Typo="Typo.caption" Style="color:#16a34a">@_lookupResult.StatusLabel</MudText>
+                     </div>
+                 }
+                 else if (_lookupResult != null && !_lookupResult.Found && _lookupResult.Source == LookupSource.Jars)
+                 {
+                     <div class="d-flex align-center gap-1 mt-1">
+                         <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Warning" Size="Size.Small" />
+                         <MudText Typo="Typo.caption" Style="color:#d97706">Nerasta JARS registre</MudText>
+                     </div>
+                 }
+             </MudItem>
             
             <MudItem xs="12" md="6">
                 <MudTextField @key="@customer.VatCode" Value="@customer.VatCode"
@@ -230,6 +229,7 @@
 
       private async Task OnCompanyCodeChanged()
       {
+          customer.CompanyCode = customer.CompanyCode?.Trim() ?? "";
           if (string.IsNullOrWhiteSpace(customer.CompanyCode) || customer.CompanyCode.Length < 6) return;
           _lookupLoading = true;
           StateHasChanged();
@@ -250,6 +250,7 @@
 
 private async Task OnVatCodeChanged()
 {
+    customer.VatCode = customer.VatCode?.Trim() ?? "";
     if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4) return;
     _lookupLoading = true;
     StateHasChanged();

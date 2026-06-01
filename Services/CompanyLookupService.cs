@@ -75,6 +75,9 @@ public class CompanyLookupService : ICompanyLookupService
 
     public async Task<CompanyLookupResult> LookupByCompanyCodeAsync(string input)
     {
+        input = input?.Trim() ?? "";
+        if (string.IsNullOrEmpty(input)) return new CompanyLookupResult { Found = false };
+        
         // Detect if input looks like a VAT code (starts with 2 letters)
         var isVatCode = input.Length > 2 && char.IsLetter(input[0]) && char.IsLetter(input[1]);
         
@@ -114,6 +117,9 @@ public class CompanyLookupService : ICompanyLookupService
 
     public async Task<CompanyLookupResult> LookupByVatCodeAsync(string vatCode)
     {
+        vatCode = vatCode?.Trim() ?? "";
+        if (string.IsNullOrEmpty(vatCode)) return new CompanyLookupResult { Found = false };
+        
         var vies = await _viesService.LookupAsync(vatCode);
         if (vies?.IsValid == true)
         {
