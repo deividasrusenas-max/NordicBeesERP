@@ -288,7 +288,7 @@
             { "Supplier", supplier }
         };
 
-        var dialog = await DialogService.ShowAsync<SupplierCreateDialog>("Naujas tiekėjas", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var dialog = await DialogService.ShowAsync<SupplierEditDialog>("Naujas tiekėjas", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
         var result = await dialog.Result;
 
         if (!result.Canceled && result.Data is not null)
