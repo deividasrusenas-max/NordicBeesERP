@@ -112,27 +112,27 @@
             }
             
             <MudItem xs="12">
-                <MudTextField @bind-Value="customer.Address" Label="Adresas" Lines="2"
+                <MudTextField @key="@customer.Address" @bind-Value="customer.Address" Label="Adresas" Lines="2"
                               Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
             <MudItem xs="6">
-                <MudTextField @bind-Value="customer.City" Label="Miestas" MaxLength="100"
+                <MudTextField @key="@customer.City" @bind-Value="customer.City" Label="Miestas" MaxLength="100"
                               Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
             <MudItem xs="6">
-                <MudTextField @bind-Value="customer.PostalCode" Label="Pašto kodas" MaxLength="20"
+                <MudTextField @key="@customer.PostalCode" @bind-Value="customer.PostalCode" Label="Pašto kodas" MaxLength="20"
                               Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
             <MudItem xs="6">
-                <MudTextField @bind-Value="customer.Phone" Label="Telefonas" MaxLength="50"
+                <MudTextField @key="@customer.Phone" @bind-Value="customer.Phone" Label="Telefonas" MaxLength="50"
                               Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
             <MudItem xs="6">
-                <MudTextField @bind-Value="customer.Email" Label="El. paštas" MaxLength="100"
+                <MudTextField @key="@customer.Email" @bind-Value="customer.Email" Label="El. paštas" MaxLength="100"
                               Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
@@ -287,10 +287,10 @@
      StateHasChanged();
  }
 
-    private async Task ApplyLookupResult(CompanyLookupResult result)
-    {
-        if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(result.Name))
-            customer.Name = result.Name;
+      private async Task ApplyLookupResult(CompanyLookupResult result)
+      {
+          if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(result.Name))
+             customer.Name = result.Name;
         if (string.IsNullOrEmpty(customer.Address) && !string.IsNullOrEmpty(result.Address))
             customer.Address = result.Address;
         if (string.IsNullOrEmpty(customer.City) && !string.IsNullOrEmpty(result.City))
