@@ -269,6 +269,10 @@ private void ApplyLookupResult(CompanyLookupResult result)
         customer.Name = result.Name;
     if (string.IsNullOrEmpty(customer.Address) && !string.IsNullOrEmpty(result.Address))
         customer.Address = result.Address;
+    if (string.IsNullOrEmpty(customer.City) && !string.IsNullOrEmpty(result.City))
+        customer.City = result.City;
+    if (string.IsNullOrEmpty(customer.PostalCode) && !string.IsNullOrEmpty(result.PostalCode))
+        customer.PostalCode = result.PostalCode;
     if (string.IsNullOrEmpty(customer.VatCode) && !string.IsNullOrEmpty(result.VatCode))
         customer.VatCode = result.VatCode;
     if (string.IsNullOrEmpty(customer.Email) && !string.IsNullOrEmpty(result.Email))

@@ -10,6 +10,8 @@ public class CompanyLookupResult
     public LookupSource Source { get; set; }
     public string? Name { get; set; }
     public string? Address { get; set; }
+    public string? City { get; set; }
+    public string? PostalCode { get; set; }
     public string? VatCode { get; set; }
     public string? CompanyCode { get; set; }
     public string? Email { get; set; }
@@ -35,6 +37,30 @@ public class CompanyLookupService : ICompanyLookupService
         _viesService = viesService;
     }
 
+    private (string? city, string? postalCode, string? streetAddress) ParseJarsAddress(string? address)
+    {
+        if (string.IsNullOrEmpty(address)) return (null, null, null);
+        
+        // JARS LT format: "Kaunas, Vėtrungės g. 5-25, LT-48139"
+        var parts = address.Split(',').Select(p => p.Trim()).ToArray();
+        
+        string? city = null;
+        string? postalCode = null;
+        string? streetAddress = null;
+        
+        foreach (var part in parts)
+        {
+            if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^LT-\d{5}$"))
+                postalCode = part;
+            else if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^\w[\w\s]+$") && part.Length < 30 && !part.Contains('.'))
+                city = part;
+            else if (part.Contains('.') || part.Contains(' '))
+                streetAddress = part;
+        }
+        
+        return (city, postalCode, streetAddress);
+    }
+
     public async Task<CompanyLookupResult> LookupByCompanyCodeAsync(string input)
     {
         // Detect if input looks like a VAT code (starts with 2 letters)
@@ -52,12 +78,16 @@ public class CompanyLookupService : ICompanyLookupService
             var jars = await _jarsService.GetCompanyAsync(input, country);
             if (jars != null)
             {
+                var (city, postalCode, streetAddress) = ParseJarsAddress(jars.Address);
+
                 return new CompanyLookupResult
                 {
                     Found = true,
                     Source = LookupSource.Jars,
                     Name = jars.Name,
-                    Address = jars.Address,
+                    Address = streetAddress ?? jars.Address,
+                    City = city,
+                    PostalCode = postalCode,
                     VatCode = jars.PvmCode,
                     CompanyCode = jars.Code,
                     Email = jars.Email,
