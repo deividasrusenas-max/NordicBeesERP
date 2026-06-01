@@ -135,8 +135,13 @@
             </MudItem>
             
             <MudItem xs="6">
-                <MudNumericField T="decimal" @key="@_vatRateKey" @bind-Value="customer.DefaultVatRate" Label="Numatytasis PVM (%)"
-                                 Step="0.1m" Min="0m" Max="100m" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField T="string"
+                              @key="@_vatRateKey"
+                              Value="@(customer.DefaultVatRate.ToString("G29"))"
+                              ValueChanged="@((string v) => { if (decimal.TryParse(v, out var d)) customer.DefaultVatRate = d; })"
+                              Label="Numatytasis PVM (%)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
             </MudItem>
             
             <MudItem xs="6">
