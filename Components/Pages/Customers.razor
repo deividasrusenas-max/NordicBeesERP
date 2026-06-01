@@ -30,7 +30,7 @@
             <MudGrid>
                 <MudItem xs="12" sm="6" md="4">
                     <MudTextField Value="@_filterSearch"
-                                  ValueChanged="@(async (string val) => { _filterSearch = val; await LoadCustomers(); })"
+                                  ValueChanged="@((string val) => { _filterSearch = val; StateHasChanged(); })"
                                   Label="Paieška pagal pavadinimą arba kodą"
                                   Variant="Variant.Outlined"
                                   Immediate="true"

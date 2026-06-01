@@ -1,4 +1,5 @@
 using NordicBeesERP.Services;
+using NordicBeesERP.Helpers;
 
 namespace NordicBeesERP.Services;
 
@@ -16,6 +17,7 @@ public class CompanyLookupResult
     public string? CompanyCode { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
+    public string? BankAccount { get; set; }
     public string? CountryCode { get; set; }
     public string? StatusLabel { get; set; }
     public string? RawAddress { get; set; }
@@ -96,11 +98,11 @@ public class CompanyLookupService : ICompanyLookupService
             {
                 var (city, postalCode, streetAddress) = ParseJarsAddress(jars.Address);
 
-                return new CompanyLookupResult
-                {
-                    Found = true,
-                    Source = LookupSource.Jars,
-                    Name = jars.Name,
+                 return new CompanyLookupResult
+                 {
+                     Found = true,
+                     Source = LookupSource.Jars,
+                     Name = CompanyNameHelper.Normalize(jars.Name ?? "").Replace("\"", "").Replace("\u201e", "").Replace("\u201c", "").Trim(),
                     Address = streetAddress ?? jars.Address,
                     City = city,
                     PostalCode = postalCode,

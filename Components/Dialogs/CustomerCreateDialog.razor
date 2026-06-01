@@ -282,28 +282,30 @@ private async Task OnVatCodeChanged()
     StateHasChanged();
 }
 
-private async Task ApplyLookupResult(CompanyLookupResult result)
-{
-    if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(result.Name))
-        customer.Name = result.Name;
-    if (string.IsNullOrEmpty(customer.Address) && !string.IsNullOrEmpty(result.Address))
-        customer.Address = result.Address;
-    if (string.IsNullOrEmpty(customer.City) && !string.IsNullOrEmpty(result.City))
-        customer.City = result.City;
-    if (string.IsNullOrEmpty(customer.PostalCode) && !string.IsNullOrEmpty(result.PostalCode))
-        customer.PostalCode = result.PostalCode;
-    if (!string.IsNullOrEmpty(result.VatCode))
-        customer.VatCode = result.VatCode;
-    if (string.IsNullOrEmpty(customer.Email) && !string.IsNullOrEmpty(result.Email))
-        customer.Email = result.Email;
-    if (string.IsNullOrEmpty(customer.Phone) && !string.IsNullOrEmpty(result.Phone))
-        customer.Phone = result.Phone;
-    if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(result.CountryCode))
+    private async Task ApplyLookupResult(CompanyLookupResult result)
     {
-        customer.CountryCode = result.CountryCode;
-        customer.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? 21m : 0m;
-        _vatRateKey++;
+        if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(result.Name))
+            customer.Name = result.Name;
+        if (string.IsNullOrEmpty(customer.Address) && !string.IsNullOrEmpty(result.Address))
+            customer.Address = result.Address;
+        if (string.IsNullOrEmpty(customer.City) && !string.IsNullOrEmpty(result.City))
+            customer.City = result.City;
+        if (string.IsNullOrEmpty(customer.PostalCode) && !string.IsNullOrEmpty(result.PostalCode))
+            customer.PostalCode = result.PostalCode;
+        if (!string.IsNullOrEmpty(result.VatCode))
+            customer.VatCode = result.VatCode;
+        if (string.IsNullOrEmpty(customer.Email) && !string.IsNullOrEmpty(result.Email))
+            customer.Email = result.Email;
+        if (string.IsNullOrEmpty(customer.Phone) && !string.IsNullOrEmpty(result.Phone))
+            customer.Phone = result.Phone;
+        if (string.IsNullOrEmpty(customer.BankAccount) && !string.IsNullOrEmpty(result.BankAccount))
+            customer.BankAccount = result.BankAccount;
+        if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(result.CountryCode))
+        {
+            customer.CountryCode = result.CountryCode;
+            customer.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? 21m : 0m;
+            _vatRateKey++;
+        }
+        await InvokeAsync(StateHasChanged);
     }
-    await InvokeAsync(StateHasChanged);
-}
 }
