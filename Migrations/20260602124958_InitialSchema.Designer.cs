@@ -11,7 +11,7 @@ using NordicBeesERP.Data;
 namespace NordicBeesERP.Migrations
 {
     [DbContext(typeof(NordicBeesERPContext))]
-    [Migration("20260531103421_InitialSchema")]
+    [Migration("20260602124958_InitialSchema")]
     partial class InitialSchema
     {
         /// <inheritdoc />
@@ -2805,52 +2805,52 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(4960),
+                            CreatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7170),
                             IsActive = true,
                             IsHoney = true,
                             Name = "Medus",
                             SortOrder = 1,
-                            UpdatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5000)
+                            UpdatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7220)
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5000),
+                            CreatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7220),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Bičių duona",
                             SortOrder = 2,
-                            UpdatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5000)
+                            UpdatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7220)
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5000),
+                            CreatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7230),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Pikis",
                             SortOrder = 3,
-                            UpdatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5000)
+                            UpdatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7230)
                         },
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5000),
+                            CreatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7230),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Propolis",
                             SortOrder = 4,
-                            UpdatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5000)
+                            UpdatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7230)
                         },
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5010),
+                            CreatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7230),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Vaškas",
                             SortOrder = 5,
-                            UpdatedAt = new DateTime(2026, 5, 31, 13, 34, 20, 878, DateTimeKind.Local).AddTicks(5010)
+                            UpdatedAt = new DateTime(2026, 6, 2, 15, 49, 58, 199, DateTimeKind.Local).AddTicks(7230)
                         });
                 });
 
