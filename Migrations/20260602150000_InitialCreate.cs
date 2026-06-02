@@ -339,16 +339,14 @@ namespace NordicBeesERP.Migrations
             migrationBuilder.Sql(@"
                 CREATE TABLE `erp_users` (
                     `id` int NOT NULL AUTO_INCREMENT,
-                    `user_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-                    `company_id` int DEFAULT NULL,
-                    `role` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'USER',
+                    `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                    `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                    `full_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+                    `role` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Admin',
                     `is_active` tinyint(1) NOT NULL DEFAULT '1',
-                    `permissions` text COLLATE utf8mb4_unicode_ci,
                     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (`id`),
-                    UNIQUE KEY `uk_user_id` (`user_id`),
-                    KEY `idx_company_id` (`company_id`)
+                    UNIQUE KEY `uk_email` (`email`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
