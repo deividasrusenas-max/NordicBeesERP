@@ -102,18 +102,6 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-using (var scope = app.Services.CreateScope())
-{
-    var auth = scope.ServiceProvider.GetRequiredService<IAuthService>();
-    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    await auth.SeedAdminAsync(
-        config["AdminSetup:Email"] ?? "admin@nordicbees.lt",
-        config["AdminSetup:Password"] ?? "Admin123!"
-    );
-}
-
-// PDF Download Endpoints - Removed: Use CreditNotePdfPage.razor instead to avoid route conflict
-
 // EF Core auto-migration — run before app starts, but don't crash if tables exist
 using (var scope = app.Services.CreateScope())
 {
@@ -126,6 +114,18 @@ using (var scope = app.Services.CreateScope())
     {
         app.Logger.LogWarning(ex, "Migration warning: {msg}", ex.Message);
     }
+}
+
+// PDF Download Endpoints - Removed: Use CreditNotePdfPage.razor instead to avoid route conflict
+
+using (var scope = app.Services.CreateScope())
+{
+    var auth = scope.ServiceProvider.GetRequiredService<IAuthService>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    await auth.SeedAdminAsync(
+        config["AdminSetup:Email"] ?? "admin@nordicbees.lt",
+        config["AdminSetup:Password"] ?? "Admin123!"
+    );
 }
 
 app.Run();
