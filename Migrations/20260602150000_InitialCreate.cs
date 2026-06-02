@@ -121,8 +121,7 @@ namespace NordicBeesERP.Migrations
                     `payment_id` int DEFAULT NULL,
                     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (`id`),
-                    KEY `idx_import_id` (`import_id`),
-                    CONSTRAINT `fk_bir_import` FOREIGN KEY (`import_id`) REFERENCES `bank_imports` (`id`) ON DELETE CASCADE
+                    KEY `idx_import_id` (`import_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
