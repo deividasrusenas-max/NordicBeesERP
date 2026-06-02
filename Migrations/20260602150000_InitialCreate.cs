@@ -12,7 +12,7 @@ namespace NordicBeesERP.Migrations
         {
             // AspNet Core Identity tables
             migrationBuilder.Sql(@"
-                CREATE TABLE `AspNetRoleClaims` (
+                CREATE TABLE IF NOT EXISTS `AspNetRoleClaims` (
                     `Id` int NOT NULL AUTO_INCREMENT,
                     `RoleId` varchar(255) NOT NULL,
                     `ClaimType` longtext,
@@ -22,7 +22,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `AspNetRoles` (
+                CREATE TABLE IF NOT EXISTS `AspNetRoles` (
                     `Id` varchar(255) NOT NULL,
                     `Description` longtext,
                     `AllowedModules` longtext,
@@ -34,7 +34,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `AspNetUserClaims` (
+                CREATE TABLE IF NOT EXISTS `AspNetUserClaims` (
                     `Id` int NOT NULL AUTO_INCREMENT,
                     `UserId` varchar(255) NOT NULL,
                     `ClaimType` longtext,
@@ -44,7 +44,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `AspNetUserLogins` (
+                CREATE TABLE IF NOT EXISTS `AspNetUserLogins` (
                     `LoginProvider` varchar(255) NOT NULL,
                     `ProviderKey` varchar(255) NOT NULL,
                     `ProviderDisplayName` longtext,
@@ -54,7 +54,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `AspNetUserRoles` (
+                CREATE TABLE IF NOT EXISTS `AspNetUserRoles` (
                     `UserId` varchar(255) NOT NULL,
                     `RoleId` varchar(255) NOT NULL,
                     PRIMARY KEY (`UserId`, `RoleId`)
@@ -62,7 +62,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `AspNetUserTokens` (
+                CREATE TABLE IF NOT EXISTS `AspNetUserTokens` (
                     `UserId` varchar(255) NOT NULL,
                     `LoginProvider` varchar(255) NOT NULL,
                     `Name` varchar(255) NOT NULL,
@@ -72,7 +72,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `AspNetUsers` (
+                CREATE TABLE IF NOT EXISTS `AspNetUsers` (
                     `Id` varchar(255) NOT NULL,
                     `FullName` longtext NOT NULL,
                     `IsActive` tinyint(1) NOT NULL DEFAULT '1',
@@ -96,7 +96,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `app_settings` (
+                CREATE TABLE IF NOT EXISTS `app_settings` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `setting_key` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `setting_value` text COLLATE utf8mb4_unicode_ci,
@@ -106,7 +106,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `bank_import_rows` (
+                CREATE TABLE IF NOT EXISTS `bank_import_rows` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `import_id` int NOT NULL,
                     `row_date` date NOT NULL,
@@ -126,7 +126,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `bank_imports` (
+                CREATE TABLE IF NOT EXISTS `bank_imports` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `import_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     `source_file` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -143,7 +143,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `business_partners` (
+                CREATE TABLE IF NOT EXISTS `business_partners` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `partner_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -172,7 +172,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `companies` (
+                CREATE TABLE IF NOT EXISTS `companies` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -188,7 +188,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `company_settings` (
+                CREATE TABLE IF NOT EXISTS `company_settings` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `company_id` int NOT NULL,
                     `company_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -205,7 +205,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `containers` (
+                CREATE TABLE IF NOT EXISTS `containers` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -219,7 +219,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `credit_note_lines` (
+                CREATE TABLE IF NOT EXISTS `credit_note_lines` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `credit_note_id` int NOT NULL,
                     `invoice_id` int NOT NULL,
@@ -240,7 +240,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `credit_notes` (
+                CREATE TABLE IF NOT EXISTS `credit_notes` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `invoice_id` int NOT NULL,
                     `customer_id` int NOT NULL,
@@ -262,7 +262,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `currencies` (
+                CREATE TABLE IF NOT EXISTS `currencies` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `code` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -275,7 +275,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `deliveries` (
+                CREATE TABLE IF NOT EXISTS `deliveries` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `delivery_number` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `delivery_date` date NOT NULL,
@@ -297,7 +297,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `delivery_lines` (
+                CREATE TABLE IF NOT EXISTS `delivery_lines` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `delivery_id` int NOT NULL,
                     `product_id` int NOT NULL,
@@ -315,7 +315,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `email_invoice_imports` (
+                CREATE TABLE IF NOT EXISTS `email_invoice_imports` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `email_subject` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `email_from` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -337,7 +337,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `erp_users` (
+                CREATE TABLE IF NOT EXISTS `erp_users` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -351,7 +351,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_budgets` (
+                CREATE TABLE IF NOT EXISTS `expense_budgets` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `category_id` int NOT NULL,
                     `cost_center_id` int DEFAULT NULL,
@@ -369,7 +369,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_categories` (
+                CREATE TABLE IF NOT EXISTS `expense_categories` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -384,7 +384,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_cost_centers` (
+                CREATE TABLE IF NOT EXISTS `expense_cost_centers` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -398,7 +398,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_invoice_audit` (
+                CREATE TABLE IF NOT EXISTS `expense_invoice_audit` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `invoice_id` int NOT NULL,
                     `invoice_number` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -415,7 +415,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_invoice_lines` (
+                CREATE TABLE IF NOT EXISTS `expense_invoice_lines` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `invoice_id` int NOT NULL,
                     `category_id` int DEFAULT NULL,
@@ -435,7 +435,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_invoices` (
+                CREATE TABLE IF NOT EXISTS `expense_invoices` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `supplier_id` int DEFAULT NULL,
                     `invoice_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'STANDARD',
@@ -483,7 +483,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_line_allocations` (
+                CREATE TABLE IF NOT EXISTS `expense_line_allocations` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `invoice_line_id` int NOT NULL,
                     `cost_center_id` int DEFAULT NULL,
@@ -499,7 +499,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_ocr_queue` (
+                CREATE TABLE IF NOT EXISTS `expense_ocr_queue` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `file_path` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -517,7 +517,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `expense_payments` (
+                CREATE TABLE IF NOT EXISTS `expense_payments` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `invoice_id` int NOT NULL,
                     `payment_date` date NOT NULL,
@@ -534,7 +534,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `honey_deliveries` (
+                CREATE TABLE IF NOT EXISTS `honey_deliveries` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `delivery_date` date NOT NULL,
                     `beekeeper_id` int NOT NULL,
@@ -551,7 +551,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `honey_types` (
+                CREATE TABLE IF NOT EXISTS `honey_types` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -565,7 +565,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `invoice_lines` (
+                CREATE TABLE IF NOT EXISTS `invoice_lines` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `invoice_id` int NOT NULL,
                     `product_id` int DEFAULT NULL,
@@ -587,7 +587,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `invoices` (
+                CREATE TABLE IF NOT EXISTS `invoices` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `invoice_number` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `invoice_date` date NOT NULL,
@@ -611,7 +611,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `lots` (
+                CREATE TABLE IF NOT EXISTS `lots` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `lot_number` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `product_id` int NOT NULL,
@@ -631,7 +631,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `order_lines` (
+                CREATE TABLE IF NOT EXISTS `order_lines` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `order_id` int NOT NULL,
                     `product_id` int NOT NULL,
@@ -650,7 +650,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `orders` (
+                CREATE TABLE IF NOT EXISTS `orders` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `order_number` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `order_date` date NOT NULL,
@@ -668,7 +668,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `payment_allocations` (
+                CREATE TABLE IF NOT EXISTS `payment_allocations` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `payment_id` int NOT NULL,
                     `invoice_id` int NOT NULL,
@@ -681,7 +681,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `payment_audit_log` (
+                CREATE TABLE IF NOT EXISTS `payment_audit_log` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `payment_id` int NOT NULL,
                     `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -695,7 +695,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `payments` (
+                CREATE TABLE IF NOT EXISTS `payments` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `payment_number` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `payment_date` date NOT NULL,
@@ -716,7 +716,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `product_categories` (
+                CREATE TABLE IF NOT EXISTS `product_categories` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -733,7 +733,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `production_batch_ingredients` (
+                CREATE TABLE IF NOT EXISTS `production_batch_ingredients` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `batch_id` int NOT NULL,
                     `raw_material_id` int NOT NULL,
@@ -747,7 +747,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `production_batches` (
+                CREATE TABLE IF NOT EXISTS `production_batches` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `batch_number` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `product_id` int NOT NULL,
@@ -766,7 +766,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `products` (
+                CREATE TABLE IF NOT EXISTS `products` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -784,7 +784,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `raw_material_types` (
+                CREATE TABLE IF NOT EXISTS `raw_material_types` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -798,7 +798,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `stock_movements` (
+                CREATE TABLE IF NOT EXISTS `stock_movements` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `product_id` int NOT NULL,
                     `lot_id` int DEFAULT NULL,
@@ -818,7 +818,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `supplier_payments` (
+                CREATE TABLE IF NOT EXISTS `supplier_payments` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `supplier_id` int NOT NULL,
                     `payment_date` date NOT NULL,
@@ -835,7 +835,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `units_of_measure` (
+                CREATE TABLE IF NOT EXISTS `units_of_measure` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -848,7 +848,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `warehouse_stock` (
+                CREATE TABLE IF NOT EXISTS `warehouse_stock` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `product_id` int NOT NULL,
                     `lot_id` int DEFAULT NULL,
@@ -864,7 +864,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `warehouse_stocks` (
+                CREATE TABLE IF NOT EXISTS `warehouse_stocks` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `product_id` int NOT NULL,
                     `lot_id` int DEFAULT NULL,
@@ -881,7 +881,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `warehouse_types` (
+                CREATE TABLE IF NOT EXISTS `warehouse_types` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -895,7 +895,7 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
-                CREATE TABLE `warehouses` (
+                CREATE TABLE IF NOT EXISTS `warehouses` (
                     `id` int NOT NULL AUTO_INCREMENT,
                     `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
