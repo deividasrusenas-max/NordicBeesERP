@@ -38,7 +38,8 @@ public class AuthService : IAuthService
     public async Task SeedAdminAsync(string email, string password)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.ErpUsers.AnyAsync())
+        var existing = await context.ErpUsers.FirstOrDefaultAsync(u => u.Email == email);
+        if (existing == null)
         {
             context.ErpUsers.Add(new ErpUser
             {
@@ -48,6 +49,11 @@ public class AuthService : IAuthService
                 Role = "Admin",
                 IsActive = true
             });
+            await context.SaveChangesAsync();
+        }
+        else
+        {
+            existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
             await context.SaveChangesAsync();
         }
     }
