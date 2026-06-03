@@ -124,7 +124,7 @@ using (var scope = app.Services.CreateScope())
     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     await auth.SeedAdminAsync(
         config["AdminSetup:Email"] ?? "admin@nordicbees.lt",
-        config["AdminSetup:Password"] ?? "Admin123!"
+        config["AdminSetup:Password"] ?? "Admin2024"
     );
 }
 
