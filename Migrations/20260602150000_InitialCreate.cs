@@ -164,6 +164,7 @@ namespace NordicBeesERP.Migrations
                     `notes` text COLLATE utf8mb4_unicode_ci,
                     `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `default_expense_category_id` int DEFAULT NULL,
                     PRIMARY KEY (`id`),
                     KEY `idx_partner_type` (`partner_type`),
                     KEY `idx_vat_code` (`vat_code`),
