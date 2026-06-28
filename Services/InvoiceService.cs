@@ -254,11 +254,49 @@ namespace NordicBeesERP.Services
             // Recalculate invoice totals
             invoice = CalculateInvoiceTotals(invoice);
 
-            // Remove existing lines
+            // Get existing lines for this invoice
             var existingLines = await context.InvoiceLines
                 .Where(l => l.InvoiceId == invoice.Id)
                 .ToListAsync();
-            context.InvoiceLines.RemoveRange(existingLines);
+
+            // Get IDs of invoice lines that are referenced by credit notes
+            var referencedLineIds = await context.CreditNoteLines
+                .Where(cnl => cnl.InvoiceLineId.HasValue)
+                .Select(cnl => cnl.InvoiceLineId.Value)
+                .Distinct()
+                .ToListAsync();
+
+            // For lines referenced by credit notes, update in place using raw SQL
+            // Lines NOT referenced can be deleted and recreated normally
+            foreach (var existingLine in existingLines)
+            {
+                if (referencedLineIds.Contains(existingLine.Id))
+                {
+                    // Update this line in place to preserve FK integrity
+                    // Lines referenced by credit notes are updated in place, not recreated, to preserve credit_note_lines.invoice_line_id FK integrity.
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE invoice_lines SET quantity = @p0, price_excl_vat = @p1, vat_rate = @p2, line_subtotal = @p3, vat_amount = @p4, line_total = @p5, description = @p6, product_id = @p7, updated_at = @p8 WHERE id = @p9",
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.Quantity ?? existingLine.Quantity,
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.PriceExclVat ?? existingLine.PriceExclVat,
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.VatRate ?? existingLine.VatRate,
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.LineSubtotal ?? existingLine.LineSubtotal,
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.VatAmount ?? existingLine.VatAmount,
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.LineTotal ?? existingLine.LineTotal,
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.Description ?? existingLine.Description,
+                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.ProductId,
+                        DateTime.UtcNow,
+                        existingLine.Id
+                    );
+                }
+            }
+
+            // Delete lines that are NOT referenced by credit notes (not updated in place above)
+            var linesToUpdate = existingLines.Where(l => referencedLineIds.Contains(l.Id)).Select(l => l.Id).ToHashSet();
+            var linesToRemove = existingLines.Where(l => !linesToUpdate.Contains(l.Id)).ToList();
+            if (linesToRemove.Any())
+            {
+                context.InvoiceLines.RemoveRange(linesToRemove);
+            }
 
             // Update invoice
             context.Invoices.Update(invoice);
