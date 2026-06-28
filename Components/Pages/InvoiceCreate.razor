@@ -45,7 +45,12 @@
         <MudGrid>
             <MudItem xs="12" sm="3">
                 <MudTextField T="string" Label="Sąskaitos numeris *" @bind-Value="_nextInvoiceNumber" 
-                              ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                              ReadOnly="@_invoiceNumberLocked" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              @ondblclick="@OnInvoiceNumberDoubleClick" />
+                @if (!_invoiceNumberLocked)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning" Class="mt-1">Rankinis numeris — bus patikrintas unikalumas išsaugant.</MudText>
+                }
             </MudItem>
             <MudItem xs="12" sm="3">
 <MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate"
@@ -217,6 +222,7 @@
     private string _selectedDeliveryNumber = "";
     
     private string _nextInvoiceNumber = "";
+    private bool _invoiceNumberLocked = true;
     private DateTime? _invoiceDate = DateTime.Today;
     private int _paymentTermDays = 7;
     private DateTime? _paymentDueDate;
@@ -603,6 +609,26 @@
         if (!_isPurchase)
         {
             await OpenProductDialog(line);
+        }
+    }
+
+    private async Task OnInvoiceNumberDoubleClick()
+    {
+        if (_invoiceNumberLocked)
+        {
+            var parameters = new DialogParameters<ConfirmDialog>
+            {
+                { x => x.ContentText, "Ar tikrai norite pakeisti automatiškai sugeneruotą sąskaitos numerį? Tai skirta tik retroaktyviam sąskaitų įvedimui." },
+                { x => x.ButtonText, "Keisti numerį" },
+                { x => x.Color, Color.Warning }
+            };
+            var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters, _stdOpt);
+            var result = await dialog.Result;
+            if (!result.Canceled)
+            {
+                _invoiceNumberLocked = false;
+                StateHasChanged();
+            }
         }
     }
 
