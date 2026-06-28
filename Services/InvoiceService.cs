@@ -28,6 +28,7 @@ namespace NordicBeesERP.Services
         Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId);
         Task<List<int>> GetInvoiceYearsAsync();
         Task<byte[]> GeneratePdfAsync(int invoiceId);
+        Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null);
     }
 
     public class InvoiceService : IInvoiceService
@@ -440,6 +441,14 @@ namespace NordicBeesERP.Services
             }
 
             return $"{prefix}{yearSuffix}{nextNumber:D3}";
+        }
+
+        public async Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Invoices.AsNoTracking().AnyAsync(i =>
+                i.InvoiceNumber == invoiceNumber &&
+                (excludeInvoiceId == null || i.Id != excludeInvoiceId));
         }
 
         // =====================================================
