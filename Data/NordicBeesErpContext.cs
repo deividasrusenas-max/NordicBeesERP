@@ -92,8 +92,10 @@ namespace NordicBeesERP.Data
         public DbSet<NordicBeesERP.Models.Expenses.ExpensePayment> ExpensePayments { get; set; }
         public DbSet<NordicBeesERP.Models.Expenses.ExpenseBudget> ExpenseBudgets { get; set; }
         public DbSet<NordicBeesERP.Models.Expenses.ExpenseOcrQueue> ExpenseOcrQueue { get; set; }
-        public DbSet<NordicBeesERP.Models.Expenses.AppSetting> AppSettings { get; set; }
-        public DbSet<NordicBeesERP.Models.Expenses.ExpenseInvoiceAudit> ExpenseInvoiceAudits { get; set; }
+         public DbSet<NordicBeesERP.Models.Expenses.AppSetting> AppSettings { get; set; }
+         public DbSet<NordicBeesERP.Models.Expenses.ExpenseInvoiceAudit> ExpenseInvoiceAudits { get; set; }
+         
+         public DbSet<NordicBeesERP.Models.InvoiceAudit> InvoiceAudits { get; set; }
 
         // Units
         public DbSet<Unit> Units { get; set; }

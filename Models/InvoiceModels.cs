@@ -81,10 +81,10 @@ namespace NordicBeesERP.Models
     public class Customer
     {
         public int Id { get; set; }
-        
+
         // Partnerio tipas (BusinessPartner)
         public string PartnerType { get; set; } = "Klientas";
-        
+
         public string Name { get; set; } = string.Empty;
         public string? CompanyCode { get; set; }
         public string? VatCode { get; set; }
@@ -101,11 +101,53 @@ namespace NordicBeesERP.Models
         public string? Country { get; set; } = "Lietuva";
         public string? Notes { get; set; }
         public bool IsActive { get; set; } = true;
-        
+
         // Laikini laukai (ne duomenų bazėje)
         [NotMapped]
         public DateTime CreatedAt { get; set; }
         [NotMapped]
         public DateTime UpdatedAt { get; set; }
+    }
+
+    // =====================================================
+    // INVOICE AUDIT LOG (mirrors ExpenseInvoiceAudit)
+    // =====================================================
+
+    [Table("invoice_audit")]
+    public class InvoiceAudit
+    {
+        [Key]
+        [Column("id")]
+        public int Id { get; set; }
+
+        [Required]
+        [Column("invoice_id")]
+        public int InvoiceId { get; set; }
+
+        [Column("invoice_number")]
+        public string? InvoiceNumber { get; set; }
+
+        [Required]
+        [MaxLength(50)]
+        [Column("action")]
+        public string Action { get; set; } = string.Empty;
+
+        [Column("action_details")]
+        public string? ActionDetails { get; set; }
+
+        [MaxLength(30)]
+        [Column("old_status")]
+        public string? OldStatus { get; set; }
+
+        [MaxLength(30)]
+        [Column("new_status")]
+        public string? NewStatus { get; set; }
+
+        [MaxLength(100)]
+        [Column("performed_by")]
+        public string? PerformedBy { get; set; }
+
+        [Column("performed_at")]
+        public DateTime PerformedAt { get; set; } = DateTime.UtcNow;
     }
 }

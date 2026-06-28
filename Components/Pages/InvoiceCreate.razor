@@ -61,15 +61,15 @@
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Apmokėti iki</MudText>
                 <MudText Typo="Typo.body2">@(_paymentDueDate?.ToString("yyyy-MM-dd") ?? "—")</MudText>
             </MudItem>
-            @if (!_isPurchase)
-            {
-                <MudItem xs="12" sm="6">
-                    <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
-                                  Variant="Variant.Outlined" ReadOnly="true" 
-                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
-                                  OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" Margin="Margin.Dense" />
-                </MudItem>
-            }
+             @if (!_isPurchase)
+             {
+                 <MudItem xs="12" sm="6">
+                     <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
+                                   Variant="Variant.Outlined" ReadOnly="true" 
+                                   Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                   OnAdornmentClick="@OpenClientDialog" OnDoubleClick="@OpenClientDialog" Margin="Margin.Dense" />
+                 </MudItem>
+             }
             else
             {
                 <MudItem xs="12" sm="6">
@@ -413,7 +413,7 @@
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
         var parameters = new DialogParameters<ClientSelectDialog>();
-        parameters.Add("Customers", _customers);
+        parameters.Add(x => x.Customers, _customers);
         
         var dialog = await DialogService.ShowAsync<ClientSelectDialog>("Pasirinkite klientą", parameters, _stdOpt);
         var result = await dialog.Result;

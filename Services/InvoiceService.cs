@@ -34,11 +34,13 @@ namespace NordicBeesERP.Services
     {
         private readonly IDbContextFactory<NordicBeesERPContext> _contextFactory;
         private readonly IPdfGeneratorService _pdfGeneratorService;
+        private readonly IAuthService _authService;
 
-        public InvoiceService(IDbContextFactory<NordicBeesERPContext> contextFactory, IPdfGeneratorService pdfGeneratorService)
+        public InvoiceService(IDbContextFactory<NordicBeesERPContext> contextFactory, IPdfGeneratorService pdfGeneratorService, IAuthService authService)
         {
             _contextFactory = contextFactory;
             _pdfGeneratorService = pdfGeneratorService;
+            _authService = authService;
         }
 
         // =====================================================
@@ -349,9 +351,33 @@ namespace NordicBeesERP.Services
                 invoice.PaymentDueDate = invoice.InvoiceDate.AddDays(invoice.PaymentTermDays);
             }
 
+            var oldStatus = invoice.Status;
             invoice.Status = newStatus;
             invoice.UpdatedAt = DateTime.UtcNow;
-            return await context.SaveChangesAsync();
+
+            // Save status change first
+            await context.SaveChangesAsync();
+
+            // Insert audit log entry if status actually changed
+            if (oldStatus != newStatus)
+            {
+                var currentUser = await _authService.GetAuthenticatedUserAsync();
+                var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "system";
+
+                await context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO invoice_audit (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                    invoice.Id,
+                    invoice.InvoiceNumber,
+                    "StatusChange",
+                    $"Statusas pakeistas iš {oldStatus} į {newStatus}",
+                    oldStatus.ToString(),
+                    newStatus.ToString(),
+                    performedBy,
+                    DateTime.UtcNow
+                );
+            }
+
+            return invoice.Id;
         }
 
         // =====================================================
