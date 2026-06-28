@@ -80,11 +80,13 @@ namespace NordicBeesERP.Services
                 query = query.Where(i => i.InvoiceNumber.StartsWith("ULAK"));
 
             // 1. Užkrauname visas sąskaitas be Customer (Include neleidžiamas)
-            var invoices = await query.ToListAsync();
+            var invoices = await query.AsNoTracking().ToListAsync();
 
-            // 2. Surandame visus klijentus (BusinessPartners su Customer type)
+            // 2. Surandame tik tuos klijentus, kurie turi sąskaitas šiame sąraše
+            var customerIds = invoices.Select(i => i.CustomerId).Distinct().ToList();
             var customers = await context.BusinessPartners
-                .Where(bp => true)
+                .Where(bp => customerIds.Contains(bp.Id))
+                .AsNoTracking()
                 .ToListAsync();
 
             // 3. Priskiriame Customer kiekvienai sąskaitai
@@ -111,14 +113,16 @@ namespace NordicBeesERP.Services
             
             var invoice = await context.Invoices
                 .Include(i => i.Delivery)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == id);
             
             if (invoice == null)
                 return null;
 
-            // Užkrauname klijentą atskirai (be Include)
+            // Užkrauname klijentą atskirai - tik konkrečią sąskaitą
             var customers = await context.BusinessPartners
-                .Where(bp => true)
+                .Where(bp => bp.Id == invoice.CustomerId)
+                .AsNoTracking()
                 .ToListAsync();
             
             invoice.Customer = customers.FirstOrDefault(c => c.Id == invoice.CustomerId);
@@ -150,14 +154,16 @@ namespace NordicBeesERP.Services
             using var context = await _contextFactory.CreateDbContextAsync();
             
             var invoice = await context.Invoices
+                .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == id);
             
             if (invoice == null)
                 return null;
 
-            // Užkrauname klijentą atskirai (be Include)
+            // Užkrauname klijentą atskirai - tik konkrečią sąskaitą
             var customers = await context.BusinessPartners
-                .Where(bp => true)
+                .Where(bp => bp.Id == invoice.CustomerId)
+                .AsNoTracking()
                 .ToListAsync();
             
             invoice.Customer = customers.FirstOrDefault(c => c.Id == invoice.CustomerId);
