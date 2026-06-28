@@ -44,8 +44,9 @@
         <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
         <MudGrid>
             <MudItem xs="12" sm="3">
-                <MudTextField T="string" Label="Sąskaitos numeris *" @bind-Value="_nextInvoiceNumber" 
+                <MudTextField T="string" Label="Sąskaitos numeris *" Value="@_nextInvoiceNumber" 
                               ReadOnly="@_invoiceNumberLocked" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              ValueChanged="@OnInvoiceNumberManuallyChanged"
                               @ondblclick="@OnInvoiceNumberDoubleClick" />
                 @if (!_invoiceNumberLocked)
                 {
@@ -413,6 +414,42 @@
         {
             _defaultVatRate = 21m;
         }
+    }
+
+    private void OnInvoiceNumberManuallyChanged(string newValue)
+    {
+        _nextInvoiceNumber = newValue;
+        
+        // Only apply best-effort date guess in manual mode
+        if (_invoiceNumberLocked)
+        {
+            return;
+        }
+        
+        // Determine expected prefix based on invoice type
+        var expectedPrefix = _isPurchase ? "ULAK" : "LAK";
+        
+        // Check if the new value starts with the expected prefix and has at least prefix.Length + 2 characters
+        if (newValue.StartsWith(expectedPrefix) && newValue.Length >= expectedPrefix.Length + 2)
+        {
+            // Extract the next 2 characters after the prefix
+            var numberPart = newValue.Substring(expectedPrefix.Length, 2);
+            
+            // Try to parse as integer
+            if (int.TryParse(numberPart, out var parsedNum) && parsedNum >= 0 && parsedNum <= 99)
+            {
+                var parsedYear = 2000 + parsedNum;
+                
+                // Update invoice date if year changed
+                if (_invoiceDate == null || _invoiceDate.Value.Year != parsedYear)
+                {
+                    _invoiceDate = new DateTime(parsedYear, _invoiceDate?.Month ?? 1, 1);
+                    UpdateDueDate();
+                }
+            }
+        }
+        
+        StateHasChanged();
     }
 
     private async Task OpenClientDialog()
