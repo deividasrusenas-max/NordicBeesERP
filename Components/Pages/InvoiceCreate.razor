@@ -483,7 +483,7 @@
 
     private async Task SaveInvoice()
     {
-        if (!ValidateInvoice()) return;
+        if (!await ValidateInvoice()) return;
         
         var invoice = BuildInvoice();
         await _invoiceService.CreateInvoiceAsync(invoice);
@@ -492,15 +492,26 @@
 
     private async Task SaveAndGeneratePdf()
     {
-        if (!ValidateInvoice()) return;
+        if (!await ValidateInvoice()) return;
         
         var invoice = BuildInvoice();
         var invoiceId = await _invoiceService.CreateInvoiceAsync(invoice);
         Navigation.NavigateTo($"/invoices/pdf/{invoiceId}");
     }
 
-    private bool ValidateInvoice()
+    private async Task<bool> ValidateInvoice()
     {
+        // Check invoice number uniqueness first (if not locked)
+        if (!_invoiceNumberLocked)
+        {
+            var taken = await _invoiceService.IsInvoiceNumberTakenAsync(_nextInvoiceNumber, null);
+            if (taken)
+            {
+                _errorMessage = $"Sąskaita su numeriu '{_nextInvoiceNumber}' jau egzistuoja. Pakeiskite numerį prieš tęsdami.";
+                return false;
+            }
+        }
+
         if (_isPurchase)
         {
             if (_selectedSupplierId == null || _selectedSupplierId == 0)
