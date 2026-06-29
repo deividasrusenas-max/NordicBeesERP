@@ -172,7 +172,17 @@ namespace NordicBeesERP.Services
                 : "partial";
 
             var currentInvoiceStatus = invoice.Status;
-            _ = currentInvoiceStatus;
+
+            InvoiceStatus? newInvoiceStatus = null;
+            if (status == "paid" && currentInvoiceStatus == InvoiceStatus.Confirmed)
+            {
+                newInvoiceStatus = InvoiceStatus.Paid;
+            }
+            else if (status != "paid" && currentInvoiceStatus == InvoiceStatus.Paid)
+            {
+                newInvoiceStatus = InvoiceStatus.Confirmed;
+            }
+            _ = newInvoiceStatus;
 
             var lastAllocationDate = await context.PaymentAllocations
                 .Where(a => a.InvoiceId == invoiceId)
