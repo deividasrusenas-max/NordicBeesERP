@@ -1095,10 +1095,11 @@ namespace NordicBeesERP.Services
                 .Select(i => new { i.TotalInclVat, i.PaidAmount, i.SubtotalExclVat, i.TotalVat })
                 .ToListAsync();
 
-            // Partial = remaining amount (TotalInclVat - PaidAmount) but we need to calculate proportionally
-            // For exact values, we should use the invoice's subtotal_excl_vat and total_vat
+            // Partial = remaining amount (TotalInclVat - PaidAmount) calculated proportionally
             var partialRemainingInclVat = partialInvoices.Sum(i => i.TotalInclVat - i.PaidAmount);
-            var partialRemainingVat = partialInvoices.Sum(i => i.TotalVat * (1 - i.PaidAmount / i.TotalInclVat));
+            var partialRemainingVat = partialInvoices.Sum(i => i.TotalInclVat > 0 
+                ? i.TotalVat * (i.TotalInclVat - i.PaidAmount) / i.TotalInclVat 
+                : 0);
             kpi.PartialAmount = partialRemainingInclVat - partialRemainingVat;
             kpi.PartialVat = partialRemainingVat;
             kpi.PartialAmountInclVat = partialRemainingInclVat;
