@@ -89,13 +89,10 @@
                     <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM sąskaita faktūra</MudSelectItem>
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudSelect T="InvoiceStatus" Label="Būsena" @bind-Value="_status" Variant="Variant.Outlined" Margin="Margin.Dense">
-                    <MudSelectItem T="InvoiceStatus" Value="InvoiceStatus.Draft">Juodraštas</MudSelectItem>
-                    <MudSelectItem T="InvoiceStatus" Value="InvoiceStatus.Confirmed">Patvirtinta</MudSelectItem>
-                    <MudSelectItem T="InvoiceStatus" Value="InvoiceStatus.Disputed">Ginčijama</MudSelectItem>
-                </MudSelect>
-            </MudItem>
+             <MudItem xs="12" sm="4">
+                 <MudText Typo="Typo.caption" Color="Color.Secondary">Būsena</MudText>
+                 <MudChip T="string" Color="GetStatusColor(_status)" Variant="Variant.Outlined">@GetStatusText(_status)</MudChip>
+             </MudItem>
         </MudGrid>
     </MudPaper>
 
@@ -512,6 +509,26 @@
     {
         await InvokeAsync(() => Navigation.NavigateTo($"/invoices/{Id}"));
     }
+
+    private Color GetStatusColor(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => Color.Warning,
+        InvoiceStatus.Confirmed => Color.Primary,
+        InvoiceStatus.Paid => Color.Success,
+        InvoiceStatus.Disputed => Color.Error,
+        InvoiceStatus.Cancelled => Color.Dark,
+        _ => Color.Default
+    };
+
+    private string GetStatusText(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Draft => "Juodraštas",
+        InvoiceStatus.Confirmed => "Patvirtinta",
+        InvoiceStatus.Paid => "Apmokėta",
+        InvoiceStatus.Disputed => "Ginčijama",
+        InvoiceStatus.Cancelled => "Atšaukta",
+        _ => status.ToString()
+    };
 
     public class InvoiceLineInput
     {
