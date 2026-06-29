@@ -498,3 +498,21 @@ private string FormatVatRate(decimal rate) => rate == Math.Floor(rate) ? rate.To
 VISADA naudoti ExecuteSqlRawAsync update operacijoms - NE FindAsync + modify + SaveChanges.
 SaveChangesAsync naudoti TIK naujiems INSERT operacijoms.
 Pvz: await context.Database.ExecuteSqlRawAsync("UPDATE ... WHERE id = {0}", ..., id);
+
+## MIGRATION FAILO SINCHRONIZAVIMAS — PRIVALOMA ⚠️
+
+**Vienintelis migration failas:** `Migrations/20260602150000_InitialCreate.cs` — jis yra source of truth visai DB schemai (naudoja `CREATE TABLE IF NOT EXISTS` + `SET FOREIGN_KEY_CHECKS=0/1`, lentelės sutvarkytos pagal FK dependencies tvarka).
+
+**TAISYKLĖ:** Jei kuriamas naujas C# modelis su `[Table("...")]`, arba jei prie esamo modelio pridedama nauja `[Column("...")]` savybė — **TAME PAČIAME commit'e** privalu atnaujinti `Migrations/20260602150000_InitialCreate.cs`:
+- Nauja lentelė → pridėti `CREATE TABLE IF NOT EXISTS` bloką prieš `SET FOREIGN_KEY_CHECKS=1;` eilutę (arba ankstesnėje vietoje, jei kitos lentelės turi FK į ją)
+- Nauja kolona → pridėti `ALTER TABLE` arba įterpti koloną į esamą `CREATE TABLE IF NOT EXISTS` bloką
+
+**DRAUDŽIAMA:**
+- Kurti atskirus `.sql` failus `Migrations/Archive/` ar kitur ir manyti, kad jie bus pritaikyti automatiškai — `Program.cs` kviečia tik `db.Database.MigrateAsync()`, kuris vykdo TIK `Migrations/20260602150000_InitialCreate.cs`
+- Palikti modelį/koloną kode be atitinkamo SQL migration faile — tai sukelia runtime klaidas (`Unknown column`, `Table doesn't exist`) tik per deployment, ne lokaliai
+
+**Prieš commit'inant naują modelį/koloną** — patikrinti:
+```bash
+grep -c "CREATE TABLE IF NOT EXISTS" Migrations/20260602150000_InitialCreate.cs
+```
+Ir patvirtinti, kad naujos lentelės/kolonos tikrai yra ten, ne tik C# modelyje.
