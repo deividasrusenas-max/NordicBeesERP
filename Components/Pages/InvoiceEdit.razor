@@ -33,6 +33,20 @@
         <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
     }
 
+    <!-- WARNING BANNER FOR CONFIRMED/PAID INVOICES -->
+    @if (_status == InvoiceStatus.Confirmed || _status == InvoiceStatus.Paid)
+    {
+        var statusLabel = _status switch
+        {
+            InvoiceStatus.Confirmed => "Patvirtinta",
+            InvoiceStatus.Paid => "Apmokėta",
+            _ => _status.ToString()
+        };
+        <MudAlert Severity="Severity.Warning" Class="mb-3">
+            Šios sąskaitos statusas yra '@statusLabel'. Redaguodami galite sukurti nesutapimus su jau išsiųstu PDF arba registruotais mokėjimais.
+        </MudAlert>
+    }
+
     <!-- PAGRINDINĖ INFORMACIJA -->
     <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
     <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
