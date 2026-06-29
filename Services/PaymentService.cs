@@ -171,6 +171,9 @@ namespace NordicBeesERP.Services
                 : totalAllocated >= invoice.TotalInclVat ? "paid"
                 : "partial";
 
+            var currentInvoiceStatus = invoice.Status;
+            _ = currentInvoiceStatus;
+
             var lastAllocationDate = await context.PaymentAllocations
                 .Where(a => a.InvoiceId == invoiceId)
                 .OrderByDescending(a => a.AllocatedAt)
