@@ -207,9 +207,18 @@ namespace NordicBeesERP.Services
             }
             else
             {
-                await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE invoices SET paid_amount = {0}, payment_status = {1}, last_payment_date = {2}, updated_at = {3} WHERE id = {4}",
-                    totalAllocated, status, lastAllocationDate, DateTime.UtcNow, invoiceId);
+                if (newInvoiceStatus.HasValue)
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE invoices SET paid_amount = {0}, payment_status = {1}, last_payment_date = {2}, status = {3}, updated_at = {4} WHERE id = {5}",
+                        totalAllocated, status, lastAllocationDate, newInvoiceStatus.Value.ToString(), DateTime.UtcNow, invoiceId);
+                }
+                else
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE invoices SET paid_amount = {0}, payment_status = {1}, last_payment_date = {2}, updated_at = {3} WHERE id = {4}",
+                        totalAllocated, status, lastAllocationDate, DateTime.UtcNow, invoiceId);
+                }
             }
         }
 
