@@ -1078,6 +1078,22 @@ namespace NordicBeesERP.Migrations
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Gamybos ingredientai - traceability iki žaliavų';
             ");
 
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `invoice_audit` (
+                    `id` int NOT NULL AUTO_INCREMENT,
+                    `invoice_id` int NOT NULL,
+                    `invoice_number` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                    `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+                    `action_details` text COLLATE utf8mb4_unicode_ci,
+                    `old_status` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                    `new_status` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                    `performed_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                    `performed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    KEY `idx_invoice_id` (`invoice_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
