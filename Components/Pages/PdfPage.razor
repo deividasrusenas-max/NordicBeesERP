@@ -8,6 +8,7 @@
 @inject IPdfGeneratorService PdfService
 @inject NavigationManager Navigation
 @inject IDbContextFactory<NordicBeesERPContext> DbContextFactory
+@inject NordicBeesERP.Services.IInvoiceService InvoiceService
 
 <PageTitle>Sąskaitos spausdinimas</PageTitle>
 
@@ -38,6 +39,21 @@
                 var invoice = await context.Invoices.FindAsync(Id);
                 var fileName = $"{invoice.InvoiceNumber}.pdf";
                 await DownloadPdfAsync(pdfBytes, fileName);
+                
+                // Update invoice status from Draft to Confirmed (PDF generation = "sending")
+                if (invoice.Status == InvoiceStatus.Draft)
+                {
+                    try
+                    {
+                        await InvoiceService.UpdateInvoiceStatusAsync(Id, InvoiceStatus.Confirmed);
+                    }
+                    catch (Exception statusEx)
+                    {
+                        // Log error but don't fail PDF download - the PDF was generated successfully
+                        Console.WriteLine($"PDF kūrimo puslapis: nepavyko atnaujinti būsenos iš Draft į Confirmed: {statusEx.Message}");
+                    }
+                }
+                
                 await Task.Delay(3000);
                 Navigation.NavigateTo($"/invoices/{Id}");
             }
