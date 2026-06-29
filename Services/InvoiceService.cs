@@ -334,6 +334,8 @@ namespace NordicBeesERP.Services
             if (invoice == null)
                 return 0;
 
+            context.Attach(invoice);
+
             // Validate: block confirmation when total is zero but lines exist
             if (newStatus == InvoiceStatus.Confirmed &&
                 invoice.TotalInclVat == 0 &&
