@@ -35,13 +35,13 @@ namespace NordicBeesERP.Services
                 // Grąžinti numatytąjį objektą jei duomenų nėra
                 return new CompanySettings
                 {
-                    CompanyName = "Nordic Bees UAB",
-                    CompanyCode = "123456789",
-                    VatCode = "LT123456789",
-                    Address = "Klaipėdos str. 15",
-                    BankAccount = "LT12 3456 7890 1234 5678",
-                    BankSwift = "COBA LT XX",
-                    BankName = "SEB Bankas",
+                    CompanyName = "MB Lakštena",
+                    CompanyCode = "302905315",
+                    VatCode = "LT100013406816",
+                    Address = "P. Širvio g. 3,  Juodupė, Lietuva / Lithuania",
+                    BankAccount = "LT217189900060467854",
+                    BankSwift = "CBSBLT26",
+                    BankName = "AB Artea Bankas",
                     UpdatedAt = DateTime.UtcNow
                 };
             }
@@ -51,35 +51,44 @@ namespace NordicBeesERP.Services
 
         public async Task UpdateSettingsAsync(CompanySettings settings)
         {
-            using var context = await _dbFactory.CreateDbContextAsync();
-            
-            var existing = await context.CompanySettings.FirstOrDefaultAsync();
-            
-            if (existing == null)
+            try
             {
-                settings.UpdatedAt = DateTime.UtcNow;
-                context.CompanySettings.Add(settings);
-            }
-            else
-            {
-                existing.CompanyName = settings.CompanyName;
-                existing.CompanyCode = settings.CompanyCode;
-                existing.VatCode = settings.VatCode;
-                existing.Address = settings.Address;
-                existing.BankName = settings.BankName;
-                existing.BankIban = settings.BankIban;
-                existing.BankSwift = settings.BankSwift;
-                existing.BankAccount = settings.BankAccount;
-                existing.Email = settings.Email;
-                existing.Phone = settings.Phone;
-                existing.UpdatedAt = DateTime.UtcNow;
+                await using var context = await _dbFactory.CreateDbContextAsync();
                 
-                // Priverstinai pažymėti VISUS laukus kaip pakeistus
-                context.Entry(existing).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                var existing = await context.CompanySettings.FirstOrDefaultAsync();
+                
+                if (existing == null)
+                {
+                    settings.UpdatedAt = DateTime.UtcNow;
+                    context.CompanySettings.Add(settings);
+                }
+                else
+                {
+                    existing.CompanyName = settings.CompanyName;
+                    existing.CompanyCode = settings.CompanyCode;
+                    existing.VatCode = settings.VatCode;
+                    existing.Address = settings.Address;
+                    existing.BankName = settings.BankName;
+                    existing.BankIban = settings.BankIban;
+                    existing.BankSwift = settings.BankSwift;
+                    existing.BankAccount = settings.BankAccount;
+                    existing.Email = settings.Email;
+                    existing.Phone = settings.Phone;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    
+                    context.Entry(existing).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                }
+                
+                await context.SaveChangesAsync();
             }
-            
-            var saved = await context.SaveChangesAsync();
-            System.Console.WriteLine($"DEBUG UPDATE SETTINGS: saved={saved} rows, Name={existing?.CompanyName}, Email={existing?.Email}");
+            catch (DbUpdateException dbEx)
+            {
+                throw new Exception("Klaida atnaujinant įmonės duomenis", dbEx);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Klaida atnaujinant įmonės duomenis", ex);
+            }
         }
     }
 }

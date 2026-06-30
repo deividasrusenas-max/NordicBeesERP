@@ -5,50 +5,81 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<PageTitle>Medaus rūšys</PageTitle>
+<PageTitle>Honey Types</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">Medaus rūšys</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti rūšį</MudButton>
-    </MudStack>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti naują</MudButton>
+    </div>
 
-    <MudTable T="HoneyType" Items="_honeyTypes" Dense="true" Hover="true" Striped="true" Loading="_loading">
-        <HeaderContent>
-            <MudTh>Kodas</MudTh>
-            <MudTh>Pavadinimas</MudTh>
-            <MudTh>Pavadinimas EN</MudTh>
-            <MudTh>Aktyvus</MudTh>
-            <MudTh>Rūšiavimas</MudTh>
-            <MudTh Style="width:120px">Veiksmai</MudTh>
-        </HeaderContent>
-        <RowTemplate Context="item">
-            <MudTd>@item.Code</MudTd>
-            <MudTd>@item.Name</MudTd>
-            <MudTd>@item.NameEn</MudTd>
-            <MudTd><MudSwitch T="bool" Value="@item.IsActive" Color="Color.Success" Disabled="@false" /></MudTd>
-            <MudTd>@item.SortOrder</MudTd>
-            <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(item))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteItem(item))" />
-            </MudTd>
-        </RowTemplate>
-    </MudTable>
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable T="HoneyType" Items="_honeyTypes" Dense="true" Hover="true" Striped="true" Loading="_loading">
+            <HeaderContent>
+                <MudTh>Kodas</MudTh>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>Pavadinimas EN</MudTh>
+                <MudTh>Aktyvus</MudTh>
+                <MudTh>Rūšiavimas</MudTh>
+                <MudTh Style="width:120px">Veiksmai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="item">
+                @if (_editingItem?.Id == item.Id)
+                {
+                    <MudTd>
+                        <MudTextField @bind-Value="_editingItem.Code" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
+                    </MudTd>
+                    <MudTd>
+                        <MudTextField @bind-Value="_editingItem.Name" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" Required="true" />
+                    </MudTd>
+                    <MudTd>
+                        <MudTextField @bind-Value="_editingItem.NameEn" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
+                    </MudTd>
+                    <MudTd>
+                        <MudSwitch T="bool" @bind-Value="_editingItem.IsActive" Color="Color.Success" />
+                    </MudTd>
+                    <MudTd>
+                        <MudNumericField T="int" @bind-Value="_editingItem.SortOrder" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
+                    </MudTd>
+                    <MudTd>
+                        <div class="d-flex gap-1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Save" Size="Size.Small" Color="Color.Success" OnClick="SaveEdit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Secondary" OnClick="CancelEdit" />
+                        </div>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd>@item.Code</MudTd>
+                    <MudTd>@item.Name</MudTd>
+                    <MudTd>@item.NameEn</MudTd>
+                    <MudTd><MudSwitch T="bool" @bind-Value="@item.IsActive" Color="Color.Success" /></MudTd>
+                    <MudTd>@item.SortOrder</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(item))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteItem(item))" />
+                    </MudTd>
+                }
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Įrašų nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
 </MudContainer>
 
-<!-- Dialog -->
 <MudDialog @bind-Visible="_dialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
     <TitleContent>
         <MudText Typo="Typo.h6">@(_editingItem.Id == 0 ? "Nauja medaus rūšis" : "Redaguoti")</MudText>
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudTextField @bind-Value="_editingItem.Code" Label="Kodas" Variant="Variant.Outlined" MaxLength="20" />
-            <MudTextField @bind-Value="_editingItem.Name" Label="Pavadinimas" Variant="Variant.Outlined" Required="true" />
-            <MudTextField @bind-Value="_editingItem.NameEn" Label="Pavadinimas EN" Variant="Variant.Outlined" />
-            <MudTextField @bind-Value="_editingItem.Description" Label="Aprašymas" Variant="Variant.Outlined" Lines="2" />
-            <MudNumericField @bind-Value="_editingItem.SortOrder" Label="Rūšiavimas" Variant="Variant.Outlined" />
-            <MudSwitch @bind-Value="_editingItem.IsActive" Label="Aktyvus" Color="Color.Success" />
+            <MudTextField @bind-Value="_editingItem.Code" Label="Code" Variant="Variant.Outlined" MaxLength="20" />
+            <MudTextField @bind-Value="_editingItem.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
+            <MudTextField @bind-Value="_editingItem.NameEn" Label="Name EN" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_editingItem.Description" Label="Description" Variant="Variant.Outlined" Lines="2" />
+            <MudNumericField T="int" @bind-Value="_editingItem.SortOrder" Label="Sort Order" Variant="Variant.Outlined" />
+            <MudSwitch T="bool" @bind-Value="_editingItem.IsActive" Label="Active" Color="Color.Success" />
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -92,6 +123,39 @@
         _dialogVisible = true;
     }
 
+    private void StartInlineEdit(HoneyType item)
+    {
+        _editingItem = new HoneyType
+        {
+            Id = item.Id, Code = item.Code, Name = item.Name, NameEn = item.NameEn,
+            Description = item.Description, IsActive = item.IsActive, SortOrder = item.SortOrder,
+            CreatedAt = item.CreatedAt
+        };
+    }
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editingItem.Name))
+        {
+            Snackbar.Add("Pavadinimas privalomas", Severity.Warning);
+            return;
+        }
+
+        if (_editingItem.Id == 0)
+            await HoneyTypeService.CreateAsync(_editingItem);
+        else
+            await HoneyTypeService.UpdateAsync(_editingItem);
+
+        _editingItem = new HoneyType();
+        await LoadData();
+        Snackbar.Add("Išsaugota", Severity.Success);
+    }
+
+    private void CancelEdit()
+    {
+        _editingItem = new HoneyType();
+    }
+
     private async Task SaveItem()
     {
         if (string.IsNullOrWhiteSpace(_editingItem.Name))
@@ -121,11 +185,11 @@
     {
         var parameters = new DialogParameters<ConfirmDialog>
         {
-            { "ContentText", "Ar tikrai norite ištrinti šį medaus tipą?" },
-            { "ButtonText", "Ištrinti" },
+            { "ContentText", "Are you sure you want to delete this honey type?" },
+            { "ButtonText", "Delete" },
             { "Color", Color.Error }
         };
-        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirmation", parameters);
         var result = await dialog.Result;
         if (result.Canceled) return;
 

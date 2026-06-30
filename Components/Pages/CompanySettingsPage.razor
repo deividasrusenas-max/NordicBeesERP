@@ -4,56 +4,85 @@
 
 <PageTitle>Įmonės rekvizitai</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-    <MudText Typo="Typo.h5" Class="mb-4">Įmonės rekvizitai</MudText>
-            <MudPaper Class="pa-6" Elevation="1">
-            <MudGrid>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.CompanyName" Label="Įmonės pavadinimas" Required="true" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.CompanyCode" Label="Įmonės kodas" Required="true" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.VatCode" Label="PVM kodas" Required="true" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="12" md="12">
-                    <MudTextField @bind-Value="settings.Address" Label="Adresas" Required="true" Lines="3" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.BankName" Label="Banko pavadinimas" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.BankIban" Label="IBAN" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.BankSwift" Label="SWIFT" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.Email" Label="El. paštas" Class="mb-3" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField @bind-Value="settings.Phone" Label="Telefonas" Class="mb-3" />
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Įmonės rekvizitai</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="HandleSubmit">
+            Išsaugoti
+        </MudButton>
+    </div>
 
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4"
-            OnClick="HandleSubmit">Išsaugoti</MudButton>
+    <MudPaper Class="pa-6" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.CompanyName" Label="Įmonės pavadinimas" Required="true" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.CompanyCode" Label="Įmonės kodas" Required="true" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.VatCode" Label="PVM kodas" Required="true" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="12" md="12">
+                <MudTextField @bind-Value="settings.Address" Label="Adresas" Required="true" Lines="3" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.BankName" Label="Banko pavadinimas" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.BankIban" Label="IBAN" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.BankSwift" Label="SWIFT" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.Email" Label="El. paštas" Class="mb-3" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.Phone" Label="Telefonas" Class="mb-3" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
 </MudContainer>
 
 @code {
     private CompanySettings settings = new CompanySettings();
+    private bool _isSaving = false;
+    private bool _settingsDirty = false;
 
     protected override async Task OnInitializedAsync()
     {
-        settings = await CompanySettingsService.GetSettingsAsync();
+        try
+        {
+            settings = await CompanySettingsService.GetSettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida užkraunant: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task HandleSubmit()
     {
-        System.Console.WriteLine($"DEBUG SAVE: Name={settings.CompanyName}, Email={settings.Email}, Phone={settings.Phone}");
-        await CompanySettingsService.UpdateSettingsAsync(settings);
-        Snackbar.Add("Nustatymai sėkmingai išsaugoti", Severity.Success);
+        try
+        {
+            _isSaving = true;
+            _settingsDirty = true;
+            StateHasChanged();
+
+            await CompanySettingsService.UpdateSettingsAsync(settings);
+
+            _isSaving = false;
+            StateHasChanged();
+
+            Snackbar.Add("Nustatymai sėkmingai išsaugoti", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _isSaving = false;
+            StateHasChanged();
+
+            Snackbar.Add($"Klaida išsaugant: {ex.Message}", Severity.Error);
+        }
     }
 }

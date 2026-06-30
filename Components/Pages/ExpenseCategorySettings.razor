@@ -8,14 +8,14 @@
 
 <PageTitle>Išlaidų kategorijos</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">Išlaidų kategorijos</MudText>
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
             StartIcon="@Icons.Material.Filled.Add" OnClick="AddNew">
             Pridėti naują
         </MudButton>
-    </MudStack>
+    </div>
 
     <!-- Save indicator -->
     @if (_saveIndicatorVisible)
@@ -28,45 +28,50 @@
 
     @if (_loading)
     {
-        <MudProgressCircular Indeterminate="true" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
     else
     {
-        <MudTable T="NBEN.ExpenseCategory" Items="_items" Dense="true" Hover="true">
-            <HeaderContent>
-                <MudTh>Pavadinimas</MudTh>
-                <MudTh>Kodas</MudTh>
-                <MudTh>Aktyvus</MudTh>
-                <MudTh Style="text-align:right">Rikiavimas</MudTh>
-                <MudTh Style="width:50px"></MudTh>
-            </HeaderContent>
-            <RowTemplate Context="item">
-                <MudTd>
-                    <MudTextField T="string" Value="item.Name"
-                        ValueChanged="@((string val) => { item.Name = val; OnChanged(item); })"
-                        Variant="Variant.Text" Style="min-width:200px" />
-                </MudTd>
-                <MudTd>
-                    <MudTextField T="string" Value="item.Code"
-                        ValueChanged="@((string val) => { item.Code = val; OnChanged(item); })"
-                        Variant="Variant.Text" Style="min-width:100px" />
-                </MudTd>
-                <MudTd>
-                    <MudSwitch T="bool" Value="item.IsActive"
-                        ValueChanged="@((bool val) => { item.IsActive = val; OnChanged(item); })"
-                        Color="Color.Success" />
-                </MudTd>
-                <MudTd Style="text-align:right">
-                    <MudNumericField T="int" Value="item.SortOrder"
-                        ValueChanged="@((int val) => { item.SortOrder = val; OnChanged(item); })"
-                        Variant="Variant.Text" Style="max-width:80px" />
-                </MudTd>
-                <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                        Color="Color.Error" OnClick="@(async () => await DeleteItem(item))" />
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+            <MudTable T="NBEN.ExpenseCategory" Items="_items" Dense="true" Hover="true" Striped="true">
+                <HeaderContent>
+                    <MudTh>Pavadinimas</MudTh>
+                    <MudTh>Kodas</MudTh>
+                    <MudTh>Aktyvus</MudTh>
+                    <MudTh Style="text-align:right">Rikiavimas</MudTh>
+                    <MudTh Style="width:50px"></MudTh>
+                </HeaderContent>
+                <RowTemplate Context="item">
+                    <MudTd>
+                        <MudTextField T="string" Value="item.Name"
+                            ValueChanged="@((string val) => { item.Name = val; OnChanged(item); })"
+                            Variant="Variant.Text" Style="min-width:200px" />
+                    </MudTd>
+                    <MudTd>
+                        <MudTextField T="string" Value="item.Code"
+                            ValueChanged="@((string val) => { item.Code = val; OnChanged(item); })"
+                            Variant="Variant.Text" Style="min-width:100px" />
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                            Color="@(item.IsActive ? Color.Success : Color.Default)"
+                            Variant="Variant.Outlined"
+                            Text="@(item.IsActive ? "Aktyvus" : "Neaktyvus")" />
+                    </MudTd>
+                    <MudTd Style="text-align:right">
+                        <MudNumericField T="int" Value="item.SortOrder"
+                            ValueChanged="@((int val) => { item.SortOrder = val; OnChanged(item); })"
+                            Variant="Variant.Text" Style="max-width:80px" />
+                    </MudTd>
+                    <MudTd>
+                        <div @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                Color="Color.Error" OnClick="@(async () => await DeleteItem(item))" />
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
     }
 </MudContainer>
 
@@ -90,19 +95,26 @@
 
     private async Task AddNew()
     {
-        var maxSort = _items.Any() ? _items.Max(i => i.SortOrder) + 1 : 1;
-        var newItem = new NBEN.ExpenseCategory
+        try
         {
-            Name = "Nauja kategorija",
-            Code = "NAUJA",
-            IsActive = true,
-            SortOrder = maxSort
-        };
-        using var ctx = await ContextFactory.CreateDbContextAsync();
-        ctx.ExpenseCategories.Add(newItem);
-        await ctx.SaveChangesAsync();
-        _items.Add(newItem);
-        Snackbar.Add("Pridėta nauja kategorija", Severity.Success);
+            var maxSort = _items.Any() ? _items.Max(i => i.SortOrder) + 1 : 1;
+            var newItem = new NBEN.ExpenseCategory
+            {
+                Name = "Nauja kategorija",
+                Code = "NAUJA",
+                IsActive = true,
+                SortOrder = maxSort
+            };
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+            ctx.ExpenseCategories.Add(newItem);
+            await ctx.SaveChangesAsync();
+            _items.Add(newItem);
+            Snackbar.Add("Pridėta nauja kategorija", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko sukurti: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task OnChanged(NBEN.ExpenseCategory item)

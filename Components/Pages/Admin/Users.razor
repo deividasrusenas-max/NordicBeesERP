@@ -8,8 +8,8 @@
 
 <PageTitle>Vartotojai</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
-    <div class="d-flex justify-space-between align-center mb-4">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">Vartotojai</MudText>
         <MudButton StartIcon="@Icons.Material.Filled.PersonAdd" Variant="Variant.Filled" Color="Color.Primary"
             OnClick="OpenCreateDialog">Naujas vartotojas</MudButton>
@@ -21,7 +21,7 @@
     }
     else
     {
-        <MudPaper Elevation="1">
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
             <MudTable T="ErpUser" Items="_users" Dense="true" Hover="true" Striped="true" Elevation="0">
                 <HeaderContent>
                     <MudTh>El. paštas</MudTh>

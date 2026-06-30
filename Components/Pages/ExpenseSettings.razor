@@ -1,92 +1,101 @@
 @page "/expense-settings"
+@rendermode InteractiveServer
 @using MudBlazor
 @using NordicBeesERP.Services
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Models
 @using NordicBeesERP.Components.Dialogs
 @inject IExpenseService ExpenseService
-@inject SnackbarService Snackbar
-@inject DialogService DialogService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
-<MudText Typo="Typo.h3" GutterBottom="true">Išlaidų nustatymai</MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Išlaidų nustatymai</MudText>
+    </div>
 
-<MudTabs Raised="true" PoweredBy="false">
-    <MudTabPanel TabText="Kategorijos">
-        <MudCard>
-            <MudCardHeader>
-                <MudText Typo="Typo.h6">Išlaidų Kategorijos</MudText>
-                <MudCardActions>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCategoryDialog">
-                        + Nauja kategorija
-                    </MudButton>
-                </MudCardActions>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudTable Items="@_categories" Dense="true" Striped="true" Hover="true" Bordered="true" Responsive="true">
-                    <HeaderContent>
-                        <MudTh>Pavadinimas</MudTh>
-                        <MudTh>Kodas</MudTh>
-                        <MudTh>Aktyvus</MudTh>
-                        <MudTh>Eilės nr</MudTh>
-                        <MudTh>Veiksmai</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd Data="@context.Name">@context.Name</MudTd>
-                        <MudTd Data="@context.Code">@context.Code</MudTd>
-                        <MudTd>
-                            <MudSwitch T="bool" Checked="@context.IsActive" CheckedChanged="(bool val) => ToggleCategoryActive(context, val)" Disabled="!context.IsActive" Size="Size.Small" Color="context.IsActive ? Color.Success : Color.Warning" />
-                        </MudTd>
-                        <MudTd Data="@context.SortOrder">
-                            <MudText Typo="Typo.body2">@context.SortOrder</MudText>
-                        </MudTd>
-                        <MudTd>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenCategoryEditDialog(context))" Title="Redaguoti" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCategory(context.Id))" Title="Ištrinti" />
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </MudCardContent>
-        </MudCard>
-    </MudTabPanel>
+    <MudTabs Raised="true" PoweredBy="false">
+        <MudTabPanel TabText="Kategorijos">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Išlaidų Kategorijos</MudText>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCategoryDialog" StartIcon="@Icons.Material.Filled.Add">
+                            Pridėti naują
+                        </MudButton>
+                    </MudCardActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+                        <MudTable Items="@_categories" Dense="true" Hover="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>Pavadinimas</MudTh>
+                                <MudTh>Kodas</MudTh>
+                                <MudTh>Aktyvus</MudTh>
+                                <MudTh>Eilės nr</MudTh>
+                                <MudTh>Veiksmai</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd Data="@context.Name">@context.Name</MudTd>
+                                <MudTd Data="@context.Code">@context.Code</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)" Variant="Variant.Outlined">
+                                        @(context.IsActive ? "Aktyvus" : "Neaktyvus")
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd Data="@context.SortOrder">
+                                    <MudText Typo="Typo.body2">@context.SortOrder</MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenCategoryEditDialog(context))" Title="Redaguoti" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCategory(context.Id))" Title="Ištrinti" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudPaper>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
 
-    <MudTabPanel TabText="Išlaidos Centrai">
-        <MudCard>
-            <MudCardHeader>
-                <MudText Typo="Typo.h6">Išlaidos Centrai</MudText>
-                <MudCardActions>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCostCenterDialog">
-                        + Naujas centras
-                    </MudButton>
-                </MudCardActions>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudTable Items="@_costCenters" Hover="true" Bordered="true" Striped="true" Responsive="true">
-                    <HeaderContent>
-                        <MudTh>Id</MudTh>
-                        <MudTh>Pavadinimas</MudTh>
-                        <MudTh>Kodas</MudTh>
-                        <MudTh>Aktyvi</MudTh>
-                        <MudTh>Veiksmos</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd Data="@context.Id">@context.Id</MudTd>
-                        <MudTd Data="@context.Name">@context.Name</MudTd>
-                        <MudTd Data="@context.Code">@context.Code</MudTd>
-                        <MudTd>
-                            <MudChip Size="Size.Small" T="string" Color="context.IsActive ? Color.Success : Color.Default">
-                                @context.IsActive.ToString()
-                            </MudChip>
-                        </MudTd>
-                        <MudTd>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenCostCenterEditDialog(context))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCostCenter(context.Id))" />
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </MudCardContent>
-        </MudCard>
-    </MudTabPanel>
-</MudTabs>
+        <MudTabPanel TabText="Išlaidos Centrai">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Išlaidos Centrai</MudText>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCostCenterDialog" StartIcon="@Icons.Material.Filled.Add">
+                            Pridėti naują
+                        </MudButton>
+                    </MudCardActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+                        <MudTable Items="@_costCenters" Dense="true" Hover="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>Pavadinimas</MudTh>
+                                <MudTh>Kodas</MudTh>
+                                <MudTh>Aktyvi</MudTh>
+                                <MudTh>Veiksmai</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd Data="@context.Name">@context.Name</MudTd>
+                                <MudTd Data="@context.Code">@context.Code</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)" Variant="Variant.Outlined">
+                                        @(context.IsActive ? "Aktyvi" : "Neaktyvi")
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenCostCenterEditDialog(context))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCostCenter(context.Id))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudPaper>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
 
 @code {
     private List<Models.Expenses.ExpenseCategory> _categories = new();

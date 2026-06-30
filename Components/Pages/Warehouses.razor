@@ -1,45 +1,70 @@
 @page "/warehouses"
 @inject IWarehouseService WarehouseService
 @inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@using NordicBeesERP.Models
 
 <PageTitle>Sandėliai</PageTitle>
 
-<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">Sandėliai</MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Sandėliai</MudText>
+        <MudButton StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary"
+            OnClick="CreateNewWarehouse">Naujas sandėlis</MudButton>
+    </div>
 
-<MudTable T="NordicBeesERP.Models.Warehouse" Items="@warehouses" Hover="true" Dense="true">
-    <HeaderContent>
-        <MudTh>Kodas</MudTh>
-        <MudTh>Pavadinimas</MudTh>
-        <MudTh>Tipas</MudTh>
-        <MudTh>Adresas</MudTh>
-        <MudTh>Miestas</MudTh>
-        <MudTh>Šalis</MudTh>
-        <MudTh>Aprašymas</MudTh>
-        <MudTh>Aktyvus</MudTh>
-        <MudTh>Sukurtas</MudTh>
-        <MudTh>Atnaujintas</MudTh>
-        <MudTh>E-paštas</MudTh>
-        <MudTh>Veiksmiai</MudTh>
-    </HeaderContent>
-    <RowTemplate Context="warehouse">
-        <MudTd>@warehouse.Code</MudTd>
-        <MudTd>@warehouse.Name</MudTd>
-        <MudTd>@GetWarehouseType(warehouse.WarehouseTypeId ?? 0)</MudTd>
-        <MudTd>@warehouse.Address</MudTd>
-        <MudTd>@warehouse.City</MudTd>
-        <MudTd>@warehouse.Country</MudTd>
-        <MudTd>@warehouse.Description</MudTd>
-        <MudTd>@warehouse.IsActive</MudTd>
-        <MudTd>@warehouse.CreatedAt</MudTd>
-        <MudTd>@warehouse.UpdatedAt</MudTd>
-        <MudTd>@warehouse.Email</MudTd>
-        <MudTd>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => EditWarehouse(warehouse.Id))" />
-        </MudTd>
-    </RowTemplate>
-</MudTable>
-
-<MudButton OnClick="CreateNewWarehouse" Variant="Variant.Filled" Color="Color.Primary">Sukurti naują sandėlį</MudButton>
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable T="NordicBeesERP.Models.Warehouse" Items="@warehouses" Dense="true" Hover="true" Striped="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Kodas</MudTh>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>Tipas</MudTh>
+                <MudTh>Adresas</MudTh>
+                <MudTh>Miestas</MudTh>
+                <MudTh>Šalis</MudTh>
+                <MudTh>Aprašymas</MudTh>
+                <MudTh>Aktyvus</MudTh>
+                <MudTh>Sukurtas</MudTh>
+                <MudTh>Atnaujintas</MudTh>
+                <MudTh>E-paštas</MudTh>
+                <MudTh Style="width:160px">Veiksmiai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="warehouse">
+                <MudTd>@warehouse.Code</MudTd>
+                <MudTd>@warehouse.Name</MudTd>
+                <MudTd>@GetWarehouseType(warehouse.WarehouseTypeId ?? 0)</MudTd>
+                <MudTd>@warehouse.Address</MudTd>
+                <MudTd>@warehouse.City</MudTd>
+                <MudTd>@warehouse.Country</MudTd>
+                <MudTd>@warehouse.Description</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@(warehouse.IsActive ? Color.Success : Color.Default)"
+                        Variant="Variant.Outlined">
+                        @(warehouse.IsActive ? "Aktyvus" : "Neaktyvus")
+                    </MudChip>
+                </MudTd>
+                <MudTd>@warehouse.CreatedAt</MudTd>
+                <MudTd>@warehouse.UpdatedAt</MudTd>
+                <MudTd>@warehouse.Email</MudTd>
+                <MudTd>
+                    <div class="d-flex gap-1">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                            OnClick="@(() => EditWarehouse(warehouse.Id))" Title="Redaguoti" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                            OnClick="@(() => DeleteWarehouseAsync(warehouse))" Title="Ištrinti" />
+                    </div>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[]{25, 50}" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Sandėlių nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
 
 @code {
     private List<NordicBeesERP.Models.Warehouse> warehouses = new List<NordicBeesERP.Models.Warehouse>();
@@ -57,6 +82,29 @@
     private void CreateNewWarehouse()
     {
         Navigation.NavigateTo("/warehouses/create");
+    }
+
+    private async Task DeleteWarehouseAsync(NordicBeesERP.Models.Warehouse warehouse)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti trynimą",
+            $"Ar tikrai norite ištrinti sandėlį \"{warehouse.Name}\"?",
+            yesText: "Ištrinti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await WarehouseService.DeleteAsync(warehouse.Id);
+            Snackbar.Add($"Sandėlis \"{warehouse.Name}\" ištrintas sėkmingai", Severity.Success);
+            warehouses = (List<NordicBeesERP.Models.Warehouse>)await WarehouseService.GetAllAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida trinant: " + ex.Message, Severity.Error);
+        }
     }
 
     private string GetWarehouseType(int type) => type switch

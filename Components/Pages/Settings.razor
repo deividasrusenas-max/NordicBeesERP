@@ -1,40 +1,65 @@
 @page "/app-settings"
+@rendermode InteractiveServer
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject ISnackbar Snackbar
 @using NordicBeesERP.Models.Expenses
 
-<MudPaper Elevation="1" Rounded="true" Square="false" Class="pa-4">
-    <MudText Typo="Typo.h5" GutterBottom="true">Nustatymai</MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Nustatymai</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveSettings">
+            Išsaugoti
+        </MudButton>
+    </div>
 
-    <AuthorizeView Roles="Admin">
-        <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-4 mb-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">Azure Document Intelligence</MudText>
+    <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:8px">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-3">Azure Document Intelligence</MudText>
 
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+        <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f8fafc; border-radius:8px">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                 <MudTextField @bind-Value="azureDiEndpoint" Label="Endpoint URL" Style="flex:1"
-                              Placeholder="https://<resource>.cognitiveservices.azure.com/" />
+                              Placeholder="https://<resource>.cognitiveservices.azure.com/"
+                              Variant="Variant.Outlined" />
                 <MudIconButton Icon="@Icons.Material.Filled.NetworkCheck"
                                Color="Color.Primary"
                                OnClick="TestAzureConnection"
-                               title="Tikrinti ryšį" />
+                               Title="Tikrinti ryšį" />
                 @if (azureStatus.HasValue)
                 {
                     <MudIcon Icon="@(azureStatus.Value ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
                              Color="@(azureStatus.Value ? Color.Success : Color.Error)" />
                 }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.HelpOutline"
+                             Color="Color.Default"
+                             Title="Azure nesukonfigūruotas" />
+                }
             </MudStack>
 
             <MudTextField @bind-Value="azureDiKey" InputType="InputType.Password"
-                          Label="API Key" Class="mb-2"
+                          Label="API Key"
+                          Variant="Variant.Outlined"
                           @bind-Value:after="SaveSettingsAsync" />
         </MudPaper>
-    </AuthorizeView>
 
-    <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-4">
-        <MudText Typo="Typo.h6" GutterBottom="true">Būsena</MudText>
-        <MudText>System configured and running.</MudText>
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-3">Būsena</MudText>
+        <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:8px">
+            @if (azureStatus == true)
+            {
+                <MudText Color="Color.Success">Sistema sukonfigūruota ir veikia.</MudText>
+            }
+            else if (azureStatus == false)
+            {
+                <MudText Color="Color.Error">Azure Document Intelligence nepasiekiamas - patikrinkite nustatymus.</MudText>
+            }
+            else
+            {
+                <MudText Color="Color.Default">Azure Document Intelligence nesukonfigūruotas.</MudText>
+            }
+        </MudPaper>
     </MudPaper>
-</MudPaper>
+</MudContainer>
 
 @code {
     private string azureDiEndpoint = string.Empty;
@@ -50,7 +75,7 @@
 
     private async Task LoadSettingsAsync()
     {
-        using var context = DbFactory.CreateDbContext();
+        await using var context = DbFactory.CreateDbContext();
 
         var endpointSetting = await context.AppSettings
             .FirstOrDefaultAsync(s => s.SettingKey == "azure_di_endpoint");
@@ -60,12 +85,25 @@
             .FirstOrDefaultAsync(s => s.SettingKey == "azure_di_key");
         azureDiKey = keySetting?.SettingValue ?? string.Empty;
 
-        azureStatus = null;
+        // Automatically test connection if both values are configured
+        if (!string.IsNullOrEmpty(azureDiEndpoint) && !string.IsNullOrEmpty(azureDiKey))
+        {
+            azureStatus = await ExpenseOcrService.IsAzureHealthyAsync();
+        }
+        else
+        {
+            azureStatus = null; // Not configured - show neutral state
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        await SaveSettingsAsync();
     }
 
     private async Task SaveSettingsAsync()
     {
-        using var context = DbFactory.CreateDbContext();
+        await using var context = DbFactory.CreateDbContext();
 
         await UpsertSettingAsync(context, "azure_di_endpoint", azureDiEndpoint);
         await UpsertSettingAsync(context, "azure_di_key", azureDiKey);
@@ -95,8 +133,8 @@
         azureStatus = await ExpenseOcrService.IsAzureHealthyAsync();
 
         Snackbar.Add(azureStatus.Value
-            ? "Azure Document Intelligence aktyvus ✅"
-            : "Azure Document Intelligence nepasiekiamas ❌",
+            ? "Azure Document Intelligence aktyvus"
+            : "Azure Document Intelligence nepasiekiamas",
             azureStatus.Value ? Severity.Success : Severity.Error);
 
         StateHasChanged();

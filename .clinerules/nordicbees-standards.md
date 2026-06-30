@@ -516,3 +516,9 @@ Pvz: await context.Database.ExecuteSqlRawAsync("UPDATE ... WHERE id = {0}", ...,
 grep -c "CREATE TABLE IF NOT EXISTS" Migrations/20260602150000_InitialCreate.cs
 ```
 Ir patvirtinti, kad naujos lentelės/kolonos tikrai yra ten, ne tik C# modelyje.
+
+## File locations
+- All Blazor pages: Components/Pages/
+- All services: Services/
+- All models: Models/
+- Never use root Pages/ directory for Razor components

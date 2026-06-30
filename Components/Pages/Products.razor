@@ -6,31 +6,34 @@
 
 <PageTitle>Prekės</PageTitle>
 
-<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">📦 Prekės</MudText>
-
-<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
-           Href="/products/create" Class="mb-4">
-    Nauja prekė
-</MudButton>
-
-@if (products == null)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-}
-else if (!products.Any())
-{
-    <MudPaper Class="pa-8 text-center">
-        <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Color="Color.Default" Class="mb-4" />
-        <MudText Typo="Typo.h6" Class="mb-2">Prekių sąrašas tuščias</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/products/create">
-            + Pridėti pirmą prekę
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Prekės</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   Href="/products/create">
+            Nauja prekė
         </MudButton>
-    </MudPaper>
-}
-else
-{
-    <MudTable T="Product" Items="@products" Hover="true" Dense="true"
-              RowStyleFunc="RowStyleFunc">
+    </div>
+
+    @if (products == null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (!products.Any())
+    {
+        <MudPaper Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Color="Color.Default" Class="mb-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">Prekių sąrašas tuščias</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/products/create">
+                + Pridėti pirmą prekę
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Elevation="0" rounded="true" Square="false" Class="mt-2 pa-3">
+            <MudTable T="Product" Items="@products" Hover="true" Dense="true"
+                      RowStyleFunc="RowStyleFunc">
         <HeaderContent>
             <MudTh>Kodas</MudTh>
             <MudTh>Pavadinimas</MudTh>
@@ -72,8 +75,10 @@ else
                 </MudButtonGroup>
             </MudTd>
         </RowTemplate>
-    </MudTable>
-}
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
 
 @code {
     private List<Product>? products;
