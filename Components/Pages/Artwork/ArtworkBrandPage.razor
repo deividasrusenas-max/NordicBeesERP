@@ -1,0 +1,98 @@
+@page "/artwork/brand/{BrandId:int}"
+@rendermode InteractiveServer
+@using NordicBeesERP.Services.Artwork
+@inject IArtworkService ArtworkService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<PageTitle>@_brandName</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">@_brandName</MudText>
+        <MudButton OnClick="OpenUpload" StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Filled" Color="Color.Primary">
+            Įkelti
+        </MudButton>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+    else
+    {
+        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+            <MudGrid>
+                @foreach (var asset in _assets)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px; cursor:pointer"
+                                  OnClick="@(async () => await NavigateToAsset(asset.Id))">
+                            <div class="d-flex justify-space-between align-start">
+                                <MudText Typo="Typo.h6">@asset.Name</MudText>
+                                @if (asset.HasPendingVersion)
+                                {
+                                    <MudChip T="bool" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
+                                        Laukia
+                                    </MudChip>
+                                }
+                            </div>
+                            <MudText Typo="Typo.caption" Class="mt-1">
+                                @GetAssetTypeLabel(asset.AssetType) — v@asset.ActualVersionNumber
+                            </MudText>
+                            @if (asset.Status == "archived")
+                            {
+                                <MudText Typo="Typo.caption" Class="mt-1" Style="color:#9ca3af">
+                                    Archyvuotas
+                                </MudText>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int BrandId { get; set; }
+    private string _brandName = "";
+    private List<ArtworkAssetWithSummary> _assets = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var brand = await ArtworkService.GetBrandByIdAsync(BrandId);
+            _brandName = brand?.Name ?? "Nežinoma";
+            _assets = await ArtworkService.GetAssetsByBrandAsync(BrandId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida įkeliant įrašus: " + ex.Message, Severity.Error);
+        }
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task NavigateToAsset(int id)
+    {
+        NavigationManager.NavigateTo($"/artwork/asset/{id}");
+    }
+
+    private void OpenUpload()
+    {
+        NavigationManager.NavigateTo("/artwork/upload");
+    }
+
+    private string GetAssetTypeLabel(string? type) => type switch
+    {
+        "label" => "Etiketė",
+        "brochure" => "Brošiūra",
+        "box" => "Dėžė",
+        "sticker" => "Lipdukas",
+        _ => type ?? "Kitas"
+    };
+}
