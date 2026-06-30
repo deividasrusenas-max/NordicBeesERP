@@ -73,6 +73,12 @@ builder.Services.AddScoped<IViesService, ViesService>();
 builder.Services.AddScoped<ICompanyLookupService, CompanyLookupService>();
 builder.Services.AddHostedService<OcrQueueWorker>();
 
+// Artwork Module Services
+builder.Services.Configure<ArtworkStorageOptions>(builder.Configuration.GetSection("ArtworkStorage"));
+builder.Services.Configure<ArtworkPreviewOptions>(builder.Configuration.GetSection("ArtworkPreview"));
+builder.Services.AddScoped<IArtworkStorageService, ArtworkStorageService>();
+builder.Services.AddHostedService<ArtworkPreviewWorker>();
+
 builder.Services.AddScoped<BlazorAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<BlazorAuthStateProvider>());
 builder.Services.AddScoped<IAuthService, AuthService>();
