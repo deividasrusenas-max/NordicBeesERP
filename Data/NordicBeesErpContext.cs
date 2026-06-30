@@ -9,6 +9,7 @@ using NordicBeesERP.Models;
 using NordicBeesERP.Models.Expenses;
 using NordicBeesERP.Models.Honey;
 using NordicBeesERP.Models.WarehouseModule;
+using NordicBeesERP.Models.Artwork;
 
 namespace NordicBeesERP.Data
 {
@@ -102,6 +103,13 @@ namespace NordicBeesERP.Data
 
         // Company Settings
         public DbSet<CompanySettings> CompanySettings { get; set; }
+
+        // Artwork Module
+        public DbSet<ArtworkBrand> ArtworkBrands { get; set; }
+        public DbSet<ArtworkAsset> ArtworkAssets { get; set; }
+        public DbSet<ArtworkVersion> ArtworkVersions { get; set; }
+        public DbSet<ArtworkComment> ArtworkComments { get; set; }
+        public DbSet<ArtworkAuditLog> ArtworkAuditLogs { get; set; }
 
         // =====================================================
         // MODEL CONFIGURATION

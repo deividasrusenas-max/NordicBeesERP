@@ -1094,6 +1094,94 @@ namespace NordicBeesERP.Migrations
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `artwork_brands` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`),
+  UNIQUE KEY `slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `artwork_assets` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `brand_id` int NOT NULL,
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `asset_type` enum('label','brochure','box','sticker','other') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'label',
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `predecessor_asset_id` int DEFAULT NULL,
+  `status` enum('active','archived') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `created_by` int NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_brand_asset_name` (`brand_id`,`name`),
+  KEY `idx_status` (`status`),
+  KEY `idx_predecessor` (`predecessor_asset_id`),
+  CONSTRAINT `fk_asset_brand` FOREIGN KEY (`brand_id`) REFERENCES `artwork_brands` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_asset_predecessor` FOREIGN KEY (`predecessor_asset_id`) REFERENCES `artwork_assets` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `artwork_versions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `asset_id` int NOT NULL,
+  `version_number` int NOT NULL,
+  `file_type` enum('print_ready','source') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'print_ready',
+  `file_path` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `original_filename` varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_size_bytes` bigint NOT NULL,
+  `file_sha256` char(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `preview_path` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `thumbnail_path` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `page_count` int DEFAULT NULL,
+  `change_description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('pending','approved','rejected','superseded') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `uploaded_by` int NOT NULL,
+  `uploaded_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `reviewed_by` int DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `review_comment` text COLLATE utf8mb4_unicode_ci,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_asset_version` (`asset_id`,`version_number`),
+  KEY `idx_asset_status` (`asset_id`,`status`),
+  KEY `idx_sha256` (`file_sha256`),
+  CONSTRAINT `fk_ver_asset` FOREIGN KEY (`asset_id`) REFERENCES `artwork_assets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `artwork_comments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `version_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `body` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_version_id` (`version_id`),
+  CONSTRAINT `fk_comment_version` FOREIGN KEY (`version_id`) REFERENCES `artwork_versions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `artwork_audit_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `entity_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `entity_id` int NOT NULL,
+  `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` int NOT NULL,
+  `details` json DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_entity` (`entity_type`,`entity_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
