@@ -628,6 +628,68 @@ namespace NordicBeesERP.Data
 
                  // No FK constraints - audit log is standalone
              });
+
+             // ===== ARTWORK MODULE =====
+             modelBuilder.Entity<ArtworkBrand>(entity =>
+             {
+                 entity.HasIndex(e => e.Slug).IsUnique();
+                 entity.HasIndex(e => e.Name).IsUnique();
+             });
+
+             modelBuilder.Entity<ArtworkAsset>(entity =>
+             {
+                 entity.HasIndex(e => new { e.BrandId, e.Name }).HasDatabaseName("uq_brand_asset_name");
+                 entity.HasIndex(e => e.Status);
+                 entity.HasIndex(e => e.PredecessorAssetId);
+                 entity.HasOne(e => e.Brand)
+                     .WithMany()
+                     .HasForeignKey(e => e.BrandId)
+                     .OnDelete(DeleteBehavior.Restrict);
+                 entity.HasOne(e => e.Predecessor)
+                     .WithMany()
+                     .HasForeignKey(e => e.PredecessorAssetId)
+                     .OnDelete(DeleteBehavior.SetNull);
+                 entity.Ignore(e => e.Brand);
+                 entity.Ignore(e => e.Predecessor);
+             });
+
+             modelBuilder.Entity<ArtworkVersion>(entity =>
+             {
+                 entity.HasIndex(e => new { e.AssetId, e.VersionNumber }).HasDatabaseName("uq_asset_version");
+                 entity.HasIndex(e => new { e.AssetId, e.Status }).HasDatabaseName("idx_asset_status");
+                 entity.HasIndex(e => e.FileSha256);
+                 entity.HasOne(e => e.Asset)
+                     .WithMany()
+                     .HasForeignKey(e => e.AssetId)
+                     .OnDelete(DeleteBehavior.Cascade);
+                 entity.Ignore(e => e.Asset);
+                 entity.Ignore(e => e.UploadedByUser);
+                 entity.Ignore(e => e.ReviewedByUser);
+             });
+
+             modelBuilder.Entity<ArtworkComment>(entity =>
+             {
+                 entity.HasIndex(e => e.VersionId);
+                 entity.HasOne(e => e.Version)
+                     .WithMany()
+                     .HasForeignKey(e => e.VersionId)
+                     .OnDelete(DeleteBehavior.Cascade);
+                 entity.Ignore(e => e.Version);
+                 entity.Ignore(e => e.User);
+             });
+
+             modelBuilder.Entity<ArtworkAuditLog>(entity =>
+             {
+                 entity.HasIndex(e => new { e.EntityType, e.EntityId });
+                 entity.Ignore(e => e.User);
+             });
+
+             // Seed initial brands
+             modelBuilder.Entity<ArtworkBrand>().HasData(
+                 new ArtworkBrand { Id = 1, Name = "Nordic Bees", Slug = "nordic-bees", IsActive = true, CreatedAt = DateTime.UtcNow },
+                 new ArtworkBrand { Id = 2, Name = "Honeymark", Slug = "honeymark", IsActive = true, CreatedAt = DateTime.UtcNow },
+                 new ArtworkBrand { Id = 3, Name = "MEDŽIO", Slug = "medzio", IsActive = true, CreatedAt = DateTime.UtcNow }
+             );
         }
 
         // =====================================================
