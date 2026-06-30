@@ -78,6 +78,7 @@ builder.Services.AddHostedService<OcrQueueWorker>();
 builder.Services.Configure<ArtworkStorageOptions>(builder.Configuration.GetSection("ArtworkStorage"));
 builder.Services.Configure<ArtworkPreviewOptions>(builder.Configuration.GetSection("ArtworkPreview"));
 builder.Services.AddScoped<IArtworkStorageService, ArtworkStorageService>();
+builder.Services.AddScoped<IArtworkService, ArtworkService>();
 builder.Services.AddHostedService<ArtworkPreviewWorker>();
 
 builder.Services.AddScoped<BlazorAuthStateProvider>();

@@ -1,0 +1,126 @@
+@page "/artwork/upload/{AssetId:int}"
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JS
+@inject IArtworkService ArtworkService
+@inject IAuthService AuthService
+
+<h3>Upload New Version for "@AssetName"</h3>
+
+<div class="card p-4">
+    <div id="dropzone-area" class="border rounded-3 p-5 text-center bg-light">
+        <p class="mb-3">Drag & drop file here or click to select</p>
+        <button class="btn btn-primary" @onclick="SelectFile">Select File</button>
+        <input type="file" id="file-input" class="d-none" @ref="_fileInput" />
+    </div>
+
+    <div class="mt-3">
+        <label class="form-label">Change Description <span class="text-danger">*</span></label>
+        <textarea class="form-control" @bind="ChangeDescription" rows="3" placeholder="Describe changes in this version..."></textarea>
+        <small class="text-muted">@ChangeDescriptionLength / 500</small>
+        <div class="invalid-feedback d-block">@ChangeDescriptionError</div>
+    </div>
+
+    @if (_uploading)
+    {
+        <div class="progress mt-3">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: @_progress%" aria-valuenow="@_progress">
+                @_progress%
+            </div>
+        </div>
+        <p class="text-center text-muted mt-2">Uploading... please wait</p>
+    }
+
+    @if (_result?.Success == true)
+    {
+        <div class="alert alert-success mt-3">
+            <strong>Success!</strong> @_result.Message
+        </div>
+    }
+    else if (_result?.Success == false)
+    {
+        <div class="alert alert-danger mt-3">
+            <strong>Error</strong> @_result.Message
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int AssetId { get; set; }
+    public string? AssetName { get; set; }
+
+    private InputFile _fileInput = default!;
+    private bool _uploading;
+    private int _progress;
+    private string ChangeDescription { get; set; } = "";
+    private string ChangeDescriptionError { get; set; } = "";
+    private ArtworkVersionUploadResult? _result;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var brand = await ArtworkService.GetBrandByIdAsync(AssetId);
+        AssetName = brand?.Name ?? "Unknown Brand";
+    }
+
+    private void SelectFile()
+    {
+        _fileInput?.Element.Click();
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.FileCount > 0 ? e.FileRange.First() : null;
+        if (file == null) return;
+
+        _uploading = true;
+        _result = null;
+        ChangeDescriptionError = "";
+        _progress = 0;
+
+        // Validate description
+        if (string.IsNullOrWhiteSpace(ChangeDescription))
+        {
+            ChangeDescriptionError = "Change description is required.";
+            _uploading = false;
+            return;
+        }
+        if (ChangeDescription.Length > 500)
+        {
+            ChangeDescriptionError = "Change description must be ≤ 500 characters.";
+            _uploading = false;
+            return;
+        }
+
+        // Read file as base64
+        var buffer = new byte[file.Size];
+        await file.OpenReadStream(1024 * 1024 * 100).ReadAsync(buffer); // 100MB limit
+        var base64 = Convert.ToBase64String(buffer);
+
+        // Simulate progress (real progress requires JS interop)
+        _progress = 20;
+
+        // Call upload service
+        try
+        {
+            _result = await ArtworkService.UploadVersionAsync(
+                AssetId,
+                ChangeDescription,
+                base64,
+                file.Name,
+                file.Size,
+                "print_ready"
+            );
+
+            _progress = 100;
+        }
+        catch (Exception ex)
+        {
+            _result = new ArtworkVersionUploadResult { Success = false, Message = $"Upload failed: {ex.Message}" };
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private int ChangeDescriptionLength => ChangeDescription.Length;
+}
