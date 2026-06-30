@@ -54,11 +54,29 @@
     private string ChangeDescription { get; set; } = "";
     private string ChangeDescriptionError { get; set; } = "";
     private ArtworkVersionUploadResult? _result;
+    private DotNetObjectReference<DropZoneHelper>? _dotNetHelper;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     protected override async Task OnParametersSetAsync()
     {
         var brand = await ArtworkService.GetBrandByIdAsync(AssetId);
         AssetName = brand?.Name ?? "Unknown Brand";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetHelper = DotNetObjectReference.Create(new DropZoneHelper(this));
+            await JS.InvokeVoidAsync("window.setupDropZone", _dotNetHelper, "dropzone-area");
+        }
+    }
+
+    public void Dispose()
+    {
+        _dotNetHelper?.Dispose();
+        JS.InvokeVoidAsync("window.cleanupDropZone", "dropzone-area");
     }
 
     private void SelectFile()
@@ -123,4 +141,68 @@
     }
 
     private int ChangeDescriptionLength => ChangeDescription.Length;
+
+    // JS interop helper
+    public class DropZoneHelper
+    {
+        private readonly ArtworkUpload _parent;
+        public DropZoneHelper(ArtworkUpload parent) => _parent = parent;
+        [JSInvokable]
+        public async Task OnFileDropped(string fileName, long size, string mimeType)
+        {
+            // Get base64 from dropzone.js
+            var base64 = await _parent.JS.InvokeAsync<string>("window.getDropFileBase64", "dropzone-area");
+            if (string.IsNullOrEmpty(base64))
+            {
+                _parent._result = new ArtworkVersionUploadResult { Success = false, Message = "Failed to read file." };
+                _parent.StateHasChanged();
+                return;
+            }
+
+            _parent._uploading = true;
+            _parent._result = null;
+            _parent.ChangeDescriptionError = "";
+            _parent._progress = 20;
+
+            // Validate description
+            if (string.IsNullOrWhiteSpace(_parent.ChangeDescription))
+            {
+                _parent.ChangeDescriptionError = "Change description is required.";
+                _parent._uploading = false;
+                _parent.StateHasChanged();
+                return;
+            }
+            if (_parent.ChangeDescription.Length > 500)
+            {
+                _parent.ChangeDescriptionError = "Change description must be ≤ 500 characters.";
+                _parent._uploading = false;
+                _parent.StateHasChanged();
+                return;
+            }
+
+            // Call upload service
+            try
+            {
+                _parent._result = await _parent.ArtworkService.UploadVersionAsync(
+                    _parent.AssetId,
+                    _parent.ChangeDescription,
+                    base64,
+                    fileName,
+                    size,
+                    "print_ready"
+                );
+
+                _parent._progress = 100;
+            }
+            catch (Exception ex)
+            {
+                _parent._result = new ArtworkVersionUploadResult { Success = false, Message = $"Upload failed: {ex.Message}" };
+            }
+            finally
+            {
+                _parent._uploading = false;
+                _parent.StateHasChanged();
+            }
+        }
+    }
 }
