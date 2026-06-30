@@ -1,22 +1,16 @@
-@page "/artwork/brand/{BrandId}"
+@page "/artwork/brand/{BrandId:int}"
 @rendermode InteractiveServer
-@using NordicBeesERP.Data
-@using NordicBeesERP.Models.Artwork
-@using MudBlazor
-@inject NordicBeesERPContext Context
+@using NordicBeesERP.Services.Artwork
+@inject IArtworkService ArtworkService
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Etiketės ir dizainas</PageTitle>
+<PageTitle>@_brandName</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">@_brandName</MudText>
-        <MudButton OnClick="() => NavigationManager.NavigateTo($"/artwork/upload?brandId={BrandId}")"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Variant="Variant.Filled"
-                   Color="Color.Primary">
-            Naujas turtas
+        <MudButton OnClick="OpenUpload" StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Filled" Color="Color.Primary">
+            Įkelti
         </MudButton>
     </div>
 
@@ -28,56 +22,33 @@
     {
         <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
             <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudTextField Value="@_filterSearch"
-                                  ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
-                                  Label="Paieška pagal pavadinimą"
-                                  Variant="Variant.Outlined"
-                                  Immediate="true"
-                                  FullWidth="true"
-                                  Clearable="true"
-                                  AdornmentIcon="@Icons.Material.Filled.Search"
-                                  Adornment="Adornment.Start" />
-                </MudItem>
+                @foreach (var asset in _assets)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px; cursor:pointer"
+                                  OnClick="@(async () => await NavigateToAsset(asset.Id))">
+                            <div class="d-flex justify-space-between align-start">
+                                <MudText Typo="Typo.h6">@asset.Name</MudText>
+                                @if (asset.HasPendingVersion)
+                                {
+                                    <MudChip T="bool" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
+                                        Laukia
+                                    </MudChip>
+                                }
+                            </div>
+                            <MudText Typo="Typo.caption" Class="mt-1">
+                                @GetAssetTypeLabel(asset.AssetType) — v@asset.ActualVersionNumber
+                            </MudText>
+                            @if (asset.Status == "archived")
+                            {
+                                <MudText Typo="Typo.caption" Class="mt-1" Style="color:#9ca3af">
+                                    Archyvuotas
+                                </MudText>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                }
             </MudGrid>
-        </MudPaper>
-
-        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-            <MudTable Items="@_filteredAssets" Dense="true" Hover="true" Striped="true" RowsPerPage="25" Elevation="0" OnRowClick="@(async (TableRowClickEventArgs<ArtworkAsset> args) => await OnRowClick(args.Item))" Style="cursor:pointer">
-                <HeaderContent>
-                    <MudTh>Pavadinimas</MudTh>
-                    <MudTh>Tipas</MudTh>
-                    <MudTh>Aktuali versija</MudTh>
-                    <MudTh>Būsena</MudTh>
-                    <MudTh></MudTh>
-                </HeaderContent>
-                <RowTemplate Context="asset">
-                    <MudTd>@asset.Name</MudTd>
-                    <MudTd>@GetAssetTypeLabel(asset.AssetType)</MudTd>
-                    <MudTd>@GetActualVersion(asset)</MudTd>
-                    <MudTd>
-                        @if (HasPendingVersion(asset))
-                        {
-                            <MudChip Color="Color.Warning" Size="Size.Small">Laukia</MudChip>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Style="color:#6b7280">—</MudText>
-                        }
-                    </MudTd>
-                    <MudTd>
-                        <div @onclick:stopPropagation="true">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="() => OnRowClick(asset)" />
-                        </div>
-                    </MudTd>
-                </RowTemplate>
-                <PagerContent>
-                    <MudTablePager />
-                </PagerContent>
-                <NoRecordsContent>
-                    <MudText>Įrašų nėra</MudText>
-                </NoRecordsContent>
-            </MudTable>
         </MudPaper>
     }
 </MudContainer>
@@ -85,63 +56,35 @@
 @code {
     [Parameter] public int BrandId { get; set; }
     private string _brandName = "";
-    private List<ArtworkAsset> _assets = new();
-    private List<ArtworkAsset> _filteredAssets = new();
+    private List<ArtworkAssetWithSummary> _assets = new();
     private bool _isLoading = true;
-    private string? _filterSearch = null;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadDataAsync();
-    }
-
-    private async Task LoadDataAsync()
+    protected override async Task OnParametersSetAsync()
     {
         _isLoading = true;
         StateHasChanged();
         try
         {
-            var brand = await Context.ArtworkBrands.FirstOrDefaultAsync(b => b.Id == BrandId);
-            _brandName = brand?.Name ?? "Nežinomas prekės ženklas";
-
-            _assets = await Context.ArtworkAssets
-                .Include(a => a.ArtworkVersions)
-                .Where(a => a.BrandId == BrandId && a.Status == "active")
-                .ToListAsync();
-
-            ApplyFilters();
+            var brand = await ArtworkService.GetBrandByIdAsync(BrandId);
+            _brandName = brand?.Name ?? "Nežinoma";
+            _assets = await ArtworkService.GetAssetsByBrandAsync(BrandId);
         }
         catch (Exception ex)
         {
-            Snackbar.Add("Klaida įkeliant duomenis: " + ex.Message, Severity.Error);
+            Snackbar.Add("Klaida įkeliant įrašus: " + ex.Message, Severity.Error);
         }
-        finally
-        {
-            _isLoading = false;
-        }
+        _isLoading = false;
+        StateHasChanged();
     }
 
-    private void ApplyFilters()
+    private async Task NavigateToAsset(int id)
     {
-        if (string.IsNullOrEmpty(_filterSearch))
-        {
-            _filteredAssets = _assets;
-        }
-        else
-        {
-            _filteredAssets = _assets.Where(a => a.Name.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
+        NavigationManager.NavigateTo($"/artwork/asset/{id}");
     }
 
-    private string GetActualVersion(ArtworkAsset asset)
+    private void OpenUpload()
     {
-        var approved = asset.ArtworkVersions.FirstOrDefault(v => v.Status == "approved");
-        return approved != null ? $"v{approved.VersionNumber}" : "—";
-    }
-
-    private bool HasPendingVersion(ArtworkAsset asset)
-    {
-        return asset.ArtworkVersions.Any(v => v.Status == "pending");
+        NavigationManager.NavigateTo("/artwork/upload");
     }
 
     private string GetAssetTypeLabel(string? type) => type switch
@@ -152,9 +95,4 @@
         "sticker" => "Lipdukas",
         _ => type ?? "Kitas"
     };
-
-    private async Task OnRowClick(ArtworkAsset asset)
-    {
-        NavigationManager.NavigateTo($"/artwork/asset/{asset.Id}");
-    }
 }

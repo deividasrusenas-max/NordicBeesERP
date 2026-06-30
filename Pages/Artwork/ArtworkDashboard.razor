@@ -1,17 +1,14 @@
 @page "/artwork"
 @rendermode InteractiveServer
-@using NordicBeesERP.Data
-@using NordicBeesERP.Models.Artwork
-@using MudBlazor
-@inject NordicBeesERPContext Context
+@using NordicBeesERP.Services.Artwork
+@inject IArtworkService ArtworkService
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Etiketės ir dizainas</PageTitle>
+<PageTitle>Artwork</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">Etiketės ir dizainas</MudText>
+        <MudText Typo="Typo.h5">Artwork modulis</MudText>
     </div>
 
     @if (_isLoading)
@@ -20,72 +17,55 @@
     }
     else
     {
-        <MudGrid>
-            @foreach (var brand in _brands)
-            {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Elevation="0" Class="pa-4" Style="background:#f8fafc; border-radius:12px; cursor:pointer" OnClick="() => NavigateToBrand(brand.Id)">
-                        <MudText Typo="Typo.h6">@brand.Name</MudText>
-                        <MudText Typo="Typo.body2" Style="color:#6b7280">Turtai: @brand.AssetCount</MudText>
-                        @if (brand.PendingCount > 0)
-                        {
-                            <MudChip Color="Color.Warning" Size="Size.Small" Class="mt-2">
-                                @brand.PendingCount laukia patvirtinimo
-                            </MudChip>
-                        }
-                    </MudPaper>
-                </MudItem>
-            }
-        </MudGrid>
+        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+            <MudGrid>
+                @foreach (var brand in _brands)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px; cursor:pointer"
+                                  OnClick="@(async () => await NavigateToBrand(brand.Id))">
+                            <div class="d-flex justify-space-between align-center">
+                                <MudText Typo="Typo.h6">@brand.Name</MudText>
+                                @if (brand.PendingCount > 0)
+                                {
+                                    <MudChip T="int" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
+                                        @brand.PendingCount
+                                    </MudChip>
+                                }
+                            </div>
+                            <MudText Typo="Typo.caption" Class="mt-1">
+                                @brand.AssetsCount įrašai
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
     }
 </MudContainer>
 
 @code {
-    private List<BrandSummary> _brands = new();
+    private List<ArtworkBrandWithCounts> _brands = new();
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
-    {
-        await LoadDataAsync();
-    }
-
-    private async Task LoadDataAsync()
     {
         _isLoading = true;
         StateHasChanged();
         try
         {
-            _brands = await Context.ArtworkBrands
-                .Where(b => b.IsActive)
-                .Select(b => new BrandSummary
-                {
-                    Id = b.Id,
-                    Name = b.Name,
-                    AssetCount = b.ArtworkAssets.Count,
-                    PendingCount = b.ArtworkAssets.SelectMany(a => a.ArtworkVersions).Count(v => v.Status == "pending")
-                })
-                .ToListAsync();
+            _brands = await ArtworkService.GetBrandsWithCountsAsync();
         }
         catch (Exception ex)
         {
-            Snackbar.Add("Klaida įkeliant duomenis: " + ex.Message, Severity.Error);
+            Snackbar.Add("Klaida įkeliant prekių ženklus: " + ex.Message, Severity.Error);
         }
-        finally
-        {
-            _isLoading = false;
-        }
+        _isLoading = false;
+        StateHasChanged();
     }
 
-    private void NavigateToBrand(int brandId)
+    private async Task NavigateToBrand(int id)
     {
-        NavigationManager.NavigateTo($"/artwork/brand/{brandId}");
-    }
-
-    private class BrandSummary
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = "";
-        public int AssetCount { get; set; }
-        public int PendingCount { get; set; }
+        NavigationManager.NavigateTo($"/artwork/brand/{id}");
     }
 }
