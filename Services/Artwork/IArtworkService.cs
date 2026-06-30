@@ -1,3 +1,5 @@
+using NordicBeesERP.Models.Artwork;
+
 namespace NordicBeesERP.Services.Artwork;
 
 public interface IArtworkService
