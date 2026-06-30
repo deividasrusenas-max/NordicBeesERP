@@ -6,6 +6,7 @@ using NordicBeesERP.Data;
 using NordicBeesERP.Services;
 using MudBlazor; // Pridėjome šią eilutę
 using MudBlazor.Services;
+using NordicBeesERP.Services.Artwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
