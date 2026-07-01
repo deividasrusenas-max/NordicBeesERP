@@ -1,207 +1,220 @@
+@page "/artwork/upload"
 @page "/artwork/upload/{AssetId:int}"
-@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
 @using NordicBeesERP.Services.Artwork
-@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 @inject IArtworkService ArtworkService
 @inject IAuthService AuthService
+@inject NavigationManager Nav
 
-<h3>Upload New Version for "@AssetName"</h3>
-
-<div class="card p-4">
-    <div id="dropzone-area" class="border rounded-3 p-5 text-center bg-light">
-        <p class="mb-3">Drag & drop file here or click to select</p>
-        <button class="btn btn-primary" @onclick="SelectFile">Select File</button>
-        <InputFile id="file-input" class="d-none" OnChange="OnFileSelected" />
-    </div>
-
-    <div class="mt-3">
-        <label class="form-label">Change Description <span class="text-danger">*</span></label>
-        <textarea class="form-control" @bind="ChangeDescription" rows="3" placeholder="Describe changes in this version..."></textarea>
-        <small class="text-muted">@ChangeDescriptionLength / 500</small>
-        <div class="invalid-feedback d-block">@ChangeDescriptionError</div>
-    </div>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Upload New Version for "@AssetName"</MudText>
 
     @if (_uploading)
     {
-        <div class="progress mt-3">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: @_progress%" aria-valuenow="@_progress">
-                @_progress%
-            </div>
-        </div>
-        <p class="text-center text-muted mt-2">Uploading... please wait</p>
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-center">Uploading...</MudText>
     }
 
-    @if (_result?.Success == true)
+    <MudPaper Class="pa-4 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:12px">
+        @if (_fileBytes == null)
+        {
+            <div class="text-center">
+                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Primary" Style="font-size:48px" />
+                <MudText Class="mt-2">Drop a PDF file or</MudText>
+                <MudFileUpload T="IBrowserFile" Accept=".pdf" MaximumFileCount="1"
+                               @key="@(_fileKey + 1)"
+                               FilesChanged="OnFileChanged" Class="mt-2">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.FolderOpen">
+                            Select File
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+            </div>
+        }
+        else
+        {
+            <MudPaper Elevation="0" Class="d-flex align-center pa-3"
+                      Style="background:#f0fdf4; border:2px solid #86efac; border-radius:8px;">
+                <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" Color="Color.Success" Style="font-size:32px;" />
+                <div class="ml-3 flex-grow-1" style="text-align:left;">
+                    <MudText Typo="Typo.body1" Style="font-weight:600;">@_fileName</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_fileSizeString</MudText>
+                </div>
+                @if (!_uploading)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error"
+                                   Size="Size.Small" OnClick="RemoveFile" />
+                }
+            </MudPaper>
+        }
+    </MudPaper>
+
+    @if (_fileBytes != null && !_uploading)
     {
-        <div class="alert alert-success mt-3">
-            <strong>Success!</strong> @_result.Message
+        <div class="mt-3">
+            <MudTextField @bind-Value="ChangeDescription" Label="Change Description"
+                          Placeholder="Describe changes in this version..."
+                          Rows="3" Variant="Variant.Outlined" FullWidth="true" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                @ChangeDescription.Length / 500
+            </MudText>
         </div>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(_uploading || string.IsNullOrWhiteSpace(ChangeDescription))"
+                   OnClick="UploadFileAsync"
+                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                   FullWidth="true" Class="mt-3">
+            Upload
+        </MudButton>
     }
-    else if (_result?.Success == false)
-    {
-        <div class="alert alert-danger mt-3">
-            <strong>Error</strong> @_result.Message
-        </div>
-    }
-</div>
+</MudContainer>
 
 @code {
-    [Parameter] public int AssetId { get; set; }
+    [Parameter] public int? AssetId { get; set; }
     public string? AssetName { get; set; }
 
     private bool _uploading;
-    private int _progress;
+    private IBrowserFile? _browserFile;
+    private byte[]? _fileBytes;
+    private string _fileName = "";
+    private string _fileSizeString = "";
+    private long _fileSizeBytes = 0;
+    private int _fileKey = 0;
     private string ChangeDescription { get; set; } = "";
-    private string ChangeDescriptionError { get; set; } = "";
     private ArtworkVersionUploadResult? _result;
-    private DotNetObjectReference<DropZoneHelper>? _dotNetHelper;
 
     protected override async Task OnParametersSetAsync()
     {
-        var brand = await ArtworkService.GetBrandByIdAsync(AssetId);
+        if (!AssetId.HasValue)
+        {
+            Nav.NavigateTo("/artwork");
+            return;
+        }
+        var brand = await ArtworkService.GetBrandByIdAsync(AssetId.Value);
         AssetName = brand?.Name ?? "Unknown Brand";
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task OnFileChanged(IBrowserFile? file)
     {
-        if (firstRender)
+        _browserFile = file;
+        _fileKey++;
+
+        if (file == null)
         {
-            _dotNetHelper = DotNetObjectReference.Create(new DropZoneHelper(this));
-            await JS.InvokeVoidAsync("window.setupDropZone", _dotNetHelper, "dropzone-area");
+            _fileBytes = null;
+            _fileName = "";
+            _fileSizeString = "";
+            _fileSizeBytes = 0;
+            _result = null;
+            _uploading = false;
+            ChangeDescription = "";
+            StateHasChanged();
+            return;
         }
+
+        try
+        {
+            using var stream = file.OpenReadStream(500 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            _fileBytes = ms.ToArray();
+
+            _fileName = file.Name;
+            _fileSizeBytes = file.Size;
+            _fileSizeString = file.Size < 1024 * 1024
+                ? $"{file.Size / 1024:0.0} KB"
+                : $"{file.Size / (1024 * 1024):0.0} MB";
+
+            _result = null;
+            _uploading = false;
+            ChangeDescription = "";
+        }
+        catch (Exception)
+        {
+            _fileBytes = null;
+            _fileName = "";
+            _fileSizeString = "";
+            _fileSizeBytes = 0;
+        }
+
+        StateHasChanged();
     }
 
-    public void Dispose()
+    private async Task UploadFileAsync()
     {
-        _dotNetHelper?.Dispose();
-        JS.InvokeVoidAsync("window.cleanupDropZone", "dropzone-area");
-    }
+        if (_fileBytes == null) return;
 
-    private void SelectFile()
-    {
-        // Trigger the hidden InputFile element
-        JS.InvokeVoidAsync("document.getElementById('file-input').click");
-    }
-
-    private async Task OnFileSelected(InputFileChangeEventArgs e)
-    {
-        var file = e.FileCount > 0 ? e.File : null;
-        if (file == null) return;
-
-        _uploading = true;
-        _result = null;
-        ChangeDescriptionError = "";
-        _progress = 0;
-
-        // Validate description
         if (string.IsNullOrWhiteSpace(ChangeDescription))
         {
-            ChangeDescriptionError = "Change description is required.";
-            _uploading = false;
+            Snackbar.Add("Change description is required.", Severity.Warning);
             return;
         }
         if (ChangeDescription.Length > 500)
         {
-            ChangeDescriptionError = "Change description must be ≤ 500 characters.";
-            _uploading = false;
+            Snackbar.Add("Description must be <= 500 characters.", Severity.Warning);
             return;
         }
 
-        // Read file as base64
-        var buffer = new byte[file.Size];
-        await file.OpenReadStream(1024 * 1024 * 100).ReadAsync(buffer); // 100MB limit
-        var base64 = Convert.ToBase64String(buffer);
+        _uploading = true;
+        _result = null;
+        StateHasChanged();
 
-        // Simulate progress (real progress requires JS interop)
-        _progress = 20;
-
-        // Call upload service
         try
         {
+            var base64 = Convert.ToBase64String(_fileBytes);
+
+            if (!AssetId.HasValue)
+            {
+                _uploading = false;
+                StateHasChanged();
+                return;
+            }
+
             _result = await ArtworkService.UploadVersionAsync(
-                AssetId,
+                AssetId.Value,
                 ChangeDescription,
                 base64,
-                file.Name,
-                file.Size,
+                _fileName,
+                _fileSizeBytes,
                 "print_ready"
             );
 
-            _progress = 100;
+            if (_result?.Success == true)
+            {
+                Snackbar.Add("Version uploaded successfully", Severity.Success);
+                RemoveFile();
+            }
+            else
+            {
+                Snackbar.Add($"Upload failed: {_result?.Message}", Severity.Error);
+            }
         }
         catch (Exception ex)
         {
-            _result = new ArtworkVersionUploadResult { Success = false, Message = $"Upload failed: {ex.Message}" };
+            Snackbar.Add("Upload error: " + ex.Message, Severity.Error);
+            _result = new ArtworkVersionUploadResult { Success = false, Message = ex.Message };
         }
         finally
         {
             _uploading = false;
+            StateHasChanged();
         }
     }
 
-    private int ChangeDescriptionLength => ChangeDescription.Length;
-
-    // JS interop helper
-    public class DropZoneHelper
+    private void RemoveFile()
     {
-        private readonly ArtworkUpload _parent;
-        public DropZoneHelper(ArtworkUpload parent) => _parent = parent;
-        [JSInvokable]
-        public async Task OnFileDropped(string fileName, long size, string mimeType)
-        {
-            // Get base64 from dropzone.js
-            var base64 = await _parent.JS.InvokeAsync<string>("window.getDropFileBase64", "dropzone-area");
-            if (string.IsNullOrEmpty(base64))
-            {
-                _parent._result = new ArtworkVersionUploadResult { Success = false, Message = "Failed to read file." };
-                _parent.StateHasChanged();
-                return;
-            }
-
-            _parent._uploading = true;
-            _parent._result = null;
-            _parent.ChangeDescriptionError = "";
-            _parent._progress = 20;
-
-            // Validate description
-            if (string.IsNullOrWhiteSpace(_parent.ChangeDescription))
-            {
-                _parent.ChangeDescriptionError = "Change description is required.";
-                _parent._uploading = false;
-                _parent.StateHasChanged();
-                return;
-            }
-            if (_parent.ChangeDescription.Length > 500)
-            {
-                _parent.ChangeDescriptionError = "Change description must be ≤ 500 characters.";
-                _parent._uploading = false;
-                _parent.StateHasChanged();
-                return;
-            }
-
-            // Call upload service
-            try
-            {
-                _parent._result = await _parent.ArtworkService.UploadVersionAsync(
-                    _parent.AssetId,
-                    _parent.ChangeDescription,
-                    base64,
-                    fileName,
-                    size,
-                    "print_ready"
-                );
-
-                _parent._progress = 100;
-            }
-            catch (Exception ex)
-            {
-                _parent._result = new ArtworkVersionUploadResult { Success = false, Message = $"Upload failed: {ex.Message}" };
-            }
-            finally
-            {
-                _parent._uploading = false;
-                _parent.StateHasChanged();
-            }
-        }
+        _fileBytes = null;
+        _fileName = "";
+        _fileSizeString = "";
+        _fileSizeBytes = 0;
+        _browserFile = null;
+        _result = null;
+        ChangeDescription = "";
+        _fileKey++;
+        StateHasChanged();
     }
 }
