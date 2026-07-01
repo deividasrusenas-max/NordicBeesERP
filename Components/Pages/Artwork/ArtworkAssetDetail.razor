@@ -1,0 +1,345 @@
+@page "/artwork/asset/{id}"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.Artwork
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Artwork
+@using MudBlazor
+@inject IArtworkService ArtworkService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Artwork Asset Detail</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+    else if (_detail != null)
+    {
+        <!-- Header -->
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.h5">@_detail.Asset.Name</MudText>
+            <div class="d-flex gap-2">
+                @if (_detail.Asset.Status == "active" && _isAdmin)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="ArchiveAssetAsync">Archivuoti</MudButton>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NavigateToBrand" StartIcon="@Icons.Material.Filled.ArrowBack">Atgal</MudButton>
+            </div>
+        </div>
+
+        <!-- Breadcrumb / Info -->
+        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body2" Style="color:#6b7280">Prekės ženklas:</MudText>
+                    <MudText Typo="Typo.body1" Style="font-weight:bold">
+                        <MudLink Href="/artwork/brand/@_detail.Asset.BrandId" Color="Color.Primary">@_detail.Brand?.Name</MudLink>
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body2" Style="color:#6b7280">Tipas:</MudText>
+                    <MudText Typo="Typo.body1">@_detail.Asset.AssetType</MudText>
+                </MudItem>
+                @if (_detail.Asset.PredecessorAssetId.HasValue)
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Style="color:#6b7280">Priešdėlis:</MudText>
+                        <MudLink Href="/artwork/asset/@_detail.Asset.PredecessorAssetId" Color="Color.Primary">Peržiūrėti priešdėlį</MudLink>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Actual Version Block -->
+        @if (_detail.ActualVersion != null)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="0" Style="background:#e8f5e9; border-left:4px solid #388e3c; border-radius:8px">
+                <div class="d-flex justify-space-between align-center mb-2">
+                    <MudText Typo="Typo.h6" Style="color:#388e3c">Faktinė versija</MudText>
+                    <MudChip Color="Color.Success" Variant="Filled">Patvirtinta</MudChip>
+                </div>
+                <MudText Typo="Typo.subtitle1">v@(_detail.ActualVersion.VersionNumber) — @_detail.ActualVersion.UploadedAt:yyyy-MM-dd HH:mm</MudText>
+                <MudText Typo="Typo.body2" Style="color:#6b7280">Pakeitimai: @_detail.ActualVersion.ChangeDescription</MudText>
+                <div class="mt-3">
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="DownloadVersionAsync" StartIcon="@Icons.Material.Filled.Download">Atsisiųsti spausdinimui</MudButton>
+                </div>
+            </MudPaper>
+        }
+
+        <!-- Pending Version Review Block (Admin only) -->
+        @if (_detail.PendingVersion != null && _isAdmin)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="0" Style="background:#fff7ed; border-left:4px solid #f57c00; border-radius:8px">
+                <div class="d-flex justify-space-between align-center mb-2">
+                    <MudText Typo="Typo.h6" Style="color:#f57c00">Laukia patvirtinimo</MudText>
+                    <MudChip Color="Color.Warning" Variant="Filled">Pending</MudChip>
+                </div>
+                <MudText Typo="Typo.subtitle1">v@(_detail.PendingVersion.VersionNumber) — @_detail.PendingVersion.UploadedAt:yyyy-MM-dd HH:mm</MudText>
+                <MudText Typo="Typo.body2" Style="color:#6b7280">Pakeitimai: @_detail.PendingVersion.ChangeDescription</MudText>
+                <div class="mt-3 d-flex gap-2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ApprovePendingAsync" StartIcon="@Icons.Material.Filled.CheckCircle">Patvirtinti</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="RejectPendingAsync" StartIcon="@Icons.Material.Filled.Close">Atmesti</MudButton>
+                </div>
+            </MudPaper>
+        }
+
+        <!-- History Timeline -->
+        <MudText Typo="Typo.h6" Class="mb-3">Versijų istorija</MudText>
+        @foreach (var version in _detail.History)
+        {
+            <MudPaper Class="pa-3 mb-2" Elevation="0" Style="background:#ffffff; border-radius:8px">
+                <div class="d-flex justify-space-between align-center">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:bold">v@version.VersionNumber</MudText>
+                        <MudText Typo="Typo.caption" Style="color:#6b7280">@version.UploadedAt:yyyy-MM-dd HH:mm — @version.UploadedBy</MudText>
+                    </div>
+                    <MudChip Color="@GetVersionStatusColor(version.Status)" Variant="Outlined" Size="Size.Small">
+                        @GetVersionStatusLabel(version.Status)
+                    </MudChip>
+                </div>
+                <MudText Typo="Typo.body2" Class="mt-2">Pakeitimai: @version.ChangeDescription</MudText>
+                @if (!string.IsNullOrEmpty(version.ReviewComment))
+                {
+                    <MudText Typo="Typo.body2" Style="color:#dc2626" Class="mt-1">Atmetimo komentaras: @version.ReviewComment</MudText>
+                }
+                <div class="mt-2">
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => ToggleComments(version.Id)">
+                        @if (_visibleComments.Contains(version.Id)) Rodyti komentarus (@_commentsCache.GetValueOrDefault(version.Id)?.Count ?? 0)
+                        else Rodyti komentarus
+                    </MudButton>
+                    @if (_visibleComments.Contains(version.Id))
+                    {
+                        <MudDivider Class="my-2" />
+                        @foreach (var comment in _commentsCache.GetValueOrDefault(version.Id, new()))
+                        {
+                            <MudText Typo="Typo.body2" Class="mb-1">
+                                <strong>@comment.UserId</strong>: @comment.Body
+                            </MudText>
+                        }
+                        <MudTextField Value="@_newComment" Label="Pridėti komentarą" Variant="Variant.Outlined" FullWidth="true" Clearable="true" AdornmentIcon="@Icons.Material.Filled.Chat" Adornment="Adornment.Start" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => AddCommentAsync(version.Id)" Class="mt-2">Komentuoti</MudButton>
+                    }
+                </div>
+            </MudPaper>
+        }
+    }
+    else
+    {
+        <MudText Class="text-center py-4">Asset nerastas</MudText>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private ArtworkAssetDetailDto? _detail;
+    private bool _isLoading = true;
+    private bool _isAdmin = false;
+    private HashSet<int> _visibleComments = new();
+    private Dictionary<int, List<ArtworkComment>> _commentsCache = new();
+    private string? _newComment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        _isAdmin = user?.Roles?.Contains("Admin") == true;
+        await LoadDetailAsync();
+    }
+
+    private async Task LoadDetailAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        try
+        {
+            _detail = await ArtworkService.GetAssetDetailAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida įkeliant duomenis: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ArchiveAssetAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti archyvavimą",
+            "Ar tikrai norite archyvuoti šį asset'ą? Šio veiksmo negalima atšaukti.",
+            yesText: "Archyvuoti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId.HasValue)
+            {
+                await ArtworkService.ArchiveAssetAsync(Id, userId.Value);
+                Snackbar.Add("Asset archyvuotas sėkmingai", Severity.Success);
+                await LoadDetailAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida archyvuojant: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task NavigateToBrand()
+    {
+        NavigationManager.NavigateTo($"/artwork/brand/{_detail?.Asset.BrandId}");
+    }
+
+    private async Task DownloadVersionAsync()
+    {
+        if (_detail?.ActualVersion != null)
+        {
+            Snackbar.Add("Failas paruoštas atsisiuntimui", Severity.Info);
+        }
+    }
+
+    private async Task ApprovePendingAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti versiją",
+            "Ar tikrai norite patvirtinti šią versiją? Ankstesnė patvirtinta versija bus pažymėta kaip superseded.",
+            yesText: "Patvirtinti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId.HasValue && _detail?.PendingVersion != null)
+            {
+                await ArtworkService.ApproveVersionAsync(_detail.PendingVersion.Id, userId.Value);
+                Snackbar.Add("Versija patvirtinta sėkmingai", Severity.Success);
+                await LoadDetailAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida patvirtinant: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task RejectPendingAsync()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Atmesti versiją",
+            "Prašome nurodyti atmetimo priežastį:",
+            yesText: "Atmesti",
+            cancelText: "Atšaukti");
+
+        if (result != true) return;
+
+        var comment = await ShowRejectCommentDialogAsync();
+        if (string.IsNullOrWhiteSpace(comment))
+        {
+            Snackbar.Add("Atmetimo komentaras yra privalomas", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId.HasValue && _detail?.PendingVersion != null)
+            {
+                await ArtworkService.RejectVersionAsync(_detail.PendingVersion.Id, userId.Value, comment);
+                Snackbar.Add("Versija atmesta", Severity.Success);
+                await LoadDetailAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida atmestant: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task<string?> ShowRejectCommentDialogAsync()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add<string>("Title", "Atmetimo komentaras");
+        parameters.Add<string>("InitialComment", "");
+        
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService.ShowAsync<RejectCommentDialog>("Atmesti versiją", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            return result.Data as string;
+        }
+        return null;
+    }
+
+    private void ToggleComments(int versionId)
+    {
+        if (_visibleComments.Contains(versionId))
+        {
+            _visibleComments.Remove(versionId);
+        }
+        else
+        {
+            _visibleComments.Add(versionId);
+            if (!_commentsCache.ContainsKey(versionId))
+            {
+                LoadCommentsAsync(versionId);
+            }
+        }
+    }
+
+    private async Task LoadCommentsAsync(int versionId)
+    {
+        var comments = await ArtworkService.GetCommentsAsync(versionId);
+        _commentsCache[versionId] = comments;
+        StateHasChanged();
+    }
+
+    private async Task AddCommentAsync(int versionId)
+    {
+        if (string.IsNullOrWhiteSpace(_newComment)) return;
+
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId.HasValue)
+            {
+                await ArtworkService.AddCommentAsync(versionId, userId.Value, _newComment!);
+                _newComment = null;
+                Snackbar.Add("Komentaras pridėtas", Severity.Success);
+                await LoadCommentsAsync(versionId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida pridedant komentarą: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private Color GetVersionStatusColor(string status) => status switch
+    {
+        "approved" => Color.Success,
+        "pending" => Color.Warning,
+        "rejected" => Color.Error,
+        "superseded" => Color.Default,
+        _ => Color.Default
+    };
+
+    private string GetVersionStatusLabel(string status) => status switch
+    {
+        "approved" => "Patvirtinta",
+        "pending" => "Laukia",
+        "rejected" => "Atmesta",
+        "superseded" => "Superseded",
+        _ => status
+    };
+}
