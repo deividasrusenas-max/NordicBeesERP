@@ -474,7 +474,7 @@ docs: update standards
 
 ## VERSIJŲ SISTEMA
 
-Dabartinė versija: v0.9.3.14
+Dabartinė versija: v0.9.3.15
 
 fix (klaidos taisymas) → patch: v0.9.3.x
 feat (naujas funkcionalumas) → minor: v0.9.x.0
