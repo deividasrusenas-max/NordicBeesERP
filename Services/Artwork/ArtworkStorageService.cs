@@ -23,9 +23,6 @@ public class ArtworkStorageService : IArtworkStorageService
     {
         _storageRoot = options.Value.StorageRoot ?? throw new InvalidOperationException("StorageRoot is not configured");
         _logger = logger;
-        
-        // Ensure storage root exists
-        Directory.CreateDirectory(_storageRoot);
     }
 
     public string GetStorageRoot() => _storageRoot;
