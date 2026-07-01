@@ -17,4 +17,8 @@ public class ArtworkBrand
     public bool IsActive { get; set; } = true;
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties (ignored per standards)
+    [NotMapped]
+    public List<ArtworkAsset>? ArtworkAssets { get; set; }
 }

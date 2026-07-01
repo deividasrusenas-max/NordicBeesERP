@@ -1,5 +1,6 @@
 @page "/artwork/upload/{AssetId:int}"
 @using Microsoft.AspNetCore.Components.Forms
+@using NordicBeesERP.Services.Artwork
 @inject IJSRuntime JS
 @inject IArtworkService ArtworkService
 @inject IAuthService AuthService
@@ -10,7 +11,7 @@
     <div id="dropzone-area" class="border rounded-3 p-5 text-center bg-light">
         <p class="mb-3">Drag & drop file here or click to select</p>
         <button class="btn btn-primary" @onclick="SelectFile">Select File</button>
-        <input type="file" id="file-input" class="d-none" @ref="_fileInput" />
+        <InputFile id="file-input" class="d-none" OnChange="OnFileSelected" />
     </div>
 
     <div class="mt-3">
@@ -48,15 +49,12 @@
     [Parameter] public int AssetId { get; set; }
     public string? AssetName { get; set; }
 
-    private InputFile _fileInput = default!;
     private bool _uploading;
     private int _progress;
     private string ChangeDescription { get; set; } = "";
     private string ChangeDescriptionError { get; set; } = "";
     private ArtworkVersionUploadResult? _result;
     private DotNetObjectReference<DropZoneHelper>? _dotNetHelper;
-
-    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -81,12 +79,13 @@
 
     private void SelectFile()
     {
-        _fileInput?.Element.Click();
+        // Trigger the hidden InputFile element
+        JS.InvokeVoidAsync("document.getElementById('file-input').click");
     }
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
-        var file = e.FileCount > 0 ? e.FileRange.First() : null;
+        var file = e.FileCount > 0 ? e.File : null;
         if (file == null) return;
 
         _uploading = true;

@@ -31,4 +31,6 @@ public class ArtworkAsset
     public ArtworkBrand? Brand { get; set; }
     [NotMapped]
     public ArtworkAsset? Predecessor { get; set; }
+    [NotMapped]
+    public List<ArtworkVersion>? ArtworkVersions { get; set; }
 }

@@ -13,7 +13,7 @@ public interface IArtworkService
 public class ArtworkVersionUploadResult
 {
     public bool Success { get; set; }
+    public bool IsDuplicate { get; set; }
     public string? Message { get; set; }
     public ArtworkVersion? Version { get; set; }
-    public bool IsDuplicate { get; set; }
 }
