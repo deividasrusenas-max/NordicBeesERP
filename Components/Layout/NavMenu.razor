@@ -2,85 +2,96 @@
 @inject AuthenticationStateProvider AuthStateProvider
 
 <MudNavMenu Style="display:flex; flex-direction:column; height:100%">
-    <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Pradžia</MudNavLink>
-
-    <MudNavGroup Title="Sandėlis" Icon="@Icons.Material.Filled.Warehouse" Expanded="false">
-        <MudNavLink Href="/warehouse/deliveries/new" Icon="@Icons.Material.Filled.Add">Naujas pristatymas</MudNavLink>
-        <MudNavLink Href="/warehouse/deliveries" Icon="@Icons.Material.Filled.LocalShipping">Pristatymai</MudNavLink>
-        @if (_isAdmin || _isManager)
-        {
-            <MudNavLink Href="/warehouse/delivery-pricing" Icon="@Icons.Material.Filled.PriceCheck">Kainos ir mokėjimai</MudNavLink>
-            <MudNavLink Href="/warehouse/supplier-debts" Icon="@Icons.Material.Filled.AccountBalance">Skolos tiekėjams</MudNavLink>
-        }
-        <MudNavLink Href="/warehouse/stock" Icon="@Icons.Material.Filled.Inventory">Sandėlio likučiai</MudNavLink>
-        <MudNavLink Href="/warehouse/write-off" Icon="@Icons.Material.Filled.DeleteForever">Nurašymas</MudNavLink>
-        <MudNavLink Href="/warehouse/write-off-history" Icon="@Icons.Material.Filled.History">Nurašymų istorija</MudNavLink>
-        <MudNavLink Href="/warehouse/transfers" Icon="@Icons.Material.Filled.SwapHoriz">Perkėlimai</MudNavLink>
-    </MudNavGroup>
-
-    <MudNavGroup Title="Produkcija" Icon="@Icons.Material.Filled.Agriculture">
-        <MudNavLink Href="/products" Icon="@Icons.Material.Filled.Inventory">Produktai</MudNavLink>
-    </MudNavGroup>
-
-    @if (_isAdmin || _isManager || _isWarehouse)
+    @if (_isDesigner)
     {
-        <MudNavGroup Title="Tiekėjai ir klientai" Icon="@Icons.Material.Filled.People">
-            <MudNavLink Href="/suppliers" Icon="@Icons.Material.Filled.LocalShipping">Tiekėjai</MudNavLink>
-            <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
+        <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
+            <MudNavLink Href="/artwork/brands" Icon="@Icons.Material.Filled.Brush">Brands</MudNavLink>
+            <MudNavLink Href="/artwork/assets" Icon="@Icons.Material.Filled.Image">Assets</MudNavLink>
         </MudNavGroup>
     }
-
-    @if (_isAdmin || _isManager)
+    else
     {
-        <MudNavGroup Title="Pardavimai" Icon="@Icons.Material.Filled.AccountBalance">
-            <MudNavLink Href="/invoices/sales" Icon="@Icons.Material.Filled.Receipt">Pardavimų sąskaitos</MudNavLink>
-        </MudNavGroup>
-        <MudNavGroup Title="Medaus pirkimai" Icon="@Icons.Material.Filled.Hive" Expanded="false">
-            <MudNavLink Href="/invoices/purchases" Icon="@Icons.Material.Filled.Receipt">Pirkimų sąskaitos</MudNavLink>
-        </MudNavGroup>
-        <MudNavGroup Title="Įplaukos" Icon="@Icons.Material.Filled.Payment">
-            <MudNavLink Href="/payments" Icon="@Icons.Material.Filled.Dashboard">Skolų valdymas</MudNavLink>
-            <MudNavLink Href="/payments/forecast" Icon="@Icons.Material.Filled.TrendingUp">Įplaukų prognozė</MudNavLink>
-            <MudNavLink Href="/payments/history" Icon="@Icons.Material.Filled.History">Įplaukų istorija</MudNavLink>
-            <MudNavLink Href="/bank-import" Icon="@Icons.Material.Filled.FileUpload">Įplaukų banko importas</MudNavLink>
-            <MudNavLink Href="/credit-notes" Icon="@Icons.Material.Filled.Receipt">Kreditinės sąskaitos</MudNavLink>
-        </MudNavGroup>
-        <MudNavGroup Title="Išlaidos" Icon="@Icons.Material.Filled.Receipt" Expanded="false">
-            <MudNavLink Href="/expenses" Icon="@Icons.Material.Filled.Dashboard">Suvestinė</MudNavLink>
-            <MudNavLink Href="/expense-invoices" Icon="@Icons.Material.Filled.Receipt">Sąskaitos</MudNavLink>
-            <MudNavLink Href="/expense-payments" Icon="@Icons.Material.Filled.History">Mokėjimai</MudNavLink>
-            <MudNavLink Href="/expenses/forecast" Icon="@Icons.Material.Filled.TrendingDown">Išlaidų prognozė</MudNavLink>
-        </MudNavGroup>
-        <MudNavGroup Title="Statistika" Icon="@Icons.Material.Filled.BarChart" Expanded="false">
-            <MudNavLink Href="/statistics" Icon="@Icons.Material.Filled.ShoppingCart">Pirkimai</MudNavLink>
-            <MudNavLink Href="/statistics/sales" Icon="@Icons.Material.Filled.PointOfSale">Pardavimai</MudNavLink>
-        </MudNavGroup>
-    }
+        <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Pradžia</MudNavLink>
 
-    <div style="flex:1"></div>
-    <MudDivider Class="my-2"/>
+        <MudNavGroup Title="Sandėlis" Icon="@Icons.Material.Filled.Warehouse" Expanded="false">
+            <MudNavLink Href="/warehouse/deliveries/new" Icon="@Icons.Material.Filled.Add">Naujas pristatymas</MudNavLink>
+            <MudNavLink Href="/warehouse/deliveries" Icon="@Icons.Material.Filled.LocalShipping">Pristatymai</MudNavLink>
+            @if (_isAdmin || _isManager)
+            {
+                <MudNavLink Href="/warehouse/delivery-pricing" Icon="@Icons.Material.Filled.PriceCheck">Kainos ir mokėjimai</MudNavLink>
+                <MudNavLink Href="/warehouse/supplier-debts" Icon="@Icons.Material.Filled.AccountBalance">Skolos tiekėjams</MudNavLink>
+            }
+            <MudNavLink Href="/warehouse/stock" Icon="@Icons.Material.Filled.Inventory">Sandėlio likučiai</MudNavLink>
+            <MudNavLink Href="/warehouse/write-off" Icon="@Icons.Material.Filled.DeleteForever">Nurašymas</MudNavLink>
+            <MudNavLink Href="/warehouse/write-off-history" Icon="@Icons.Material.Filled.History">Nurašymų istorija</MudNavLink>
+            <MudNavLink Href="/warehouse/transfers" Icon="@Icons.Material.Filled.SwapHoriz">Perkėlimai</MudNavLink>
+        </MudNavGroup>
 
-    <MudNavGroup Title="Nustatymai" Icon="@Icons.Material.Filled.Settings">
-        @if (_isAdmin)
+        <MudNavGroup Title="Produkcija" Icon="@Icons.Material.Filled.Agriculture">
+            <MudNavLink Href="/products" Icon="@Icons.Material.Filled.Inventory">Produktai</MudNavLink>
+        </MudNavGroup>
+
+        @if (_isAdmin || _isManager || _isWarehouse)
         {
-            <MudNavLink Href="/app-settings" Icon="@Icons.Material.Filled.Settings">Pagrindiniai nustatymai</MudNavLink>
-            <MudNavLink Href="/settings/company" Icon="@Icons.Material.Filled.Business">Įmonės rekvizitai</MudNavLink>
-            <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.People">Vartotojai</MudNavLink>
+            <MudNavGroup Title="Tiekėjai ir klientai" Icon="@Icons.Material.Filled.People">
+                <MudNavLink Href="/suppliers" Icon="@Icons.Material.Filled.LocalShipping">Tiekėjai</MudNavLink>
+                <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
+            </MudNavGroup>
         }
-        <MudNavLink Href="/settings/honey-types" Icon="@Icons.Material.Filled.Hive">Medaus rūšys</MudNavLink>
-        <MudNavLink Href="/settings/raw-materials" Icon="@Icons.Material.Filled.Category">Žaliavų tipai</MudNavLink>
-        <MudNavLink Href="/warehouses" Icon="@Icons.Material.Filled.Warehouse">Sandėliai</MudNavLink>
+
         @if (_isAdmin || _isManager)
         {
-            <MudNavLink Href="/settings/expense-categories" Icon="@Icons.Material.Filled.Category">Išlaidų kategorijos</MudNavLink>
+            <MudNavGroup Title="Pardavimai" Icon="@Icons.Material.Filled.AccountBalance">
+                <MudNavLink Href="/invoices/sales" Icon="@Icons.Material.Filled.Receipt">Pardavimų sąskaitos</MudNavLink>
+            </MudNavGroup>
+            <MudNavGroup Title="Medaus pirkimai" Icon="@Icons.Material.Filled.Hive" Expanded="false">
+                <MudNavLink Href="/invoices/purchases" Icon="@Icons.Material.Filled.Receipt">Pirkimų sąskaitos</MudNavLink>
+            </MudNavGroup>
+            <MudNavGroup Title="Įplaukos" Icon="@Icons.Material.Filled.Payment">
+                <MudNavLink Href="/payments" Icon="@Icons.Material.Filled.Dashboard">Skolų valdymas</MudNavLink>
+                <MudNavLink Href="/payments/forecast" Icon="@Icons.Material.Filled.TrendingUp">Įplaukų prognozė</MudNavLink>
+                <MudNavLink Href="/payments/history" Icon="@Icons.Material.Filled.History">Įplaukų istorija</MudNavLink>
+                <MudNavLink Href="/bank-import" Icon="@Icons.Material.Filled.FileUpload">Įplaukų banko importas</MudNavLink>
+                <MudNavLink Href="/credit-notes" Icon="@Icons.Material.Filled.Receipt">Kreditinės sąskaitos</MudNavLink>
+            </MudNavGroup>
+            <MudNavGroup Title="Išlaidos" Icon="@Icons.Material.Filled.Receipt" Expanded="false">
+                <MudNavLink Href="/expenses" Icon="@Icons.Material.Filled.Dashboard">Suvestinė</MudNavLink>
+                <MudNavLink Href="/expense-invoices" Icon="@Icons.Material.Filled.Receipt">Sąskaitos</MudNavLink>
+                <MudNavLink Href="/expense-payments" Icon="@Icons.Material.Filled.History">Mokėjimai</MudNavLink>
+                <MudNavLink Href="/expenses/forecast" Icon="@Icons.Material.Filled.TrendingDown">Išlaidų prognozė</MudNavLink>
+            </MudNavGroup>
+            <MudNavGroup Title="Statistika" Icon="@Icons.Material.Filled.BarChart" Expanded="false">
+                <MudNavLink Href="/statistics" Icon="@Icons.Material.Filled.ShoppingCart">Pirkimai</MudNavLink>
+                <MudNavLink Href="/statistics/sales" Icon="@Icons.Material.Filled.PointOfSale">Pardavimai</MudNavLink>
+            </MudNavGroup>
         }
-    </MudNavGroup>
+
+        <div style="flex:1"></div>
+        <MudDivider Class="my-2"/>
+
+        <MudNavGroup Title="Nustatymai" Icon="@Icons.Material.Filled.Settings">
+            @if (_isAdmin)
+            {
+                <MudNavLink Href="/app-settings" Icon="@Icons.Material.Filled.Settings">Pagrindiniai nustatymai</MudNavLink>
+                <MudNavLink Href="/settings/company" Icon="@Icons.Material.Filled.Business">Įmonės rekvizitai</MudNavLink>
+                <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.People">Vartotojai</MudNavLink>
+            }
+            <MudNavLink Href="/settings/honey-types" Icon="@Icons.Material.Filled.Hive">Medaus rūšys</MudNavLink>
+            <MudNavLink Href="/settings/raw-materials" Icon="@Icons.Material.Filled.Category">Žaliavų tipai</MudNavLink>
+            <MudNavLink Href="/warehouses" Icon="@Icons.Material.Filled.Warehouse">Sandėliai</MudNavLink>
+            @if (_isAdmin || _isManager)
+            {
+                <MudNavLink Href="/settings/expense-categories" Icon="@Icons.Material.Filled.Category">Išlaidų kategorijos</MudNavLink>
+            }
+        </MudNavGroup>
+    }
 </MudNavMenu>
 
 @code {
     private bool _isAdmin;
     private bool _isManager;
     private bool _isWarehouse;
+    private bool _isDesigner;
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,5 +99,6 @@
         _isAdmin = auth.User.IsInRole("Admin");
         _isManager = auth.User.IsInRole("Manager");
         _isWarehouse = auth.User.IsInRole("Warehouse");
+        _isDesigner = auth.User.IsInRole("Designer");
     }
 }

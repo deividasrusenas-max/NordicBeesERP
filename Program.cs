@@ -92,7 +92,12 @@ builder.Services.AddAuthentication("Cookies")
         options.LoginPath = "/login";
         options.ExpireTimeSpan = TimeSpan.FromDays(30);
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ArtworkAccess", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireRole("Admin", "Manager", "Designer"));
+});
 
 var app = builder.Build();
 
