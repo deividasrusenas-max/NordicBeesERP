@@ -14,20 +14,17 @@ public class ArtworkPreviewWorker : BackgroundService
     private readonly ILogger<ArtworkPreviewWorker> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IDbContextFactory<NordicBeesERPContext> _dbFactory;
-    private readonly IArtworkStorageService _storageService;
     private readonly ArtworkPreviewOptions _options;
 
     public ArtworkPreviewWorker(
         ILogger<ArtworkPreviewWorker> logger,
         IServiceScopeFactory scopeFactory,
         IDbContextFactory<NordicBeesERPContext> dbFactory,
-        IArtworkStorageService storageService,
         IOptions<ArtworkPreviewOptions> options)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
         _dbFactory = dbFactory;
-        _storageService = storageService;
         _options = options.Value;
     }
 
@@ -55,6 +52,7 @@ public class ArtworkPreviewWorker : BackgroundService
     private async Task ProcessPendingVersionsAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
+        var storageService = scope.ServiceProvider.GetRequiredService<IArtworkStorageService>();
         using var context = _dbFactory.CreateDbContext();
 
         var pendingVersions = await context.ArtworkVersions
@@ -87,8 +85,11 @@ public class ArtworkPreviewWorker : BackgroundService
 
     private async Task GeneratePreviewsForVersionAsync(ArtworkVersion version, CancellationToken cancellationToken)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var storageService = scope.ServiceProvider.GetRequiredService<IArtworkStorageService>();
+
         // Check if file exists
-        if (!await _storageService.FileExistsAsync(version.FilePath))
+        if (!await storageService.FileExistsAsync(version.FilePath))
         {
             _logger.LogWarning("Source file not found for version {VersionId}: {FilePath}", version.Id, version.FilePath);
             return;
@@ -102,7 +103,7 @@ public class ArtworkPreviewWorker : BackgroundService
         var thumbnailPath = Path.Combine(directory!, $"{fileNameWithoutExt}_thumb.png");
 
         // Use Ghostscript to generate previews
-        var sourcePath = Path.Combine(_storageService.GetStorageRoot(), version.FilePath);
+        var sourcePath = Path.Combine(storageService.GetStorageRoot(), version.FilePath);
         
         try
         {
@@ -112,13 +113,13 @@ public class ArtworkPreviewWorker : BackgroundService
             
             // Downscale to 400px width (simplified - in production use ImageSharp)
             // For MVP, we'll just copy the raw thumbnail
-            File.Copy(thumbRawPath, Path.Combine(_storageService.GetStorageRoot(), thumbnailPath), overwrite: true);
+            File.Copy(thumbRawPath, Path.Combine(storageService.GetStorageRoot(), thumbnailPath), overwrite: true);
             File.Delete(thumbRawPath);
             
             // Generate full preview (higher resolution)
             var previewRawPath = Path.Combine(Path.GetTempPath(), $"preview_raw_{version.Id}.png");
             await RunGhostscriptAsync(sourcePath, previewRawPath, "-r150", cancellationToken);
-            File.Copy(previewRawPath, Path.Combine(_storageService.GetStorageRoot(), previewPath), overwrite: true);
+            File.Copy(previewRawPath, Path.Combine(storageService.GetStorageRoot(), previewPath), overwrite: true);
             File.Delete(previewRawPath);
 
             // Update database
