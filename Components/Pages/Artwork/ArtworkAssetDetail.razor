@@ -1,4 +1,4 @@
-@page "/artwork/asset/{id}"
+@page "/artwork/asset/{Id:int}"
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.Artwork
 @using NordicBeesERP.Services
@@ -202,6 +202,7 @@
     {
         if (_detail?.ActualVersion != null)
         {
+            // TODO: Implement actual file download streaming
             Snackbar.Add("Failas paruoštas atsisiuntimui", Severity.Info);
         }
     }
@@ -234,14 +235,6 @@
 
     private async Task RejectPendingAsync()
     {
-        var result = await DialogService.ShowMessageBox(
-            "Atmesti versiją",
-            "Prašome nurodyti atmetimo priežastį:",
-            yesText: "Atmesti",
-            cancelText: "Atšaukti");
-
-        if (result != true) return;
-
         var comment = await ShowRejectCommentDialogAsync();
         if (string.IsNullOrWhiteSpace(comment))
         {
