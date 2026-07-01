@@ -26,11 +26,4 @@ public class ArtworkAsset
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties (ignored per standards)
-    [NotMapped]
-    public ArtworkBrand? Brand { get; set; }
-    [NotMapped]
-    public ArtworkAsset? Predecessor { get; set; }
-    [NotMapped]
-    public List<ArtworkVersion>? ArtworkVersions { get; set; }
 }

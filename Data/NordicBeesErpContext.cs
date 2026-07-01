@@ -109,6 +109,7 @@ namespace NordicBeesERP.Data
         public DbSet<ArtworkAsset> ArtworkAssets { get; set; }
         public DbSet<ArtworkVersion> ArtworkVersions { get; set; }
         public DbSet<ArtworkComment> ArtworkComments { get; set; }
+        public DbSet<ArtworkVersionAudit> ArtworkVersionAudits { get; set; }
         public DbSet<ArtworkAuditLog> ArtworkAuditLogs { get; set; }
 
         // =====================================================
@@ -636,47 +637,24 @@ namespace NordicBeesERP.Data
                  entity.HasIndex(e => e.Name).IsUnique();
              });
 
-             modelBuilder.Entity<ArtworkAsset>(entity =>
-             {
-                 entity.HasIndex(e => new { e.BrandId, e.Name }).HasDatabaseName("uq_brand_asset_name");
-                 entity.HasIndex(e => e.Status);
-                 entity.HasIndex(e => e.PredecessorAssetId);
-                 entity.HasOne(e => e.Brand)
-                     .WithMany()
-                     .HasForeignKey(e => e.BrandId)
-                     .OnDelete(DeleteBehavior.Restrict);
-                 entity.HasOne(e => e.Predecessor)
-                     .WithMany()
-                     .HasForeignKey(e => e.PredecessorAssetId)
-                     .OnDelete(DeleteBehavior.SetNull);
-                 entity.Ignore(e => e.Brand);
-                 entity.Ignore(e => e.Predecessor);
-             });
+              modelBuilder.Entity<ArtworkAsset>(entity =>
+              {
+                  entity.HasIndex(e => new { e.BrandId, e.Name }).HasDatabaseName("uq_brand_asset_name");
+                  entity.HasIndex(e => e.Status);
+                  entity.HasIndex(e => e.PredecessorAssetId);
+              });
 
-             modelBuilder.Entity<ArtworkVersion>(entity =>
-             {
-                 entity.HasIndex(e => new { e.AssetId, e.VersionNumber }).HasDatabaseName("uq_asset_version");
-                 entity.HasIndex(e => new { e.AssetId, e.Status }).HasDatabaseName("idx_asset_status");
-                 entity.HasIndex(e => e.FileSha256);
-                 entity.HasOne(e => e.Asset)
-                     .WithMany()
-                     .HasForeignKey(e => e.AssetId)
-                     .OnDelete(DeleteBehavior.Cascade);
-                 entity.Ignore(e => e.Asset);
-                 entity.Ignore(e => e.UploadedByUser);
-                 entity.Ignore(e => e.ReviewedByUser);
-             });
+              modelBuilder.Entity<ArtworkVersion>(entity =>
+              {
+                  entity.HasIndex(e => new { e.AssetId, e.VersionNumber }).HasDatabaseName("uq_asset_version");
+                  entity.HasIndex(e => new { e.AssetId, e.Status }).HasDatabaseName("idx_asset_status");
+                  entity.HasIndex(e => e.FileSha256);
+              });
 
-             modelBuilder.Entity<ArtworkComment>(entity =>
-             {
-                 entity.HasIndex(e => e.VersionId);
-                 entity.HasOne(e => e.Version)
-                     .WithMany()
-                     .HasForeignKey(e => e.VersionId)
-                     .OnDelete(DeleteBehavior.Cascade);
-                 entity.Ignore(e => e.Version);
-                 entity.Ignore(e => e.User);
-             });
+              modelBuilder.Entity<ArtworkComment>(entity =>
+              {
+                  entity.HasIndex(e => e.VersionId);
+              });
 
              modelBuilder.Entity<ArtworkAuditLog>(entity =>
              {

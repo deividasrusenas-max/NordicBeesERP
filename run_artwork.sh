@@ -2,33 +2,6 @@
 set -e
 cd /Users/deividasru/Projects/NordicBeesERP
 
-echo "=== FAZĖ 4 ==="
-aider \
-  --read Docs/ARTWORK_MODULE_PLAN.md \
-  --read .clinerules/nordicbees-standards.md \
-  --read UI_STANDARD.md \
-  --read Models/Artwork/ArtworkBrand.cs \
-  --read Models/Artwork/ArtworkAsset.cs \
-  --read Models/Artwork/ArtworkVersion.cs \
-  --file Data/NordicBeesErpContext.cs \
-  --test-cmd "dotnet build 2>&1 | tail -20" \
-  --auto-test \
-  --message "Implement Phase 4 ONLY: create Components/Pages/Artwork/ArtworkDashboard.razor and Components/Pages/Artwork/ArtworkBrandPage.razor. Read-only pages, no upload/approval. Follow UI_STANDARD.md. Run ./bump-version.sh patch when done."
-
-echo "=== FAZĖ 5 ==="
-aider \
-  --read Docs/ARTWORK_MODULE_PLAN.md \
-  --read .clinerules/nordicbees-standards.md \
-  --read UI_STANDARD.md \
-  --read Models/Artwork/ArtworkBrand.cs \
-  --read Models/Artwork/ArtworkAsset.cs \
-  --read Models/Artwork/ArtworkVersion.cs \
-  --file Data/NordicBeesErpContext.cs \
-  --file Services/Artwork/ArtworkStorageService.cs \
-  --test-cmd "dotnet build 2>&1 | tail -20" \
-  --auto-test \
-  --message "Implement Phase 5 ONLY: create Components/Pages/Artwork/ArtworkUpload.razor with streaming upload, progress bar, change_description validation, SHA-256 duplicate check. Run ./bump-version.sh patch when done."
-
 echo "=== FAZĖ 6 ==="
 aider \
   --read Docs/ARTWORK_MODULE_PLAN.md \
@@ -36,10 +9,11 @@ aider \
   --read Models/Artwork/ArtworkBrand.cs \
   --read Models/Artwork/ArtworkAsset.cs \
   --read Models/Artwork/ArtworkVersion.cs \
+  --read Services/Artwork/ArtworkService.cs \
   --file Data/NordicBeesErpContext.cs \
   --test-cmd "dotnet build 2>&1 | tail -20" \
   --auto-test \
-  --message "Implement Phase 6 ONLY: approve/reject actions with supersede in one DB transaction via ExecuteSqlRawAsync, reject dialog requiring comment, audit log writes. Run ./bump-version.sh patch when done."
+  --message "Implement Phase 6 from ARTWORK_MODULE_PLAN.md. Create Components/Pages/Artwork/ArtworkAssetDetail.razor with: actual version block, approve/reject buttons for Admin, reject dialog requiring comment, version history timeline. Approve/reject actions use ExecuteSqlRawAsync - supersede old approved version and set new status in ONE transaction. Write to artwork_audit_log on every action. DO NOT use tool_call functions. Run ./bump-version.sh patch when done."
 
 echo "=== FAZĖ 7 ==="
 aider \
@@ -50,15 +24,16 @@ aider \
   --file Services/AuthService.cs \
   --test-cmd "dotnet build 2>&1 | tail -20" \
   --auto-test \
-  --message "Implement Phase 7 ONLY: add Designer role check in NavMenu.razor, ArtworkAccess authorization policy in Program.cs, Designer sees only Artwork section. Run ./bump-version.sh patch when done."
+  --message "Implement Phase 7 from ARTWORK_MODULE_PLAN.md. Add Designer to ErpUser role options. Add _isDesigner bool in NavMenu.razor following exact same pattern as _isAdmin. Designer sees ONLY Artwork nav items. Add ArtworkAccess policy in Program.cs requiring Admin OR Designer role. DO NOT use tool_call functions. Run ./bump-version.sh patch when done."
 
 echo "=== FAZĖ 8 ==="
 aider \
   --read Docs/ARTWORK_MODULE_PLAN.md \
   --read .clinerules/nordicbees-standards.md \
+  --read Services/Artwork/ArtworkService.cs \
   --file appsettings.json \
   --test-cmd "dotnet build 2>&1 | tail -20" \
   --auto-test \
-  --message "Implement Phase 8 ONLY: Telegram fire-and-forget HTTP notifications on upload and approve/reject, config from appsettings, failure never fails main operation. Download audit logging. Run ./bump-version.sh patch when done."
+  --message "Implement Phase 8 from ARTWORK_MODULE_PLAN.md. Create Services/Artwork/ArtworkNotificationService.cs with fire-and-forget Telegram HTTP calls for upload and approve/reject events. Config keys: Telegram:BotToken, Telegram:AdminChatId, Telegram:DesignerChatId in appsettings.json. Failure must never throw - wrap in try/catch with logging only. Register as AddScoped in Program.cs. DO NOT use tool_call functions. Run ./bump-version.sh patch when done."
 
 echo "=== VISKAS BAIGTA ==="

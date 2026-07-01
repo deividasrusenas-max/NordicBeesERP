@@ -13,6 +13,7 @@ public interface IAuthService
     Task<ErpUser?> GetAuthenticatedUserAsync();
     Task<int?> GetCustomerIdAsync();
     Task<int?> GetUserIdAsync();
+    Task<ErpUser?> GetUserByIdAsync(int userId);
 }
 
 public class AuthService : IAuthService
@@ -79,5 +80,11 @@ public class AuthService : IAuthService
     {
         var user = await GetAuthenticatedUserAsync();
         return user?.Id;
+    }
+
+    public async Task<ErpUser?> GetUserByIdAsync(int userId)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.ErpUsers.FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
     }
 }

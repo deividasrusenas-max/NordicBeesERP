@@ -24,6 +24,7 @@
 </MudDialog>
 
 @code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string InitialComment { get; set; } = "";
     
@@ -36,11 +37,11 @@
 
     private void ConfirmAsync()
     {
-        DialogService.Close(DialogResult.Ok(_comment));
+        MudDialog.Close(DialogResult.Ok(_comment));
     }
 
     private void CancelAsync()
     {
-        DialogService.Close(DialogResult.Cancel());
+        MudDialog.Cancel();
     }
 }

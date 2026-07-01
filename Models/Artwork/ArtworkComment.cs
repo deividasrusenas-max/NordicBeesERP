@@ -18,9 +18,6 @@ public class ArtworkComment
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties (ignored per standards)
     [NotMapped]
-    public ArtworkVersion? Version { get; set; }
-    [NotMapped]
-    public ErpUser? User { get; set; }
+    public string? UserName { get; set; }
 }
