@@ -1,0 +1,281 @@
+@page "/artwork/asset/{Id:int}"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.Artwork
+@using NordicBeesERP.Services.Artwork
+@using MudBlazor
+@inject IArtworkService ArtworkService
+@inject IAuthService AuthService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>@_asset?.Name</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_asset == null)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mx-auto" />
+    }
+    else
+    {
+        <!-- Asset Header -->
+        <MudPaper Class="pa-4 mb-4" Style="background:#f8fafc;border-radius:8px">
+            <div class="d-flex justify-space-between align-center mb-2">
+                <div>
+                    <MudText Typo="Typo.h5" Style="font-weight:600">@_asset.Name</MudText>
+                    <MudButton StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="NavigateToUpload">
+                        Įkelti naują versiją
+                    </MudButton>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">@_brand?.Name</MudText>
+                </div>
+                <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">@_asset.AssetType</MudChip>
+            </div>
+        </MudPaper>
+
+        <!-- Empty state when no versions -->
+        @if (_currentVersion == null && _pendingVersion == null)
+        {
+            <MudPaper Class="pa-6 mb-4 d-flex flex-column align-center justify-center" Style="background:#f8fafc;border-radius:8px;border:2px dashed #cbd5e1">
+                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Style="font-size:48px;color:#9ca3af" />
+                <MudText Typo="Typo.h6" Class="mt-2">Šis asset neturi versijų.</MudText>
+                <MudButton StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Filled" Color="Color.Primary" OnClick="UploadFirstVersion" Class="mt-3">
+                    Įkelti pirmą versiją
+                </MudButton>
+            </MudPaper>
+        }
+
+        <!-- Current Version -->
+        @if (_currentVersion != null)
+        {
+            <MudPaper Class="pa-4 mb-4" Style="background:#eff6ff;border-radius:8px;border-left:4px solid #2563eb">
+                <div class="d-flex justify-space-between align-center mb-3">
+                    <div>
+                        <MudText Typo="Typo.overline" Color="Color.Secondary">DABARINĖ VERSIJA</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:600">v@_currentVersion.VersionNumber</MudText>
+                    </div>
+                    <MudButton StartIcon="@Icons.Material.Filled.Download" Variant="Variant.Filled" Color="Color.Primary" OnClick="DownloadCurrentVersion">
+                        Atsisiųsti
+                    </MudButton>
+                </div>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <div class="d-flex gap-2 mb-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Originalus failas:</MudText>
+                            <MudText Typo="Typo.body2">@_currentVersion.OriginalFilename</MudText>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <div class="d-flex gap-2 mb-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Įkelta:</MudText>
+                            <MudText Typo="Typo.body2">@_currentVersion.UploadedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="12">
+                        @if (!string.IsNullOrEmpty(_currentVersion.ChangeDescription))
+                        {
+                            <div class="d-flex gap-2">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Pakeitimas:</MudText>
+                                <MudText Typo="Typo.body2">@_currentVersion.ChangeDescription</MudText>
+                            </div>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
+
+        <!-- Pending Version -->
+        @if (_pendingVersion != null && _isAdmin)
+        {
+            <MudPaper Class="pa-4 mb-4" Style="background:#fffbeb;border-radius:8px;border-left:4px solid #d97706">
+                <div class="d-flex justify-space-between align-center mb-3">
+                    <div>
+                        <MudText Typo="Typo.overline" Color="Color.Secondary">LAUKIANCI PATVIRTINIMO</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight:600">v@_pendingVersion.VersionNumber</MudText>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <MudButton StartIcon="@Icons.Material.Filled.CheckCircle" Variant="Variant.Filled" Color="Color.Primary" OnClick="() => ApproveVersion(_pendingVersion.Id)">
+                            Patvirtinti
+                        </MudButton>
+                        <MudButton StartIcon="@Icons.Material.Filled.Cancel" Variant="Variant.Outlined" Color="Color.Error" OnClick="() => RejectVersion(_pendingVersion.Id)">
+                            Atmesti
+                        </MudButton>
+                    </div>
+                </div>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <div class="d-flex gap-2 mb-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Originalus failas:</MudText>
+                            <MudText Typo="Typo.body2">@_pendingVersion.OriginalFilename</MudText>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <div class="d-flex gap-2 mb-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Įkelta:</MudText>
+                            <MudText Typo="Typo.body2">@_pendingVersion.UploadedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="12">
+                        @if (!string.IsNullOrEmpty(_pendingVersion.ChangeDescription))
+                        {
+                            <MudPaper Class="pa-2" Style="background:#fff8e1;border-left:3px solid #f9a825">
+                                <div class="d-flex gap-1">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Pakeitimas (svarbiausia):</MudText>
+                                    <MudText Typo="Typo.body2">@_pendingVersion.ChangeDescription</MudText>
+                                </div>
+                            </MudPaper>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
+
+        <!-- Version History -->
+        <MudPaper Class="pa-3" Elevation="0" Style="background:#f8fafc;border-radius:8px">
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Versijų žurnalas</MudText>
+            <MudTable Items="@_versions" Dense="true" Hover="true" Striped="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Versija</MudTh>
+                    <MudTh>Originalus failas</MudTh>
+                    <MudTh>Statusas</MudTh>
+                    <MudTh>Pakeitimas</MudTh>
+                    <MudTh>Sukurta</MudTh>
+                    <MudTh>Veiksmai</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="version">
+                    <MudTd>@($"v{version.VersionNumber}")</MudTd>
+                    <MudTd>
+                        <MudText Typo="Typo.body2">@version.OriginalFilename</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Color="@GetStatusColor(version.Status)" Variant="Variant.Filled">@GetStatusLabel(version.Status)</MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudText Typo="Typo.body2" NoWrap="true" Class="text-truncate">@GetChangeDescriptionDisplay(version.ChangeDescription)</MudText>
+                    </MudTd>
+                    <MudTd>@version.UploadedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                    <MudTd>
+                        <div @onclick:stopPropagation="true">
+                            <MudIconButton Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="() => DownloadVersion(version.Id)" />
+                        </div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private ArtworkAsset? _asset;
+    private ArtworkBrand? _brand;
+    private ArtworkVersion? _currentVersion;
+    private ArtworkVersion? _pendingVersion;
+    private List<ArtworkVersion> _versions = new();
+    private bool _isAdmin;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        _isAdmin = user?.Role == "Admin";
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        var detail = await ArtworkService.GetAssetDetailAsync(Id);
+        _asset = detail?.Asset;
+        if (_asset != null)
+        {
+            _currentVersion = detail.ActualVersion;
+            _pendingVersion = detail.PendingVersion;
+            _versions = detail.History;
+        }
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task ApproveVersion(int versionId)
+    {
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        var userId = await AuthService.GetUserIdAsync();
+        if (userId.HasValue)
+        {
+            await ArtworkService.ApproveVersionAsync(versionId, userId.Value);
+            await LoadDataAsync();
+            Snackbar.Add("Versija patvirtinta", Severity.Success);
+        }
+    }
+
+    private async Task RejectVersion(int versionId)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("InitialComment", $"Versijos ID: {versionId}");
+        
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialogRef = await DialogService.ShowAsync<RejectCommentDialog>("Atmesti versiją", parameters, options);
+        var result = await dialogRef.Result;
+        
+        if (result.Canceled) return;
+        
+        if (result.Data is string comment)
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId.HasValue)
+            {
+                await ArtworkService.RejectVersionAsync(versionId, userId.Value, comment);
+                await LoadDataAsync();
+                Snackbar.Add("Versija atmesta", Severity.Info);
+            }
+        }
+    }
+
+private void NavigateToUpload()
+{
+    Navigation.NavigateTo($"/artwork/upload/{Id}");
+}
+
+private async Task UploadFirstVersion()
+{
+    Navigation.NavigateTo($"/artwork/upload/{Id}", forceLoad: true);
+}
+
+private async Task DownloadCurrentVersion()
+{
+    Navigation.NavigateTo($"/artwork/download/{_currentVersion!.Id}", forceLoad: true);
+}
+
+private async Task DownloadVersion(int versionId)
+{
+    Navigation.NavigateTo($"/artwork/download/{versionId}", forceLoad: true);
+}
+
+    private string GetStatusLabel(string status)
+    {
+        return status?.ToLowerInvariant() switch
+        {
+            "approved" => "Patvirtinta",
+            "pending" => "Laukiama",
+            "rejected" => "Atmesta",
+            "superseded" => "Pakeista",
+            "archived" => "Archyvuota",
+            _ => status ?? "Nežinoma"
+        };
+    }
+
+    private string GetChangeDescriptionDisplay(string? description)
+    {
+        if (string.IsNullOrEmpty(description)) return "-";
+        return description;
+    }
+
+    private Color GetStatusColor(string status) => status?.ToLowerInvariant() switch
+    {
+        "approved" => Color.Success,
+        "pending" => Color.Warning,
+        "rejected" => Color.Error,
+        "superseded" => Color.Primary,
+        "archived" => Color.Dark,
+        _ => Color.Default
+    };
+}
