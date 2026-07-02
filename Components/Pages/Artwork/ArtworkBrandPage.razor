@@ -1,17 +1,20 @@
 @page "/artwork/brand/{BrandId:int}"
 @rendermode InteractiveServer
 @using NordicBeesERP.Services.Artwork
+@using NordicBeesERP.Components.Dialogs
 @using MudBlazor
 @inject IArtworkService ArtworkService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
+@inject IAuthService AuthService
+@inject IDialogService DialogService
 
 <PageTitle>@_brandName</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">@_brandName</MudText>
-        <MudButton OnClick="OpenUpload" StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Filled" Color="Color.Primary">
-            Įkelti
+        <MudButton OnClick="OpenCreateAsset" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary">
+            Naujas asset'as
         </MudButton>
     </div>
 
@@ -26,27 +29,36 @@
                 @foreach (var asset in _assets)
                 {
                     <MudItem xs="12" sm="6" md="4">
-                        <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px; cursor:pointer"
-                                  OnClick="@(async () => await NavigateToAsset(asset.Id))">
-                            <div class="d-flex justify-space-between align-start">
-                                <MudText Typo="Typo.h6">@asset.Name</MudText>
-                                @if (asset.HasPendingVersion)
-                                {
-                                    <MudChip T="bool" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
-                                        Laukia
-                                    </MudChip>
-                                }
-                            </div>
-                            <MudText Typo="Typo.caption" Class="mt-1">
-                                @GetAssetTypeLabel(asset.AssetType) — v@asset.ActualVersionNumber
-                            </MudText>
-                            @if (asset.Status == "archived")
-                            {
-                                <MudText Typo="Typo.caption" Class="mt-1" Style="color:#9ca3af">
-                                    Archyvuotas
+                        <div @onclick="@(async () => await NavigateToAsset(asset.Id))" style="cursor:pointer">
+                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px">
+                                <div class="d-flex justify-space-between align-start">
+                                    <MudText Typo="Typo.h6">@asset.Name</MudText>
+                                    @if (asset.HasPendingVersion)
+                                    {
+                                        <MudChip T="bool" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
+                                            Laukia
+                                        </MudChip>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.caption" Class="mt-1">
+                                    @GetAssetTypeLabel(asset.AssetType) — @($"v{asset.ActualVersionNumber}")
                                 </MudText>
-                            }
-                        </MudPaper>
+                                @if (asset.Status == "archived")
+                                {
+                                    <MudText Typo="Typo.caption" Class="mt-1" Style="color:#9ca3af">
+                                        Archyvuotas
+                                    </MudText>
+                                }
+                            </MudPaper>
+                        </div>
+                    </MudItem>
+                }
+                @if (!_assets.Any())
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body1" Class="pa-4" Style="color:#9ca3af">
+                            Nėra asset'ų. Sukurkite pirmąjį paspaudę "Naujas asset'as".
+                        </MudText>
                     </MudItem>
                 }
             </MudGrid>
@@ -62,8 +74,13 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
         _isLoading = true;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
         try
         {
             var brand = await ArtworkService.GetBrandByIdAsync(BrandId);
@@ -75,7 +92,7 @@
             Snackbar.Add("Klaida įkeliant įrašus: " + ex.Message, Severity.Error);
         }
         _isLoading = false;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task NavigateToAsset(int id)
@@ -83,9 +100,23 @@
         NavigationManager.NavigateTo($"/artwork/asset/{id}");
     }
 
-    private void OpenUpload()
+    private async Task OpenCreateAsset()
     {
-        NavigationManager.NavigateTo("/artwork/upload");
+        var result = await DialogService.ShowAsync<AssetCreateDialog>(
+            "Naujas asset'as",
+            new DialogParameters { { "BrandId", BrandId } },
+            new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true, MaxWidth = MaxWidth.Small });
+
+        var dialogResult = await result.Result;
+        if (dialogResult?.Data is int assetId)
+        {
+            await LoadDataAsync();
+            NavigationManager.NavigateTo($"/artwork/asset/{assetId}");
+        }
+        else
+        {
+            await LoadDataAsync();
+        }
     }
 
     private string GetAssetTypeLabel(string? type) => type switch
