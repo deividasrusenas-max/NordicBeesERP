@@ -216,7 +216,7 @@
     private async Task RejectVersion(int versionId)
     {
         var parameters = new DialogParameters();
-        parameters.Add("InitialComment", $"Versijos ID: {versionId}");
+        parameters.Add("InitialComment", "");
         
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
         var dialogRef = await DialogService.ShowAsync<RejectCommentDialog>("Atmesti versiją", parameters, options);
