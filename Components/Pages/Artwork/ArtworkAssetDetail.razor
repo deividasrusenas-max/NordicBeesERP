@@ -147,6 +147,12 @@
                     </MudTd>
                     <MudTd>
                         <MudChip T="string" Color="@GetStatusColor(version.Status)" Variant="Variant.Filled">@GetStatusLabel(version.Status)</MudChip>
+                        @if (version.Status == "rejected" && !string.IsNullOrEmpty(version.ReviewComment))
+                        {
+                            <MudText Typo="Typo.caption" Style="color:#ef4444">
+                                Priežastis: @version.ReviewComment
+                            </MudText>
+                        }
                     </MudTd>
                     <MudTd>
                         <MudText Typo="Typo.body2" NoWrap="true" Class="text-truncate">@GetChangeDescriptionDisplay(version.ChangeDescription)</MudText>
