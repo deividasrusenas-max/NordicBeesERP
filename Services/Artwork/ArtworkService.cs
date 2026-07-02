@@ -10,11 +10,13 @@ public class ArtworkService : IArtworkService
 {
     private readonly NordicBeesERPContext _context;
     private readonly IAuthService _authService;
+    private readonly IArtworkStorageService _storageService;
 
-    public ArtworkService(NordicBeesERPContext context, IAuthService authService)
+    public ArtworkService(NordicBeesERPContext context, IAuthService authService, IArtworkStorageService storageService)
     {
         _context = context;
         _authService = authService;
+        _storageService = storageService;
     }
 
     public async Task<ArtworkAssetDetailDto> GetAssetDetailAsync(int assetId)
@@ -35,9 +37,7 @@ public class ArtworkService : IArtworkService
         var actualVersion = allVersions.FirstOrDefault(v => v.Status == "approved");
         var pendingVersion = allVersions.FirstOrDefault(v => v.Status == "pending");
 
-        var history = allVersions
-            .Where(v => v.Status != "pending" && v.Id != (actualVersion?.Id ?? 0))
-            .ToList();
+        var history = allVersions.ToList();
 
         return new ArtworkAssetDetailDto
         {
@@ -59,6 +59,7 @@ public class ArtworkService : IArtworkService
         // Get current user
         var user = await _authService.GetAuthenticatedUserAsync();
         var performedBy = user?.FullName ?? user?.Email ?? "system";
+        var userId = await _authService.GetUserIdAsync();
 
         var currentTimestamp = DateTime.UtcNow;
 
@@ -80,31 +81,15 @@ public class ArtworkService : IArtworkService
         // Insert audit logs for superseding
         foreach (var oldVersion in approvedVersions)
         {
-            _context.ArtworkVersionAudits.Add(new ArtworkVersionAudit
-            {
-                VersionId = oldVersion.Id,
-                Action = "STATUS_CHANGED",
-                ActionDetails = $"Superseded by version {versionToApprove.VersionNumber}",
-                OldStatus = "approved",
-                NewStatus = "superseded",
-                PerformedBy = performedBy,
-                PerformedAt = currentTimestamp
-            });
+            await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO artwork_audit_log (entity_type, entity_id, action, user_id, details, created_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",
+                "version", oldVersion.Id, "STATUS_CHANGED", userId.Value, $"Superseded by version {versionToApprove.VersionNumber} (approved→superseded)", currentTimestamp);
         }
 
         // Insert approval audit
-        _context.ArtworkVersionAudits.Add(new ArtworkVersionAudit
-        {
-            VersionId = versionId,
-            Action = "APPROVED",
-            ActionDetails = $"Approved by reviewer ID {reviewerId}",
-            OldStatus = "pending",
-            NewStatus = "approved",
-            PerformedBy = performedBy,
-            PerformedAt = currentTimestamp
-        });
-
-        await _context.SaveChangesAsync();
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_audit_log (entity_type, entity_id, action, user_id, details, created_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",
+            "version", versionId, "APPROVED", userId.Value, $"Approved by reviewer ID {reviewerId} (pending→approved)", currentTimestamp);
     }
 
     public async Task RejectVersionAsync(int versionId, int reviewerId, string comment)
@@ -117,25 +102,16 @@ public class ArtworkService : IArtworkService
 
         // Update version status
         await _context.Database.ExecuteSqlRawAsync(
-            "UPDATE artwork_versions SET status = @p0 WHERE id = @p1",
-            "rejected", versionId);
+            "UPDATE artwork_versions SET status = @p0, review_comment = @p1, reviewed_by = @p2, reviewed_at = @p3 WHERE id = @p4",
+            "rejected", comment, reviewerId, DateTime.UtcNow, versionId);
 
         var user = await _authService.GetAuthenticatedUserAsync();
         var performedBy = user?.FullName ?? user?.Email ?? "system";
+        var userId = await _authService.GetUserIdAsync();
 
-        var audit = new ArtworkVersionAudit
-        {
-            VersionId = versionId,
-            Action = "REJECTED",
-            ActionDetails = $"Rejected by reviewer ID {reviewerId}: {comment}",
-            OldStatus = oldStatus,
-            NewStatus = "rejected",
-            PerformedBy = performedBy,
-            PerformedAt = DateTime.UtcNow
-        };
-        _context.ArtworkVersionAudits.Add(audit);
-
-        await _context.SaveChangesAsync();
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_audit_log (entity_type, entity_id, action, user_id, details, created_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",
+            "version", versionId, "REJECTED", userId.Value, $"Rejected by reviewer ID {reviewerId} ({oldStatus}→rejected): {comment}", DateTime.UtcNow);
     }
 
     public async Task<List<ArtworkComment>> GetCommentsAsync(int versionId)
@@ -152,16 +128,9 @@ public class ArtworkService : IArtworkService
         if (version == null)
             throw new ArgumentException($"Version with ID {versionId} not found.");
 
-        var comment = new ArtworkComment
-        {
-            VersionId = versionId,
-            UserId = userId,
-            Body = body,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.ArtworkComments.Add(comment);
-        await _context.SaveChangesAsync();
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_comments (version_id, user_id, body, created_at) VALUES (@p0, @p1, @p2, @p3)",
+            versionId, userId, body, DateTime.UtcNow);
     }
 
     public async Task ArchiveAssetAsync(int assetId, int userId)
@@ -179,6 +148,16 @@ public class ArtworkService : IArtworkService
         await _context.Database.ExecuteSqlRawAsync(
             "UPDATE artwork_versions SET status = @p0 WHERE asset_id = @p1",
             "archived", assetId);
+    }
+
+    public async Task<int> CreateAssetAsync(int brandId, string name, string type, string? description, int userId)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_assets (brand_id, name, asset_type, description, status, created_by, created_at) VALUES (@p0, @p1, @p2, @p3, 'active', @p4, NOW())",
+            brandId, name, type, description ?? "", userId);
+
+        var result = await _context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
+        return result;
     }
 
     public async Task<List<ArtworkBrandWithCounts>> GetBrandsWithCountsAsync()
@@ -309,13 +288,26 @@ public class ArtworkService : IArtworkService
 
         int nextVersionNumber = (latestVersion?.VersionNumber ?? 0) + 1;
 
+        // Get brand slug for file path
+        var asset = await _context.ArtworkAssets.FindAsync(assetId);
+        if (asset == null)
+            return new ArtworkVersionUploadResult { Success = false, Message = "Asset not found." };
+
+        var brand = await _context.ArtworkBrands.FindAsync(asset.BrandId);
+        if (brand == null)
+            return new ArtworkVersionUploadResult { Success = false, Message = "Brand not found." };
+
+        // Save file to disk
+        using var stream = new MemoryStream(fileBytes);
+        var relativePath = await _storageService.SaveFileAsync(brand.Slug, assetId, nextVersionNumber, fileName, stream);
+
         // Save version record
         var newVersion = new ArtworkVersion
         {
             AssetId = assetId,
             VersionNumber = nextVersionNumber,
             FileType = fileType,
-            FilePath = $"/artwork/{assetId}/v{nextVersionNumber}/{fileName}",
+            FilePath = relativePath,
             OriginalFilename = fileName,
             FileSizeBytes = fileSize,
             FileSha256 = sha256,
@@ -324,13 +316,32 @@ public class ArtworkService : IArtworkService
             UploadedBy = userId.Value
         };
 
-        _context.ArtworkVersions.Add(newVersion);
-        await _context.SaveChangesAsync();
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_versions (asset_id, version_number, file_type, file_path, original_filename, file_size_bytes, file_sha256, change_description, status, uploaded_by, uploaded_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, 'pending', @p8, @p9)",
+            assetId, nextVersionNumber, fileType, relativePath, fileName, fileSize, sha256, changeDescription, userId.Value, DateTime.UtcNow);
+
+        var versionId = await _context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
+
+        var resultVersion = new ArtworkVersion
+        {
+            Id = versionId,
+            AssetId = assetId,
+            VersionNumber = nextVersionNumber,
+            FileType = fileType,
+            FilePath = relativePath,
+            OriginalFilename = fileName,
+            FileSizeBytes = fileSize,
+            FileSha256 = sha256,
+            ChangeDescription = changeDescription,
+            Status = "pending",
+            UploadedBy = userId.Value,
+            UploadedAt = DateTime.UtcNow
+        };
 
         return new ArtworkVersionUploadResult
         {
             Success = true,
-            Version = newVersion,
+            Version = resultVersion,
             Message = $"Version {nextVersionNumber} uploaded successfully."
         };
     }
