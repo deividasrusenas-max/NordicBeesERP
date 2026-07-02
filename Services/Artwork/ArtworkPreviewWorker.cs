@@ -56,7 +56,7 @@ public class ArtworkPreviewWorker : BackgroundService
         using var context = _dbFactory.CreateDbContext();
 
         var pendingVersions = await context.ArtworkVersions
-            .Where(v => v.Status == "pending" && (v.PreviewPath == null || v.ThumbnailPath == null))
+            .Where(v => v.PreviewPath == null || v.ThumbnailPath == null)
             .OrderBy(v => v.UploadedAt)
             .Take(_options.BatchSize)
             .ToListAsync(cancellationToken);
@@ -109,7 +109,7 @@ public class ArtworkPreviewWorker : BackgroundService
         {
             // Generate thumbnail (400px wide)
             var thumbRawPath = Path.Combine(Path.GetTempPath(), $"thumb_raw_{version.Id}.png");
-            await RunGhostscriptAsync(sourcePath, thumbRawPath, "-r72", cancellationToken);
+            await RunGhostscriptAsync(sourcePath, thumbRawPath, "-r150", cancellationToken);
             
             // Downscale to 400px width (simplified - in production use ImageSharp)
             // For MVP, we'll just copy the raw thumbnail
@@ -122,10 +122,11 @@ public class ArtworkPreviewWorker : BackgroundService
             File.Copy(previewRawPath, Path.Combine(storageService.GetStorageRoot(), previewPath), overwrite: true);
             File.Delete(previewRawPath);
 
-            // Update database
-            version.PreviewPath = previewPath;
-            version.ThumbnailPath = thumbnailPath;
-            await _dbFactory.CreateDbContext().SaveChangesAsync(cancellationToken);
+            // Update database via ExecuteSqlRawAsync because NoTracking is configured globally on the context
+            await using var ctx = _dbFactory.CreateDbContext();
+            await ctx.Database.ExecuteSqlRawAsync(
+                "UPDATE artwork_versions SET preview_path = @p0, thumbnail_path = @p1 WHERE id = @p2",
+                previewPath, thumbnailPath, version.Id);
 
             _logger.LogInformation("Generated previews for version {VersionId}", version.Id);
         }

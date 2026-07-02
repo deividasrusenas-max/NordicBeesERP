@@ -66,9 +66,19 @@
                     <MudItem xs="12" sm="6">
                         <div class="d-flex gap-2 mb-1">
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Įkelta:</MudText>
-                            <MudText Typo="Typo.body2">@_currentVersion.UploadedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+                            <MudText Typo="Typo.body2">@_currentVersion.UploadedAt.ToLithuanianTimeString()</MudText>
                         </div>
                     </MudItem>
+                    @if (_currentVersion.EffectiveFrom.HasValue)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <div class="d-flex gap-2 mb-1">
+                                <MudText Typo="Typo.body2">
+                                    <span style="color:#16a34a">Galioja nuo:</span> @_currentVersion.EffectiveFrom.Value.ToString("yyyy-MM-dd")
+                                </MudText>
+                            </div>
+                        </MudItem>
+                    }
                     <MudItem xs="12">
                         @if (!string.IsNullOrEmpty(_currentVersion.ChangeDescription))
                         {
@@ -79,6 +89,33 @@
                         }
                     </MudItem>
                 </MudGrid>
+                <MudSpacer />
+                @if (!string.IsNullOrEmpty(_currentVersion.ThumbnailPath))
+                {
+                    <img src=@($"/artwork/preview/{_currentVersion.Id}?full=true")
+                          style="max-height:200px; width:100%; object-fit:contain; cursor:pointer; border-radius:8px; border:1px solid #e2e8f0"
+                          @onclick="@(() => OpenFullPreview(_currentVersion!.Id))"
+                          class="d-block" />
+                }
+                else
+                {
+                    @if (string.IsNullOrEmpty(_currentVersion?.ThumbnailPath))
+                    {
+                        <div style="display:flex; flex-direction:column; align-items:center; padding:20px">
+                            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" />
+                            <MudText Typo="Typo.caption" Class="mt-2" Style="color:#64748b">
+                                Peržiūra generuojama...
+                            </MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <div @onclick="DownloadCurrentVersion" style="cursor:pointer">
+                            <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf"
+                                      Style="font-size:80px; color:#94a3b8" Class="d-block mt-2" />
+                        </div>
+                    }
+                }
             </MudPaper>
         }
 
@@ -92,7 +129,7 @@
                         <MudText Typo="Typo.h6" Style="font-weight:600">v@_pendingVersion.VersionNumber</MudText>
                     </div>
                     <div class="d-flex gap-2">
-                        <MudButton StartIcon="@Icons.Material.Filled.CheckCircle" Variant="Variant.Filled" Color="Color.Primary" OnClick="() => ApproveVersion(_pendingVersion.Id)">
+                        <MudButton StartIcon="@Icons.Material.Filled.CheckCircle" Variant="Variant.Filled" Color="Color.Success" OnClick="() => ApproveVersion(_pendingVersion.Id)">
                             Patvirtinti
                         </MudButton>
                         <MudButton StartIcon="@Icons.Material.Filled.Cancel" Variant="Variant.Outlined" Color="Color.Error" OnClick="() => RejectVersion(_pendingVersion.Id)">
@@ -110,7 +147,7 @@
                     <MudItem xs="12" sm="6">
                         <div class="d-flex gap-2 mb-1">
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Įkelta:</MudText>
-                            <MudText Typo="Typo.body2">@_pendingVersion.UploadedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+                            <MudText Typo="Typo.body2">@_pendingVersion.UploadedAt.ToLithuanianTimeString()</MudText>
                         </div>
                     </MudItem>
                     <MudItem xs="12">
@@ -125,6 +162,32 @@
                         }
                     </MudItem>
                 </MudGrid>
+                @if (!string.IsNullOrEmpty(_pendingVersion.ThumbnailPath))
+                {
+                    <img src=@($"/artwork/preview/{_pendingVersion.Id}")
+                         style="max-height:200px; width:100%; object-fit:contain; cursor:pointer; border-radius:8px; border:1px solid #e2e8f0"
+                         @onclick="@(() => OpenFullPreview(_pendingVersion!.Id))"
+                         class="d-block" />
+                }
+                else
+                {
+                    @if (string.IsNullOrEmpty(_pendingVersion?.ThumbnailPath))
+                    {
+                        <div style="display:flex; flex-direction:column; align-items:center; padding:20px">
+                            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" />
+                            <MudText Typo="Typo.caption" Class="mt-2" Style="color:#64748b">
+                                Peržiūra generuojama...
+                            </MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-block mt-2">
+                            <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf"
+                                      Style="font-size:80px; color:#94a3b8" />
+                        </div>
+                    }
+                }
             </MudPaper>
         }
 
@@ -137,6 +200,8 @@
                     <MudTh>Originalus failas</MudTh>
                     <MudTh>Statusas</MudTh>
                     <MudTh>Pakeitimas</MudTh>
+                    <MudTh>Galioja nuo</MudTh>
+                    <MudTh>Galioja iki</MudTh>
                     <MudTh>Sukurta</MudTh>
                     <MudTh>Veiksmai</MudTh>
                 </HeaderContent>
@@ -157,7 +222,13 @@
                     <MudTd>
                         <MudText Typo="Typo.body2" NoWrap="true" Class="text-truncate">@GetChangeDescriptionDisplay(version.ChangeDescription)</MudText>
                     </MudTd>
-                    <MudTd>@version.UploadedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                    <MudTd>
+                        @(version.EffectiveFrom.HasValue ? version.EffectiveFrom.Value.ToString("yyyy-MM-dd") : "-")
+                    </MudTd>
+                    <MudTd>
+                        @(version.EffectiveTo.HasValue ? version.EffectiveTo.Value.ToString("yyyy-MM-dd") : "-")
+                    </MudTd>
+                    <MudTd>@version.UploadedAt.ToLithuanianTimeString()</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
                             <MudIconButton Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="() => DownloadVersion(version.Id)" />
@@ -178,12 +249,22 @@
     private List<ArtworkVersion> _versions = new();
     private bool _isAdmin;
     private bool _isLoading = true;
+    private System.Threading.Timer? _refreshTimer;
 
     protected override async Task OnInitializedAsync()
     {
         var user = await AuthService.GetAuthenticatedUserAsync();
         _isAdmin = user?.Role == "Admin";
         await LoadDataAsync();
+        if (NeedsPreviewRefresh())
+            _refreshTimer = new System.Threading.Timer(async _ => 
+            {
+                await InvokeAsync(async () => {
+                    await LoadDataAsync();
+                    if (!NeedsPreviewRefresh()) _refreshTimer?.Dispose();
+                    StateHasChanged();
+                });
+            }, null, 5000, 5000);
     }
 
     private async Task LoadDataAsync()
@@ -201,15 +282,35 @@
         StateHasChanged();
     }
 
+    private bool NeedsPreviewRefresh() =>
+        (_currentVersion != null && string.IsNullOrEmpty(_currentVersion.ThumbnailPath)) ||
+        (_pendingVersion != null && string.IsNullOrEmpty(_pendingVersion.ThumbnailPath));
+
+    public void Dispose() => _refreshTimer?.Dispose();
+
     private async Task ApproveVersion(int versionId)
     {
-        var user = await AuthService.GetAuthenticatedUserAsync();
-        var userId = await AuthService.GetUserIdAsync();
-        if (userId.HasValue)
+        var parameters = new DialogParameters
         {
-            await ArtworkService.ApproveVersionAsync(versionId, userId.Value);
-            await LoadDataAsync();
-            Snackbar.Add("Versija patvirtinta", Severity.Success);
+            { "VersionId", versionId },
+            { "InitialComment", "" }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialogRef = await DialogService.ShowAsync<ApproveVersionDialog>("Patvirtinti versiją", parameters, options);
+        var result = await dialogRef.Result;
+
+        if (result.Canceled) return;
+
+        if (result.Data is DateTime? effectiveFrom && effectiveFrom.HasValue)
+        {
+            var user = await AuthService.GetAuthenticatedUserAsync();
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId.HasValue)
+            {
+                await ArtworkService.ApproveVersionAsync(versionId, userId.Value, effectiveFrom.Value.Date);
+                await LoadDataAsync();
+                Snackbar.Add($"Versija patvirtinta (galioja nuo {effectiveFrom:yyyy-MM-dd})", Severity.Success);
+            }
         }
     }
 
@@ -254,6 +355,14 @@ private async Task DownloadCurrentVersion()
 private async Task DownloadVersion(int versionId)
 {
     Navigation.NavigateTo($"/artwork/download/{versionId}", forceLoad: true);
+}
+
+private async Task OpenFullPreview(int versionId)
+{
+    var parameters = new DialogParameters { { "VersionId", versionId } };
+    var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true };
+    var dialogRef = await DialogService.ShowAsync<ArtworkPreviewDialog>("Prelimininė peržiūra", parameters, options);
+    await dialogRef.Result;
 }
 
     private string GetStatusLabel(string status)
