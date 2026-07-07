@@ -14,4 +14,5 @@ public interface IDeliveryService
     Task RecalculateTotalsAsync(int deliveryId);
     Task<string> GenerateDeliveryNumberAsync(string materialCode);
     Task UpdateDeliveryStatusAsync(int deliveryId);
+    Task<bool> SaveSignatureAsync(int deliveryId, string signerName, string signatureSvg);
 }

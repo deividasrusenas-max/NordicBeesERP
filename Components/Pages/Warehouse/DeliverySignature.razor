@@ -1,0 +1,240 @@
+@page "/warehouse/deliveries/{Id:int}/sign"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject IDeliveryService DeliveryService
+@inject ICustomerService CustomerService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Pasirašyti pristatymą</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    @if (_delivery == null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_delivery.SupplierSignedAt.HasValue)
+    {
+        <MudText Typo="Typo.h5" Class="mb-4">Pasirašyti pristatymą</MudText>
+        <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+            Jau pasirašyta @_delivery.SupplierSignedAt.Value.ToString("yyyy-MM-dd HH:mm")
+        </MudAlert>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/warehouse/deliveries">Atgal</MudButton>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-4">Pasirašyti pristatymą</MudText>
+
+        <!-- Delivery info -->
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Pristatymo informacija</MudText>
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Numeris</MudText>
+                    <MudText Typo="Typo.body1">@_delivery.DeliveryNumber</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Data</MudText>
+                    <MudText Typo="Typo.body1">@_delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Tiekėjas</MudText>
+                    <MudText Typo="Typo.body1">@_supplierName</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Bendras netto</MudText>
+                    <MudText Typo="Typo.body1">@_delivery.TotalNetWeight.ToString("N1") kg</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Terms -->
+        <MudPaper Class="pa-4 mb-4" Elevation="0" Style="background:#f0f4ff; border-left:4px solid #1976d2">
+            <MudText Typo="Typo.body2">Patvirtinu, kad pristatiau aukščiau nurodytą medų pagal sutartas sąlygas. Duomenys teisingi.</MudText>
+        </MudPaper>
+
+        <!-- Signer name -->
+        <MudTextField @bind-Value="_signerName" Label="Pristatė (vardas, pavardė)" Variant="Variant.Outlined"
+            FullWidth="true" Class="mb-4" Required="true" Adornment="Adornment.Start"
+            AdornmentIcon="@Icons.Material.Filled.Person" />
+
+        <!-- Signature canvas -->
+        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:white; border:1px solid #e0e0e0; border-radius:8px">
+            <MudText Typo="Typo.caption" Class="mb-2">Parašas</MudText>
+            <canvas id="signatureCanvas" width="500" height="200"
+                style="border:1px solid #ccc; border-radius:4px; touch-action:none; cursor:crosshair; background:white; display:block; margin:auto"></canvas>
+        </MudPaper>
+
+        <!-- Buttons -->
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearCanvasAsync">
+                Išvalyti
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.Draw" OnClick="SaveSignatureAsync" Disabled="@_saving">
+                @if (_saving)
+                {
+                    <MudProgressCircular Size="Size.Small" Color="Color.Inherit" />
+                }
+                Patvirtinti ir pasirašyti
+            </MudButton>
+        </MudStack>
+    }
+</MudContainer>
+
+<script>
+(function() {
+    const canvases = {};
+
+    window.initSignatureCanvas = function(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: (e.touches[0].clientX - rect.left) * scaleX,
+                    y: (e.touches[0].clientY - rect.top) * scaleY
+                };
+            }
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        };
+
+        const startDraw = (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+        };
+
+        const draw = (e) => {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            lastX = pos.x;
+            lastY = pos.y;
+        };
+
+        const stopDraw = (e) => {
+            if (e) e.preventDefault();
+            isDrawing = false;
+        };
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDraw, { passive: false });
+
+        canvases[canvasId] = { canvas, ctx };
+    };
+
+    window.clearSignatureCanvas = function(canvasId) {
+        const entry = canvases[canvasId];
+        if (!entry) return;
+        const { canvas, ctx } = entry;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    window.getCanvasSvg = function(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return '';
+        const dataUrl = canvas.toDataURL('image/png');
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="200"><image width="500" height="200" href="${dataUrl}"/></svg>`;
+    };
+})();
+</script>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Delivery? _delivery;
+    private string _supplierName = "";
+    private string _signerName = "";
+    private bool _saving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _delivery = await DeliveryService.GetByIdAsync(Id);
+        if (_delivery != null)
+        {
+            var suppliers = await CustomerService.GetSuppliersAsync();
+            _supplierName = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId)?.Name ?? "";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initSignatureCanvas", "signatureCanvas");
+        }
+    }
+
+    private async Task ClearCanvasAsync()
+    {
+        await JS.InvokeVoidAsync("clearSignatureCanvas", "signatureCanvas");
+    }
+
+    private async Task SaveSignatureAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_signerName))
+        {
+            Snackbar.Add("Įveskite savo vardą ir pavardę", Severity.Warning);
+            return;
+        }
+
+        if (_delivery == null) return;
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            var svg = await JS.InvokeAsync<string>("getCanvasSvg", "signatureCanvas");
+
+            if (string.IsNullOrWhiteSpace(svg))
+            {
+                Snackbar.Add("Nupieškite parašą prieš patvirtinant", Severity.Warning);
+                _saving = false;
+                StateHasChanged();
+                return;
+            }
+
+            await DeliveryService.SaveSignatureAsync(Id, _signerName, svg);
+            Snackbar.Add("Parašas išsaugotas sėkmingai", Severity.Success);
+            Navigation.NavigateTo($"/warehouse/deliveries/{Id}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida išsaugant parašą: {ex.Message}", Severity.Error);
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+}

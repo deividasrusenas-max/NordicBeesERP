@@ -754,6 +754,13 @@ namespace NordicBeesERP.Migrations
 ) ENGINE=InnoDB AUTO_INCREMENT=56 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
             ");
 
+            migrationBuilder.Sql(@"
+                ALTER TABLE deliveries
+                    ADD COLUMN IF NOT EXISTS supplier_signature_svg MEDIUMTEXT NULL,
+                    ADD COLUMN IF NOT EXISTS supplier_signed_at DATETIME NULL,
+                    ADD COLUMN IF NOT EXISTS supplier_signer_name VARCHAR(200) NULL;
+            ");
+
             // ── Group 4: depends on Groups 1-3 ───────────────────────────────
 
             migrationBuilder.Sql(@"

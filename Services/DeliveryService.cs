@@ -275,4 +275,16 @@ public class DeliveryService : IDeliveryService
         context.Entry(delivery).Property(d => d.Status).IsModified = true;
         await context.SaveChangesAsync();
     }
+
+    public async Task<bool> SaveSignatureAsync(int deliveryId, string signerName, string signatureSvg)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE deliveries SET supplier_signer_name=@name, supplier_signature_svg=@svg, supplier_signed_at=@signed WHERE id=@id",
+            new MySqlConnector.MySqlParameter("@name", signerName),
+            new MySqlConnector.MySqlParameter("@svg", signatureSvg),
+            new MySqlConnector.MySqlParameter("@signed", DateTime.Now),
+            new MySqlConnector.MySqlParameter("@id", deliveryId));
+        return true;
+    }
 }

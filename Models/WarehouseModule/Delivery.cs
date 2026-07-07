@@ -65,4 +65,14 @@ public class Delivery
 
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+    [Column("supplier_signature_svg")]
+    public string? SupplierSignatureSvg { get; set; }
+
+    [Column("supplier_signed_at")]
+    public DateTime? SupplierSignedAt { get; set; }
+
+    [Column("supplier_signer_name")]
+    [MaxLength(200)]
+    public string? SupplierSignerName { get; set; }
 }
