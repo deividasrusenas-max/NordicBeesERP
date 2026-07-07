@@ -6,6 +6,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
 
@@ -49,9 +50,39 @@
             </MudGrid>
         </MudPaper>
 
+        <!-- Containers -->
+        @if (_containers.Any())
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Pakuotės</MudText>
+                <MudTable T="NordicBeesERP.Models.WarehouseModule.Container" Items="_containers" Dense="true" Hover="false" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Tipas</MudTh>
+                        <MudTh Style="text-align:right">Brutto (kg)</MudTh>
+                        <MudTh Style="text-align:right">Tara (kg)</MudTh>
+                        <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="container">
+                        <MudTd>@(container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", _ => container.ContainerType })</MudTd>
+                        <MudTd Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
+                        <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
+                        <MudTd Style="text-align:right"><b>@container.NetWeight.ToString("N1")</b></MudTd>
+                    </RowTemplate>
+                    <FooterContent>
+                        <MudTFootRow>
+                            <MudTd><b>Iš viso</b></MudTd>
+                            <MudTd Style="text-align:right"><b>@_containers.Sum(c => c.GrossWeight).ToString("N1")</b></MudTd>
+                            <MudTd Style="text-align:right"><b>@_containers.Sum(c => c.TareWeight).ToString("N1")</b></MudTd>
+                            <MudTd Style="text-align:right"><b>@_containers.Sum(c => c.NetWeight).ToString("N1")</b></MudTd>
+                        </MudTFootRow>
+                    </FooterContent>
+                </MudTable>
+            </MudPaper>
+        }
+
         <!-- Terms -->
         <MudPaper Class="pa-4 mb-4" Elevation="0" Style="background:#f0f4ff; border-left:4px solid #1976d2">
-            <MudText Typo="Typo.body2">Patvirtinu, kad pristatiau aukščiau nurodytą medų pagal sutartas sąlygas. Duomenys teisingi.</MudText>
+            <MudText Typo="Typo.body2">Patvirtinu, kad pristačiau aukščiau nurodytus produktus pagal sutartas sąlygas. Duomenys teisingi.</MudText>
         </MudPaper>
 
         <!-- Signer name -->
@@ -177,6 +208,7 @@
     private string _supplierName = "";
     private string _signerName = "";
     private bool _saving = false;
+    private List<NordicBeesERP.Models.WarehouseModule.Container> _containers = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,6 +217,16 @@
         {
             var suppliers = await CustomerService.GetSuppliersAsync();
             _supplierName = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId)?.Name ?? "";
+
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+            var lineIds = await ctx.DeliveryLines
+                .Where(l => l.DeliveryId == _delivery.Id)
+                .Select(l => (int?)l.Id)
+                .ToListAsync();
+            _containers = await ctx.Containers
+                .Where(c => lineIds.Contains(c.DeliveryLineId))
+                .OrderBy(c => c.Id)
+                .ToListAsync();
         }
     }
 
