@@ -31,6 +31,12 @@
                     <MudItem xs="12" sm="6" md="4">
                         <div @onclick="@(async () => await NavigateToAsset(asset.Id))" style="cursor:pointer">
                             <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px">
+                                @if (asset.HasThumbnail && asset.ActualVersionId.HasValue)
+                                {
+                                    <img src="@($"/artwork/preview/{asset.ActualVersionId}")"
+                                         style="width:60px; height:60px; object-fit:cover; border-radius:4px; margin-bottom:8px"
+                                         class="d-block mx-auto" />
+                                }
                                 <div class="d-flex justify-space-between align-start">
                                     <MudText Typo="Typo.h6">@asset.Name</MudText>
                                     @if (asset.HasPendingVersion)

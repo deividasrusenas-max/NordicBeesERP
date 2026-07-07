@@ -1,3 +1,4 @@
+@using Microsoft.JSInterop
 @using MudBlazor
 
 <MudDialog>
@@ -8,14 +9,15 @@
         </div>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="@_comment"
+        <MudTextField @ref="_commentField" @bind-Value="@_comment"
                       Label="Priežastis"
                       Variant="Variant.Outlined"
                       FullWidth="true"
                       MinRows="3"
                       MaxRows="6"
                       AdornmentIcon="@Icons.Material.Filled.Edit"
-                      Adornment="Adornment.Start" />
+                      Adornment="Adornment.Start"
+                      @onkeydown="HandleKeyDown" />
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelAsync">Atšaukti</MudButton>
@@ -25,14 +27,41 @@
 
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string InitialComment { get; set; } = "";
     
+    private MudTextField<string> _commentField = default!;
     private string _comment = "";
+    private bool _isFirstRender = true;
 
     protected override void OnParametersSet()
     {
         _comment = InitialComment;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _isFirstRender)
+        {
+            _isFirstRender = false;
+            await Task.Delay(100);
+            await _commentField.FocusAsync();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e?.Key == "Enter" && !e.ShiftKey)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "event.preventDefault()");
+            ConfirmAsync();
+        }
+        else if (e?.Key == "Escape")
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "event.preventDefault()");
+            CancelAsync();
+        }
     }
 
     private void ConfirmAsync()

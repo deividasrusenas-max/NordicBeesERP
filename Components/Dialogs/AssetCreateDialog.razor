@@ -1,0 +1,96 @@
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Artwork
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Image" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Naujas asset'as</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:400px;" @onkeydown="HandleKeyDown">
+            <MudTextField T="string" @ref="_assetNameField" @bind-Value="_assetName" Label="Asset'as pavadinimas *" Dense="true" FullWidth="true" Required="true" Margin="Margin.Dense" />
+            <MudSelect T="string" @bind-Value="_assetType" Label="Asset'as tipas *" Dense="true" FullWidth="true" Required="true" Margin="Margin.Dense">
+                <MudSelectItem Value="@("label")" Text="Etiketė" />
+                <MudSelectItem Value="@("brochure")" Text="Brošiūra" />
+                <MudSelectItem Value="@("box")" Text="Dėžė" />
+                <MudSelectItem Value="@("sticker")" Text="Lipdukas" />
+                <MudSelectItem Value="@("other")" Text="Kitas" />
+            </MudSelect>
+            <MudTextField T="string" @bind-Value="_description" Label="Aprašymas" Dense="true" FullWidth="true" Margin="Margin.Dense" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelAsync" Variant="Variant.Text" Color="Color.Default">Atšaukti</MudButton>
+        <MudButton OnClick="SaveAsync" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Check">Sukurti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int BrandId { get; set; }
+
+    private MudTextField<string> _assetNameField = default!;
+    private string _assetName = "";
+    private string _assetType = "label";
+    private string _description = "";
+    private bool _isFirstRender = true;
+
+    [Inject] private IArtworkService ArtworkService { get; set; } = default!;
+    [Inject] private IAuthService AuthService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _isFirstRender)
+        {
+            _isFirstRender = false;
+            await Task.Delay(100);
+            await _assetNameField.FocusAsync();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e?.Key != "Enter") return;
+
+        if (string.IsNullOrWhiteSpace(_assetName))
+        {
+            Snackbar.Add("Asset'as pavadinimas yra privalomas!", Severity.Error);
+            return;
+        }
+
+        await SaveAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_assetName))
+        {
+            Snackbar.Add("Asset'as pavadinimas yra privalomas!", Severity.Error);
+            return;
+        }
+
+        var userId = await AuthService.GetUserIdAsync();
+        if (!userId.HasValue)
+        {
+            Snackbar.Add("Nepavyksta nustatyti vartotojo. Bandykite vėliau.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            var assetId = await ArtworkService.CreateAssetAsync(BrandId, _assetName, _assetType, _description, userId.Value);
+            Snackbar.Add("Asset'as sukurtas sėkmingai", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(assetId));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida kuriant asset'ą: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void CancelAsync() => MudDialog.Cancel();
+}

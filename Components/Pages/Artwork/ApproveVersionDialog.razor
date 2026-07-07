@@ -1,0 +1,45 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+            <MudText Typo="Typo.h6">Patvirtinti versiją</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:320px;">
+            <MudDatePicker @bind-Value="@_effectiveFrom"
+                           Label="Galioja nuo"
+                           FirstDayOfWeek="DayOfWeek.Monday"
+                           DisabledDaysOfTheWeek="@_disabledDays"
+                           MinDate="DateTime.Today"
+                           Variant="Variant.Outlined"
+                            FullWidth="@true"
+                           AdornmentIcon="@Icons.Material.Filled.Event" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelAsync">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ConfirmAsync" StartIcon="@Icons.Material.Filled.CheckCircle">Patvirtinti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int VersionId { get; set; }
+    [Parameter] public string InitialComment { get; set; } = "";
+
+    private DateTime? _effectiveFrom = DateTime.Today;
+    private DayOfWeek[] _disabledDays = [DayOfWeek.Saturday, DayOfWeek.Sunday];
+
+    private void ConfirmAsync()
+    {
+        MudDialog.Close(DialogResult.Ok(_effectiveFrom));
+    }
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+}

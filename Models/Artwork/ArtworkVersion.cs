@@ -43,4 +43,8 @@ public class ArtworkVersion
     public DateTime? ReviewedAt { get; set; }
     [Column("review_comment")]
     public string? ReviewComment { get; set; }
+    [Column("effective_from")]
+    public DateTime? EffectiveFrom { get; set; }
+    [Column("effective_to")]
+    public DateTime? EffectiveTo { get; set; }
 }

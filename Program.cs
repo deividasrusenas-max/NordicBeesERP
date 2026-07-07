@@ -116,6 +116,71 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+// Artwork File Download Endpoint
+app.MapGet("/artwork/download/{versionId:int}", async (int versionId,
+    IDbContextFactory<NordicBeesERPContext> dbFactory,
+    IConfiguration config) =>
+{
+    await using var ctx = await dbFactory.CreateDbContextAsync();
+    var version = await ctx.ArtworkVersions.FindAsync(versionId);
+    if (version == null) return Results.NotFound();
+
+    var root = config["ArtworkStorage:StorageRoot"] ?? "/var/lib/nordicbees/artwork";
+    var fullPath = Path.Combine(root, version.FilePath.Replace('/', Path.DirectorySeparatorChar));
+
+    if (!File.Exists(fullPath)) return Results.NotFound();
+
+    var contentType = version.FileType switch
+    {
+        "pdf" => "application/pdf",
+        _ => "application/octet-stream"
+    };
+
+    var stream = File.OpenRead(fullPath);
+    return Results.File(stream, contentType, version.OriginalFilename);
+})
+.AllowAnonymous();
+
+// Artwork Preview Endpoint (thumbnail)
+app.MapGet("/artwork/preview/{versionId:int}", async (int versionId,
+    IDbContextFactory<NordicBeesERPContext> dbFactory,
+    IConfiguration config) =>
+{
+    await using var ctx = await dbFactory.CreateDbContextAsync();
+    var version = await ctx.ArtworkVersions.FindAsync(versionId);
+    if (version == null) return Results.NotFound();
+    if (string.IsNullOrEmpty(version.ThumbnailPath)) return Results.NotFound();
+
+    var root = config["ArtworkStorage:StorageRoot"] ?? "/var/lib/nordicbees/artwork";
+    var fullPath = Path.Combine(root, version.ThumbnailPath.TrimStart('/'));
+
+    if (!File.Exists(fullPath)) return Results.NotFound();
+
+    var stream = File.OpenRead(fullPath);
+    return Results.File(stream, "image/png");
+})
+.AllowAnonymous();
+
+// Artwork Full Preview Endpoint (preview_path - higher resolution)
+app.MapGet("/artwork/preview/full/{versionId:int}", async (int versionId,
+    IDbContextFactory<NordicBeesERPContext> dbFactory,
+    IConfiguration config) =>
+{
+    await using var ctx = await dbFactory.CreateDbContextAsync();
+    var version = await ctx.ArtworkVersions.FindAsync(versionId);
+    if (version == null) return Results.NotFound();
+    if (string.IsNullOrEmpty(version.PreviewPath)) return Results.NotFound();
+
+    var root = config["ArtworkStorage:StorageRoot"] ?? "/var/lib/nordicbees/artwork";
+    var fullPath = Path.Combine(root, version.PreviewPath.TrimStart('/'));
+
+    if (!File.Exists(fullPath)) return Results.NotFound();
+
+    var stream = File.OpenRead(fullPath);
+    return Results.File(stream, "image/png");
+})
+.AllowAnonymous();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

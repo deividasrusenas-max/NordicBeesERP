@@ -1,0 +1,50 @@
+@using MudBlazor
+@inject NavigationManager Navigation
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Prelimininė peržiūra</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="display:flex; justify-content:center; align-items:center; min-width:500px; min-height:300px;">
+            @if (_versionId.HasValue)
+            {
+                <img src="@($"/artwork/preview/full/{_versionId}")"
+                      style="max-width:100%; max-height:70vh; border-radius:8px"
+                      alt="Preview" />
+            }
+            else
+            {
+                <MudText>Peržiūra nerasta</MudText>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelAsync">Uždaryti</MudButton>
+        @if (_versionId.HasValue)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="DownloadAsync" StartIcon="@Icons.Material.Filled.Download">
+                Atsisiųsti
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int VersionId { get; set; }
+    private int? _versionId;
+
+    protected override void OnParametersSet()
+    {
+        _versionId = VersionId;
+    }
+
+    private void CancelAsync() => MudDialog.Cancel();
+
+    private void DownloadAsync() => Navigation.NavigateTo($"/artwork/download/{_versionId}", forceLoad: true);
+}

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using NordicBeesERP.Data;
 using NordicBeesERP.Models.Artwork;
 using NordicBeesERP.Services;
@@ -11,12 +12,16 @@ public class ArtworkService : IArtworkService
     private readonly NordicBeesERPContext _context;
     private readonly IAuthService _authService;
     private readonly IArtworkStorageService _storageService;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<ArtworkService> _logger;
 
-    public ArtworkService(NordicBeesERPContext context, IAuthService authService, IArtworkStorageService storageService)
+    public ArtworkService(NordicBeesERPContext context, IAuthService authService, IArtworkStorageService storageService, IConfiguration configuration, ILogger<ArtworkService> logger)
     {
         _context = context;
         _authService = authService;
         _storageService = storageService;
+        _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<ArtworkAssetDetailDto> GetAssetDetailAsync(int assetId)
@@ -49,8 +54,9 @@ public class ArtworkService : IArtworkService
         };
     }
 
-    public async Task ApproveVersionAsync(int versionId, int reviewerId)
+    public async Task ApproveVersionAsync(int versionId, int reviewerId, DateTime effectiveFrom)
     {
+        _logger.LogInformation("ApproveVersion effectiveFrom: {date}", effectiveFrom);
         // Get the version to approve
         var versionToApprove = await _context.ArtworkVersions.FindAsync(versionId);
         if (versionToApprove == null)
@@ -63,20 +69,23 @@ public class ArtworkService : IArtworkService
 
         var currentTimestamp = DateTime.UtcNow;
 
+        // Calculate effective_to for the old approved version (day before new effective_from)
+        DateTime? effectiveToForOld = effectiveFrom.Date.AddDays(-1);
+
         // Find all currently approved versions for this asset
         var approvedVersions = await _context.ArtworkVersions
             .Where(v => v.AssetId == versionToApprove.AssetId && v.Status == "approved")
             .ToListAsync();
 
-        // Supersede old approved versions
+        // Supersede old approved versions AND set effective_to
         await _context.Database.ExecuteSqlRawAsync(
-            "UPDATE artwork_versions SET status = @p0, uploaded_at = @p1 WHERE asset_id = @p2 AND status = @p3",
-            "superseded", currentTimestamp, versionToApprove.AssetId, "approved");
+            "UPDATE artwork_versions SET status = @p0, uploaded_at = @p1, effective_to = @p2 WHERE asset_id = @p3 AND status = @p4",
+            "superseded", currentTimestamp, effectiveToForOld, versionToApprove.AssetId, "approved");
 
-        // Approve the new version
+        // Approve the new version with effective_from
         await _context.Database.ExecuteSqlRawAsync(
-            "UPDATE artwork_versions SET status = @p0, uploaded_at = @p1 WHERE id = @p2",
-            "approved", currentTimestamp, versionId);
+            "UPDATE artwork_versions SET status = @p0, uploaded_at = @p1, effective_from = @p2 WHERE id = @p3",
+            "approved", currentTimestamp, effectiveFrom.Date, versionId);
 
         // Insert audit logs for superseding
         foreach (var oldVersion in approvedVersions)
@@ -90,6 +99,39 @@ public class ArtworkService : IArtworkService
         await _context.Database.ExecuteSqlRawAsync(
             "INSERT INTO artwork_audit_log (entity_type, entity_id, action, user_id, details, created_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",
             "version", versionId, "APPROVED", userId.Value, $"Approved by reviewer ID {reviewerId} (pending→approved)", currentTimestamp);
+
+        // Rename approved file on disk and update DB with new filename
+        var approvedVersion = await _context.ArtworkVersions.FindAsync(versionId);
+        if (approvedVersion != null && !string.IsNullOrEmpty(approvedVersion.FilePath))
+        {
+            var asset = await _context.ArtworkAssets.FindAsync(approvedVersion.AssetId);
+            if (asset != null)
+            {
+                var brand = await _context.ArtworkBrands.FindAsync(asset.BrandId);
+                if (brand != null && !string.IsNullOrEmpty(brand.Slug))
+                {
+                    var newFilename = $"LK{asset.Id:D4}-{brand.Slug}-v{approvedVersion.VersionNumber}-{effectiveFrom:yyyyMMdd}.pdf";
+
+                    var storageRoot = _configuration["ArtworkStorage:StorageRoot"] ?? _storageService.GetStorageRoot();
+                    var oldFullPath = Path.Combine(storageRoot, approvedVersion.FilePath.TrimStart('/'));
+                    var directory = Path.GetDirectoryName(oldFullPath)!;
+                    var newFullPath = Path.Combine(directory, newFilename);
+
+                    if (File.Exists(oldFullPath))
+                    {
+                        File.Move(oldFullPath, newFullPath);
+                    }
+
+                    var newRelativePath = Path.Combine(
+                        Path.GetDirectoryName(approvedVersion.FilePath.TrimStart('/'))!,
+                        newFilename).Replace('\\', '/');
+
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "UPDATE artwork_versions SET file_path = @p0 WHERE id = @p1",
+                        newRelativePath, versionId);
+                }
+            }
+        }
     }
 
     public async Task RejectVersionAsync(int versionId, int reviewerId, string comment)
@@ -230,6 +272,8 @@ public class ArtworkService : IArtworkService
                 AssetType = asset.AssetType,
                 Status = asset.Status,
                 ActualVersionNumber = actualVersionNumber,
+                ActualVersionId = approvedVersions.Any() ? approvedVersions.First().Id : (int?)null,
+                HasThumbnail = approvedVersions.Any(v => !string.IsNullOrEmpty(v.ThumbnailPath)),
                 HasPendingVersion = pendingVersions.Any()
             });
         }
@@ -345,6 +389,62 @@ public class ArtworkService : IArtworkService
             Message = $"Version {nextVersionNumber} uploaded successfully."
         };
     }
+
+    public async Task<List<ArtworkGalleryItem>> GetGalleryAsync()
+    {
+        var today = DateTime.Today;
+
+        // Get all approved versions that are active (effective_from <= today OR effective_from IS NULL)
+        var approvedVersions = await _context.ArtworkVersions
+            .Where(v => v.Status == "approved"
+                && (v.EffectiveFrom == null || v.EffectiveFrom.Value.Date <= today)
+                && (v.EffectiveTo == null || v.EffectiveTo.Value.Date >= today))
+            .ToListAsync();
+
+        if (!approvedVersions.Any())
+            return new List<ArtworkGalleryItem>();
+
+        // Group by asset_id, take latest version_number per asset
+        var latestVersions = approvedVersions
+            .GroupBy(v => v.AssetId)
+            .Select(g => g.OrderByDescending(v => v.VersionNumber).First())
+            .ToList();
+
+        var result = new List<ArtworkGalleryItem>();
+
+        foreach (var version in latestVersions)
+        {
+            var asset = await _context.ArtworkAssets
+                .FirstOrDefaultAsync(a => a.Id == version.AssetId);
+            if (asset == null) continue;
+
+            var brand = await _context.ArtworkBrands
+                .FirstOrDefaultAsync(b => b.Id == asset.BrandId);
+            if (brand == null) continue;
+
+            result.Add(new ArtworkGalleryItem
+            {
+                AssetId = asset.Id,
+                AssetName = asset.Name,
+                BrandId = brand.Id,
+                BrandName = brand.Name,
+                BrandSlug = brand.Slug,
+                VersionId = version.Id,
+                VersionNumber = version.VersionNumber,
+                EffectiveFrom = version.EffectiveFrom,
+                ThumbnailPath = version.ThumbnailPath,
+                FilePath = version.FilePath
+            });
+        }
+
+        result.Sort((a, b) =>
+        {
+            var brandCmp = string.Compare(a.BrandName, b.BrandName, StringComparison.Ordinal);
+            return brandCmp != 0 ? brandCmp : string.Compare(a.AssetName, b.AssetName, StringComparison.Ordinal);
+        });
+
+        return result;
+    }
 }
 
 public class ArtworkBrandWithCounts
@@ -362,5 +462,7 @@ public class ArtworkAssetWithSummary
     public string AssetType { get; set; } = "";
     public string Status { get; set; } = "";
     public int? ActualVersionNumber { get; set; }
+    public int? ActualVersionId { get; set; }
+    public bool HasThumbnail { get; set; }
     public bool HasPendingVersion { get; set; }
 }

@@ -23,21 +23,22 @@
                 @foreach (var brand in _brands)
                 {
                     <MudItem xs="12" sm="6" md="4">
-                        <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px; cursor:pointer"
-                                  OnClick="@(async () => await NavigateToBrand(brand.Id))">
-                            <div class="d-flex justify-space-between align-center">
-                                <MudText Typo="Typo.h6">@brand.Name</MudText>
-                                @if (brand.PendingCount > 0)
-                                {
-                                    <MudChip T="int" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
-                                        @brand.PendingCount
-                                    </MudChip>
-                                }
-                            </div>
-                            <MudText Typo="Typo.caption" Class="mt-1">
-                                @brand.AssetsCount įrašai
-                            </MudText>
-                        </MudPaper>
+                        <div @onclick="@(async () => await NavigateToBrand(brand.Id))" style="cursor:pointer">
+                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px">
+                                <div class="d-flex justify-space-between align-center">
+                                    <MudText Typo="Typo.h6">@brand.Name</MudText>
+                                    @if (brand.PendingCount > 0)
+                                    {
+                                        <MudChip T="int" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
+                                            @brand.PendingCount
+                                        </MudChip>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.caption" Class="mt-1">
+                                    @brand.AssetsCount įrašai
+                                </MudText>
+                            </MudPaper>
+                        </div>
                     </MudItem>
                 }
             </MudGrid>

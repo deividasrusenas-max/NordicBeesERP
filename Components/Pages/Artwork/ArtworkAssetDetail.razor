@@ -301,15 +301,16 @@
 
         if (result.Canceled) return;
 
-        if (result.Data is DateTime? effectiveFrom && effectiveFrom.HasValue)
+        if (result.Data is DateTime effectiveFrom)
         {
+            var effectiveDate = effectiveFrom.ToString("yyyy-MM-dd");
             var user = await AuthService.GetAuthenticatedUserAsync();
             var userId = await AuthService.GetUserIdAsync();
             if (userId.HasValue)
             {
-                await ArtworkService.ApproveVersionAsync(versionId, userId.Value, effectiveFrom.Value.Date);
+                await ArtworkService.ApproveVersionAsync(versionId, userId.Value, effectiveFrom);
                 await LoadDataAsync();
-                Snackbar.Add($"Versija patvirtinta (galioja nuo {effectiveFrom:yyyy-MM-dd})", Severity.Success);
+                Snackbar.Add($"Versija patvirtinta (galioja nuo {effectiveDate})", Severity.Success);
             }
         }
     }

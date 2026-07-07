@@ -109,7 +109,7 @@ public class ArtworkPreviewWorker : BackgroundService
         {
             // Generate thumbnail (400px wide)
             var thumbRawPath = Path.Combine(Path.GetTempPath(), $"thumb_raw_{version.Id}.png");
-            await RunGhostscriptAsync(sourcePath, thumbRawPath, "-r150", cancellationToken);
+            await RunGhostscriptAsync(sourcePath, thumbRawPath, "-r200", cancellationToken);
             
             // Downscale to 400px width (simplified - in production use ImageSharp)
             // For MVP, we'll just copy the raw thumbnail
@@ -118,7 +118,7 @@ public class ArtworkPreviewWorker : BackgroundService
             
             // Generate full preview (higher resolution)
             var previewRawPath = Path.Combine(Path.GetTempPath(), $"preview_raw_{version.Id}.png");
-            await RunGhostscriptAsync(sourcePath, previewRawPath, "-r150", cancellationToken);
+            await RunGhostscriptAsync(sourcePath, previewRawPath, "-r300", cancellationToken);
             File.Copy(previewRawPath, Path.Combine(storageService.GetStorageRoot(), previewPath), overwrite: true);
             File.Delete(previewRawPath);
 
@@ -142,7 +142,7 @@ public class ArtworkPreviewWorker : BackgroundService
         var psi = new ProcessStartInfo
         {
             FileName = "gs",
-            Arguments = $"-dNOPAUSE -dBATCH -sDEVICE=png16m {resolution} -dFirstPage=1 -dLastPage=1 -o \"{outputPath}\" \"{inputPath}\"",
+            Arguments = $"-dNOPAUSE -dBATCH -dFITPAGE -dPDFFitPage -sDEVICE=png16m {resolution} -dFirstPage=1 -dLastPage=1 -o \"{outputPath}\" \"{inputPath}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,

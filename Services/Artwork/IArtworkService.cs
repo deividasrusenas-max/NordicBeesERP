@@ -11,11 +11,13 @@ public interface IArtworkService
     
     // Asset Detail & Workflow
     Task<ArtworkAssetDetailDto> GetAssetDetailAsync(int assetId);
-    Task ApproveVersionAsync(int versionId, int userId);
+    Task ApproveVersionAsync(int versionId, int userId, DateTime effectiveFrom);
     Task RejectVersionAsync(int versionId, int userId, string comment);
     Task<List<ArtworkComment>> GetCommentsAsync(int versionId);
     Task AddCommentAsync(int versionId, int userId, string body);
     Task ArchiveAssetAsync(int assetId, int userId);
+    Task<int> CreateAssetAsync(int brandId, string name, string type, string? description, int userId);
+    Task<List<ArtworkGalleryItem>> GetGalleryAsync();
 }
 
 public class ArtworkVersionUploadResult
@@ -24,6 +26,20 @@ public class ArtworkVersionUploadResult
     public bool IsDuplicate { get; set; }
     public string? Message { get; set; }
     public ArtworkVersion? Version { get; set; }
+}
+
+public class ArtworkGalleryItem
+{
+    public int AssetId { get; set; }
+    public string AssetName { get; set; } = "";
+    public int BrandId { get; set; }
+    public string BrandName { get; set; } = "";
+    public string BrandSlug { get; set; } = "";
+    public int VersionId { get; set; }
+    public int VersionNumber { get; set; }
+    public DateTime? EffectiveFrom { get; set; }
+    public string? ThumbnailPath { get; set; }
+    public string FilePath { get; set; } = "";
 }
 
 public class ArtworkAssetDetailDto

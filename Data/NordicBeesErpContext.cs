@@ -109,7 +109,6 @@ namespace NordicBeesERP.Data
         public DbSet<ArtworkAsset> ArtworkAssets { get; set; }
         public DbSet<ArtworkVersion> ArtworkVersions { get; set; }
         public DbSet<ArtworkComment> ArtworkComments { get; set; }
-        public DbSet<ArtworkVersionAudit> ArtworkVersionAudits { get; set; }
         public DbSet<ArtworkAuditLog> ArtworkAuditLogs { get; set; }
 
         // =====================================================
@@ -649,6 +648,9 @@ namespace NordicBeesERP.Data
                   entity.HasIndex(e => new { e.AssetId, e.VersionNumber }).HasDatabaseName("uq_asset_version");
                   entity.HasIndex(e => new { e.AssetId, e.Status }).HasDatabaseName("idx_asset_status");
                   entity.HasIndex(e => e.FileSha256);
+
+                  entity.Property(e => e.EffectiveFrom).HasColumnType("date");
+                  entity.Property(e => e.EffectiveTo).HasColumnType("date");
               });
 
               modelBuilder.Entity<ArtworkComment>(entity =>

@@ -2,15 +2,23 @@
 @inject AuthenticationStateProvider AuthStateProvider
 
 <MudNavMenu Style="display:flex; flex-direction:column; height:100%">
-    @if (_isDesigner)
+    @if (_isDesigner && !_isAdmin)
     {
         <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
-            <MudNavLink Href="/artwork/brands" Icon="@Icons.Material.Filled.Brush">Brands</MudNavLink>
-            <MudNavLink Href="/artwork/assets" Icon="@Icons.Material.Filled.Image">Assets</MudNavLink>
+            <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
+            <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
         </MudNavGroup>
     }
     else
     {
+        @if (_isAdmin || _isDesigner)
+        {
+            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
+                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
+                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
+            </MudNavGroup>
+        }
+
         <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Pradžia</MudNavLink>
 
         <MudNavGroup Title="Sandėlis" Icon="@Icons.Material.Filled.Warehouse" Expanded="false">

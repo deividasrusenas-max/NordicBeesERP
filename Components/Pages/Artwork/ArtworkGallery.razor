@@ -1,0 +1,158 @@
+@page "/artwork/gallery"
+@rendermode InteractiveServer
+@using NordicBeesERP.Services.Artwork
+@using NordicBeesERP.Models.Artwork
+@using MudBlazor
+@inject IArtworkService ArtworkService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+<PageTitle>Aktualūs maketai</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Aktualūs maketai</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <div Class="mb-4 d-flex gap-2 flex-wrap">
+            <MudChip T="string"
+                     Color="@(_selectedBrandId.HasValue ? Color.Default : Color.Primary)"
+                     Variant="@(_selectedBrandId.HasValue ? Variant.Outlined : Variant.Filled)"
+                     OnClick="() => { _selectedBrandId = null; ApplyFilter(); }">
+                Visi
+            </MudChip>
+            @foreach (var brand in _brands)
+            {
+                <MudChip T="string"
+                         Color="@(GetSelectedBrandId() == brand.Id ? Color.Primary : Color.Default)"
+                         Variant="@(GetSelectedBrandId() == brand.Id ? Variant.Filled : Variant.Outlined)"
+                         OnClick="() => { _selectedBrandId = brand.Id; ApplyFilter(); }">
+                    @brand.Label
+                </MudChip>
+            }
+        </div>
+
+        <MudGrid>
+            @foreach (var item in _filteredItems)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="1" Style="border-radius:12px">
+                        <div @onclick="() => OpenPreview(item.VersionId)"
+                             style="cursor:pointer; overflow:hidden; border-radius:12px 12px 0 0;">
+                            @if (!string.IsNullOrEmpty(item.ThumbnailPath))
+                            {
+                                <img src="@($"/artwork/preview/{item.VersionId}")"
+                                     style="width:100%; max-height:200px; object-fit:contain; background:#f8fafc; padding:8px"
+                                     alt="@item.AssetName" />
+                            }
+                            else
+                            {
+                                <div style="height:200px; display:flex; align-items:center; justify-content:center; background:#f8fafc;">
+                                    <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" Size="Size.Large" />
+                                </div>
+                            }
+                        </div>
+                        <MudCardContent>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:bold">LK@item.AssetId.ToString("D4")</MudText>
+                            <MudText Typo="Typo.body1" Class="mt-1">@item.AssetName</MudText>
+                            <MudChip T="string" Size="Size.Small" Class="mt-2" Variant="Variant.Outlined">
+                                @item.BrandName
+                            </MudChip>
+                            <MudText Typo="Typo.caption" Class="mt-2 d-block">
+                                v@item.VersionNumber • Nuo: @(item.EffectiveFrom?.ToString("yyyy-MM-dd") ?? "nenurodyta")
+                            </MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <div @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               @onclick="() => DownloadItem(item)" />
+                            </div>
+                            <div @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               @onclick="() => NavigateToAsset(item.AssetId)" />
+                            </div>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+            @if (!_filteredItems.Any())
+            {
+                <MudItem xs="12">
+                    <MudText Class="text-center py-4">Aktualių maketų nėra</MudText>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<ArtworkGalleryItem> _items = new();
+    private List<ArtworkGalleryItem> _filteredItems = new();
+    private bool _isLoading = true;
+    private List<(string Label, int Id)> _brands = new();
+    private int? _selectedBrandId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            _items = await ArtworkService.GetGalleryAsync();
+            _brands = _items.Select(i => i.BrandName).Distinct().OrderBy(b => b)
+                            .Select(b => (b, _items.First(x => x.BrandName == b).BrandId)).ToList();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida įkeliant galeriją: " + ex.Message, Severity.Error);
+        }
+        _isLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private int? GetSelectedBrandId() => _selectedBrandId;
+
+    private void ApplyFilter()
+    {
+        if (_selectedBrandId.HasValue)
+        {
+            _filteredItems = _items.Where(i => i.BrandId == _selectedBrandId.Value).ToList();
+        }
+        else
+        {
+            _filteredItems = _items;
+        }
+    }
+
+    private async Task OpenPreview(int versionId)
+    {
+        await DialogService.ShowAsync<ArtworkPreviewDialog>(
+            "",
+            new DialogParameters { { "VersionId", versionId } },
+            new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true, MaxWidth = MaxWidth.Medium });
+    }
+
+    private void DownloadItem(ArtworkGalleryItem item)
+    {
+        NavigationManager.NavigateTo($"/artwork/download/{item.VersionId}", forceLoad: true);
+    }
+
+    private void NavigateToAsset(int assetId)
+    {
+        NavigationManager.NavigateTo($"/artwork/asset/{assetId}");
+    }
+}

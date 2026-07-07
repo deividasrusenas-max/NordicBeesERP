@@ -1,0 +1,18 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "instructions": [
+    ".clinerules/nordicbees-standards.md"
+  ],
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "dotnet build*": "allow",
+      "dotnet ef*": "allow",
+      "./bump-version.sh*": "allow",
+      "./build-errors.sh": "allow",
+      "git *": "allow"
+    },
+    "read": "allow",
+    "edit": "allow"
+  }
+}
