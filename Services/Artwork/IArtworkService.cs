@@ -6,7 +6,7 @@ public interface IArtworkService
 {
     Task<List<ArtworkBrandWithCounts>> GetBrandsWithCountsAsync();
     Task<ArtworkBrand?> GetBrandByIdAsync(int id);
-    Task<List<ArtworkAssetWithSummary>> GetAssetsByBrandAsync(int brandId);
+    Task<List<ArtworkAssetWithSummary>> GetAssetsByBrandAsync(int brandId, bool showArchived = false);
     Task<ArtworkVersionUploadResult> UploadVersionAsync(int assetId, string changeDescription, string base64, string fileName, long fileSize, string fileType);
     
     // Asset Detail & Workflow
@@ -16,8 +16,14 @@ public interface IArtworkService
     Task<List<ArtworkComment>> GetCommentsAsync(int versionId);
     Task AddCommentAsync(int versionId, int userId, string body);
     Task ArchiveAssetAsync(int assetId, int userId);
+    Task RestoreAssetAsync(int assetId, int userId);
     Task<int> CreateAssetAsync(int brandId, string name, string type, string? description, int userId);
     Task<List<ArtworkGalleryItem>> GetGalleryAsync();
+    Task<List<ArtworkBrand>> GetAllBrandsAsync();
+    Task CreateBrandAsync(string name, string slug);
+    Task UpdateBrandAsync(int id, string name, string slug, bool isActive);
+    Task DeleteBrandAsync(int id);
+    string GenerateSlug(string name);
 }
 
 public class ArtworkVersionUploadResult

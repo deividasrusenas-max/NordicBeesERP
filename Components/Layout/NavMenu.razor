@@ -4,21 +4,12 @@
 <MudNavMenu Style="display:flex; flex-direction:column; height:100%">
     @if (_isDesigner && !_isAdmin)
     {
-        <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
-            <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
-            <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
-        </MudNavGroup>
+        <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
+        <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
+        <MudNavLink Href="/artwork/upload" Icon="@Icons.Material.Filled.CloudUpload">Įkelti</MudNavLink>
     }
     else
     {
-        @if (_isAdmin || _isDesigner)
-        {
-            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
-                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
-                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
-            </MudNavGroup>
-        }
-
         <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Pradžia</MudNavLink>
 
         <MudNavGroup Title="Sandėlis" Icon="@Icons.Material.Filled.Warehouse" Expanded="false">
@@ -74,6 +65,14 @@
             </MudNavGroup>
         }
 
+        @if (_isAdmin || _isDesigner)
+        {
+            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
+                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
+                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
+            </MudNavGroup>
+        }
+
         <div style="flex:1"></div>
         <MudDivider Class="my-2"/>
 
@@ -90,6 +89,10 @@
             @if (_isAdmin || _isManager)
             {
                 <MudNavLink Href="/settings/expense-categories" Icon="@Icons.Material.Filled.Category">Išlaidų kategorijos</MudNavLink>
+            }
+            @if (_isAdmin)
+            {
+                <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
             }
         </MudNavGroup>
     }

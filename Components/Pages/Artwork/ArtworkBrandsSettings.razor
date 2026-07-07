@@ -1,0 +1,212 @@
+@page "/settings/artwork-brands"
+@rendermode InteractiveServer
+@using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Models.Artwork
+@using NordicBeesERP.Services.Artwork
+@inject IArtworkService ArtworkService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Prekių ženklai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Prekių ženklai</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti</MudButton>
+    </div>
+
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable T="ArtworkBrand" Items="_brands" Dense="true" Hover="true" Striped="true" Loading="_loading">
+            <HeaderContent>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>Slug</MudTh>
+                <MudTh>Statusas</MudTh>
+                <MudTh Style="width:120px">Veiksmai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="brand">
+                @if (_editingItem?.Id == brand.Id)
+                {
+                    <MudTd>
+                        <MudTextField @bind-Value="_editingItem.Name" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" Required="true" />
+                    </MudTd>
+                    <MudTd>
+                        <MudTextField @bind-Value="_editingItem.Slug" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(_editingItem.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(_editingItem.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <div class="d-flex gap-1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Save" Size="Size.Small" Color="Color.Success" OnClick="SaveEdit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Secondary" OnClick="CancelEdit" />
+                        </div>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd>@brand.Name</MudTd>
+                    <MudTd><code>@brand.Slug</code></MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(brand.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(brand.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(brand))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteBrand(brand))" />
+                    </MudTd>
+                }
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Įrašų nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Palette" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(_editingItem.Id == 0 ? "Naujas prekės ženklas" : "Redaguoti prekės ženklą")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField Value="@_editingItem.Name" Label="Pavadinimas" Variant="Variant.Outlined" Required="true"
+                          Immediate="true" ValueChanged="@(async (string v) => { await OnNameChangedAsync(v); })" />
+            <MudTextField @bind-Value="_editingItem.Slug" Label="Slug" Variant="Variant.Outlined" />
+            <MudSwitch T="bool" @bind-Value="_editingItem.IsActive" Label="Aktyvus" Color="Color.Success" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _dialogVisible = false)" Variant="Variant.Outlined">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveItem" StartIcon="@Icons.Material.Filled.Save">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ArtworkBrand> _brands = new();
+    private ArtworkBrand _editingItem = new();
+    private bool _loading = true;
+    private bool _dialogVisible = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _brands = await ArtworkService.GetAllBrandsAsync();
+        _loading = false;
+    }
+
+    private Task OnNameChangedAsync(string name)
+    {
+        _editingItem.Name = name;
+        _editingItem.Slug = ArtworkService.GenerateSlug(name);
+        return Task.CompletedTask;
+    }
+
+    private void OpenCreateDialog()
+    {
+        _editingItem = new ArtworkBrand { IsActive = true };
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ArtworkBrand brand)
+    {
+        _editingItem = new ArtworkBrand
+        {
+            Id = brand.Id,
+            Name = brand.Name,
+            Slug = brand.Slug,
+            IsActive = brand.IsActive,
+            CreatedAt = brand.CreatedAt
+        };
+        _dialogVisible = true;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editingItem.Name))
+        {
+            Snackbar.Add("Pavadinimas privalomas", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editingItem.Slug))
+        {
+            Snackbar.Add("Slug privalomas", Severity.Warning);
+            return;
+        }
+
+        await ArtworkService.UpdateBrandAsync(_editingItem.Id, _editingItem.Name, _editingItem.Slug, _editingItem.IsActive);
+        _editingItem = new ArtworkBrand();
+        await LoadData();
+        Snackbar.Add("Prekės ženklas išsaugotas sėkmingai", Severity.Success);
+    }
+
+    private void CancelEdit()
+    {
+        _editingItem = new ArtworkBrand();
+    }
+
+    private async Task SaveItem()
+    {
+        if (string.IsNullOrWhiteSpace(_editingItem.Name))
+        {
+            Snackbar.Add("Pavadinimas privalomas", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editingItem.Slug))
+        {
+            Snackbar.Add("Slug privalomas", Severity.Warning);
+            return;
+        }
+
+        if (_editingItem.Id == 0)
+            await ArtworkService.CreateBrandAsync(_editingItem.Name, _editingItem.Slug);
+        else
+            await ArtworkService.UpdateBrandAsync(_editingItem.Id, _editingItem.Name, _editingItem.Slug, _editingItem.IsActive);
+
+        _dialogVisible = false;
+        await LoadData();
+        Snackbar.Add(_editingItem.Id == 0 ? "Prekės ženklas sukurtas sėkmingai" : "Prekės ženklas atnaujintas sėkmingai", Severity.Success);
+    }
+
+    private async Task DeleteBrand(ArtworkBrand brand)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti trynimą",
+            $"Ar tikrai norite ištrinti \"{brand.Name}\"? Šio veiksmo negalima atšaukti.",
+            yesText: "Ištrinti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await ArtworkService.DeleteBrandAsync(brand.Id);
+            await LoadData();
+            Snackbar.Add($"\"{brand.Name}\" ištrinta sėkmingai", Severity.Success);
+        }
+        catch (Exception ex) when (ex.Message.Contains("foreign key constraint", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Negalima ištrinti — yra susijusių įrašų. Pirmiau ištrinkite susijusius asetus.", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida trinant: " + ex.Message, Severity.Error);
+        }
+    }
+}

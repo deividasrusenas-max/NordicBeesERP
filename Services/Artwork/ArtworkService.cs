@@ -190,6 +190,33 @@ public class ArtworkService : IArtworkService
         await _context.Database.ExecuteSqlRawAsync(
             "UPDATE artwork_versions SET status = @p0 WHERE asset_id = @p1",
             "archived", assetId);
+
+        // Insert audit log
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_audit_log (entity_type, entity_id, action, user_id, details, created_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",
+            "asset", assetId, "archived", userId, $"Asset '{asset.Name}' archived", DateTime.UtcNow);
+    }
+
+    public async Task RestoreAssetAsync(int assetId, int userId)
+    {
+        var asset = await _context.ArtworkAssets.FindAsync(assetId);
+        if (asset == null)
+            throw new ArgumentException($"Asset with ID {assetId} not found.");
+
+        // Update asset status
+        await _context.Database.ExecuteSqlRawAsync(
+            "UPDATE artwork_assets SET status = @p0 WHERE id = @p1",
+            "active", assetId);
+
+        // Restore approved versions back to approved status
+        await _context.Database.ExecuteSqlRawAsync(
+            "UPDATE artwork_versions SET status = @p0 WHERE asset_id = @p1 AND status = @p2",
+            "approved", assetId, "archived");
+
+        // Insert audit log
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_audit_log (entity_type, entity_id, action, user_id, details, created_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",
+            "asset", assetId, "restored", userId, $"Asset '{asset.Name}' restored from archive", DateTime.UtcNow);
     }
 
     public async Task<int> CreateAssetAsync(int brandId, string name, string type, string? description, int userId)
@@ -243,10 +270,10 @@ public class ArtworkService : IArtworkService
         return await _context.ArtworkBrands.FirstOrDefaultAsync(b => b.Id == id);
     }
 
-    public async Task<List<ArtworkAssetWithSummary>> GetAssetsByBrandAsync(int brandId)
+    public async Task<List<ArtworkAssetWithSummary>> GetAssetsByBrandAsync(int brandId, bool showArchived = false)
     {
         var assets = await _context.ArtworkAssets
-            .Where(a => a.BrandId == brandId && a.Status == "active")
+            .Where(a => a.BrandId == brandId && (showArchived || a.Status == "active"))
             .ToListAsync();
 
         var result = new List<ArtworkAssetWithSummary>();
@@ -444,6 +471,49 @@ public class ArtworkService : IArtworkService
         });
 
         return result;
+    }
+
+    public async Task<List<ArtworkBrand>> GetAllBrandsAsync()
+    {
+        return await _context.ArtworkBrands.ToListAsync();
+    }
+
+    public async Task CreateBrandAsync(string name, string slug)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_brands (name, slug, is_active, created_at) VALUES (@p0, @p1, 1, NOW())",
+            name, slug);
+    }
+
+    public async Task UpdateBrandAsync(int id, string name, string slug, bool isActive)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "UPDATE artwork_brands SET name = @p0, slug = @p1, is_active = @p2 WHERE id = @p3",
+            name, slug, isActive, id);
+    }
+
+    public async Task DeleteBrandAsync(int id)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "DELETE FROM artwork_brands WHERE id = @p0",
+            id);
+    }
+
+    public string GenerateSlug(string name)
+    {
+        var normalized = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.GetEncoding("ISO-8859-13").GetBytes(name));
+        var slug = new System.Text.StringBuilder();
+        foreach (var c in normalized.ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(c))
+                slug.Append(c);
+            else if (c == ' ' || c == '-' || c == '_')
+            {
+                if (slug.Length == 0 || slug[^1] != '-')
+                    slug.Append('-');
+            }
+        }
+        return slug.ToString().TrimStart('-').TrimEnd('-');
     }
 }
 
