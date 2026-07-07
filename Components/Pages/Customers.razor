@@ -20,28 +20,23 @@
         </MudButton>
     </div>
 
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudTextField @bind-Value="_filterSearch"
+                      Placeholder="Ieškoti pagal pavadinimą, kodą, PVM kodą..."
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      FullWidth="true"
+                      Clearable="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Adornment="Adornment.Start" />
+    </MudPaper>
+
     @if (_isLoading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
     else
     {
-        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
-            <MudGrid>
-                <MudItem xs="12" sm="6" md="4">
-                    <MudTextField Value="@_filterSearch"
-                                  ValueChanged="@((string val) => { _filterSearch = val; StateHasChanged(); })"
-                                  Label="Paieška pagal pavadinimą arba kodą"
-                                  Variant="Variant.Outlined"
-                                  Immediate="true"
-                                  FullWidth="@true"
-                                  Clearable="true"
-                                  AdornmentIcon="@Icons.Material.Filled.Search"
-                                  Adornment="Adornment.Start" />
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
-
         <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
             @if (_customers == null || !_customers.Any())
             {
@@ -52,7 +47,6 @@
                 <MudTable Items="@FilteredCustomers"
                           Dense="true"
                           Hover="true"
-                          Striped="true"
                           RowsPerPage="25"
                           Elevation="0"
                           Style="cursor:pointer"
