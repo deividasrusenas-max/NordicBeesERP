@@ -36,6 +36,7 @@ namespace NordicBeesERP.Services
             string? createdByName);
         
         string GetPdfPath(string creditNoteNumber);
+        Task<byte[]> GenerateMultipleInvoicesPdfAsync(List<int> invoiceIds);
     }
 
     // =====================================================
@@ -849,6 +850,60 @@ namespace NordicBeesERP.Services
         {
             // PDF path format: /pdf/credit_notes/KLAK250001.pdf
             return $"/pdf/credit_notes/{creditNoteNumber}.pdf";
+        }
+
+        public async Task<byte[]> GenerateMultipleInvoicesPdfAsync(List<int> invoiceIds)
+        {
+            return await Task.Run(() =>
+            {
+                QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+                using var context = _contextFactory.CreateDbContext();
+                var company = _companySettingsService.GetSettingsAsync().Result;
+
+                var invoices = new List<Invoice>();
+                foreach (var id in invoiceIds)
+                {
+                    var inv = context.Invoices.FirstOrDefault(i => i.Id == id);
+                    if (inv != null)
+                    {
+                        inv.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == inv.CustomerId);
+                        inv.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == inv.Id).ToList();
+                        invoices.Add(inv);
+                    }
+                }
+
+                if (invoices.Count == 0)
+                    throw new InvalidOperationException("Nerasta jokių sąskaitų");
+
+                return Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(1.5f, QuestPDF.Infrastructure.Unit.Centimetre);
+                        page.DefaultTextStyle(x => x.FontSize(9));
+
+                        page.Content().Column(col =>
+                        {
+                            for (int i = 0; i < invoices.Count; i++)
+                            {
+                                var invoice = invoices[i];
+                                var subtotalExclVat = invoice.Lines.Sum(l => l.LineSubtotal);
+                                var totalVat = invoice.Lines.Sum(l => l.VatAmount);
+                                var totalInclVat = invoice.Lines.Sum(l => l.LineTotal);
+
+                                if (i > 0)
+                                {
+                                    col.Item().PageBreak();
+                                }
+
+                                ComposeContent(col.Item(), invoice, company, subtotalExclVat, totalVat, totalInclVat);
+                            }
+                        });
+                    });
+                }).GeneratePdf();
+            });
         }
     }
 }

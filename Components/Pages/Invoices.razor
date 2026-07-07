@@ -5,9 +5,13 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
 @using MudBlazor
+@using System.IO.Compression
 @inject IInvoiceService InvoiceService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IPdfGeneratorService PdfGeneratorService
+@inject IJSRuntime JS
+@inject IDialogService DialogService
 
 <PageTitle>Sąskaitos</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
@@ -50,7 +54,7 @@
         <MudGrid>
             <MudItem xs="12" sm="6" md="4">
                 <MudTextField Value="@_filterSearch"
-                              ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
+                              ValueChanged="@(async (string val) => { _filterSearch = val; _selectedInvoices.Clear(); await LoadDataAsync(); })"
                               Label="Paieška pagal Nr. arba klientą"
                               Variant="Variant.Outlined"
                                Immediate="true"
@@ -61,7 +65,7 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudDateRangePicker DateRange="@_dateRange"
-                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadDataAsync(); })"
+                                     DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; _selectedInvoices.Clear(); await LoadDataAsync(); })"
                                     Label="Data (nuo / iki)"
                                      Variant="Variant.Outlined"
                                      FullWidth="@true"
@@ -74,7 +78,7 @@
                                Variant="Variant.Text"
                                Color="Color.Secondary"
                                Size="Size.Small"
-                               OnClick="@(async () => { _filterSearch = null; _dateRange = null; await LoadDataAsync(); StateHasChanged(); })">
+                                OnClick="@(async () => { _filterSearch = null; _dateRange = null; _selectedInvoices.Clear(); await LoadDataAsync(); StateHasChanged(); })">
                         Išvalyti filtrus
                     </MudButton>
                 </MudItem>
@@ -89,7 +93,7 @@
         {
             <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
                        StartIcon="@Icons.Material.Filled.FilterAltOff"
-                       OnClick="@(() => { _selectedStatuses.Clear(); StateHasChanged(); })">
+                        OnClick="@(() => { _selectedStatuses.Clear(); _selectedInvoices.Clear(); StateHasChanged(); })">
                 Rodyti visas
             </MudButton>
         }
@@ -117,6 +121,34 @@
         <MudTabPanel Text="Šis mėnuo" />
     </MudTabs>
 
+    <!-- Bulk actions bar -->
+    @if (_selectedInvoices.Count > 0)
+    {
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mb-2 pa-3 d-flex align-center justify-space-between"
+                  Style="background:#e8f0fe; border-radius:8px;">
+            <MudText Typo="Typo.body1" Style="color:#1976d2;font-weight:500;">
+                Pasirinkta: @_selectedInvoices.Count
+            </MudText>
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                           OnClick="@(() => { _selectedInvoices.Clear(); StateHasChanged(); })">
+                    Atšaukti
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                           OnClick="GenerateBulkPdfAsync"
+                           Disabled="@_isGenerating"
+                           Style="text-transform:none">
+                    @if (_isGenerating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Color="Color.Default" />
+                    }
+                    Generuoti PDF
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+
     <!-- Table -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
         <MudTable Items="@FilteredItems"
@@ -126,9 +158,14 @@
                   RowsPerPage="25"
                   Elevation="0"
                   RowStyleFunc="@GetRowStyle"
-                  OnRowClick="@(async (TableRowClickEventArgs<Invoice> args) => await OnRowClick(args.Item))"
-                  Style="cursor:pointer">
+                   Style="cursor:default">
             <HeaderContent>
+                <MudTh Style="min-width:48px;width:48px;">
+                    <input type="checkbox"
+                           checked="@(GetSelectAllState() == true)"
+                           @onchange="@((ChangeEventArgs e) => ToggleSelectAll((bool)e.Value! ? true : false))"
+                           @onclick:stopPropagation="true" />
+                </MudTh>
                 <MudTh>Nr.</MudTh>
                 <MudTh>Data</MudTh>
                 <MudTh>Klientas</MudTh>
@@ -139,6 +176,12 @@
                 <MudTh>Veiksmai</MudTh>
             </HeaderContent>
             <RowTemplate Context="invoice">
+                <MudTd Style="min-width:48px;width:48px;">
+                    <input type="checkbox"
+                           checked="@_selectedInvoices.Contains(invoice.Id)"
+                           @onchange="@((ChangeEventArgs e) => ToggleInvoice(invoice.Id, (bool)e.Value!))"
+                           @onclick:stopPropagation="true" />
+                </MudTd>
                 <MudTd>@invoice.InvoiceNumber</MudTd>
                 <MudTd>@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
                 <MudTd>@GetCustomerName(invoice)</MudTd>
@@ -187,11 +230,22 @@
     </MudPaper>
 </MudContainer>
 
+<style>
+    input[type=checkbox] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #594ae2;
+    }
+</style>
+
 @code {
     private List<Invoice> _items = new();
     private bool _isLoading = false;
     private int _selectedTab = 0;
     private string _invoiceType = "LAK";
+    private HashSet<int> _selectedInvoices = new();
+    private bool _isGenerating = false;
 
     // Filter state
     private string? _filterSearch = null;
@@ -243,6 +297,7 @@
     private async Task SetInvoiceType(string type)
     {
         _invoiceType = type;
+        _selectedInvoices.Clear();
         await LoadDataAsync();
     }
 
@@ -289,19 +344,15 @@
         {
             _selectedStatuses.Add(status);
         }
+        _selectedInvoices.Clear();
         StateHasChanged();
     }
 
     private void OnTabChanged(int index)
     {
         _selectedTab = index;
+        _selectedInvoices.Clear();
         StateHasChanged();
-    }
-
-    private Task OnRowClick(Invoice invoice)
-    {
-        Navigation.NavigateTo($"/invoices/{invoice.Id}");
-        return Task.CompletedTask;
     }
 
     private void ViewInvoice(int invoiceId)
@@ -382,5 +433,159 @@
         }
         
         return "";
+    }
+
+    // Selection helpers
+    private void ToggleInvoice(int id, bool selected)
+    {
+        Console.WriteLine($"ToggleInvoice called: id={id}, selected={selected}, count before={_selectedInvoices.Count}");
+        if (selected)
+            _selectedInvoices.Add(id);
+        else
+            _selectedInvoices.Remove(id);
+        Console.WriteLine($"ToggleInvoice after: count={_selectedInvoices.Count}");
+        StateHasChanged();
+    }
+
+    private bool? GetSelectAllState()
+    {
+        var visible = FilteredItems.Select(i => i.Id).ToList();
+        if (!visible.Any()) return false;
+        var selected = visible.Count(i => _selectedInvoices.Contains(i));
+        if (selected == 0) return false;
+        if (selected == visible.Count) return true;
+        return null; // partial
+    }
+
+    private void ToggleSelectAll(bool state)
+    {
+        var visible = FilteredItems.Select(i => i.Id).ToList();
+        if (state)
+        {
+            foreach (var id in visible)
+                _selectedInvoices.Add(id);
+        }
+        else
+        {
+            foreach (var id in visible)
+                _selectedInvoices.Remove(id);
+        }
+        StateHasChanged();
+    }
+
+    // Bulk PDF generation
+    private async Task GenerateBulkPdfAsync()
+    {
+        if (_selectedInvoices.Count == 0) return;
+
+        var selectedIds = _selectedInvoices.ToList();
+
+        if (selectedIds.Count == 1)
+        {
+            await GenerateSinglePdfAsync(selectedIds[0]);
+            return;
+        }
+
+        var choice = await DialogService.ShowMessageBox(
+            "Kaip generuoti PDF?",
+            $"Pasirinkta sąskaitų: {selectedIds.Count}. Norite sugeneruoti vieną sujungtą PDF failą ar atskirus failus ZIP archyve?",
+            yesText: "Vienas failas",
+            noText: "Atskiri failai (ZIP)");
+
+        if (choice == null) return;
+
+        _isGenerating = true;
+        StateHasChanged();
+
+        try
+        {
+            if (choice == true)
+            {
+                var pdfBytes = await PdfGeneratorService.GenerateMultipleInvoicesPdfAsync(selectedIds);
+                var dateStr = DateTime.Now.ToString("yyyyMMdd");
+                var fileName = $"invoices_{dateStr}.pdf";
+                var base64 = Convert.ToBase64String(pdfBytes);
+                var dataUrl = $"data:application/pdf;base64,{base64}";
+                await JS.InvokeVoidAsync("downloadPdf", dataUrl, fileName);
+                Snackbar.Add($"PDF su {selectedIds.Count} sąskaitomis sugeneruotas", Severity.Success);
+            }
+            else
+            {
+                await GenerateZipAsync(selectedIds);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida generuojant PDF: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerateSinglePdfAsync(int invoiceId)
+    {
+        _isGenerating = true;
+        StateHasChanged();
+
+        try
+        {
+            var pdfBytes = await PdfGeneratorService.GenerateInvoicePdfAsync(invoiceId);
+            var invoice = _items.FirstOrDefault(i => i.Id == invoiceId);
+            var fileName = $"{invoice?.InvoiceNumber ?? "invoice"}.pdf";
+            var base64 = Convert.ToBase64String(pdfBytes);
+            var dataUrl = $"data:application/pdf;base64,{base64}";
+            await JS.InvokeVoidAsync("downloadPdf", dataUrl, fileName);
+            Snackbar.Add("PDF sėkmingai sugeneruotas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida generuojant PDF: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerateZipAsync(List<int> selectedIds)
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+            {
+                foreach (var id in selectedIds)
+                {
+                    try
+                    {
+                        var pdfBytes = await PdfGeneratorService.GenerateInvoicePdfAsync(id);
+                        var invoice = _items.FirstOrDefault(i => i.Id == id);
+                        var entryName = $"{invoice?.InvoiceNumber ?? $"invoice-{id}"}.pdf";
+                        var entry = zip.CreateEntry(entryName);
+                        using var entryStream = entry.Open();
+                        await entryStream.WriteAsync(pdfBytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        Snackbar.Add($"Klaida generuojant sąskaitą (ID {id}): {ex.Message}", Severity.Warning);
+                    }
+                }
+            }
+
+            var zipBytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(zipBytes);
+            var dateStr = DateTime.Now.ToString("yyyyMMdd");
+            var fileName = $"invoices_{dateStr}.zip";
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, "application/zip", base64);
+            Snackbar.Add($"PDF archyvas su {selectedIds.Count} sąskaitomis sugeneruotas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida generuojant PDF: {ex.Message}", Severity.Error);
+        }
     }
 }

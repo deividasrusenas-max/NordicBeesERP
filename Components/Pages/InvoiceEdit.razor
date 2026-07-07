@@ -177,6 +177,15 @@
         </div>
     </div>
 
+    <!-- KOMENTARAS section -->
+    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Komentaras</MudText>
+        <MudTextField T="string" @bind-Value="_notes"
+                      Label="Komentaras (rodomas spausdinant)"
+                      Variant="Variant.Outlined"
+                      Lines="3" Margin="Margin.Dense" />
+    </MudPaper>
+
 </MudContainer>
 
 @code {
@@ -206,6 +215,7 @@
     
     private string? _errorMessage;
     private bool _isPurchase = false;
+    private string _notes = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -244,7 +254,8 @@
             if (_invoiceType == "purchase") _invoiceType = "6% PVM SĄSKAITA FAKTŪRA";
             
             _status = invoice.Status;
-            
+            _notes = invoice.Notes ?? string.Empty;
+
             // Populate lines
             _lines.Clear();
             foreach (var line in invoice.Lines)
@@ -480,7 +491,8 @@
             PaymentDueDate = _paymentDueDate,
             Language = _language,
             InvoiceType = _invoiceType,
-            Status = _status
+            Status = _status,
+            Notes = _notes
         };
         
         invoice.Lines = new List<InvoiceLine>();
