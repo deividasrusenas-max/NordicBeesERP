@@ -37,6 +37,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
         var lines = await context.DeliveryLines.Where(l => l.DeliveryId == deliveryId).ToListAsync();
         var lineIds = lines.Select(l => l.Id).ToList();
         var containers = lineIds.Any() ? await context.Containers.Where(c => c.DeliveryLineId.HasValue && lineIds.Contains(c.DeliveryLineId.Value)).ToListAsync() : new List<Container>();
+        var honeyTypes = await context.HoneyTypes.ToListAsync();
         var supplier = await context.BusinessPartners.FirstOrDefaultAsync(bp => bp.Id == delivery.SupplierId);
         var companySettings = await _companySettingsService.GetSettingsAsync();
 
@@ -55,9 +56,17 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                     {
                         row.RelativeItem().Column(c =>
                         {
-                            c.Item().Text(companySettings?.CompanyName ?? "MB Lakštena").Bold().FontSize(14);
-                            c.Item().Text(companySettings?.Address ?? "").FontSize(9).FontColor(Colors.Grey.Darken1);
-                            c.Item().Text($"Įmonės kodas: {companySettings?.CompanyCode ?? ""}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                            c.Item().Text(companySettings?.CompanyName ?? "MB Lakštena").Bold().FontSize(12);
+                            if (!string.IsNullOrWhiteSpace(companySettings?.CompanyAddress))
+                                c.Item().Text(companySettings.CompanyAddress).FontSize(9).FontColor(Colors.Grey.Darken1);
+                            if (!string.IsNullOrWhiteSpace(companySettings?.CompanyCode))
+                                c.Item().Text($"Įmonės kodas: {companySettings.CompanyCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                            if (!string.IsNullOrWhiteSpace(companySettings?.VatCode))
+                                c.Item().Text($"PVM kodas: {companySettings.VatCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                            if (!string.IsNullOrWhiteSpace(companySettings?.BankAccount))
+                                c.Item().Text($"IBAN: {companySettings.BankAccount}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                            if (!string.IsNullOrWhiteSpace(companySettings?.BankName))
+                                c.Item().Text($"Bankas: {companySettings.BankName}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         });
                         row.RelativeItem().AlignRight().Column(c =>
                         {
@@ -71,9 +80,17 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                     col.Item().PaddingTop(16).Column(c =>
                     {
                         c.Item().Text("Tiekėjas").Bold().FontSize(9).FontColor(Colors.Grey.Darken1);
-                        c.Item().Text(supplier?.Name ?? $"ID: {delivery.SupplierId}").FontSize(11);
-                        if (!string.IsNullOrEmpty(supplier?.VatCode))
+                        c.Item().Text(supplier?.Name ?? $"ID: {delivery.SupplierId}").FontSize(11).Bold();
+                        if (!string.IsNullOrWhiteSpace(supplier?.Address))
+                            c.Item().Text(supplier.Address).FontSize(9).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(supplier?.CompanyCode))
+                            c.Item().Text($"Įmonės kodas: {supplier.CompanyCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(supplier?.NationalIdNumber))
+                            c.Item().Text($"Asmens kodas: {supplier.NationalIdNumber}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(supplier?.VatCode))
                             c.Item().Text($"PVM kodas: {supplier.VatCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(supplier?.BankAccount))
+                            c.Item().Text($"IBAN: {supplier.BankAccount}").FontSize(9).FontColor(Colors.Grey.Darken1);
                     });
 
                     // Delivery lines table
@@ -113,7 +130,10 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                                     _ => line.ContainerType ?? "-"
                                 };
 
-                                table.Cell().Element(DataCell).Text(line.ProductId?.ToString() ?? "-");
+                                var htName = line.HoneyTypeId.HasValue
+                                    ? (honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name ?? $"#{line.HoneyTypeId}")
+                                    : "-";
+                                table.Cell().Element(DataCell).Text(htName);
                                 table.Cell().Element(DataCell).Text(containerTypeName);
                                 table.Cell().Element(DataCell).AlignRight().Text(line.ContainerCount.ToString());
                                 table.Cell().Element(DataCell).AlignRight().Text($"{(line.TotalNetWeight ?? 0):N1}");
@@ -189,7 +209,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                         col.Item().PaddingTop(12).Background(Colors.Orange.Lighten4).Padding(8).Column(c =>
                         {
                             c.Item().Text("Statinių apskaita").Bold().FontSize(9);
-                            c.Item().Text($"Skolingos statinės: {delivery.BarrelsOwed} vnt.").FontSize(9);
+                            c.Item().Text($"Liko grąžinti: {delivery.BarrelsOwed - delivery.BarrelsReturned} vnt.").FontSize(9);
                             c.Item().Text($"Grąžinta: {delivery.BarrelsReturned} vnt.").FontSize(9);
                         });
                     }

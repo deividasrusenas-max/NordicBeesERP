@@ -8,6 +8,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
+@inject IHoneyTypeService HoneyTypeService
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
 
@@ -27,6 +28,20 @@
     else
     {
         <MudText Typo="Typo.h5" Class="mb-4">Pasirašyti pristatymą</MudText>
+
+        @if (_missingFields.Any())
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Warning">
+                <MudText Typo="Typo.body1"><b>Tiekėjo kortelėje trūksta duomenų:</b></MudText>
+                @foreach (var field in _missingFields)
+                {
+                    <MudText Typo="Typo.body2">• @field</MudText>
+                }
+                <MudText Typo="Typo.body2" Class="mt-2">
+                    <MudLink Href="@($"/suppliers/{_delivery?.SupplierId}/edit")" Target="_blank">Atidaryti tiekėjo kortelę →</MudLink>
+                </MudText>
+            </MudAlert>
+        }
 
         <!-- Delivery info -->
         <MudPaper Class="pa-4 mb-4" Elevation="1">
@@ -67,12 +82,12 @@
                         <MudTd>
                             @{
                                 var line = _lines.FirstOrDefault(l => l.Id == container.DeliveryLineId);
-                                var productName = line?.ProductId != null
-                                    ? (_products.FirstOrDefault(p => p.Id == line.ProductId)?.Name ?? $"#{line.ProductId}")
+                                var honeyTypeName = line?.HoneyTypeId != null
+                                    ? (_honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name ?? $"#{line.HoneyTypeId}")
                                     : "-";
                                 var typeName = container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", _ => container.ContainerType ?? "-" };
                             }
-                            @(productName != "-" ? $"{productName} ({typeName})" : typeName)
+                            @(honeyTypeName != "-" ? $"{honeyTypeName} ({typeName})" : typeName)
                         </MudTd>
                         <MudTd Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
                         <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
@@ -211,6 +226,8 @@ window.initSignatureCanvas = function(canvasId) {
     private List<NordicBeesERP.Models.WarehouseModule.Container> _containers = new();
     private List<NordicBeesERP.Models.WarehouseModule.DeliveryLine> _lines = new();
     private List<NordicBeesERP.Models.Product> _products = new();
+    private List<NordicBeesERP.Models.HoneyType> _honeyTypes = new();
+    private List<string> _missingFields = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -231,7 +248,19 @@ window.initSignatureCanvas = function(canvasId) {
                 _signerName = !string.IsNullOrWhiteSpace(fullName) ? fullName : (_supplier.Name ?? "");
             }
 
+            _missingFields = new List<string>();
+            if (_supplier != null)
+            {
+                if (string.IsNullOrWhiteSpace(_supplier.Address))
+                    _missingFields.Add("Adresas");
+                if (string.IsNullOrWhiteSpace(_supplier.CompanyCode) && string.IsNullOrWhiteSpace(_supplier.NationalIdNumber))
+                    _missingFields.Add("Asmens kodas arba įmonės kodas");
+                if (string.IsNullOrWhiteSpace(_supplier.BankAccount))
+                    _missingFields.Add("Banko sąskaita (IBAN)");
+            }
+
             _products = await ProductService.GetAllProductsAsync();
+            _honeyTypes = await HoneyTypeService.GetActiveAsync();
             _lines = await DeliveryService.GetLinesByDeliveryIdAsync(_delivery.Id);
 
             using var ctx = await ContextFactory.CreateDbContextAsync();
@@ -264,6 +293,12 @@ window.initSignatureCanvas = function(canvasId) {
         if (string.IsNullOrWhiteSpace(_signerName))
         {
             Snackbar.Add("Įveskite savo vardą ir pavardę", Severity.Warning);
+            return;
+        }
+
+        if (_missingFields.Any())
+        {
+            Snackbar.Add("Pirmiausia užpildykite trūkstamus tiekėjo duomenis", Severity.Error);
             return;
         }
 
