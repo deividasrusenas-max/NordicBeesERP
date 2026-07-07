@@ -3,6 +3,7 @@
 @using NordicBeesERP.Models.WarehouseModule
 @inject IDeliveryService DeliveryService
 @inject ICustomerService CustomerService
+@inject IProductService ProductService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -10,7 +11,7 @@
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-2 px-2">
     @if (_delivery == null)
     {
         <MudProgressCircular Indeterminate="true" />
@@ -63,48 +64,68 @@
                         <MudTh Style="text-align:right">Netto (kg)</MudTh>
                     </HeaderContent>
                     <RowTemplate Context="container">
-                        <MudTd>@(container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", _ => container.ContainerType })</MudTd>
+                        <MudTd>
+                            @{
+                                var line = _lines.FirstOrDefault(l => l.Id == container.DeliveryLineId);
+                                var productName = line?.ProductId != null
+                                    ? (_products.FirstOrDefault(p => p.Id == line.ProductId)?.Name ?? $"#{line.ProductId}")
+                                    : "-";
+                                var typeName = container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", _ => container.ContainerType ?? "-" };
+                            }
+                            @(productName != "-" ? $"{productName} ({typeName})" : typeName)
+                        </MudTd>
                         <MudTd Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
                         <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
                         <MudTd Style="text-align:right"><b>@container.NetWeight.ToString("N1")</b></MudTd>
                     </RowTemplate>
                     <FooterContent>
-                        <MudTFootRow>
-                            <MudTd><b>Iš viso</b></MudTd>
-                            <MudTd Style="text-align:right"><b>@_containers.Sum(c => c.GrossWeight).ToString("N1")</b></MudTd>
-                            <MudTd Style="text-align:right"><b>@_containers.Sum(c => c.TareWeight).ToString("N1")</b></MudTd>
-                            <MudTd Style="text-align:right"><b>@_containers.Sum(c => c.NetWeight).ToString("N1")</b></MudTd>
-                        </MudTFootRow>
                     </FooterContent>
                 </MudTable>
+                <div style="border-top:2px solid #e0e0e0; margin-top:4px; padding:8px 4px; display:flex; justify-content:flex-end; gap:32px">
+                    <span style="flex:1"><b>Iš viso (@_containers.Count vnt.)</b></span>
+                    <span style="min-width:80px; text-align:right"><b>@_containers.Sum(c => c.GrossWeight).ToString("N1")</b></span>
+                    <span style="min-width:80px; text-align:right"><b>@_containers.Sum(c => c.TareWeight).ToString("N1")</b></span>
+                    <span style="min-width:80px; text-align:right"><b>@_containers.Sum(c => c.NetWeight).ToString("N1")</b></span>
+                </div>
             </MudPaper>
         }
 
         <!-- Terms -->
         <MudPaper Class="pa-4 mb-4" Elevation="0" Style="background:#f0f4ff; border-left:4px solid #1976d2">
-            <MudText Typo="Typo.body2">Patvirtinu, kad pristačiau aukščiau nurodytus produktus pagal sutartas sąlygas. Duomenys teisingi.</MudText>
+            <MudText Typo="Typo.body1">Patvirtinu, kad pristačiau aukščiau nurodytus produktus pagal sutartas sąlygas. Duomenys teisingi.</MudText>
         </MudPaper>
 
         <!-- Signer name -->
-        <MudTextField @bind-Value="_signerName" Label="Pristatė (vardas, pavardė)" Variant="Variant.Outlined"
-            FullWidth="true" Class="mb-4" Required="true" Adornment="Adornment.Start"
-            AdornmentIcon="@Icons.Material.Filled.Person" />
+        @if (!_isCompany)
+        {
+            <MudTextField @bind-Value="_signerName" Label="Pristatė (vardas, pavardė)" Variant="Variant.Outlined"
+                FullWidth="true" Class="mb-4" Required="true" Adornment="Adornment.Start"
+                AdornmentIcon="@Icons.Material.Filled.Person" Style="font-size:18px" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4">
+                Pristatė: <b>@_supplierName</b>
+            </MudAlert>
+        }
 
         <!-- Signature canvas -->
-        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:white; border:1px solid #e0e0e0; border-radius:8px">
-            <MudText Typo="Typo.caption" Class="mb-2">Parašas</MudText>
-            <canvas id="signatureCanvas" width="500" height="200"
-                style="border:1px solid #ccc; border-radius:4px; touch-action:none; cursor:crosshair; background:white; display:block; margin:auto"></canvas>
+        <MudPaper Class="pa-4 mb-4" Elevation="1" Style="background:white; border-radius:8px">
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Parašas (pieškite pirštu)</MudText>
+            <canvas id="signatureCanvas" width="800" height="300"
+                style="border:2px solid #1976d2; border-radius:8px; touch-action:none; cursor:crosshair; background:white; display:block; width:100%; height:300px"></canvas>
         </MudPaper>
 
         <!-- Buttons -->
-        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
-            <MudButton Variant="Variant.Outlined" Color="Color.Default"
-                StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearCanvasAsync">
+        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mb-4">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large"
+                StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearCanvasAsync"
+                Style="min-width:140px; height:56px; font-size:16px">
                 Išvalyti
             </MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                StartIcon="@Icons.Material.Filled.Draw" OnClick="SaveSignatureAsync" Disabled="@_saving">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                StartIcon="@Icons.Material.Filled.Draw" OnClick="SaveSignatureAsync" Disabled="@_saving"
+                Style="min-width:240px; height:56px; font-size:16px">
                 @if (_saving)
                 {
                     <MudProgressCircular Size="Size.Small" Color="Color.Inherit" />
@@ -116,80 +137,58 @@
 </MudContainer>
 
 <script>
-(function() {
-    const canvases = {};
+window.initSignatureCanvas = function(canvasId) {
+        setTimeout(function() {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
 
-    window.initSignatureCanvas = function(canvasId) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        const getPos = (e) => {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            if (e.touches && e.touches.length > 0) {
-                return {
-                    x: (e.touches[0].clientX - rect.left) * scaleX,
-                    y: (e.touches[0].clientY - rect.top) * scaleY
-                };
+            if (rect.width > 0) {
+                canvas.width = Math.round(rect.width);
+                canvas.height = Math.round(rect.height);
             }
-            return {
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY
+
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                if (e.touches && e.touches.length > 0) {
+                    return {
+                        x: e.touches[0].clientX - rect.left,
+                        y: e.touches[0].clientY - rect.top
+                    };
+                }
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
             };
-        };
 
-        const startDraw = (e) => {
-            e.preventDefault();
-            isDrawing = true;
-            const pos = getPos(e);
-            lastX = pos.x;
-            lastY = pos.y;
-        };
+            canvas.addEventListener('mousedown', (e) => { e.preventDefault(); isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+            canvas.addEventListener('mousemove', (e) => { if (!isDrawing) return; e.preventDefault(); const p = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); lastX = p.x; lastY = p.y; });
+            canvas.addEventListener('mouseup', () => { isDrawing = false; });
+            canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }, { passive: false });
+            canvas.addEventListener('touchmove', (e) => { if (!isDrawing) return; e.preventDefault(); const p = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); lastX = p.x; lastY = p.y; }, { passive: false });
+            canvas.addEventListener('touchend', () => { isDrawing = false; }, { passive: false });
 
-        const draw = (e) => {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-            lastX = pos.x;
-            lastY = pos.y;
-        };
-
-        const stopDraw = (e) => {
-            if (e) e.preventDefault();
-            isDrawing = false;
-        };
-
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDraw);
-        canvas.addEventListener('mouseleave', stopDraw);
-        canvas.addEventListener('touchstart', startDraw, { passive: false });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', stopDraw, { passive: false });
-
-        canvases[canvasId] = { canvas, ctx };
+            window._signatureCanvases = window._signatureCanvases || {};
+            window._signatureCanvases[canvasId] = { canvas, ctx };
+        }, 300);
     };
 
     window.clearSignatureCanvas = function(canvasId) {
-        const entry = canvases[canvasId];
+        const entry = (window._signatureCanvases || {})[canvasId];
         if (!entry) return;
-        const { canvas, ctx } = entry;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        entry.ctx.clearRect(0, 0, entry.canvas.width, entry.canvas.height);
     };
 
     window.getCanvasSvg = function(canvasId) {
@@ -198,17 +197,20 @@
         const dataUrl = canvas.toDataURL('image/png');
         return `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="200"><image width="500" height="200" href="${dataUrl}"/></svg>`;
     };
-})();
 </script>
 
 @code {
     [Parameter] public int Id { get; set; }
 
     private Delivery? _delivery;
+    private BusinessPartner? _supplier;
+    private bool _isCompany => !string.IsNullOrWhiteSpace(_supplier?.CompanyCode);
     private string _supplierName = "";
     private string _signerName = "";
     private bool _saving = false;
     private List<NordicBeesERP.Models.WarehouseModule.Container> _containers = new();
+    private List<NordicBeesERP.Models.WarehouseModule.DeliveryLine> _lines = new();
+    private List<NordicBeesERP.Models.Product> _products = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -216,7 +218,21 @@
         if (_delivery != null)
         {
             var suppliers = await CustomerService.GetSuppliersAsync();
-            _supplierName = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId)?.Name ?? "";
+            _supplier = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId);
+            _supplierName = _supplier?.Name ?? "";
+
+            // Pre-fill signer name for individuals
+            if (_supplier != null && string.IsNullOrWhiteSpace(_supplier.CompanyCode))
+            {
+                var firstName = _supplier.SupplierFirstName ?? "";
+                var lastName = _supplier.SupplierLastName ?? "";
+                var fullName = $"{firstName} {lastName}".Trim();
+                // Fallback to partner Name if first/last not set
+                _signerName = !string.IsNullOrWhiteSpace(fullName) ? fullName : (_supplier.Name ?? "");
+            }
+
+            _products = await ProductService.GetAllProductsAsync();
+            _lines = await DeliveryService.GetLinesByDeliveryIdAsync(_delivery.Id);
 
             using var ctx = await ContextFactory.CreateDbContextAsync();
             var lineIds = await ctx.DeliveryLines
@@ -258,6 +274,9 @@
 
         try
         {
+            if (_isCompany && string.IsNullOrWhiteSpace(_signerName))
+                _signerName = _supplierName;
+
             var svg = await JS.InvokeAsync<string>("getCanvasSvg", "signatureCanvas");
 
             if (string.IsNullOrWhiteSpace(svg))

@@ -124,6 +124,65 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                         });
                     });
 
+                    // Containers detail table
+                    if (containers.Any())
+                    {
+                        col.Item().PaddingTop(16).Column(c =>
+                        {
+                            c.Item().PaddingBottom(4).Text("Pakuotės").Bold().FontSize(10);
+                            c.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.ConstantColumn(30);   // Nr.
+                                    columns.RelativeColumn(3);    // Tipas
+                                    columns.ConstantColumn(70);   // Brutto
+                                    columns.ConstantColumn(70);   // Tara
+                                    columns.ConstantColumn(70);   // Netto
+                                });
+
+                                static IContainer HeaderCell(IContainer container) =>
+                                    container.Background(Colors.Grey.Lighten2).Padding(4);
+
+                                table.Header(h =>
+                                {
+                                    h.Cell().Element(HeaderCell).Text("Nr.").Bold();
+                                    h.Cell().Element(HeaderCell).Text("Tipas").Bold();
+                                    h.Cell().Element(HeaderCell).AlignRight().Text("Brutto (kg)").Bold();
+                                    h.Cell().Element(HeaderCell).AlignRight().Text("Tara (kg)").Bold();
+                                    h.Cell().Element(HeaderCell).AlignRight().Text("Netto (kg)").Bold();
+                                });
+
+                                static IContainer DataCell(IContainer container) =>
+                                    container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4);
+
+                                int nr = 1;
+                                foreach (var container in containers)
+                                {
+                                    string typeName = container.ContainerType switch
+                                    {
+                                        "BARREL" => "Statinė",
+                                        "BUCKET" => "Kibiras",
+                                        _ => container.ContainerType ?? "-"
+                                    };
+
+                                    table.Cell().Element(DataCell).Text(nr.ToString());
+                                    table.Cell().Element(DataCell).Text(typeName);
+                                    table.Cell().Element(DataCell).AlignRight().Text($"{container.GrossWeight:N1}");
+                                    table.Cell().Element(DataCell).AlignRight().Text($"{container.TareWeight:N1}");
+                                    table.Cell().Element(DataCell).AlignRight().Text($"{container.NetWeight:N1}");
+                                    nr++;
+                                }
+
+                                // Footer
+                                table.Cell().ColumnSpan(2).Padding(4).Text($"Iš viso ({containers.Count} vnt.)").Bold();
+                                table.Cell().Padding(4).AlignRight().Text($"{containers.Sum(c => c.GrossWeight):N1}").Bold();
+                                table.Cell().Padding(4).AlignRight().Text($"{containers.Sum(c => c.TareWeight):N1}").Bold();
+                                table.Cell().Padding(4).AlignRight().Text($"{containers.Sum(c => c.NetWeight):N1}").Bold();
+                            });
+                        });
+                    }
+
                     // Barrels section (only if NeedReturnBarrels)
                     if (delivery.NeedReturnBarrels)
                     {
@@ -139,7 +198,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                     col.Item().PaddingTop(24).Column(c =>
                     {
                         c.Item().PaddingBottom(8).Text("Patvirtinimas").Bold().FontSize(10);
-                        c.Item().Text("Patvirtinu, kad pristatiau aukščiau nurodytą žaliavą pagal sutartas sąlygas. Duomenys teisingi.")
+                        c.Item().Text("Patvirtinu, kad pristačiau aukščiau nurodytus produktus pagal sutartas sąlygas. Duomenys teisingi.")
                             .FontSize(9).FontColor(Colors.Grey.Darken2);
 
                         c.Item().PaddingTop(12).Row(row =>

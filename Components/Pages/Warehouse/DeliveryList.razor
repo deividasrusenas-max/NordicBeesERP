@@ -60,8 +60,9 @@
 
     <MudTable T="Delivery" Items="_deliveries" Hover="true" Dense="true" Loading="_loading"
         RowClassFunc="@((delivery, i) => _selectedDeliveries.Contains(delivery) ? "selected-row" : "")"
-        OnRowClick="@((TableRowClickEventArgs<Delivery> args) => ToggleSelection(args.Item))">
+        OnRowClick="@((TableRowClickEventArgs<Delivery> args) => GoToDelivery(args.Item.Id))">
         <HeaderContent>
+            <MudTh Style="width:40px"></MudTh>
             <MudTh>Data</MudTh>
             <MudTh>Numeris</MudTh>
             <MudTh>Tiekėjas</MudTh>
@@ -73,6 +74,11 @@
             <MudTh>Sąskaita</MudTh>
         </HeaderContent>
         <RowTemplate>
+            <MudTd @onclick:stopPropagation="true" Style="width:40px">
+                <input type="checkbox"
+                    checked="@_selectedDeliveries.Contains(context)"
+                    @onchange="@(_ => ToggleSelection(context))" />
+            </MudTd>
             <MudTd>@context.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
             <MudTd>@context.DeliveryNumber</MudTd>
             <MudTd>@GetSupplierName(context.SupplierId)</MudTd>
