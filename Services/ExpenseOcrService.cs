@@ -290,6 +290,21 @@ namespace NordicBeesERP.Services
                         result.Confidence.InvoiceNumber = ToConfidencePercent((float)confidence.GetDouble());
                 }
 
+                // Clean up InvoiceNumber — only remove specific known prefixes like "Serija DB Nr. 3022375"
+                if (!string.IsNullOrEmpty(result.InvoiceNumber))
+                {
+                    var prefixMatch = System.Text.RegularExpressions.Regex.Match(
+                        result.InvoiceNumber.Trim(),
+                        @"^(?:Serija\s+\w+\s+)?Nr\.\s*(.+)$",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (prefixMatch.Success)
+                    {
+                        var cleaned = prefixMatch.Groups[1].Value.Trim();
+                        _logger.LogDebug("[INV NUMBER] Cleaned prefix: '{Old}' → '{New}'", result.InvoiceNumber, cleaned);
+                        result.InvoiceNumber = cleaned;
+                    }
+                }
+
                 // Get InvoiceDate
                 if (TryGetField("InvoiceDate", out var invoiceDateField))
                 {
@@ -313,6 +328,44 @@ namespace NordicBeesERP.Services
                 }
 
                 _logger.LogDebug("[DATE] InvoiceDate={InvoiceDate} DueDate={DueDate}", result.InvoiceDate, result.DueDate);
+
+                // Fallback: if DueDate not found, try PaymentTerm and calculate from InvoiceDate
+                if (string.IsNullOrEmpty(result.DueDate) && !string.IsNullOrEmpty(result.InvoiceDate))
+                {
+                    if (TryGetField("PaymentTerm", out var paymentTermField))
+                    {
+                        var termStr = paymentTermField.TryGetProperty("valueString", out var pts) ? pts.GetString() ?? "" :
+                                      paymentTermField.TryGetProperty("content", out var ptcp) ? ptcp.GetString() ?? "" : "";
+                        var termMatch = System.Text.RegularExpressions.Regex.Match(termStr, @"\d+");
+                        if (termMatch.Success && int.TryParse(termMatch.Value, out var days) && days > 0 && days <= 365)
+                        {
+                            if (DateTime.TryParse(result.InvoiceDate, out var invDate))
+                            {
+                                result.DueDate = invDate.AddDays(days).ToString("yyyy-MM-dd");
+                                _logger.LogDebug("[DUE DATE] Calculated from PaymentTerm={Term}: {DueDate}", termStr, result.DueDate);
+                            }
+                        }
+                    }
+                }
+
+                // Get CustomerName (BilledTo / CustomerName)
+                if (TryGetField("CustomerName", out var customerNameField))
+                {
+                    result.CustomerName = customerNameField.TryGetProperty("valueString", out var cvs) ? cvs.GetString() ?? "" :
+                                          customerNameField.TryGetProperty("content", out var ccp) ? ccp.GetString() ?? "" : "";
+                }
+                if (string.IsNullOrEmpty(result.CustomerName) && TryGetField("BilledTo", out var billedToField))
+                {
+                    result.CustomerName = billedToField.TryGetProperty("valueString", out var bts) ? bts.GetString() ?? "" :
+                                          billedToField.TryGetProperty("content", out var btc) ? btc.GetString() ?? "" : "";
+                }
+
+                // Get CustomerTaxId (buyer VAT code for WRONG_RECIPIENT check)
+                if (TryGetField("CustomerTaxId", out var customerTaxIdField))
+                {
+                    result.CustomerVatCode = CleanVatCode(customerTaxIdField.TryGetProperty("valueString", out var cts) ? cts.GetString() ?? "" :
+                                              customerTaxIdField.TryGetProperty("content", out var ctc) ? ctc.GetString() ?? "" : "");
+                }
 
                 // Get SubTotal
                 if (TryGetField("SubTotal", out var subTotalField))
@@ -419,9 +472,29 @@ namespace NordicBeesERP.Services
                         if (f.TryGetProperty("Description", out var descField))
                             lineDto.Description = descField.TryGetProperty("valueString", out var vs) ? vs.GetString() ?? "" : descField.TryGetProperty("content", out var cp) ? cp.GetString() ?? "" : "";
 
+                        // Fallback: try ProductCode as description
+                        if (string.IsNullOrEmpty(lineDto.Description) && f.TryGetProperty("ProductCode", out var productCodeField))
+                        {
+                            lineDto.Description = productCodeField.TryGetProperty("valueString", out var vs2) ? vs2.GetString() ?? "" :
+                                                  productCodeField.TryGetProperty("content", out var cp2) ? cp2.GetString() ?? "" : "";
+                            _logger.LogDebug("[LINE DESC] Using ProductCode as description: {Desc}", lineDto.Description);
+                        }
+
+                        // Try ProductDescription if still empty
+                        if (string.IsNullOrEmpty(lineDto.Description) && f.TryGetProperty("ProductDescription", out var prodDescField))
+                        {
+                            lineDto.Description = prodDescField.TryGetProperty("valueString", out var vs3d) ? vs3d.GetString() ?? "" :
+                                                  prodDescField.TryGetProperty("content", out var cp3d) ? cp3d.GetString() ?? "" : "";
+                        }
+
                         // Get Quantity
                         if (f.TryGetProperty("Quantity", out var qtyField) && (qtyField.TryGetProperty("valueNumber", out var valueNumber) || qtyField.TryGetProperty("ValueNumber", out valueNumber)))
                             lineDto.Quantity = (decimal)valueNumber.GetDouble();
+
+                        // Get UnitOfMeasure
+                        if (f.TryGetProperty("Unit", out var unitField))
+                            lineDto.UnitOfMeasure = unitField.TryGetProperty("valueString", out var vs3) ? vs3.GetString() ?? "" :
+                                                    unitField.TryGetProperty("content", out var cp3) ? cp3.GetString() ?? "" : "";
 
                         // Get UnitPrice
                         if (f.TryGetProperty("UnitPrice", out var unitPriceField) && (unitPriceField.TryGetProperty("valueCurrency", out var valueCurrency) || unitPriceField.TryGetProperty("ValueCurrency", out valueCurrency)))
@@ -436,6 +509,18 @@ namespace NordicBeesERP.Services
                             if (amountCurrency.TryGetProperty("amount", out var amountProp) || amountCurrency.TryGetProperty("Amount", out amountProp))
                                 lineDto.AmountExclVat = (decimal)amountProp.GetDouble();
                         }
+
+                        // Try Net field as fallback for Amount
+                        if (lineDto.AmountExclVat == 0 && f.TryGetProperty("Net", out var netField) &&
+                            (netField.TryGetProperty("valueCurrency", out var netCurrency) || netField.TryGetProperty("ValueCurrency", out netCurrency)))
+                        {
+                            if (netCurrency.TryGetProperty("amount", out var netAmt) || netCurrency.TryGetProperty("Amount", out netAmt))
+                                lineDto.AmountExclVat = (decimal)netAmt.GetDouble();
+                        }
+
+                        // Get line confidence from Azure DI
+                        if (item.TryGetProperty("confidence", out var lineConfEl))
+                            lineDto.Confidence = (decimal)lineConfEl.GetDouble();
 
                         // Get TaxRate for line
                         if (f.TryGetProperty("TaxRate", out var taxRateField))
@@ -488,12 +573,102 @@ namespace NordicBeesERP.Services
                         _logger.LogDebug("[AZURE LINE] desc={Desc} qty={Qty} excl={Excl} vat={VatRate}% incl={Incl}", 
                             lineDto.Description, lineDto.Quantity, lineDto.AmountExclVat, lineDto.VatRate, lineDto.AmountInclVat);
 
-                        if (!string.IsNullOrEmpty(lineDto.Description))
+                        // Skip lines that are clearly metadata (Svoris/Weight with 0 amount)
+                        bool isMetadataLine = lineDto.AmountExclVat == 0 && lineDto.AmountInclVat == 0 &&
+                                              !lineDto.UnitPrice.HasValue &&
+                                              (lineDto.Description.Contains("voris", StringComparison.OrdinalIgnoreCase) ||
+                                               lineDto.Description.Contains("weight", StringComparison.OrdinalIgnoreCase) ||
+                                               lineDto.Description.Contains("Svoris", StringComparison.OrdinalIgnoreCase));
+                        if (isMetadataLine)
+                        {
+                            _logger.LogDebug("[LINE SKIP] Skipping metadata line: {Desc}", lineDto.Description);
+                            continue;
+                        }
+
+                        // Include line if it has Description OR has a meaningful amount
+                        bool hasDescription = !string.IsNullOrEmpty(lineDto.Description);
+                        bool hasAmount = lineDto.AmountExclVat > 0 || lineDto.AmountInclVat > 0 ||
+                                         (lineDto.UnitPrice.HasValue && lineDto.UnitPrice.Value > 0 && lineDto.Quantity.HasValue);
+                        if (hasDescription || hasAmount)
+                        {
+                            if (string.IsNullOrEmpty(lineDto.Description))
+                                lineDto.Description = $"Eilutė {result.Lines.Count + 1}";
                             result.Lines.Add(lineDto);
+                        }
                     }
                 }
 
-                _logger.LogDebug("[AZURE DI] supplier={Supplier} vat={Vat} inv={Invoice} total={Total}", 
+                // =====================================================
+                // POST-PROCESSING: Reconcile lines against header totals
+                // =====================================================
+                if (result.Lines.Any() && result.AmountExclVat > 0)
+                {
+                    var linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
+                    var diff = linesSumExcl - result.AmountExclVat;
+
+                    // CASE 1: Lines sum EXCEEDS header (phantom lines from spec pages)
+                    // Strategy: remove lines that cause the excess, starting from zero-amount or duplicate-description lines
+                    if (diff > 0.05m)
+                    {
+                        _logger.LogDebug("[RECONCILE] Lines exceed header by {Diff}. Attempting to remove phantom lines.", diff);
+
+                        // Step 1: Remove zero-amount lines only
+                        var zeroAmountLines = result.Lines
+                            .Where(l => l.AmountExclVat == 0)
+                            .ToList();
+                        foreach (var candidate in zeroAmountLines)
+                        {
+                            result.Lines.Remove(candidate);
+                            _logger.LogDebug("[RECONCILE] Removed zero-amount line (conf={Conf}): {Desc}",
+                                candidate.Confidence, candidate.Description);
+                        }
+
+                        // Recalculate diff after zero-amount removal
+                        linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
+                        diff = linesSumExcl - result.AmountExclVat;
+
+                        // Step 2: If still over, remove lines where qty > 1000 (likely weight/volume)
+                        if (diff > 0.05m)
+                        {
+                            var weightLines = result.Lines
+                                .Where(l => l.Quantity.HasValue && l.Quantity.Value > 1000)
+                                .ToList();
+                            foreach (var wl in weightLines)
+                            {
+                                result.Lines.Remove(wl);
+                                _logger.LogDebug("[RECONCILE] Removed large-qty line (likely weight): {Desc} qty={Qty}", wl.Description, wl.Quantity);
+                            }
+                        }
+
+                        // Step 3: If still over, remove duplicate descriptions keeping the one closest to remaining diff
+                        linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
+                        diff = linesSumExcl - result.AmountExclVat;
+                        if (diff > 0.05m)
+                        {
+                            var duplicateDescs = result.Lines
+                                .GroupBy(l => l.Description)
+                                .Where(g => g.Count() > 1)
+                                .SelectMany(g => g.Skip(1))
+                                .ToList();
+                            foreach (var dl in duplicateDescs)
+                            {
+                                result.Lines.Remove(dl);
+                                _logger.LogDebug("[RECONCILE] Removed duplicate description line: {Desc}", dl.Description);
+                                linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
+                                if (Math.Abs(linesSumExcl - result.AmountExclVat) <= 0.05m) break;
+                            }
+                        }
+
+                        _logger.LogDebug("[RECONCILE] After cleanup: LinesSumExcl={Sum} HeaderExcl={Header}",
+                            result.Lines.Sum(l => l.AmountExclVat), result.AmountExclVat);
+                    }
+
+                    // CASE 2: Lines sum LESS than header (missing lines — e.g. Delamode with merged lines)
+                    // Strategy: do nothing — let user add lines manually via edit dialog
+                    // Just ensure AMOUNT_MISMATCH flag is set correctly (handled later)
+                }
+
+                _logger.LogDebug("[AZURE DI] supplier={Supplier} vat={Vat} inv={Invoice} total={Total}",
                     result.SupplierName, result.SupplierVatCode, result.InvoiceNumber, result.AmountInclVat);
 
                 // Load company settings early for VIES own-company check
@@ -617,9 +792,9 @@ namespace NordicBeesERP.Services
 
                 // AMOUNT_MISMATCH: result.Lines.Count > 0 && ExclVat diff >= 0.05
                 // If ExclVat matches (diff < 0.05) but InclVat doesn't - do NOT set flag (InclVat diff is just VAT rounding)
-                var linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
-                var diffExcl = Math.Abs(linesSumExcl - result.AmountExclVat);
-                _logger.LogDebug("[MISMATCH CHECK] LinesSumExcl={Lines} HeaderExcl={Header} Diff={Diff}", linesSumExcl, result.AmountExclVat, diffExcl);
+                var mismatchLinesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
+                var diffExcl = Math.Abs(mismatchLinesSumExcl - result.AmountExclVat);
+                _logger.LogDebug("[MISMATCH CHECK] LinesSumExcl={Lines} HeaderExcl={Header} Diff={Diff}", mismatchLinesSumExcl, result.AmountExclVat, diffExcl);
 
                 var linesSumIncl = result.Lines.Sum(l => l.AmountInclVat);
                 var diffIncl = Math.Abs(linesSumIncl - result.AmountInclVat);
@@ -669,7 +844,9 @@ namespace NordicBeesERP.Services
             int? defaultCategoryId = null;
 
             var supplierByVat = await context.BusinessPartners
-                .Where(bp => bp.VatCode == vatCode)
+                .Where(bp => bp.VatCode == vatCode
+                          || bp.VatCode == "LT" + vatCode
+                          || bp.VatCode == vatCode.TrimStart('L', 'T'))
                 .Select(bp => new { bp.Id, bp.DefaultExpenseCategoryId })
                 .FirstOrDefaultAsync();
 
