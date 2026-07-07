@@ -57,8 +57,8 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                         row.RelativeItem().Column(c =>
                         {
                             c.Item().Text(companySettings?.CompanyName ?? "MB Lakštena").Bold().FontSize(12);
-                            if (!string.IsNullOrWhiteSpace(companySettings?.CompanyAddress))
-                                c.Item().Text(companySettings.CompanyAddress).FontSize(9).FontColor(Colors.Grey.Darken1);
+                            if (!string.IsNullOrWhiteSpace(companySettings?.Address))
+                                c.Item().Text(companySettings.Address).FontSize(9).FontColor(Colors.Grey.Darken1);
                             if (!string.IsNullOrWhiteSpace(companySettings?.CompanyCode))
                                 c.Item().Text($"Įmonės kodas: {companySettings.CompanyCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
                             if (!string.IsNullOrWhiteSpace(companySettings?.VatCode))
