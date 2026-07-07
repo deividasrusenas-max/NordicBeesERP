@@ -69,6 +69,7 @@ public class OcrLineDto
     public decimal VatRate { get; set; }
     public decimal AmountInclVat { get; set; }
     public int? SuggestedCategoryId { get; set; }
+    public decimal Confidence { get; set; } = 1.0m;
 }
 
 public class OcrConfidenceDto

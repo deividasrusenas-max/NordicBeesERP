@@ -62,7 +62,7 @@ namespace NordicBeesERP.Services
                 SupplierType = bp.SupplierType,
                 DefaultExpenseCategoryId = bp.DefaultExpenseCategoryId
             })
-            .OrderBy(s => s.Name)
+            .OrderBy(s => s.Name.TrimStart('"', '\'', ' ', '('))
             .ToList();
 
             var withCategory = result.Where(s => s.DefaultExpenseCategoryId.HasValue).Count();

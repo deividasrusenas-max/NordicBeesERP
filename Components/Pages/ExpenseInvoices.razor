@@ -10,6 +10,9 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
+@inject IJSRuntime JS
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
+@using System.IO.Compression
 
 <PageTitle>Išlaidų sąskaitos</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
@@ -113,10 +116,44 @@
         <MudTabPanel Text="Reikia dėmesio" />
     </MudTabs>
 
+    <!-- Bulk action bar -->
+    @if (_selectedInvoices.Count > 0)
+    {
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mb-2 pa-3 d-flex align-center justify-space-between"
+                  Style="background:#e8f0fe; border-radius:8px;">
+            <MudText Typo="Typo.body1" Style="color:#1976d2;font-weight:500;">
+                Pasirinkta: @_selectedInvoices.Count
+            </MudText>
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                           OnClick="@(() => { _selectedInvoices.Clear(); StateHasChanged(); })">
+                    Atšaukti
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="DownloadSelectedAsync"
+                           Disabled="@_isExporting"
+                           Style="text-transform:none">
+                    @if (_isExporting)
+                    {
+                        <MudProgressCircular Size="Size.Small" Color="Color.Default" />
+                    }
+                    Atsisiųsti failus
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+
     <!-- MudTable -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
         <MudTable Items="@FilteredInvoices" Dense="@true" Hover="@true" Striped="@true" RowsPerPage="25" Elevation="0" RowStyleFunc="@((inv, _) => GetRowStyle(inv))" OnRowClick="@(async (TableRowClickEventArgs<ExpenseInvoice> args) => await OpenInvoiceDetail(args.Item))" Style="cursor:pointer">
             <HeaderContent>
+                <MudTh Style="min-width:48px;width:48px;">
+                    <input type="checkbox"
+                           checked="@(GetSelectAllState() == true)"
+                           @onchange="@((ChangeEventArgs e) => ToggleSelectAll((bool)e.Value! ? true : false))"
+                           @onclick:stopPropagation="true" />
+                </MudTh>
                 <MudTh>Nr.</MudTh>
                 <MudTh>Tiekėjas</MudTh>
                 <MudTh>Data</MudTh>
@@ -127,6 +164,12 @@
                 <MudTh>Problemos</MudTh>
             </HeaderContent>
             <RowTemplate>
+                <MudTd Style="min-width:48px;width:48px;">
+                    <input type="checkbox"
+                           checked="@_selectedInvoices.Contains(context.Id)"
+                           @onchange="@((ChangeEventArgs e) => ToggleInvoice(context.Id, (bool)e.Value!))"
+                           @onclick:stopPropagation="true" />
+                </MudTd>
                 <MudTd>@context.InvoiceNumber</MudTd>
                 <MudTd>
                     @GetSupplierName(context)
@@ -213,6 +256,8 @@
     private bool _showCurrentYear = false;
     private HashSet<string> _selectedStatuses = new();
     private List<Models.Expenses.ExpenseCategory> _expenseCategories = new();
+    private HashSet<int> _selectedInvoices = new();
+    private bool _isExporting = false;
 
     private List<ExpenseInvoice> _attentionInvoices => _invoices
         .Where(i => ExpenseStatusHelper.NeedsAttention(i.Status, i.OcrFlags, i.DueDate))
@@ -479,4 +524,166 @@
         await LoadDataAsync();
         StateHasChanged();
     }
+
+    private void ToggleInvoice(int id, bool selected)
+    {
+        if (selected) _selectedInvoices.Add(id);
+        else _selectedInvoices.Remove(id);
+        StateHasChanged();
+    }
+
+    private bool? GetSelectAllState()
+    {
+        var visible = FilteredInvoices.Select(i => i.Id).ToList();
+        if (!visible.Any()) return false;
+        var selected = visible.Count(i => _selectedInvoices.Contains(i));
+        if (selected == 0) return false;
+        if (selected == visible.Count) return true;
+        return null;
+    }
+
+    private void ToggleSelectAll(bool state)
+    {
+        var visible = FilteredInvoices.Select(i => i.Id).ToList();
+        if (state) foreach (var id in visible) _selectedInvoices.Add(id);
+        else foreach (var id in visible) _selectedInvoices.Remove(id);
+        StateHasChanged();
+    }
+
+    private async Task DownloadSelectedAsync()
+    {
+        if (_selectedInvoices.Count == 0) return;
+
+        _isExporting = true;
+        StateHasChanged();
+
+        try
+        {
+            var selected = _invoices.Where(i => _selectedInvoices.Contains(i.Id)
+                && !string.IsNullOrEmpty(i.OriginalFilePath)).ToList();
+
+            if (!selected.Any())
+            {
+                Snackbar.Add("Pasirinktos sąskaitos neturi failų", Severity.Warning);
+                return;
+            }
+
+            if (selected.Count == 1)
+            {
+                var invoice = selected[0];
+                var filePath = Path.Combine(WebHostEnvironment.WebRootPath, invoice.OriginalFilePath!);
+                if (!File.Exists(filePath)) { Snackbar.Add("Failas nerastas serveryje", Severity.Error); return; }
+                var bytes = await File.ReadAllBytesAsync(filePath);
+                var base64 = Convert.ToBase64String(bytes);
+                var fileName = Path.GetFileName(invoice.OriginalFilePath!);
+                await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, "application/pdf", base64);
+                Snackbar.Add("Failas atsisiųstas", Severity.Success);
+                return;
+            }
+
+            // Multiple files — ask what to do
+            var choice = await DialogService.ShowMessageBox(
+                "Kaip atsisiųsti?",
+                $"Pasirinkta sąskaitų su failais: {selected.Count}. Pasirinkite formatą:",
+                yesText: "Vienas PDF failas",
+                noText: "Atskiri failai (ZIP)",
+                cancelText: "Atšaukti");
+
+            if (choice == null) return;
+
+            if (choice == true)
+            {
+                // Merge all PDFs into one
+                var mergedBytes = await MergePdfsAsync(selected.Select(i => i.OriginalFilePath!).ToList());
+                if (mergedBytes == null) { Snackbar.Add("Nepavyko sujungti PDF failų", Severity.Error); return; }
+                var base64 = Convert.ToBase64String(mergedBytes);
+                var dateStr = DateTime.Now.ToString("yyyyMMdd");
+                await JS.InvokeVoidAsync("downloadFileFromBytes", $"islaidos_{dateStr}.pdf", "application/pdf", base64);
+                Snackbar.Add($"{selected.Count} sąskaitos sujungtos į vieną PDF", Severity.Success);
+            }
+            else
+            {
+                using var ms = new MemoryStream();
+                using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+                {
+                    foreach (var invoice in selected)
+                    {
+                        try
+                        {
+                            var filePath = Path.Combine(WebHostEnvironment.WebRootPath, invoice.OriginalFilePath!);
+                            if (!File.Exists(filePath)) continue;
+                            var bytes = await File.ReadAllBytesAsync(filePath);
+                            var entryName = Path.GetFileName(invoice.OriginalFilePath!);
+                            var entry = zip.CreateEntry(entryName);
+                            using var entryStream = entry.Open();
+                            await entryStream.WriteAsync(bytes);
+                        }
+                        catch { }
+                    }
+                }
+                var zipBytes = ms.ToArray();
+                var base64 = Convert.ToBase64String(zipBytes);
+                var dateStr = DateTime.Now.ToString("yyyyMMdd");
+                await JS.InvokeVoidAsync("downloadFileFromBytes", $"islaidos_{dateStr}.zip", "application/zip", base64);
+                Snackbar.Add($"{selected.Count} failų atsisiųsta ZIP archyve", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isExporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<byte[]?> MergePdfsAsync(List<string> filePaths)
+    {
+        try
+        {
+            var allPdfBytes = new List<byte[]>();
+
+            foreach (var relativePath in filePaths)
+            {
+                var fullPath = Path.Combine(WebHostEnvironment.WebRootPath, relativePath);
+                if (!File.Exists(fullPath)) continue;
+                var pdfBytes = await File.ReadAllBytesAsync(fullPath);
+                allPdfBytes.Add(pdfBytes);
+            }
+
+            if (allPdfBytes.Count == 1) return allPdfBytes[0];
+
+            using var mergedDoc = new PdfSharpCore.Pdf.PdfDocument();
+
+            foreach (var pdfBytes in allPdfBytes)
+            {
+                using var ms = new MemoryStream(pdfBytes);
+                using var srcDoc = PdfSharpCore.Pdf.IO.PdfReader.Open(ms, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+                foreach (PdfSharpCore.Pdf.PdfPage page in srcDoc.Pages)
+                {
+                    mergedDoc.AddPage(page);
+                }
+            }
+
+            using var resultMs = new MemoryStream();
+            mergedDoc.Save(resultMs, false);
+            return resultMs.ToArray();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"PDF sujungimo klaida: {ex.Message}", Severity.Warning);
+            return null;
+        }
+    }
 }
+
+<style>
+    input[type=checkbox] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #594ae2;
+    }
+</style>

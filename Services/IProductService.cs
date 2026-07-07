@@ -11,5 +11,6 @@ namespace NordicBeesERP.Services
         Task<Product> CreateProductAsync(Product product);
         Task<Product> UpdateProductAsync(Product product);
         Task<bool> DeleteProductAsync(int id);
+        Task<string> GenerateProductCodeAsync(ProductType productType);
     }
 }

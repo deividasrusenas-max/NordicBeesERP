@@ -286,47 +286,93 @@
                                     }
 
                                     <!-- Eilutės Section -->
-                                    @if (_lines.Any())
+                                    @if (_editMode)
                                     {
-                                        @if (!LinesMatchHeader)
-                                        {
-                                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
-                                                Eilučių suma (@GetLinesTotal().ToString("N2") €) nesutampa su sąskaitos suma (@_invoice?.AmountInclVat.ToString("N2") €)
-                                            </MudAlert>
-                                        }
-                                        <table style="width:100%;font-size:0.83rem;border-collapse:collapse;">
-                                            <thead style="background:#f0f4ff;">
-                                                <tr>
-                                                    <th style="padding:4px 8px;text-align:left;">Aprašymas</th>
-                                                    <th style="padding:4px 8px;text-align:right;">Kiekis</th>
-                                                    <th style="padding:4px 8px;text-align:right;">Be PVM</th>
-                                                    <th style="padding:4px 8px;text-align:right;">PVM%</th>
-                                                    <th style="padding:4px 8px;text-align:right;">Su PVM</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var line in _lines)
-                                                {
-                                                    <tr style="border-bottom:1px solid #e5e7eb;">
-                                                        <td style="padding:4px 8px;">@line.Description</td>
-                                                        <td style="padding:4px 8px;text-align:right;">@(line.Quantity.HasValue ? line.Quantity.Value.ToString("G29") : "")</td>
-                                                        <td style="padding:4px 8px;text-align:right;">@line.AmountExclVat.ToString("N2")</td>
-                                                        <td style="padding:4px 8px;text-align:right;">@((int)line.VatRate)%</td>
-                                                        <td style="padding:4px 8px;text-align:right;">@line.AmountInclVat.ToString("N2")</td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                            <tfoot style="font-weight:600;background:#f8fafc;">
-                                                <tr>
-                                                    <td colspan="4" style="padding:4px 8px;">Viso:</td>
-                                                    <td style="padding:4px 8px;text-align:right;">@GetLinesTotal().ToString("N2") €</td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
+                                        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mt-3 mb-1">Eilutės</MudText>
+                                        <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
+                                            <div class="d-flex justify-space-between align-center mb-2">
+                                                <MudText Typo="Typo.body2" Style="font-weight:600">Eilutės</MudText>
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                                           StartIcon="@Icons.Material.Filled.Add"
+                                                           OnClick="AddEditLine" Style="text-transform:none">
+                                                    Pridėti eilutę
+                                                </MudButton>
+                                            </div>
+                                            @for (int i = 0; i < _lines.Count; i++)
+                                            {
+                                                var idx = i;
+                                                <div class="d-flex gap-2 align-center mb-2">
+                                                    <MudTextField @bind-Value="_lineDescriptions[idx]"
+                                                                 Label="Aprašymas" Variant="Variant.Outlined"
+                                                                 Margin="Margin.Dense" Style="flex:3"
+                                                                 @onblur="@(() => UpdateLineFromString(idx))" />
+                                                    <MudTextField @bind-Value="_lineQuantities[idx]"
+                                                                 Label="Kiekis" Variant="Variant.Outlined"
+                                                                 Margin="Margin.Dense" Style="flex:1"
+                                                                 @onblur="@(() => UpdateLineFromString(idx))" />
+                                                    <MudTextField @bind-Value="_lineAmounts[idx]"
+                                                                 Label="Be PVM" Variant="Variant.Outlined"
+                                                                 Margin="Margin.Dense" Style="flex:1"
+                                                                 @onblur="@(() => UpdateLineFromString(idx))" />
+                                                    <MudTextField @bind-Value="_lineVatRates[idx]"
+                                                                 Label="PVM%" Variant="Variant.Outlined"
+                                                                 Margin="Margin.Dense" Style="flex:1"
+                                                                 @onblur="@(() => UpdateLineFromString(idx))" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                   Color="Color.Error" Size="Size.Small"
+                                                                   OnClick="@(() => RemoveEditLine(idx))" />
+                                                </div>
+                                            }
+                                            <MudDivider Class="mt-1 mb-1" />
+                                            <MudText Typo="Typo.body2" Class="text-right">
+                                                Iš viso be PVM: <strong>@_lines.Sum(l => l.AmountExclVat).ToString("N2") €</strong>
+                                            </MudText>
+                                        </MudPaper>
                                     }
                                     else
                                     {
-                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Eilutės nerastos</MudText>
+                                        @if (_lines.Any())
+                                        {
+                                            @if (!LinesMatchHeader)
+                                            {
+                                                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+                                                    Eilučių suma (@GetLinesTotal().ToString("N2") €) nesutampa su sąskaitos suma (@_invoice?.AmountInclVat.ToString("N2") €)
+                                                </MudAlert>
+                                            }
+                                            <table style="width:100%;font-size:0.83rem;border-collapse:collapse;">
+                                                <thead style="background:#f0f4ff;">
+                                                    <tr>
+                                                        <th style="padding:4px 8px;text-align:left;">Aprašymas</th>
+                                                        <th style="padding:4px 8px;text-align:right;">Kiekis</th>
+                                                        <th style="padding:4px 8px;text-align:right;">Be PVM</th>
+                                                        <th style="padding:4px 8px;text-align:right;">PVM%</th>
+                                                        <th style="padding:4px 8px;text-align:right;">Su PVM</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var line in _lines)
+                                                    {
+                                                        <tr style="border-bottom:1px solid #e5e7eb;">
+                                                            <td style="padding:4px 8px;">@line.Description</td>
+                                                            <td style="padding:4px 8px;text-align:right;">@(line.Quantity.HasValue ? line.Quantity.Value.ToString("G29") : "")</td>
+                                                            <td style="padding:4px 8px;text-align:right;">@line.AmountExclVat.ToString("N2")</td>
+                                                            <td style="padding:4px 8px;text-align:right;">@((int)line.VatRate)%</td>
+                                                            <td style="padding:4px 8px;text-align:right;">@line.AmountInclVat.ToString("N2")</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                                <tfoot style="font-weight:600;background:#f8fafc;">
+                                                    <tr>
+                                                        <td colspan="4" style="padding:4px 8px;">Viso:</td>
+                                                        <td style="padding:4px 8px;text-align:right;">@GetLinesTotal().ToString("N2") €</td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Eilutės nerastos</MudText>
+                                        }
                                     }
 
 
@@ -478,6 +524,12 @@
     private string _editNotes = "";
     private BusinessPartner? _editSelectedSupplier;
 
+    // Editable line string fields
+    private List<string> _lineDescriptions = new();
+    private List<string> _lineQuantities = new();
+    private List<string> _lineAmounts = new();
+    private List<string> _lineVatRates = new();
+
     // Local field for VAT rate binding
     private int _editVatRateLocal;
 
@@ -601,6 +653,17 @@
             _invoice!.CategoryId = _editCategoryId;
 
             await ExpenseService.UpdateInvoiceAsync(_invoice!);
+
+            // Save lines
+            foreach (var line in _lines)
+            {
+                if (line.Id > 0)
+                    await ExpenseService.UpdateInvoiceLineAsync(line);
+                else
+                    await ExpenseService.AddInvoiceLineAsync(line);
+            }
+            await ExpenseService.RecalculateInvoiceTotalsAsync(InvoiceId);
+
             Snackbar.Add("Sąskaita atnaujinta sėkmingai", Severity.Success);
             _editMode = false;
             MudDialog?.Close(DialogResult.Ok(true));
@@ -915,6 +978,49 @@
         _editVatRateLocal = (int)_invoice.VatRate;
         _invoice.VatRate = _editVatRateLocal;
         _editCategoryId = _invoice.CategoryId;
+        SyncLineStrings();
+    }
+
+    private void SyncLineStrings()
+    {
+        _lineDescriptions = _lines.Select(l => l.Description ?? "").ToList();
+        _lineQuantities = _lines.Select(l => l.Quantity?.ToString("G29") ?? "1").ToList();
+        _lineAmounts = _lines.Select(l => l.AmountExclVat.ToString("N2")).ToList();
+        _lineVatRates = _lines.Select(l => ((int)l.VatRate).ToString()).ToList();
+    }
+
+    private void UpdateLineFromString(int idx)
+    {
+        if (idx >= _lines.Count) return;
+        _lines[idx].Description = _lineDescriptions[idx];
+        if (decimal.TryParse(_lineQuantities[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var qty))
+            _lines[idx].Quantity = qty;
+        if (decimal.TryParse(_lineAmounts[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amt))
+            _lines[idx].AmountExclVat = amt;
+        if (decimal.TryParse(_lineVatRates[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var vat))
+            _lines[idx].VatRate = vat;
+        _lines[idx].AmountInclVat = _lines[idx].AmountExclVat * (1 + _lines[idx].VatRate / 100);
+        StateHasChanged();
+    }
+
+    private void AddEditLine()
+    {
+        _lines.Add(new ExpenseInvoiceLine { InvoiceId = InvoiceId, Description = "", Quantity = 1, AmountExclVat = 0, VatRate = 21, AmountInclVat = 0 });
+        _lineDescriptions.Add("");
+        _lineQuantities.Add("1");
+        _lineAmounts.Add("0,00");
+        _lineVatRates.Add("21");
+        StateHasChanged();
+    }
+
+    private void RemoveEditLine(int idx)
+    {
+        if (idx < _lines.Count) _lines.RemoveAt(idx);
+        if (idx < _lineDescriptions.Count) _lineDescriptions.RemoveAt(idx);
+        if (idx < _lineQuantities.Count) _lineQuantities.RemoveAt(idx);
+        if (idx < _lineAmounts.Count) _lineAmounts.RemoveAt(idx);
+        if (idx < _lineVatRates.Count) _lineVatRates.RemoveAt(idx);
+        StateHasChanged();
     }
 
 

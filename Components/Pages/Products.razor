@@ -30,6 +30,28 @@
                       Adornment="Adornment.Start" />
     </MudPaper>
 
+    <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
+        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Tipas:</MudText>
+        @foreach (var (type, label, color) in new (ProductType, string, Color)[]
+        {
+            (ProductType.FinishedGood, "Galutinis", Color.Success),
+            (ProductType.RawMaterial, "Žaliava", Color.Warning),
+            (ProductType.Packaging, "Tara", Color.Info),
+            (ProductType.Service, "Paslauga", Color.Default)
+        })
+        {
+            var isSelected = _selectedTypes.Contains(type);
+            <MudChip T="string"
+                     Color="@(isSelected ? color : Color.Default)"
+                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleTypeFilter(type))"
+                     Size="Size.Small"
+                     Style="@(isSelected ? "" : "opacity:0.7")">
+                @label
+            </MudChip>
+        }
+    </div>
+
     <MudPaper Elevation="0" Class="mt-2 pa-3">
         <MudTable T="Product" Items="@FilteredProducts" Hover="true" Dense="true" Elevation="0"
                   OnRowClick="@(async (TableRowClickEventArgs<Product> args) => await OpenEditDialog(args.Item!))"
@@ -40,7 +62,8 @@
                 <MudTh>Pavadinimas</MudTh>
                 <MudTh>EAN</MudTh>
                 <MudTh>Vienetas</MudTh>
-                <MudTh>Kaina</MudTh>
+                <MudTh>Savikaina</MudTh>
+                <MudTh>Pardavimo kaina</MudTh>
                 <MudTh>Aktyvus</MudTh>
                 <MudTh Style="width:100px;">Veiksmai</MudTh>
             </HeaderContent>
@@ -66,9 +89,8 @@
                     }
                 </MudTd>
                 <MudTd>@product.Unit</MudTd>
-                <MudTd>
-                    <MudText Typo="Typo.subtitle1"><strong>@product.SalePrice.ToString("N2") €</strong></MudText>
-                </MudTd>
+                <MudTd>@product.CostPrice.ToString("N2") €</MudTd>
+                <MudTd><strong>@product.SalePrice.ToString("N2") €</strong></MudTd>
                 <MudTd>
                     <MudChip T="string" Size="Size.Small"
                              Color="@(product.IsActive ? Color.Success : Color.Default)"
@@ -99,6 +121,7 @@
 @code {
     private List<Product>? products;
     private string? _searchText;
+    private HashSet<ProductType> _selectedTypes = new();
 
     private IEnumerable<Product> FilteredProducts
     {
@@ -114,6 +137,9 @@
                     (p.EanCode?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) == true));
             }
 
+            if (_selectedTypes.Any())
+                list = list.Where(p => _selectedTypes.Contains(p.ProductType));
+
             return list;
         }
     }
@@ -126,6 +152,12 @@
     private async Task LoadProducts()
     {
         products = await ProductService.GetAllProductsAsync();
+    }
+
+    private void ToggleTypeFilter(ProductType type)
+    {
+        if (!_selectedTypes.Remove(type))
+            _selectedTypes.Add(type);
     }
 
     private static string GetProductTypeLabel(ProductType type) => type switch
@@ -169,23 +201,27 @@
         {
             Snackbar.Add("Prekė sėkmingai sukurta!", Severity.Success);
             await LoadProducts();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     private async Task OpenEditDialog(Product product)
     {
+        var fullProduct = await ProductService.GetProductByIdAsync(product.Id) ?? product;
+
         var parameters = new DialogParameters
         {
-            { "Product", product }
+            { "Product", fullProduct }
         };
 
-        var dialog = await DialogService.ShowAsync<ProductEditDialog>($"Redaguoti prekę: {product.Code}", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var dialog = await DialogService.ShowAsync<ProductEditDialog>($"Redaguoti prekę: {fullProduct.Code}", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
         var result = await dialog.Result;
 
         if (result?.Canceled == false)
         {
             Snackbar.Add("Prekė sėkmingai atnaujinta!", Severity.Success);
             await LoadProducts();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -214,6 +250,7 @@
             {
                 Snackbar.Add("Prekė sėkmingai ištrinta!", Severity.Success);
                 await LoadProducts();
+                await InvokeAsync(StateHasChanged);
             }
             else
             {

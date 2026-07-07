@@ -1,3 +1,4 @@
+@using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Helpers
 @using NordicBeesERP.Models
@@ -7,6 +8,7 @@
 @inject IDialogService DialogService
 @inject IJSRuntime JS
 @inject ILogger<ExpenseUploadDialog> Logger
+@inject IImageToPdfService ImageToPdfService
 @inject NordicBeesERP.Data.NordicBeesERPContext Context
 @implements IAsyncDisposable
 
@@ -24,9 +26,10 @@
                         <div id="expense-drop-zone"
                              style="border:2px dashed #bdbdbd; border-radius:12px; cursor:pointer; min-height:160px; background:#fafafa; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px;">
                             <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Primary" Style="font-size:56px; pointer-events:none;" />
-                            <MudText Style="pointer-events:none;" Class="mt-2">Nutempkite PDF failą čia</MudText>
+                            <MudText Style="pointer-events:none;" Class="mt-2">Nutempkite PDF arba paveiksliuką čia</MudText>
+                            <MudText Typo="Typo.caption" Style="pointer-events:none;" Class="mt-1">PDF, JPG, PNG, WEBP, TIFF</MudText>
                             <MudText Typo="Typo.caption" Style="pointer-events:none;" Class="mt-1 mb-3">arba</MudText>
-                            <MudFileUpload T="IBrowserFile" Accept=".pdf" MaximumFileCount="1" FilesChanged="OnFileChanged">
+                            <MudFileUpload T="IBrowserFile" Accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff,.tif" MaximumFileCount="1" FilesChanged="OnFileChanged">
                                 <ActivatorContent>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FolderOpen">
                                         Pasirinkti failą
@@ -274,49 +277,55 @@
                     </MudGrid>
                 </MudPaper>
 
-                <!-- Eilutės (blue paper, only if Lines.Count>0) -->
-                @if (_ocrLines.Count > 0)
-                {
-                    <MudPaper Elevation="1" Class="pa-3 mb-3" Style="background-color:#e3f2fd">
-                        <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2">Eilutės</MudText>
-                        
-                        <!-- AMOUNT_MISMATCH alert -->
-                        @if (_ocrFlags.Contains("AMOUNT_MISMATCH"))
-                        {
-                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-1"/>
-                                 Sumos nesutampa: eilučių suma @string.Format("{0:F2}", _ocrLines.Sum(l => l.AmountExclVat)) ≠ antraštės suma @string.Format("{0:F2}", _amountExclVat)
-                            </MudAlert>
-                        }
+                <!-- Eilutės (editable) -->
+                <MudPaper Elevation="1" Class="pa-3 mb-3" Style="background-color:#e3f2fd">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Eilutės</MudText>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddLine" Style="text-transform:none">
+                            Pridėti eilutę
+                        </MudButton>
+                    </div>
 
-                        <table class="mud-table-root" style="font-size:0.75rem;">
-                            <thead><tr><th style="white-space:nowrap">Aprašymas</th><th style="white-space:nowrap">Kiekis</th><th style="white-space:nowrap">Be PVM</th><th style="white-space:nowrap">PVM%</th><th style="white-space:nowrap">Su PVM</th></tr></thead>
-                            <tbody>
-                                @foreach (var line in _ocrLines)
-                                {
-                                    <tr>
-                                        <td style="white-space:nowrap">@line.Description</td>
-                                        <td style="white-space:nowrap">@line.Quantity</td>
-                                        <td style="white-space:nowrap">@line.AmountExclVat.ToString("N2")</td>
-                                        <td style="white-space:nowrap">@line.VatRate</td>
-                                        <td style="white-space:nowrap">@line.AmountInclVat.ToString("N2")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                    @if (_ocrFlags.Contains("AMOUNT_MISMATCH"))
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+                            Eilučių suma @_ocrLines.Sum(l => l.AmountExclVat).ToString("N2") ≠ sąskaitos suma @_amountExclVat.ToString("N2")
+                        </MudAlert>
+                    }
 
-                        <MudDivider Class="mt-2 mb-2" />
+                    @for (int i = 0; i < _ocrLines.Count; i++)
+                    {
+                        var idx = i;
+                        var line = _ocrLines[idx];
+                        <div class="d-flex gap-2 align-center mb-2">
+                            <MudTextField @bind-Value="line.Description"
+                                         Label="Aprašymas" Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" Style="flex:3" />
+                            <MudTextField @bind-Value="_lineQuantities[idx]"
+                                         Label="Kiekis" Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" Style="flex:1"
+                                         @onblur="@(() => UpdateLineFromString(idx))" />
+                            <MudTextField @bind-Value="_lineAmounts[idx]"
+                                         Label="Be PVM" Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" Style="flex:1"
+                                         @onblur="@(() => UpdateLineFromString(idx))" />
+                            <MudTextField @bind-Value="_lineVatRates[idx]"
+                                         Label="PVM%" Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" Style="flex:1"
+                                         @onblur="@(() => UpdateLineFromString(idx))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => RemoveLine(idx))" />
+                        </div>
+                    }
 
-                        <MudGrid>
-                            <MudItem xs="12" sm="6" Class="text-right">
-                                <MudText Typo="Typo.body2" Class="font-weight-bold">Iš viso:</MudText>
-                            </MudItem>
-                            <MudItem xs="12" sm="6" Class="text-right">
-                                <MudText Typo="Typo.body2" Class="font-weight-bold">@(_ocrLines.Sum(l => l.AmountExclVat).ToString("N2"))</MudText>
-                            </MudItem>
-                        </MudGrid>
-                    </MudPaper>
-                }
+                    <MudDivider Class="mt-2 mb-1" />
+                    <MudText Typo="Typo.body2" Class="text-right">
+                        Iš viso be PVM: <strong>@_ocrLines.Sum(l => l.AmountExclVat).ToString("N2") €</strong>
+                    </MudText>
+                </MudPaper>
 
                 <!-- Error message in review phase -->
                 @if (!string.IsNullOrEmpty(_errorMessage) && _phase == "review")
@@ -384,6 +393,7 @@
     private List<string> _ocrFlags = new();
     private List<OcrLineDto> _ocrLines = new();
     private string _pdfBase64 = "";
+    private string _convertedFileName = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -420,12 +430,25 @@
     {
         _file = file;
         _pdfBase64 = "";
+        _convertedFileName = "";
         if (file != null)
         {
             using var stream = file.OpenReadStream(10 * 1024 * 1024);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
             _pdfBase64 = Convert.ToBase64String(ms.ToArray());
+
+            if (ImageToPdfService.IsImage(file.Name))
+            {
+                var imageBytes = Convert.FromBase64String(_pdfBase64);
+                var pdfBytes = await ImageToPdfService.ConvertToPdfAsync(imageBytes, ImageToPdfService.GetMimeType(file.Name));
+                _pdfBase64 = Convert.ToBase64String(pdfBytes);
+                _convertedFileName = Path.GetFileNameWithoutExtension(file.Name) + ".pdf";
+            }
+            else
+            {
+                _convertedFileName = file.Name;
+            }
         }
         StateHasChanged();
     }
@@ -448,6 +471,7 @@
     {
         _file = null;
         _pdfBase64 = "";
+        _convertedFileName = "";
         _supplierName = "";
         _invoiceNumber = "";
         _invoiceDate = null;
@@ -692,6 +716,8 @@
 
             _ocrResult = result;
             _ocrLines = result?.Lines ?? new List<OcrLineDto>();
+
+            SyncLineStrings();
             
             _phase = "review";
             StateHasChanged();
@@ -832,7 +858,7 @@
                 var uploadsDir = Path.Combine("wwwroot", "uploads", "invoices",
                     DateTime.Now.Year.ToString(), DateTime.Now.Month.ToString("00"));
                 Directory.CreateDirectory(uploadsDir);
-                var safeFileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Path.GetFileNameWithoutExtension(_file!.Name)}.pdf";
+                var safeFileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Path.GetFileNameWithoutExtension(_convertedFileName)}.pdf";
                 var filePath = Path.Combine(uploadsDir, safeFileName);
                 await File.WriteAllBytesAsync(filePath, pdfBytes);
                 
@@ -875,6 +901,48 @@
         _ => Color.Error
     };
 
+
+    private List<string> _lineQuantities = new();
+    private List<string> _lineAmounts = new();
+    private List<string> _lineVatRates = new();
+
+    private void SyncLineStrings()
+    {
+        _lineQuantities = _ocrLines.Select(l => l.Quantity?.ToString("N2") ?? "1").ToList();
+        _lineAmounts = _ocrLines.Select(l => l.AmountExclVat.ToString("N2")).ToList();
+        _lineVatRates = _ocrLines.Select(l => l.VatRate.ToString("N0")).ToList();
+    }
+
+    private void UpdateLineFromString(int idx)
+    {
+        if (idx >= _ocrLines.Count) return;
+        if (decimal.TryParse(_lineQuantities[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var qty))
+            _ocrLines[idx].Quantity = qty;
+        if (decimal.TryParse(_lineAmounts[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amt))
+            _ocrLines[idx].AmountExclVat = amt;
+        if (decimal.TryParse(_lineVatRates[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var vat))
+            _ocrLines[idx].VatRate = vat;
+        _ocrLines[idx].AmountInclVat = _ocrLines[idx].AmountExclVat * (1 + _ocrLines[idx].VatRate / 100);
+        StateHasChanged();
+    }
+
+    private void AddLine()
+    {
+        _ocrLines.Add(new OcrLineDto { Description = "", Quantity = 1, AmountExclVat = 0, VatRate = 21, AmountInclVat = 0 });
+        _lineQuantities.Add("1");
+        _lineAmounts.Add("0,00");
+        _lineVatRates.Add("21");
+        StateHasChanged();
+    }
+
+    private void RemoveLine(int idx)
+    {
+        if (idx < _ocrLines.Count) _ocrLines.RemoveAt(idx);
+        if (idx < _lineQuantities.Count) _lineQuantities.RemoveAt(idx);
+        if (idx < _lineAmounts.Count) _lineAmounts.RemoveAt(idx);
+        if (idx < _lineVatRates.Count) _lineVatRates.RemoveAt(idx);
+        StateHasChanged();
+    }
 
     private class DroppedFile : IBrowserFile
     {

@@ -89,6 +89,7 @@ builder.Services.AddScoped<BlazorAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<BlazorAuthStateProvider>());
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IErpUserService, ErpUserService>();
+builder.Services.AddScoped<IImageToPdfService, ImageToPdfService>();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddAuthentication("Cookies")
     .AddCookie("Cookies", options =>

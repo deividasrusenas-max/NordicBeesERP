@@ -16,12 +16,11 @@
             <!-- Code -->
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_editProduct.Code"
-                              Label="Kodas"
-                              Required="true"
-                              MaxLength="50"
-                              Disabled="@(_editProduct.Id > 0)"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
+                                Label="Kodas"
+                                ReadOnly="true"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Style="font-weight:normal" />
             </MudItem>
 
             <!-- Name -->
@@ -45,34 +44,16 @@
 
             <!-- ProductType -->
             <MudItem xs="12" md="6">
-                <MudSelect T="ProductType" @bind-Value="_editProduct.ProductType"
+                <MudSelect T="ProductType" Value="_editProduct.ProductType"
+                           ValueChanged="@OnProductTypeChanged"
                            Label="Prekės tipas"
                            Required="true"
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense">
                     <MudSelectItem T="ProductType" Value="ProductType.RawMaterial">Žaliava</MudSelectItem>
                     <MudSelectItem T="ProductType" Value="ProductType.Packaging">Tara</MudSelectItem>
-                    <MudSelectItem T="ProductType" Value="ProductType.SemiFinished">Pusfabrikatas</MudSelectItem>
                     <MudSelectItem T="ProductType" Value="ProductType.FinishedGood">Galutinis produktas</MudSelectItem>
                     <MudSelectItem T="ProductType" Value="ProductType.Service">Paslauga</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-
-            <!-- Category -->
-            <MudItem xs="12" md="6">
-                <MudSelect T="string" @bind-Value="_editProduct.Category"
-                           Label="Kategorija"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense">
-                    <MudSelectItem T="string" Value="@string.Empty">— Nepasirinkta —</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Žaliavinis medus")">Žaliavinis medus</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Medus (retail)")">Medus (retail)</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Medaus skanėstai")">Medaus skanėstai</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Žiedadulkės")">Žiedadulkės</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Bičių produktai")">Bičių produktai</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Tara/Pakuotė")">Tara/Pakuotė</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("HORECA")">HORECA</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Kita")">Kita</MudSelectItem>
                 </MudSelect>
             </MudItem>
 
@@ -91,38 +72,21 @@
             </MudItem>
 
             <!-- CostPrice -->
-            <MudItem xs="12" md="4">
-                <MudNumericField T="decimal" @bind-Value="_editProduct.CostPrice"
-                                 Label="Savikaina (EUR)"
-                                  Min="0m" Step="0.01m"
-                                  Adornment="Adornment.Start"
-                                  AdornmentIcon="@Icons.Material.Filled.AttachMoney"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense" />
+            <MudItem xs="12" md="6">
+                <MudTextField @key="@($"cost-{_editProduct.Id}")"
+                              @bind-Value="_costPriceStr"
+                              Label="Savikaina (EUR)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
             </MudItem>
 
             <!-- SalePrice -->
-            <MudItem xs="12" md="4">
-                <MudNumericField T="decimal" @bind-Value="_editProduct.SalePrice"
-                                  Label="Pardavimo kaina (EUR)"
-                                  Required="true"
-                                  Min="0m" Step="0.01m"
-                                 Adornment="Adornment.Start"
-                                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
-                                 Variant="Variant.Outlined"
-                                 Margin="Margin.Dense" />
-            </MudItem>
-
-            <!-- PurchasePrice -->
-            <MudItem xs="12" md="4">
-                <MudNumericField T="decimal" @bind-Value="_editProduct.PurchasePrice"
-                                 Label="Pirkimo kaina (EUR)"
-                                  Min="0m" Step="0.01m"
-                                  Adornment="Adornment.Start"
-                                  AdornmentIcon="@Icons.Material.Filled.AttachMoney"
-
-                                 Variant="Variant.Outlined"
-                                 Margin="Margin.Dense" />
+            <MudItem xs="12" md="6">
+                <MudTextField @key="@($"sale-{_editProduct.Id}")"
+                              @bind-Value="_salePriceStr"
+                              Label="Pardavimo kaina (EUR)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
             </MudItem>
 
             <!-- Description -->
@@ -183,8 +147,10 @@
     [Parameter] public Product Product { get; set; } = new();
 
     private Product _editProduct = new();
+    private string _costPriceStr = "0";
+    private string _salePriceStr = "0";
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         _editProduct = new Product
         {
@@ -209,6 +175,23 @@
             CreatedAt = Product.CreatedAt,
             UpdatedAt = Product.UpdatedAt
         };
+        _costPriceStr = _editProduct.CostPrice.ToString("N2");
+        _salePriceStr = _editProduct.SalePrice.ToString("N2");
+        if (_editProduct.Id == 0)
+        {
+            _editProduct.Code = await ProductService.GenerateProductCodeAsync(_editProduct.ProductType);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnProductTypeChanged(ProductType newType)
+    {
+        _editProduct.ProductType = newType;
+        if (_editProduct.Id == 0)
+        {
+            _editProduct.Code = await ProductService.GenerateProductCodeAsync(newType);
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task SaveAsync()
@@ -227,6 +210,12 @@
                 Snackbar.Add("Būtina įvesti prekės pavadinimą", Severity.Error);
                 return;
             }
+
+            if (decimal.TryParse(_costPriceStr.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var cost))
+                _editProduct.CostPrice = cost;
+            if (decimal.TryParse(_salePriceStr.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sale))
+                _editProduct.SalePrice = sale;
+            _editProduct.PurchasePrice = 0;
 
             Product savedProduct;
             if (_editProduct.Id > 0)
