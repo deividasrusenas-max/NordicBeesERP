@@ -257,6 +257,8 @@ window.initSignatureCanvas = function(canvasId) {
                     _missingFields.Add("Asmens kodas arba įmonės kodas");
                 if (string.IsNullOrWhiteSpace(_supplier.BankAccount))
                     _missingFields.Add("Banko sąskaita (IBAN)");
+                if (string.IsNullOrWhiteSpace(_supplier.Phone) && string.IsNullOrWhiteSpace(_supplier.ContactPhone))
+                    _missingFields.Add("Telefono numeris");
             }
 
             _products = await ProductService.GetAllProductsAsync();
