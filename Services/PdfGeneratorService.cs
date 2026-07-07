@@ -102,9 +102,9 @@ namespace NordicBeesERP.Services
             var company = _companySettingsService.GetSettingsAsync().Result;
             
             // Apskaičiuoti sumas
-            var subtotalExclVat = invoice.Lines.Sum(l => l.LineTotal);
+            var subtotalExclVat = invoice.Lines.Sum(l => l.LineSubtotal);
             var totalVat = invoice.Lines.Sum(l => l.VatAmount);
-            var totalInclVat = invoice.Lines.Sum(l => l.LineTotal + l.VatAmount);
+            var totalInclVat = invoice.Lines.Sum(l => l.LineTotal);
             
             return Document.Create(container =>
             {
@@ -306,9 +306,9 @@ namespace NordicBeesERP.Services
                     int rowNum = 1;
                     foreach (var line in invoice.Lines)
                     {
-                        var totalExclVat = line.LineTotal; // Already calculated in model
+                        var totalExclVat = line.LineSubtotal;
                         var vatAmount = line.VatAmount;
-                        var totalInclVat = line.LineTotal + line.VatAmount;
+                        var totalInclVat = line.LineTotal;
                         
                         // 6% reverse charge - VAT visada 6%
                         var displayVatRate = isReverseCharge6 ? 6m : line.VatRate;
