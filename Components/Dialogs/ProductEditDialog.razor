@@ -64,15 +64,15 @@
                            Label="Kategorija"
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense">
-                    <MudSelectItem T="string" Value="">— Nepasirinkta —</MudSelectItem>
-                    <MudSelectItem T="string" Value="Žaliavinis medus">Žaliavinis medus</MudSelectItem>
-                    <MudSelectItem T="string" Value="Medus (retail)">Medus (retail)</MudSelectItem>
-                    <MudSelectItem T="string" Value="Medaus skanėstai">Medaus skanėstai</MudSelectItem>
-                    <MudSelectItem T="string" Value="Žiedadulkės">Žiedadulkės</MudSelectItem>
-                    <MudSelectItem T="string" Value="Bičių produktai">Bičių produktai</MudSelectItem>
-                    <MudSelectItem T="string" Value="Tara/Pakuotė">Tara/Pakuotė</MudSelectItem>
-                    <MudSelectItem T="string" Value="HORECA">HORECA</MudSelectItem>
-                    <MudSelectItem T="string" Value="Kita">Kita</MudSelectItem>
+                    <MudSelectItem T="string" Value="@string.Empty">— Nepasirinkta —</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Žaliavinis medus")">Žaliavinis medus</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Medus (retail)")">Medus (retail)</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Medaus skanėstai")">Medaus skanėstai</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Žiedadulkės")">Žiedadulkės</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Bičių produktai")">Bičių produktai</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Tara/Pakuotė")">Tara/Pakuotė</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("HORECA")">HORECA</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Kita")">Kita</MudSelectItem>
                 </MudSelect>
             </MudItem>
 
@@ -83,10 +83,10 @@
                            Required="true"
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense">
-                    <MudSelectItem T="string" Value="vnt">vnt</MudSelectItem>
-                    <MudSelectItem T="string" Value="kg">kg</MudSelectItem>
-                    <MudSelectItem T="string" Value="l">l</MudSelectItem>
-                    <MudSelectItem T="string" Value="m">m</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("vnt")">vnt</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("kg")">kg</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("l")">l</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("m")">m</MudSelectItem>
                 </MudSelect>
             </MudItem>
 
@@ -94,19 +94,19 @@
             <MudItem xs="12" md="4">
                 <MudNumericField T="decimal" @bind-Value="_editProduct.CostPrice"
                                  Label="Savikaina (EUR)"
-                                 Min="0" Step="0.01"
-                                 Adornment="Adornment.Start"
-                                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
-                                 Variant="Variant.Outlined"
-                                 Margin="Margin.Dense" />
+                                  Min="0m" Step="0.01m"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
             </MudItem>
 
             <!-- SalePrice -->
             <MudItem xs="12" md="4">
                 <MudNumericField T="decimal" @bind-Value="_editProduct.SalePrice"
-                                 Label="Pardavimo kaina (EUR)"
-                                 Required="true"
-                                 Min="0" Step="0.01"
+                                  Label="Pardavimo kaina (EUR)"
+                                  Required="true"
+                                  Min="0m" Step="0.01m"
                                  Adornment="Adornment.Start"
                                  AdornmentIcon="@Icons.Material.Filled.AttachMoney"
                                  Variant="Variant.Outlined"
@@ -117,9 +117,10 @@
             <MudItem xs="12" md="4">
                 <MudNumericField T="decimal" @bind-Value="_editProduct.PurchasePrice"
                                  Label="Pirkimo kaina (EUR)"
-                                 Min="0" Step="0.01"
-                                 Adornment="Adornment.Start"
-                                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                  Min="0m" Step="0.01m"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+
                                  Variant="Variant.Outlined"
                                  Margin="Margin.Dense" />
             </MudItem>

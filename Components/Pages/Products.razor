@@ -1,87 +1,122 @@
 @page "/products"
 @inject IProductService ProductService
-@inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Models
+@using MudBlazor
 
 <PageTitle>Prekės</PageTitle>
-
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+
     <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">Prekės</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-                   Href="/products/create">
-            Nauja prekė
-        </MudButton>
+        <MudButton OnClick="@OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary">Nauja prekė</MudButton>
     </div>
 
     @if (products == null)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
-    else if (!products.Any())
-    {
-        <MudPaper Class="pa-8 text-center">
-            <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Color="Color.Default" Class="mb-4" />
-            <MudText Typo="Typo.h6" Class="mb-2">Prekių sąrašas tuščias</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/products/create">
-                + Pridėti pirmą prekę
-            </MudButton>
-        </MudPaper>
-    }
-    else
-    {
-        <MudPaper Elevation="0" rounded="true" Square="false" Class="mt-2 pa-3">
-            <MudTable T="Product" Items="@products" Hover="true" Dense="true"
-                      RowStyleFunc="RowStyleFunc">
-        <HeaderContent>
-            <MudTh>Kodas</MudTh>
-            <MudTh>Pavadinimas</MudTh>
-            <MudTh>EAN</MudTh>
-            <MudTh>Vienetas</MudTh>
-            <MudTh>Kaina</MudTh>
-            <MudTh>Savikaina</MudTh>
-            <MudTh Style="width: 150px;">Veiksmai</MudTh>
-        </HeaderContent>
-        <RowTemplate Context="product">
-            <MudTd>
-                <MudText Typo="Typo.subtitle1" Color="Color.Primary"><strong>@(product!.Code)</strong></MudText>
-            </MudTd>
-            <MudTd>@(product!.Name)</MudTd>
-            <MudTd>
-                @if (!string.IsNullOrEmpty(product!.EanCode))
-                {
-                    <MudText Typo="Typo.caption">@product!.EanCode</MudText>
-                }
-            </MudTd>
-            <MudTd>@(product!.Unit)</MudTd>
-            <MudTd>
-                <MudText Typo="Typo.subtitle1"><strong>@(product!.SalePrice.ToString("N2")) €</strong></MudText>
-            </MudTd>
-            <MudTd>
-                @if (product!.CostPrice > 0)
-                {
-                    <MudText Typo="Typo.caption">@(product!.CostPrice.ToString("N2")) €</MudText>
-                }
-            </MudTd>
-            <MudTd>
-                <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                   Color="Color.Primary" 
-                                   Href="@($"/products/edit/{product.Id}")" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                   Color="Color.Error" 
-                                   OnClick="@(() => DeleteProduct(product!))" />
-                </MudButtonGroup>
-            </MudTd>
-        </RowTemplate>
-            </MudTable>
-        </MudPaper>
-    }
+
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudTextField @bind-Value="_searchText"
+                      Placeholder="Ieškoti pagal kodą, pavadinimą, EAN..."
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      FullWidth="true"
+                      Clearable="true"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Adornment="Adornment.Start" />
+    </MudPaper>
+
+    <MudPaper Elevation="0" Class="mt-2 pa-3">
+        <MudTable T="Product" Items="@FilteredProducts" Hover="true" Dense="true" Elevation="0"
+                  OnRowClick="@(async (TableRowClickEventArgs<Product> args) => await OpenEditDialog(args.Item!))"
+                  Style="cursor:pointer" RowsPerPage="25">
+            <HeaderContent>
+                <MudTh>Kodas</MudTh>
+                <MudTh>Tipas</MudTh>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>EAN</MudTh>
+                <MudTh>Vienetas</MudTh>
+                <MudTh>Kaina</MudTh>
+                <MudTh>Aktyvus</MudTh>
+                <MudTh Style="width:100px;">Veiksmai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="product">
+                <MudTd>
+                    <MudText Typo="Typo.subtitle1" Color="Color.Primary"><strong>@product.Code</strong></MudText>
+                </MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(GetProductTypeColor(product.ProductType))">
+                        @(GetProductTypeLabel(product.ProductType))
+                    </MudChip>
+                </MudTd>
+                <MudTd>@product.Name</MudTd>
+                <MudTd>
+                    @if (!string.IsNullOrEmpty(product.EanCode))
+                    {
+                        <MudText Typo="Typo.caption">@product.EanCode</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption">—</MudText>
+                    }
+                </MudTd>
+                <MudTd>@product.Unit</MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.subtitle1"><strong>@product.SalePrice.ToString("N2") €</strong></MudText>
+                </MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(product.IsActive ? Color.Success : Color.Default)"
+                             Variant="Variant.Outlined">
+                        @(product.IsActive ? "Aktyvus" : "Neaktyvus")
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <div @onclick:stopPropagation="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                       OnClick="@(() => OpenEditDialog(product))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteProduct(product))" />
+                    </div>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Prekių nėra</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
+
 </MudContainer>
 
 @code {
     private List<Product>? products;
+    private string? _searchText;
+
+    private IEnumerable<Product> FilteredProducts
+    {
+        get
+        {
+            IEnumerable<Product> list = products ?? [];
+
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                list = list.Where(p =>
+                    p.Code.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    (p.EanCode?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) == true));
+            }
+
+            return list;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -93,19 +128,75 @@
         products = await ProductService.GetAllProductsAsync();
     }
 
-    private string RowStyleFunc(Product? product, int index)
+    private static string GetProductTypeLabel(ProductType type) => type switch
     {
-        return index % 2 == 0 ? "background-color: #f5f5f5;" : "";
+        ProductType.RawMaterial => "Žaliava",
+        ProductType.Packaging => "Pakuotė",
+        ProductType.SemiFinished => "Pusgaminis",
+        ProductType.FinishedGood => "Galutinis",
+        ProductType.Service => "Paslauga",
+        _ => type.ToString()
+    };
+
+    private static Color GetProductTypeColor(ProductType type) => type switch
+    {
+        ProductType.RawMaterial => Color.Warning,
+        ProductType.Packaging => Color.Info,
+        ProductType.SemiFinished => Color.Secondary,
+        ProductType.FinishedGood => Color.Success,
+        ProductType.Service => Color.Default,
+        _ => Color.Default
+    };
+
+    private async Task OpenCreateDialog()
+    {
+        var product = new Product
+        {
+            IsActive = true,
+            Unit = "kg",
+            ProductType = ProductType.FinishedGood
+        };
+
+        var parameters = new DialogParameters
+        {
+            { "Product", product }
+        };
+
+        var dialog = await DialogService.ShowAsync<ProductEditDialog>("Nauja prekė", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false)
+        {
+            Snackbar.Add("Prekė sėkmingai sukurta!", Severity.Success);
+            await LoadProducts();
+        }
     }
 
-    private async Task DeleteProduct(Product? product)
+    private async Task OpenEditDialog(Product product)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Product", product }
+        };
+
+        var dialog = await DialogService.ShowAsync<ProductEditDialog>($"Redaguoti prekę: {product.Code}", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
+        var result = await dialog.Result;
+
+        if (result?.Canceled == false)
+        {
+            Snackbar.Add("Prekė sėkmingai atnaujinta!", Severity.Success);
+            await LoadProducts();
+        }
+    }
+
+    private async Task DeleteProduct(Product product)
     {
         if (product is null)
         {
             Snackbar.Add("Klaida: prekė nerasta!", Severity.Error);
             return;
         }
-        
+
         var parameters = new DialogParameters
         {
             { "ContentText", $"Ar tikrai norite ištrinti prekę '{product.Name}'?" },
@@ -113,10 +204,10 @@
             { "Color", Color.Error }
         };
 
-        var dialog = await DialogService.ShowAsync<Components.Dialogs.ConfirmDialog>("Patvirtinti", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinti", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result?.Canceled == false)
         {
             var deleted = await ProductService.DeleteProductAsync(product.Id);
             if (deleted)
