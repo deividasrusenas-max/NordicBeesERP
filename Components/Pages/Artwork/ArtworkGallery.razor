@@ -57,13 +57,13 @@
                             }
                         </div>
                         <MudCardContent>
-                            <MudText Typo="Typo.subtitle1" Style="font-weight:bold">LK@item.AssetId.ToString("D4")</MudText>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:bold">@($"LK{item.AssetId:D4}")</MudText>
                             <MudText Typo="Typo.body1" Class="mt-1">@item.AssetName</MudText>
                             <MudChip T="string" Size="Size.Small" Class="mt-2" Variant="Variant.Outlined">
                                 @item.BrandName
                             </MudChip>
                             <MudText Typo="Typo.caption" Class="mt-2 d-block">
-                                v@item.VersionNumber • Nuo: @(item.EffectiveFrom?.ToString("yyyy-MM-dd") ?? "nenurodyta")
+                                @($"v{item.VersionNumber}") • Nuo: @(item.EffectiveFrom?.ToString("yyyy-MM-dd") ?? "nenurodyta")
                             </MudText>
                         </MudCardContent>
                         <MudCardActions>

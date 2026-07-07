@@ -25,6 +25,12 @@
                     <MudButton StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="NavigateToUpload">
                         Įkelti naują versiją
                     </MudButton>
+                    @if (_isAdmin && _asset?.Status == "active")
+                    {
+                        <MudButton StartIcon="@Icons.Material.Filled.Archive" Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="ArchiveAsset">
+                            Archyvuoti
+                        </MudButton>
+                    }
                     <MudText Typo="Typo.body1" Color="Color.Secondary">@_brand?.Name</MudText>
                 </div>
                 <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">@_asset.AssetType</MudChip>
@@ -338,7 +344,26 @@
         }
     }
 
-private void NavigateToUpload()
+ private async Task ArchiveAsset()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti archyvavimą",
+            "Ar tikrai norite archyvuoti šį asset'ą? Archyvuotas asset nebus rodomas galerijoje ir brand puslapyje.",
+            yesText: "Archyvuoti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        var userId = await AuthService.GetUserIdAsync();
+        if (userId.HasValue)
+        {
+            await ArtworkService.ArchiveAssetAsync(Id, userId.Value);
+            Snackbar.Add("Asset sėkmingai archyvuotas", Severity.Success);
+            Navigation.NavigateTo("/artwork");
+        }
+    }
+
+ private void NavigateToUpload()
 {
     Navigation.NavigateTo($"/artwork/upload/{Id}");
 }

@@ -501,19 +501,25 @@ public class ArtworkService : IArtworkService
 
     public string GenerateSlug(string name)
     {
-        var normalized = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.GetEncoding("ISO-8859-13").GetBytes(name));
-        var slug = new System.Text.StringBuilder();
-        foreach (var c in normalized.ToLowerInvariant())
+        var slug = name.ToLowerInvariant();
+
+        var replacements = new Dictionary<char, string>
         {
-            if (char.IsLetterOrDigit(c))
-                slug.Append(c);
-            else if (c == ' ' || c == '-' || c == '_')
-            {
-                if (slug.Length == 0 || slug[^1] != '-')
-                    slug.Append('-');
-            }
+            {'ą', "a"}, {'č', "c"}, {'ę', "e"}, {'ė', "e"},
+            {'į', "i"}, {'š', "s"}, {'ų', "u"}, {'ū', "u"}, {'ž', "z"},
+            {' ', "-"}, {'_', "-"}
+        };
+
+        var result = new System.Text.StringBuilder();
+        foreach (var c in slug)
+        {
+            if (replacements.TryGetValue(c, out var replacement))
+                result.Append(replacement);
+            else if (char.IsLetterOrDigit(c) || c == '-')
+                result.Append(c);
         }
-        return slug.ToString().TrimStart('-').TrimEnd('-');
+
+        return result.ToString().Trim('-');
     }
 }
 

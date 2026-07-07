@@ -6,7 +6,9 @@
     {
         <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
         <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
-        <MudNavLink Href="/artwork/upload" Icon="@Icons.Material.Filled.CloudUpload">Įkelti</MudNavLink>
+        <MudNavGroup Title="Nustatymai" Icon="@Icons.Material.Filled.Settings">
+            <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
+        </MudNavGroup>
     }
     else
     {
@@ -90,7 +92,7 @@
             {
                 <MudNavLink Href="/settings/expense-categories" Icon="@Icons.Material.Filled.Category">Išlaidų kategorijos</MudNavLink>
             }
-            @if (_isAdmin)
+            @if (_isAdmin || _isDesigner)
             {
                 <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
             }

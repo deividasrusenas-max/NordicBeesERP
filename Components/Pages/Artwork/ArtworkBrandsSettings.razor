@@ -1,18 +1,24 @@
 @page "/settings/artwork-brands"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = "ArtworkAccess")]
+@using Microsoft.AspNetCore.Authorization
 @using NordicBeesERP.Components.Dialogs
 @using NordicBeesERP.Models.Artwork
 @using NordicBeesERP.Services.Artwork
 @inject IArtworkService ArtworkService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Prekių ženklai</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">Prekių ženklai</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti</MudButton>
+        @if (_isAdmin)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti</MudButton>
+        }
     </div>
 
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
@@ -59,7 +65,10 @@
                     </MudTd>
                     <MudTd>
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(brand))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteBrand(brand))" />
+                        @if (_isAdmin)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteBrand(brand))" />
+                        }
                     </MudTd>
                 }
             </RowTemplate>
@@ -96,9 +105,12 @@
     private ArtworkBrand _editingItem = new();
     private bool _loading = true;
     private bool _dialogVisible = false;
+    private bool _isAdmin;
 
     protected override async Task OnInitializedAsync()
     {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAdmin = auth.User.IsInRole("Admin");
         await LoadData();
     }
 

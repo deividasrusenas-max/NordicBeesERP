@@ -30,7 +30,7 @@
                 {
                     <MudItem xs="12" sm="6" md="4">
                         <div @onclick="@(async () => await NavigateToAsset(asset.Id))" style="cursor:pointer">
-                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius:12px">
+                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="@GetAssetCardStyle(asset)">
                                 @if (asset.HasThumbnail && asset.ActualVersionId.HasValue)
                                 {
                                     <img src="@($"/artwork/preview/{asset.ActualVersionId}")"
@@ -45,18 +45,27 @@
                                             Laukia
                                         </MudChip>
                                     }
+                                    @if (asset.Status == "archived")
+                                    {
+                                        <MudChip T="bool" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small">
+                                            Archyvuotas
+                                        </MudChip>
+                                    }
                                 </div>
                                 <MudText Typo="Typo.caption" Class="mt-1">
                                     @GetAssetTypeLabel(asset.AssetType) — @($"v{asset.ActualVersionNumber}")
                                 </MudText>
-                                @if (asset.Status == "archived")
-                                {
-                                    <MudText Typo="Typo.caption" Class="mt-1" Style="color:#9ca3af">
-                                        Archyvuotas
-                                    </MudText>
-                                }
                             </MudPaper>
                         </div>
+                        @if (asset.Status == "archived" && _isAdmin)
+                        {
+                            <div @onclick:stopPropagation="true">
+                                <MudButton StartIcon="@Icons.Material.Filled.Restore" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                    OnClick="@(async () => await RestoreAsset(asset.Id, asset.Name))">
+                                    Atkurti
+                                </MudButton>
+                            </div>
+                        }
                     </MudItem>
                 }
                 @if (!_assets.Any())
@@ -69,6 +78,12 @@
                 }
             </MudGrid>
         </MudPaper>
+
+        <MudPaper Class="pa-3" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+            <div class="d-flex align-center gap-2">
+                <MudSwitch @bind-value="_showArchived" Color="Color.Default" Label="Rodyti archyvuotus" />
+            </div>
+        </MudPaper>
     }
 </MudContainer>
 
@@ -77,10 +92,24 @@
     private string _brandName = "";
     private List<ArtworkAssetWithSummary> _assets = new();
     private bool _isLoading = true;
+    private bool _showArchived = false;
+    private bool _prevShowArchived = false;
+    private bool _isAdmin;
 
     protected override async Task OnParametersSetAsync()
     {
+        var user = await AuthService.GetAuthenticatedUserAsync();
+        _isAdmin = user?.Role == "Admin";
         await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender && _showArchived != _prevShowArchived)
+        {
+            _prevShowArchived = _showArchived;
+            await LoadDataAsync();
+        }
     }
 
     private async Task LoadDataAsync()
@@ -91,7 +120,8 @@
         {
             var brand = await ArtworkService.GetBrandByIdAsync(BrandId);
             _brandName = brand?.Name ?? "Nežinoma";
-            _assets = await ArtworkService.GetAssetsByBrandAsync(BrandId);
+            _assets = await ArtworkService.GetAssetsByBrandAsync(BrandId, _showArchived);
+            _prevShowArchived = _showArchived;
         }
         catch (Exception ex)
         {
@@ -123,6 +153,33 @@
         {
             await LoadDataAsync();
         }
+    }
+
+    private async Task RestoreAsset(int assetId, string assetName)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti atkūrimą",
+            $"Ar tikrai norite atkurti \"{assetName}\"? Jis vėl bus rodomas galerijoje ir brand puslapyje.",
+            yesText: "Atkurti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        var userId = await AuthService.GetUserIdAsync();
+        if (userId.HasValue)
+        {
+            await ArtworkService.RestoreAssetAsync(assetId, userId.Value);
+            Snackbar.Add($"\"{assetName}\" sėkmingai atkurtas", Severity.Success);
+            await LoadDataAsync();
+        }
+    }
+
+
+    private string GetAssetCardStyle(ArtworkAssetWithSummary asset)
+    {
+        if (asset.Status == "archived")
+            return "border-radius:12px; background:#f3f4f6; opacity:0.7;";
+        return "border-radius:12px;";
     }
 
     private string GetAssetTypeLabel(string? type) => type switch

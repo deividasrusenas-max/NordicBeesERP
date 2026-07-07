@@ -8,6 +8,7 @@
 @inject ICustomerService CustomerService
 @inject IWarehouseService WarehouseService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Lakštena ERP</PageTitle>
 
@@ -201,6 +202,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.IsInRole("Designer"))
+        {
+            Navigation.NavigateTo("/artwork/gallery");
+            return;
+        }
+
         try
         {
             var deliveries = await DeliveryService.GetAllAsync();
