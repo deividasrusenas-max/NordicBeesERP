@@ -1,0 +1,254 @@
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using MudBlazor
+@inject IProductService ProductService
+@inject ISnackbar Snackbar
+
+<MudDialog MaxWidth="MaxWidth.Medium">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Inventory" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(_editProduct.Id > 0 ? $"Redaguoti prekę: {_editProduct.Code}" : "Nauja prekė")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <!-- Code -->
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_editProduct.Code"
+                              Label="Kodas"
+                              Required="true"
+                              MaxLength="50"
+                              Disabled="@(_editProduct.Id > 0)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- Name -->
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_editProduct.Name"
+                              Label="Pavadinimas"
+                              Required="true"
+                              MaxLength="255"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- EanCode -->
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_editProduct.EanCode"
+                              Label="EAN kodas"
+                              MaxLength="50"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- ProductType -->
+            <MudItem xs="12" md="6">
+                <MudSelect T="ProductType" @bind-Value="_editProduct.ProductType"
+                           Label="Prekės tipas"
+                           Required="true"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense">
+                    <MudSelectItem T="ProductType" Value="ProductType.RawMaterial">Žaliava</MudSelectItem>
+                    <MudSelectItem T="ProductType" Value="ProductType.Packaging">Tara</MudSelectItem>
+                    <MudSelectItem T="ProductType" Value="ProductType.SemiFinished">Pusfabrikatas</MudSelectItem>
+                    <MudSelectItem T="ProductType" Value="ProductType.FinishedGood">Galutinis produktas</MudSelectItem>
+                    <MudSelectItem T="ProductType" Value="ProductType.Service">Paslauga</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <!-- Category -->
+            <MudItem xs="12" md="6">
+                <MudSelect T="string" @bind-Value="_editProduct.Category"
+                           Label="Kategorija"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense">
+                    <MudSelectItem T="string" Value="">— Nepasirinkta —</MudSelectItem>
+                    <MudSelectItem T="string" Value="Žaliavinis medus">Žaliavinis medus</MudSelectItem>
+                    <MudSelectItem T="string" Value="Medus (retail)">Medus (retail)</MudSelectItem>
+                    <MudSelectItem T="string" Value="Medaus skanėstai">Medaus skanėstai</MudSelectItem>
+                    <MudSelectItem T="string" Value="Žiedadulkės">Žiedadulkės</MudSelectItem>
+                    <MudSelectItem T="string" Value="Bičių produktai">Bičių produktai</MudSelectItem>
+                    <MudSelectItem T="string" Value="Tara/Pakuotė">Tara/Pakuotė</MudSelectItem>
+                    <MudSelectItem T="string" Value="HORECA">HORECA</MudSelectItem>
+                    <MudSelectItem T="string" Value="Kita">Kita</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <!-- Unit -->
+            <MudItem xs="12" md="6">
+                <MudSelect T="string" @bind-Value="_editProduct.Unit"
+                           Label="Matavimo vienetas"
+                           Required="true"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense">
+                    <MudSelectItem T="string" Value="vnt">vnt</MudSelectItem>
+                    <MudSelectItem T="string" Value="kg">kg</MudSelectItem>
+                    <MudSelectItem T="string" Value="l">l</MudSelectItem>
+                    <MudSelectItem T="string" Value="m">m</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <!-- CostPrice -->
+            <MudItem xs="12" md="4">
+                <MudNumericField T="decimal" @bind-Value="_editProduct.CostPrice"
+                                 Label="Savikaina (EUR)"
+                                 Min="0" Step="0.01"
+                                 Adornment="Adornment.Start"
+                                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- SalePrice -->
+            <MudItem xs="12" md="4">
+                <MudNumericField T="decimal" @bind-Value="_editProduct.SalePrice"
+                                 Label="Pardavimo kaina (EUR)"
+                                 Required="true"
+                                 Min="0" Step="0.01"
+                                 Adornment="Adornment.Start"
+                                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- PurchasePrice -->
+            <MudItem xs="12" md="4">
+                <MudNumericField T="decimal" @bind-Value="_editProduct.PurchasePrice"
+                                 Label="Pirkimo kaina (EUR)"
+                                 Min="0" Step="0.01"
+                                 Adornment="Adornment.Start"
+                                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- Description -->
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_editProduct.Description"
+                              Label="Aprašymas"
+                              Lines="3"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- Notes -->
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_editProduct.Notes"
+                              Label="Pastabos"
+                              Lines="2"
+                              MaxLength="1000"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </MudItem>
+
+            <!-- Switches row -->
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="_editProduct.IsActive"
+                           Label="Aktyvus"
+                           Color="Color.Success"
+                           Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="_editProduct.WarehouseManaged"
+                           Label="Sandėlio valdymas"
+                           Color="Color.Info"
+                           Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="_editProduct.TrackLots"
+                           Label="LOT sekimas"
+                           Color="Color.Warning"
+                           Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@CancelAsync">
+            Atšaukti
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@SaveAsync"
+                   StartIcon="@Icons.Material.Filled.Save" Style="text-transform:none">
+            Išsaugoti
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance? MudDialog { get; set; }
+    [Parameter] public Product Product { get; set; } = new();
+
+    private Product _editProduct = new();
+
+    protected override void OnParametersSet()
+    {
+        _editProduct = new Product
+        {
+            Id = Product.Id,
+            Code = Product.Code,
+            Name = Product.Name,
+            EanCode = Product.EanCode,
+            ProductType = Product.ProductType,
+            CategoryId = Product.CategoryId,
+            UnitId = Product.UnitId,
+            Unit = Product.Unit,
+            CostPrice = Product.CostPrice,
+            SalePrice = Product.SalePrice,
+            PurchasePrice = Product.PurchasePrice,
+            Category = Product.Category,
+            WarehouseManaged = Product.WarehouseManaged,
+            TrackLots = Product.TrackLots,
+            MinStockLevel = Product.MinStockLevel,
+            Description = Product.Description,
+            Notes = Product.Notes,
+            IsActive = Product.IsActive,
+            CreatedAt = Product.CreatedAt,
+            UpdatedAt = Product.UpdatedAt
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            // Validate
+            if (string.IsNullOrWhiteSpace(_editProduct.Code))
+            {
+                Snackbar.Add("Būtina įvesti prekės kodą", Severity.Error);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_editProduct.Name))
+            {
+                Snackbar.Add("Būtina įvesti prekės pavadinimą", Severity.Error);
+                return;
+            }
+
+            Product savedProduct;
+            if (_editProduct.Id > 0)
+            {
+                savedProduct = await ProductService.UpdateProductAsync(_editProduct);
+                Snackbar.Add("Prekė atnaujinta sėkmingai", Severity.Success);
+            }
+            else
+            {
+                savedProduct = await ProductService.CreateProductAsync(_editProduct);
+                Snackbar.Add("Prekė sukurta sėkmingai", Severity.Success);
+            }
+
+            MudDialog?.Close(DialogResult.Ok(savedProduct));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida išsaugant prekę: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CancelAsync()
+    {
+        MudDialog?.Cancel();
+    }
+}
