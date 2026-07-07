@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
-    <Version>0.10.47</Version>
+    <Version>0.10.48</Version>
   </PropertyGroup>
 
   <ItemGroup>
