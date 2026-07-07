@@ -316,7 +316,7 @@ namespace NordicBeesERP.Services
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(rowNum++.ToString()).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(line.Description).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(line.Unit ?? "").FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.Quantity.ToString("N3")).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.Quantity.ToString("G29").TrimEnd('0').TrimEnd('.')).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2")).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalExclVat.ToString("N2")).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"{displayVatRate:N0}%").FontSize(8);
@@ -793,7 +793,7 @@ namespace NordicBeesERP.Services
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(rowNum++.ToString()).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(line.Description).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(line.Unit ?? "").FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.Quantity.ToString("N3")).FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.Quantity.ToString("G29").TrimEnd('0').TrimEnd('.')).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2")).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"-{totalExclVat:N2}").FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"{displayVatRate:N0}%").FontSize(8);
