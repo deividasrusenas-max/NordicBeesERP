@@ -11,7 +11,7 @@ namespace NordicBeesERP.Services
         Task<ExpenseInvoice?> GetInvoiceWithDetailsAsync(int id);
         Task<ExpenseInvoice?> GetInvoiceAsync(int id);
         Task<InvoiceAddResult> CreateInvoiceAsync(ExpenseInvoice invoice);
-        Task<ExpenseInvoice> UpdateInvoiceAsync(ExpenseInvoice invoice);
+        Task<ExpenseInvoice> UpdateInvoiceAsync(ExpenseInvoice invoice, List<string>? overriddenFlags = null);
         Task<bool> DeleteInvoiceAsync(int id);
         
         // Invoice Lines
@@ -76,5 +76,6 @@ namespace NordicBeesERP.Services
         // Approval Workflow
         Task ApproveAsync(int invoiceId, string performedBy);
         Task RejectAsync(int invoiceId, string reason, string performedBy);
+        Task RestoreInvoiceAsync(int invoiceId);
     }
 }

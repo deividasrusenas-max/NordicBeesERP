@@ -159,9 +159,18 @@
                 <!-- WRONG_RECIPIENT alert -->
                 @if (_ocrFlags.Contains("WRONG_RECIPIENT"))
                 {
-                    <MudAlert Severity="Severity.Error" Class="mb-3">
-                        Sąskaita ne MB Lakštenai
-                    </MudAlert>
+                    <MudPaper Elevation="0" Class="mb-3 pa-3 d-flex align-center justify-space-between"
+                              Style="background:#fff3e0; border-left:4px solid #f59e0b; border-radius:6px;">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:#f59e0b;" />
+                            <MudText Typo="Typo.body2">Sistema mano kad sąskaita ne MB Lakštenai — patikrinkite gavėją</MudText>
+                        </div>
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                   OnClick="@DismissWrongRecipient"
+                                   Style="text-transform:none;white-space:nowrap;margin-left:12px;">
+                            ✓ Lakštenai
+                        </MudButton>
+                    </MudPaper>
                 }
 
                 <!-- Flags chips -->
@@ -941,6 +950,13 @@
         if (idx < _lineQuantities.Count) _lineQuantities.RemoveAt(idx);
         if (idx < _lineAmounts.Count) _lineAmounts.RemoveAt(idx);
         if (idx < _lineVatRates.Count) _lineVatRates.RemoveAt(idx);
+        StateHasChanged();
+    }
+
+    private void DismissWrongRecipient()
+    {
+        _ocrFlags.Remove("WRONG_RECIPIENT");
+        _confidence = Math.Min(100, _confidence + 10);
         StateHasChanged();
     }
 

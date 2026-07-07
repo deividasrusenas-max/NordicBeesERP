@@ -61,6 +61,22 @@
                                         }
                                     </MudPaper>
 
+                                    @if (ExpenseStatusHelper.ParseFlags(_invoice?.OcrFlags).Contains("WRONG_RECIPIENT"))
+                                    {
+                                        <MudPaper Elevation="0" Class="mb-3 pa-3 d-flex align-center justify-space-between"
+                                                  Style="background:#fff3e0; border-left:4px solid #f59e0b; border-radius:6px;">
+                                            <div class="d-flex align-center gap-2">
+                                                <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:#f59e0b;" />
+                                                <MudText Typo="Typo.body2">Sistema mano kad sąskaita ne MB Lakštenai</MudText>
+                                            </div>
+                                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                                       OnClick="@DismissWrongRecipientAsync"
+                                                       Style="text-transform:none;white-space:nowrap;margin-left:12px;">
+                                                ✓ Lakštenai
+                                            </MudButton>
+                                        </MudPaper>
+                                    }
+
                                     <!-- Invoice Information Section -->
                                     <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Sąskaitos informacija</MudText>
                                     <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
@@ -155,7 +171,8 @@
                                                     <MudTextField @bind-Value="_invoice!.InvoiceNumber" Label="Nr." Variant="Variant.Outlined" Margin="Margin.Dense" />
                                                 </MudItem>
                                                 <MudItem xs="12">
-                                                    <MudTextField @bind-Value="_invoice!.PendingSupplierName" Label="Tiekėjo pavadinimas (OCR)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                                    <MudTextField Value="@_supplierName" ReadOnly="true" Label="Tiekėjas" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                                  Style="opacity:0.8" />
                                                 </MudItem>
                                                 <MudItem xs="6">
                                                     <MudDatePicker @bind-Date="_editInvoiceDate" Label="Data" Variant="Variant.Outlined" />
@@ -463,6 +480,7 @@
     private bool _editMode = false;
     private string _rejectReason = "";
     private int _loadedInvoiceId = 0;
+    private bool _wrongRecipientDismissed = false;
     private bool _isRerunningOcr = false;
     private int _activeTab = 0;
     private string _supplierName = "";
@@ -610,28 +628,38 @@
             _isLoading = false;
             return;
         }
+        var existingFlags = ExpenseStatusHelper.ParseFlags(_invoice?.OcrFlags);
+        _wrongRecipientDismissed = !existingFlags.Contains(OcrFlag.WrongRecipient);
         _lines = await ExpenseService.GetInvoiceLinesAsync(InvoiceId);
         if (_invoice?.Status == "PENDING_SUPPLIER")
         {
             await using var dbContext = DbFactory.CreateDbContext();
             _suppliers = await dbContext.BusinessPartners
-                .Where(b => (b.PartnerType == PartnerType.ExpenseSupplier || b.PartnerType == PartnerType.Both) && b.IsActive)
+                .AsNoTracking()
+                .Where(b => b.IsActive)
                 .OrderBy(b => b.Name).ToListAsync();
         }
 
-        // Load supplier name if SupplierId has value, else use PendingSupplierName
         if (_invoice?.SupplierId.HasValue == true && _invoice.SupplierId.Value > 0)
         {
             _supplierFound = true;
             await using var dbContext2 = DbFactory.CreateDbContext();
-            var supplier = await dbContext2.BusinessPartners.FindAsync(_invoice.SupplierId.Value);
+            var supplier = await dbContext2.BusinessPartners
+                .AsNoTracking()
+                .Where(b => b.Id == _invoice.SupplierId.Value)
+                .Select(b => new { b.Name, b.VatCode })
+                .FirstOrDefaultAsync();
             if (supplier != null)
             {
                 _supplierName = supplier.Name;
                 _supplierVat = supplier.VatCode;
             }
+            else
+            {
+                _supplierName = $"ID: {_invoice.SupplierId.Value}";
+            }
         }
-        else if (!string.IsNullOrEmpty(_invoice.PendingSupplierName))
+        else if (!string.IsNullOrEmpty(_invoice?.PendingSupplierName))
         {
             _supplierFound = false;
             _supplierName = _invoice.PendingSupplierName;
@@ -641,6 +669,33 @@
         _payments = await ExpenseService.GetPaymentsAsync(InvoiceId);
 
         _isLoading = false;
+    }
+
+    private async Task DismissWrongRecipientAsync()
+    {
+        if (_invoice == null) return;
+        try
+        {
+            var flags = ExpenseStatusHelper.ParseFlags(_invoice.OcrFlags);
+            flags.Remove(OcrFlag.WrongRecipient);
+            _invoice.OcrFlags = flags.Any()
+                ? System.Text.Json.JsonSerializer.Serialize(flags)
+                : null;
+            if (_invoice.Status == "REJECTED" && _invoice.RejectedReason == "Sąskaita ne MB Lakštenai")
+            {
+                _invoice.Status = "NEEDS_REVIEW";
+                _invoice.RejectedReason = null;
+            }
+            await ExpenseService.UpdateInvoiceAsync(_invoice, flags);
+            Snackbar.Add("Gavėjas patvirtintas", Severity.Success);
+            _loadedInvoiceId = 0;
+            await OnParametersSetAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task SaveAsync()

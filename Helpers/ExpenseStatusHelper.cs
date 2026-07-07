@@ -13,18 +13,20 @@ public static class ExpenseStatusHelper
         "REJECTED"          => "Atmesta",
         "PARTIAL"           => "Dalinai apmokėta",
         "PAID"              => "Apmokėta",
+        "OVERDUE"           => "Pradelsta",
         _                   => status ?? "Nežinoma"
     };
 
     public static Color GetColor(string? status) => status switch
     {
-        "PENDING"           => Color.Warning,
+        "PENDING"           => Color.Info,
         "PENDING_SUPPLIER"  => Color.Error,
         "NEEDS_REVIEW"      => Color.Warning,
         "DUPLICATE_PENDING" => Color.Error,
         "REJECTED"          => Color.Dark,
         "PARTIAL"           => Color.Info,
         "PAID"              => Color.Success,
+        "OVERDUE"           => Color.Error,
         _                   => Color.Default
     };
 

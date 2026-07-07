@@ -200,7 +200,7 @@ namespace NordicBeesERP.Services
             return new InvoiceAddResult { IsDuplicate = false, OriginalInvoiceId = 0, ThisInvoiceId = invoice.Id };
         }
 
-        public async Task<ExpenseInvoice> UpdateInvoiceAsync(ExpenseInvoice invoice)
+        public async Task<ExpenseInvoice> UpdateInvoiceAsync(ExpenseInvoice invoice, List<string>? overriddenFlags = null)
         {
             using var context = _dbFactory.CreateDbContext();
             
@@ -233,7 +233,9 @@ namespace NordicBeesERP.Services
             var existing = string.IsNullOrEmpty(invoice.OcrFlags) 
                 ? new List<string>() 
                 : System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags) ?? new();
-            if (existing.Contains(OcrFlag.WrongRecipient)) flags.Add(OcrFlag.WrongRecipient);
+            bool wrongRecipientDismissed = overriddenFlags != null && !overriddenFlags.Contains(OcrFlag.WrongRecipient);
+            if (!wrongRecipientDismissed && existing.Contains(OcrFlag.WrongRecipient))
+                flags.Add(OcrFlag.WrongRecipient);
             if (existing.Contains(OcrFlag.ViesUnavailable)) flags.Add(OcrFlag.ViesUnavailable);
             if (existing.Contains(OcrFlag.VendorNotFound) && invoice.SupplierId == null) flags.Add(OcrFlag.VendorNotFound);
             if (existing.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
@@ -938,6 +940,14 @@ namespace NordicBeesERP.Services
                 PerformedBy = performedBy, PerformedAt = DateTime.Now
             });
             await context.SaveChangesAsync();
+        }
+
+        public async Task RestoreInvoiceAsync(int invoiceId)
+        {
+            using var context = _dbFactory.CreateDbContext();
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_invoices SET status = 'NEEDS_REVIEW', rejected_reason = NULL, updated_at = {0} WHERE id = {1}",
+                DateTime.Now, invoiceId);
         }
 
         public async Task RejectAsync(int invoiceId, string reason, string performedBy)

@@ -50,7 +50,7 @@
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Liko</MudText>
                 <MudText Typo="Typo.body1" Style="color:#dc2626;font-weight:600">@GetRemainingAmountText</MudText>
             </MudItem>
-            <MudItem xs="3">
+            <MudItem xs="3" Style="display:flex;align-items:center;">
                 <MudChip T="string" Color="@ExpenseStatusHelper.GetColor(_invoice.Status)" Size="Size.Small">@ExpenseStatusHelper.GetLabel(_invoice.Status)</MudChip>
             </MudItem>
         </MudGrid>

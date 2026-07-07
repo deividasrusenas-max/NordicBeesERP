@@ -792,13 +792,16 @@ namespace NordicBeesERP.Services
 
                 // AMOUNT_MISMATCH: result.Lines.Count > 0 && ExclVat diff >= 0.05
                 // If ExclVat matches (diff < 0.05) but InclVat doesn't - do NOT set flag (InclVat diff is just VAT rounding)
-                var mismatchLinesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
+                // Exclude zero-amount lines when calculating sum for mismatch check
+                // (these are often summary lines like "Bendra mokėtina suma" with 0 value)
+                var nonZeroLines = result.Lines.Where(l => l.AmountExclVat > 0 || l.AmountInclVat > 0).ToList();
+                var mismatchLinesSumExcl = nonZeroLines.Sum(l => l.AmountExclVat);
                 var diffExcl = Math.Abs(mismatchLinesSumExcl - result.AmountExclVat);
-                _logger.LogDebug("[MISMATCH CHECK] LinesSumExcl={Lines} HeaderExcl={Header} Diff={Diff}", mismatchLinesSumExcl, result.AmountExclVat, diffExcl);
+                _logger.LogDebug("[MISMATCH CHECK] NonZeroLines={Count} LinesSumExcl={Lines} HeaderExcl={Header} Diff={Diff}", nonZeroLines.Count, mismatchLinesSumExcl, result.AmountExclVat, diffExcl);
 
-                var linesSumIncl = result.Lines.Sum(l => l.AmountInclVat);
+                var linesSumIncl = nonZeroLines.Sum(l => l.AmountInclVat);
                 var diffIncl = Math.Abs(linesSumIncl - result.AmountInclVat);
-                _logger.LogDebug("[MISMATCH CHECK] LinesSumIncl={Lines} HeaderIncl={Header} Diff={Diff}", linesSumIncl, result.AmountInclVat, diffIncl);
+                _logger.LogDebug("[MISMATCH CHECK] NonZeroLines={Count} LinesSumIncl={Lines} HeaderIncl={Header} Diff={Diff}", nonZeroLines.Count, linesSumIncl, result.AmountInclVat, diffIncl);
 
                 if (result.Lines.Count > 0 && diffExcl >= 0.05m && diffIncl >= 0.05m)
                     result.Flags.Add(OcrFlag.AmountMismatch);

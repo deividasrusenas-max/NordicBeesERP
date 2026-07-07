@@ -110,7 +110,7 @@
     <MudTabs ActivePanelIndex="_selectedTab" ActivePanelIndexChanged="OnTabChanged" Elevation="0" Rounded="true" Square="false" Class="mt-2">
         <MudTabPanel Text="Visos" />
         <MudTabPanel Text="Nesumokėtos" />
-        <MudTabPanel Text="Vėluojančios" />
+        <MudTabPanel Text="Pradelsta" />
         <MudTabPanel Text="Šis mėnuo" />
         <MudTabPanel Text="ULAK" />
         <MudTabPanel Text="Reikia dėmesio" />
@@ -162,6 +162,7 @@
                 <MudTh>Liko</MudTh>
                 <MudTh>Statusas</MudTh>
                 <MudTh>Problemos</MudTh>
+                <MudTh style="min-width:60px">Veiksmai</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd Style="min-width:48px;width:48px;">
@@ -190,7 +191,7 @@
                         var daysOverdue = (DateTime.Today - context.DueDate.Date).Days;
                         <div>
                             <span>@context.DueDate.ToString("MM-dd")</span>
-                            <div style="font-size:0.7rem;color:#dc2626;">Vėluoja @daysOverdue d.</div>
+                            <div style="font-size:0.7rem;color:#dc2626;">Pradelsta @daysOverdue d.</div>
                         </div>
                     }
                     else if (!string.IsNullOrEmpty(dueDateLabel) && dueDateLabel != "—")
@@ -230,6 +231,17 @@
                     {
                         <MudText Style="color:#d1d5db">—</MudText>
                     }
+                </MudTd>
+                <MudTd>
+                    <div @onclick:stopPropagation="true">
+                        @if (context.Status == "REJECTED")
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Restore"
+                                           Size="Size.Small" Color="Color.Warning"
+                                           Title="Atstatyti"
+                                           OnClick="@(() => RestoreInvoiceAsync(context))" />
+                        }
+                    </div>
                 </MudTd>
             </RowTemplate>
             <PagerContent>
@@ -368,7 +380,7 @@
                     i.Status == "OVERDUE"
                 ).ToList();
                 break;
-            case 2: // Vėluojančios
+            case 2: // Pradelsta
                 result = _invoices.Where(i =>
                     i.DueDate < DateTime.Today &&
                     i.Status != "PAID" &&
@@ -457,7 +469,7 @@
         if (invoice.DueDate < DateTime.Today && invoice.Status != "PAID")
         {
             var daysOverdue = (DateTime.Today - invoice.DueDate.Date).Days;
-            return $"Vėluoja {daysOverdue}d.";
+            return $"Pradelsta {daysOverdue}d.";
         }
         return invoice.DueDate.ToString("MM-dd");
     }
@@ -636,6 +648,29 @@
         {
             _isExporting = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task RestoreInvoiceAsync(ExpenseInvoice invoice)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Atstatyti sąskaitą?",
+            $"Sąskaita {invoice.InvoiceNumber} bus atstatyta į 'Reikia patikrinti' būseną.",
+            yesText: "Atstatyti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await ExpenseService.RestoreInvoiceAsync(invoice.Id);
+            Snackbar.Add("Sąskaita atstatyta", Severity.Success);
+            await LoadDataAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida: {ex.Message}", Severity.Error);
         }
     }
 
