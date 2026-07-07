@@ -1147,6 +1147,8 @@ namespace NordicBeesERP.Migrations
   `reviewed_by` int DEFAULT NULL,
   `reviewed_at` datetime DEFAULT NULL,
   `review_comment` text COLLATE utf8mb4_unicode_ci,
+  `effective_from` date DEFAULT NULL,
+  `effective_to` date DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_asset_version` (`asset_id`,`version_number`),
   KEY `idx_asset_status` (`asset_id`,`status`),
