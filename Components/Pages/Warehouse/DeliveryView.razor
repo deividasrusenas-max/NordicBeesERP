@@ -11,6 +11,8 @@
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
+@inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
+@inject IJSRuntime JS
 
 @implements IDisposable
 
@@ -28,7 +30,29 @@
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
                 <MudText Typo="Typo.h5">Pristatymas @_delivery.DeliveryNumber</MudText>
                 <MudChip T="string" Color="@GetStatusColor(_delivery.Status)">@GetStatusText(_delivery.Status)</MudChip>
+                @if (_delivery.SupplierSignedAt.HasValue)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.VerifiedUser">
+                        Pasirašyta @_delivery.SupplierSignedAt.Value.ToString("yyyy-MM-dd HH:mm")
+                    </MudChip>
+                }
             </MudStack>
+            @if (!_delivery.SupplierSignedAt.HasValue)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                    StartIcon="@Icons.Material.Filled.Draw"
+                    Href="@($"/warehouse/deliveries/{Id}/sign")">
+                    Gauti parašą
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                    StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                    OnClick="@DownloadReceiptAsync">
+                    Atsisiųsti aktą
+                </MudButton>
+            }
             <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/warehouse/deliveries">Atgal</MudButton>
         </MudStack>
 
@@ -301,6 +325,21 @@
     {
         var total = _lines != null ? _lines.Sum(l => l.TotalNetWeight ?? 0m) : 0m;
         return total.ToString("N1");
+    }
+
+    private async Task DownloadReceiptAsync()
+    {
+        try
+        {
+            var pdfBytes = await DeliveryReceiptPdfService.GenerateReceiptAsync(Id);
+            var base64 = Convert.ToBase64String(pdfBytes);
+            var fileName = $"pristatymo-aktas-{_delivery?.DeliveryNumber ?? Id.ToString()}.pdf";
+            await JS.InvokeVoidAsync("downloadFileFromBase64", base64, fileName, "application/pdf");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"PDF klaida: {ex.Message}", Severity.Error);
+        }
     }
 
     public void Dispose()

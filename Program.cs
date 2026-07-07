@@ -51,6 +51,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
+builder.Services.AddScoped<IDeliveryReceiptPdfService, DeliveryReceiptPdfService>();
 builder.Services.AddScoped<ICompanySettingsService, CompanySettingsService>();
 builder.Services.AddScoped<IHoneyTypeService, HoneyTypeService>();
 builder.Services.AddScoped<IContainerService, ContainerService>();

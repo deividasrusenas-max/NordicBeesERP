@@ -101,6 +101,15 @@ window.getDropFileMetadata = (elementId) => {
 };
 
 // Download PDF file from base64 data
+window.downloadFileFromBase64 = function(base64, fileName, mimeType) {
+    const link = document.createElement('a');
+    link.href = 'data:' + mimeType + ';base64,' + base64;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
 window.downloadPdf = (link, fileName) => {
     const linkElement = document.createElement('a');
     linkElement.href = link;
