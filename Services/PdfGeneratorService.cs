@@ -218,7 +218,7 @@ namespace NordicBeesERP.Services
                             {
                                 col.Item().Text(text =>
                                 {
-                                    text.Span("Asmens kodas: ").FontSize(9);
+                                    text.Span(labels.PersonCodeLabel).FontSize(9);
                                     text.Span(seller.NationalIdNumber).FontSize(9);
                                 });
                             }
@@ -275,11 +275,11 @@ namespace NordicBeesERP.Services
                     col.Item().AlignCenter().PaddingTop(5).Text($"{labels.NumberLabel} {invoice.InvoiceNumber}").FontSize(14).Bold();
                     
                     // Eilutė 3: data "2026-03-16"
-                    col.Item().AlignCenter().PaddingTop(5).Text(invoice.InvoiceDate.ToString("yyyy-MM-dd")).FontSize(11);
+                    col.Item().AlignCenter().PaddingTop(5).Text(invoice.Language?.ToUpper() == "EN" ? invoice.InvoiceDate.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture) : invoice.InvoiceDate.ToString("yyyy-MM-dd")).FontSize(11);
                 });
                 
                 // Lentelė su prekėmis
-                column.Item().PaddingTop(20).Text(isReverseCharge6 ? "Žaliavų sąrašas" : "Prekių sąrašas").FontSize(10).Bold();
+                column.Item().PaddingTop(20).Text(labels.ItemsListLabel).FontSize(10).Bold();
                 column.Item().PaddingTop(20).PaddingBottom(5).Table(table =>
                 {
                     table.ColumnsDefinition(columns =>
@@ -354,7 +354,7 @@ namespace NordicBeesERP.Services
                     }
                     
                     // Apmokėti iki (perkeltas po "Suma žodžiais")
-                    col.Item().PaddingTop(10).Text($"{labels.DueDateLabel} {invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? ""}").FontSize(9);
+                    col.Item().PaddingTop(10).Text($"{labels.DueDateLabel} {invoice.PaymentDueDate?.ToString(invoice.Language?.ToUpper() == "EN" ? "MMMM d, yyyy" : "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? ""}").FontSize(9);
                     
                     if (!string.IsNullOrEmpty(invoice.Notes))
                     {
@@ -409,7 +409,9 @@ namespace NordicBeesERP.Services
             string AmountInWordsLabel,
             string DueDateLabel,
             string IssuedByLabel,
-            string ReceivedByLabel
+            string ReceivedByLabel,
+            string ItemsListLabel,
+            string PersonCodeLabel
         );
         
         private LocalizationLabels GetLocalizationLabels(string language, bool isReverseCharge6 = false)
@@ -438,7 +440,9 @@ namespace NordicBeesERP.Services
                     AmountInWordsLabel: "",
                     DueDateLabel: "Due date:",
                     IssuedByLabel: "Issued by",
-                    ReceivedByLabel: "Received by"
+                    ReceivedByLabel: "Received by",
+                    ItemsListLabel: "List of goods",
+                    PersonCodeLabel: "Personal code: "
                 );
             }
             
@@ -463,8 +467,10 @@ namespace NordicBeesERP.Services
                 TotalInclVatLabel: "Viso su PVM",
                 AmountInWordsLabel: "Suma žodžiais:",
                 DueDateLabel: "Apmokėti iki:",
-                IssuedByLabel: "Sąskaitą išrašė",
-                ReceivedByLabel: "Sąskaitą gavo"
+                    IssuedByLabel: "Sąskaitą išrašė",
+                    ReceivedByLabel: "Sąskaitą gavo",
+                    ItemsListLabel: isReverseCharge6 ? "Žaliavų sąrašas" : "Prekių sąrašas",
+                    PersonCodeLabel: "Asmens kodas: "
             );
         }
         
@@ -646,7 +652,7 @@ namespace NordicBeesERP.Services
                                     {
                                         col.Item().Text(text =>
                                         {
-                                            text.Span("Asmens kodas: ").FontSize(9);
+                                            text.Span(labels.PersonCodeLabel).FontSize(9);
                                             text.Span(seller.NationalIdNumber).FontSize(9);
                                         });
                                     }
