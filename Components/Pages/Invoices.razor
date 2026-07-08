@@ -181,17 +181,11 @@
                            @onchange="@((ChangeEventArgs e) => ToggleInvoice(invoice.Id, (bool)e.Value!))"
                            @onclick:stopPropagation="true" />
                 </MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@invoice.InvoiceNumber</MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@GetCustomerName(invoice)</MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer" Style="@GetDueDateStyle(invoice)">
-                    @(invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? "-")
-                </MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@invoice.TotalInclVat.ToString("N2") €</MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer" Style="font-weight:bold;color:#1976d2">
-                    @((invoice.TotalInclVat - invoice.PaidAmount).ToString("N2")) €
-                </MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.InvoiceNumber</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@GetCustomerName(invoice)</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.TotalInclVat.ToString("N2") €</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">
                     @{
                         var payStatus = invoice.PaymentStatus ?? "unpaid";
                         var statusString = invoice.Status.ToString();
