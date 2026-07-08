@@ -221,6 +221,20 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                         c.Item().Text("Patvirtinu, kad pristačiau aukščiau nurodytus produktus pagal sutartas sąlygas. Duomenys teisingi.")
                             .FontSize(9).FontColor(Colors.Grey.Darken2);
 
+                        if (!string.IsNullOrWhiteSpace(delivery.InspectionResult))
+                        {
+                            var resultText = delivery.InspectionResult switch
+                            {
+                                "OK" => "✓ Tinkamas",
+                                "CONDITIONAL" => "⚠ Sąlyginis",
+                                "NOK" => "✗ Netinkamas",
+                                _ => delivery.InspectionResult
+                            };
+                            c.Item().PaddingTop(6).Text($"Priėmimo patikrinimas: {resultText}").FontSize(9).FontColor(Colors.Grey.Darken2);
+                            if (!string.IsNullOrWhiteSpace(delivery.InspectionNotes))
+                                c.Item().Text($"Pastabos: {delivery.InspectionNotes}").FontSize(9).FontColor(Colors.Grey.Darken2);
+                        }
+
                         c.Item().PaddingTop(12).Row(row =>
                         {
                             row.RelativeItem().Column(sc =>

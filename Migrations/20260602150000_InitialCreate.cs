@@ -1184,6 +1184,14 @@ namespace NordicBeesERP.Migrations
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
 
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD COLUMN IF NOT EXISTS inspection_result ENUM('OK','NOK','CONDITIONAL') NULL,
+            ADD COLUMN IF NOT EXISTS inspection_notes TEXT NULL,
+            ADD COLUMN IF NOT EXISTS inspection_by VARCHAR(200) NULL,
+            ADD COLUMN IF NOT EXISTS inspection_at DATETIME NULL;
+    ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 

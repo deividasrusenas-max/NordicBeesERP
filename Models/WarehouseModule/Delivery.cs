@@ -75,4 +75,17 @@ public class Delivery
     [Column("supplier_signer_name")]
     [MaxLength(200)]
     public string? SupplierSignerName { get; set; }
+
+    [Column("inspection_result")]
+    public string? InspectionResult { get; set; }
+
+    [Column("inspection_notes")]
+    public string? InspectionNotes { get; set; }
+
+    [Column("inspection_by")]
+    [MaxLength(200)]
+    public string? InspectionBy { get; set; }
+
+    [Column("inspection_at")]
+    public DateTime? InspectionAt { get; set; }
 }
