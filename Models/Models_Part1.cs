@@ -166,6 +166,9 @@ namespace NordicBeesERP.Models
         [Column("invoice_email")]
         public string? InvoiceEmail { get; set; }
 
+        [Column("no_email")]
+        public bool NoEmail { get; set; } = false;
+
         [MaxLength(50)]
         [Column("bank_account")]
         public string? BankAccount { get; set; }

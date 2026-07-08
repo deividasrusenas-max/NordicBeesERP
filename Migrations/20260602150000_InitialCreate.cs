@@ -1197,6 +1197,11 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS receipt_pdf_path VARCHAR(500) NULL;
     ");
 
+            migrationBuilder.Sql(@"
+        ALTER TABLE business_partners
+            ADD COLUMN IF NOT EXISTS no_email TINYINT(1) NOT NULL DEFAULT 0;
+    ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
