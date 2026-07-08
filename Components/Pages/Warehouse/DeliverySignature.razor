@@ -10,6 +10,7 @@
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject IHoneyTypeService HoneyTypeService
 @inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
+@using MySqlConnector
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
 
@@ -30,18 +31,68 @@
     {
         <MudText Typo="Typo.h5" Class="mb-4">Pasirašyti pristatymą</MudText>
 
+        <!-- Inspection checkboxes -->
+        <MudPaper Class="pa-4 mb-4" Elevation="1" Style="border-left:4px solid #ff9800">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Priėmimo patikrinimas (BRC8)</MudText>
+            <MudCheckBox @bind-Value="_checkColor" Label="Spalva tinkama" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkSmell" Label="Kvapas tinkamas" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkConsistency" Label="Konsistencija tinkama" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkPackaging" Label="Pakuotės nepažeistos" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkContamination" Label="Nėra užteršimo požymių" Color="Color.Primary" />
+            <MudTextField @bind-Value="_inspectionNotes" Label="Pastabos" Variant="Variant.Outlined"
+                Lines="2" FullWidth="true" Class="mt-3" Placeholder="Papildomos pastabos..." />
+            @{
+                var allOk = _checkColor && _checkSmell && _checkConsistency && _checkPackaging && _checkContamination;
+                var anyOk = _checkColor || _checkSmell || _checkConsistency || _checkPackaging || _checkContamination;
+            }
+            @if (anyOk)
+            {
+                <MudChip T="string" Color="@(allOk ? Color.Success : Color.Warning)" Size="Size.Medium" Class="mt-2">
+                    Rezultatas: @(allOk ? "✓ Tinkamas (OK)" : "⚠ Sąlyginis")
+                </MudChip>
+            }
+        </MudPaper>
+
+        <!-- Inline missing supplier data -->
         @if (_missingFields.Any())
         {
-            <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Warning">
-                <MudText Typo="Typo.body1"><b>Tiekėjo kortelėje trūksta duomenų:</b></MudText>
-                @foreach (var field in _missingFields)
+            <MudPaper Class="pa-4 mb-4" Elevation="1" Style="border-left:4px solid #f44336">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Trūkstami tiekėjo duomenys</MudText>
+                @if (string.IsNullOrWhiteSpace(_supplier?.Phone) && string.IsNullOrWhiteSpace(_supplier?.ContactPhone))
                 {
-                    <MudText Typo="Typo.body2">• @field</MudText>
+                    <MudTextField @bind-Value="_inlinePhone" Label="Telefono numeris" Variant="Variant.Outlined"
+                        FullWidth="true" Class="mb-3" Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.Phone" />
                 }
-                <MudText Typo="Typo.body2" Class="mt-2">
-                    <MudLink Href="@($"/suppliers/{_delivery?.SupplierId}/edit")" Target="_blank">Atidaryti tiekėjo kortelę →</MudLink>
-                </MudText>
-            </MudAlert>
+                @if (string.IsNullOrWhiteSpace(_supplier?.Email) && !(_supplier?.NoEmail ?? false))
+                {
+                    @if (!_inlineNoEmail)
+                    {
+                        <MudTextField @bind-Value="_inlineEmail" Label="El. paštas" Variant="Variant.Outlined"
+                            FullWidth="true" Class="mb-2" Adornment="Adornment.Start"
+                            AdornmentIcon="@Icons.Material.Filled.Email" />
+                    }
+                    <MudCheckBox @bind-Value="_inlineNoEmail" Label="Neturi el. pašto" Color="Color.Default" Class="mb-3" />
+                }
+                @if (string.IsNullOrWhiteSpace(_supplier?.Address))
+                {
+                    <MudTextField @bind-Value="_inlineAddress" Label="Adresas" Variant="Variant.Outlined"
+                        FullWidth="true" Class="mb-3" Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.Home" />
+                }
+                @if (string.IsNullOrWhiteSpace(_supplier?.CompanyCode) && string.IsNullOrWhiteSpace(_supplier?.NationalIdNumber))
+                {
+                    <MudTextField @bind-Value="_inlinePersonCode" Label="Asmens kodas" Variant="Variant.Outlined"
+                        FullWidth="true" Class="mb-3" Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.Badge" />
+                }
+                @if (string.IsNullOrWhiteSpace(_supplier?.BankAccount))
+                {
+                    <MudTextField @bind-Value="_inlineIban" Label="Banko sąskaita (IBAN)" Variant="Variant.Outlined"
+                        FullWidth="true" Class="mb-3" Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.AccountBalance" />
+                }
+            </MudPaper>
         }
 
         <!-- Delivery info -->
@@ -229,6 +280,18 @@ window.initSignatureCanvas = function(canvasId) {
     private List<NordicBeesERP.Models.Product> _products = new();
     private List<NordicBeesERP.Models.HoneyType> _honeyTypes = new();
     private List<string> _missingFields = new();
+    private bool _checkColor = false;
+    private bool _checkSmell = false;
+    private bool _checkConsistency = false;
+    private bool _checkPackaging = false;
+    private bool _checkContamination = false;
+    private string _inspectionNotes = "";
+    private string _inlinePhone = "";
+    private string _inlineEmail = "";
+    private string _inlineAddress = "";
+    private string _inlinePersonCode = "";
+    private string _inlineIban = "";
+    private bool _inlineNoEmail = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -255,13 +318,13 @@ window.initSignatureCanvas = function(canvasId) {
                 if (string.IsNullOrWhiteSpace(_supplier.Address))
                     _missingFields.Add("Adresas");
                 if (string.IsNullOrWhiteSpace(_supplier.CompanyCode) && string.IsNullOrWhiteSpace(_supplier.NationalIdNumber))
-                    _missingFields.Add("Asmens kodas arba įmonės kodas");
+                    _missingFields.Add("Asmens kodas");
                 if (string.IsNullOrWhiteSpace(_supplier.BankAccount))
                     _missingFields.Add("Banko sąskaita (IBAN)");
                 if (string.IsNullOrWhiteSpace(_supplier.Phone) && string.IsNullOrWhiteSpace(_supplier.ContactPhone))
-                    _missingFields.Add("Telefono numeris");
-                if (string.IsNullOrWhiteSpace(_delivery.InspectionResult))
-                    _missingFields.Add("Priėmimo patikrinimas (DeliveryView puslapyje)");
+                    _missingFields.Add("Telefonas");
+                if (string.IsNullOrWhiteSpace(_supplier.Email) && !_supplier.NoEmail)
+                    _missingFields.Add("El. paštas");
             }
 
             _products = await ProductService.GetAllProductsAsync();
@@ -295,15 +358,29 @@ window.initSignatureCanvas = function(canvasId) {
 
     private async Task SaveSignatureAsync()
     {
-        if (string.IsNullOrWhiteSpace(_signerName))
+        if (!_isCompany && string.IsNullOrWhiteSpace(_signerName))
         {
             Snackbar.Add("Įveskite savo vardą ir pavardę", Severity.Warning);
             return;
         }
 
-        if (_missingFields.Any())
+        // Validate inspection
+        var anyChecked = _checkColor || _checkSmell || _checkConsistency || _checkPackaging || _checkContamination;
+        if (!anyChecked)
         {
-            Snackbar.Add("Pirmiausia užpildykite trūkstamus tiekėjo duomenis", Severity.Error);
+            Snackbar.Add("Atlikite priėmimo patikrinimą", Severity.Warning);
+            return;
+        }
+
+        // Validate inline required fields
+        if (string.IsNullOrWhiteSpace(_supplier?.Phone) && string.IsNullOrWhiteSpace(_supplier?.ContactPhone) && string.IsNullOrWhiteSpace(_inlinePhone))
+        {
+            Snackbar.Add("Įveskite telefono numerį", Severity.Warning);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_supplier?.Email) && !(_supplier?.NoEmail ?? false) && string.IsNullOrWhiteSpace(_inlineEmail) && !_inlineNoEmail)
+        {
+            Snackbar.Add("Įveskite el. paštą arba pažymėkite 'Neturi el. pašto'", Severity.Warning);
             return;
         }
 
@@ -316,6 +393,65 @@ window.initSignatureCanvas = function(canvasId) {
         {
             if (_isCompany && string.IsNullOrWhiteSpace(_signerName))
                 _signerName = _supplierName;
+
+            // Save inline supplier data
+            if (_supplier != null)
+            {
+                var updateParts = new List<string>();
+                var updateParams = new List<MySqlConnector.MySqlParameter>();
+
+                if (!string.IsNullOrWhiteSpace(_inlinePhone))
+                {
+                    updateParts.Add("phone=@phone");
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@phone", _inlinePhone));
+                }
+                if (!string.IsNullOrWhiteSpace(_inlineEmail))
+                {
+                    updateParts.Add("email=@email");
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@email", _inlineEmail));
+                }
+                if (_inlineNoEmail && string.IsNullOrWhiteSpace(_supplier.Email))
+                {
+                    updateParts.Add("no_email=1");
+                }
+                if (!string.IsNullOrWhiteSpace(_inlineAddress))
+                {
+                    updateParts.Add("address=@address");
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@address", _inlineAddress));
+                }
+                if (!string.IsNullOrWhiteSpace(_inlinePersonCode))
+                {
+                    updateParts.Add("national_id_number=@personcode");
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@personcode", _inlinePersonCode));
+                }
+                if (!string.IsNullOrWhiteSpace(_inlineIban))
+                {
+                    updateParts.Add("bank_account=@iban");
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@iban", _inlineIban));
+                }
+
+                if (updateParts.Any())
+                {
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@sid", _supplier.Id));
+                    using var ctx = await ContextFactory.CreateDbContextAsync();
+                    await ctx.Database.ExecuteSqlRawAsync(
+                        $"UPDATE business_partners SET {string.Join(",", updateParts)} WHERE id=@sid",
+                        updateParams.ToArray());
+                }
+            }
+
+            // Save inspection result
+            {
+                var allChecked = _checkColor && _checkSmell && _checkConsistency && _checkPackaging && _checkContamination;
+                var inspResult = allChecked ? "OK" : "CONDITIONAL";
+                using var ctx = await ContextFactory.CreateDbContextAsync();
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "UPDATE deliveries SET inspection_result=@r, inspection_notes=@n, inspection_at=@at WHERE id=@id",
+                    new MySqlConnector.MySqlParameter("@r", inspResult),
+                    new MySqlConnector.MySqlParameter("@n", _inspectionNotes ?? ""),
+                    new MySqlConnector.MySqlParameter("@at", DateTime.Now),
+                    new MySqlConnector.MySqlParameter("@id", Id));
+            }
 
             var svg = await JS.InvokeAsync<string>("getCanvasSvg", "signatureCanvas");
 
