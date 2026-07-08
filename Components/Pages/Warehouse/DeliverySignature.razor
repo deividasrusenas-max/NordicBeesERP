@@ -10,6 +10,7 @@
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject IHoneyTypeService HoneyTypeService
 @inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
+@inject IRawMaterialTypeService RawMaterialTypeService
 @using MySqlConnector
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
@@ -135,11 +136,15 @@
                             @{
                                 var line = _lines.FirstOrDefault(l => l.Id == container.DeliveryLineId);
                                 var honeyTypeName = line?.HoneyTypeId != null
-                                    ? (_honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name ?? $"#{line.HoneyTypeId}")
-                                    : "-";
+                                    ? (_honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name ?? null)
+                                    : null;
+                                var rawMatName = _rawMaterialTypes.FirstOrDefault(r => r.Id == _delivery!.RawMaterialTypeId)?.Name;
+                                var productLabel = !string.IsNullOrEmpty(honeyTypeName)
+                                    ? $"{rawMatName ?? honeyTypeName} — {honeyTypeName}"
+                                    : (rawMatName ?? "-");
                                 var typeName = container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", "BUCKET_GROUP" => "Kibirai", _ => container.ContainerType ?? "-" };
                             }
-                            @(honeyTypeName != "-" ? $"{honeyTypeName} ({typeName})" : typeName)
+                            @($"{productLabel} ({typeName})")
                         </MudTd>
                         <MudTd Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
                         <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
@@ -279,6 +284,7 @@ window.initSignatureCanvas = function(canvasId) {
     private List<NordicBeesERP.Models.WarehouseModule.DeliveryLine> _lines = new();
     private List<NordicBeesERP.Models.Product> _products = new();
     private List<NordicBeesERP.Models.HoneyType> _honeyTypes = new();
+    private List<NordicBeesERP.Models.WarehouseModule.RawMaterialType> _rawMaterialTypes = new();
     private List<string> _missingFields = new();
     private bool _checkColor = false;
     private bool _checkSmell = false;
@@ -329,6 +335,7 @@ window.initSignatureCanvas = function(canvasId) {
 
             _products = await ProductService.GetAllProductsAsync();
             _honeyTypes = await HoneyTypeService.GetActiveAsync();
+            _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
             _lines = await DeliveryService.GetLinesByDeliveryIdAsync(_delivery.Id);
 
             using var ctx = await ContextFactory.CreateDbContextAsync();
