@@ -137,7 +137,7 @@
                                 var honeyTypeName = line?.HoneyTypeId != null
                                     ? (_honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name ?? $"#{line.HoneyTypeId}")
                                     : "-";
-                                var typeName = container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", _ => container.ContainerType ?? "-" };
+                                var typeName = container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", "BUCKET_GROUP" => "Kibirai", _ => container.ContainerType ?? "-" };
                             }
                             @(honeyTypeName != "-" ? $"{honeyTypeName} ({typeName})" : typeName)
                         </MudTd>
