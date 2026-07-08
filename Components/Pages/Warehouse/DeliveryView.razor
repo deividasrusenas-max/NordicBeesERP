@@ -13,7 +13,7 @@
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
 @inject IJSRuntime JS
-@inject AuthenticationStateProvider AuthStateProvider
+@inject IRawMaterialTypeService RawMaterialTypeService
 
 @implements IDisposable
 
@@ -98,15 +98,13 @@
         <MudText Typo="Typo.h6" Class="mb-2">Pristatymo eilutės</MudText>
         <MudTable T="DeliveryLine" Items="_lines" Dense="true" Hover="true" Class="mb-4">
             <HeaderContent>
-                <MudTh>Prekė</MudTh>
-                <MudTh>Medaus rūšis</MudTh>
+                <MudTh colspan="2">Prekė</MudTh>
                 <MudTh>Tipas</MudTh>
                 <MudTh Style="text-align:right">Kiekis</MudTh>
                 <MudTh Style="text-align:right">Netto (kg)</MudTh>
             </HeaderContent>
             <RowTemplate Context="context">
-                <MudTd>@GetProductName(context.ProductId)</MudTd>
-                <MudTd>@GetHoneyTypeName(context.HoneyTypeId)</MudTd>
+                <MudTd colspan="2">@GetLineName(context)</MudTd>
                 <MudTd>@GetContainerTypeName(context.ContainerType)</MudTd>
                 <MudTd Style="text-align:right">@context.ContainerCount</MudTd>
                 <MudTd Style="text-align:right">@((context.TotalNetWeight ?? 0m).ToString("N1"))</MudTd>
@@ -146,38 +144,6 @@
             </MudGrid>
         </MudPaper>
         }
-
-        <!-- Inspection -->
-        <MudPaper Class="pa-4 mt-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-3">Priėmimo patikrinimas (BRC8)</MudText>
-            <MudGrid>
-                <MudItem xs="12" md="4">
-                    <MudSelect T="string" Value="_delivery.InspectionResult"
-                        ValueChanged="@((string val) => { _delivery.InspectionResult = val; _delivery.InspectionAt = DateTime.Now; OnFieldChanged(); })"
-                        Label="Patikrinimo rezultatas" Variant="Variant.Outlined">
-                        <MudSelectItem T="string" Value="@("OK")">✓ Tinkamas (OK)</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("CONDITIONAL")">⚠ Sąlyginis (CONDITIONAL)</MudSelectItem>
-                        <MudSelectItem T="string" Value="@("NOK")">✗ Netinkamas (NOK)</MudSelectItem>
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" md="8">
-                    <MudTextField T="string" Value="_delivery.InspectionNotes"
-                        ValueChanged="@((string val) => { _delivery.InspectionNotes = val; OnFieldChanged(); })"
-                        Label="Pastabos (spalva, kvapas, konsistencija, užteršimas)"
-                        Variant="Variant.Outlined" Lines="2" />
-                </MudItem>
-                @if (_delivery.InspectionAt.HasValue)
-                {
-                    <MudItem xs="12">
-                        <MudText Typo="Typo.caption" Class="mt-1">
-                            Patikrinta: @_delivery.InspectionAt.Value.ToString("yyyy-MM-dd HH:mm")
-                            @if (!string.IsNullOrEmpty(_delivery.InspectionBy))
-                            { <text> | @_delivery.InspectionBy</text> }
-                        </MudText>
-                    </MudItem>
-                }
-            </MudGrid>
-        </MudPaper>
 
         <!-- Containers table -->
         <MudText Typo="Typo.h6" Class="mb-2 mt-4">Statinės / Konteineriai</MudText>
@@ -234,6 +200,7 @@
     // Lookups
     private List<Product> _products = new();
     private List<HoneyType> _honeyTypes = new();
+    private List<RawMaterialType> _rawMaterialTypes = new();
 
     private System.Threading.Timer? _autoSaveTimer;
     private bool _saveIndicatorVisible = false;
@@ -305,6 +272,7 @@
     {
         _products = await ProductService.GetAllProductsAsync();
         _honeyTypes = await HoneyTypeService.GetAllAsync();
+        _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
         await LoadData();
     }
 
@@ -323,7 +291,22 @@
         _warehouseName = warehouses.FirstOrDefault(w => w.Id == _delivery.WarehouseId)?.Name ?? "";
     }
 
-    private string GetProductName(int? id) => id.HasValue ? _products.FirstOrDefault(p => p.Id == id.Value)?.Name ?? $"#{id.Value}" : "-";
+    private string GetLineName(DeliveryLine line)
+    {
+        var rawMat = _delivery?.RawMaterialTypeId.HasValue == true
+            ? _rawMaterialTypes.FirstOrDefault(r => r.Id == _delivery.RawMaterialTypeId)?.Name
+            : null;
+        var honeyType = line.HoneyTypeId.HasValue
+            ? _honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name
+            : null;
+        if (!string.IsNullOrEmpty(rawMat) && !string.IsNullOrEmpty(honeyType))
+            return $"{rawMat} — {honeyType}";
+        if (!string.IsNullOrEmpty(rawMat))
+            return rawMat;
+        if (!string.IsNullOrEmpty(honeyType))
+            return honeyType;
+        return "-";
+    }
     private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
 
     private string GetContainerTypeName(string containerType) => containerType switch
