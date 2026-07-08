@@ -102,8 +102,8 @@ namespace NordicBeesERP.Services
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 invoices = invoices.Where(i => 
-                    i.InvoiceNumber.Contains(searchTerm) ||
-                    (i.Customer != null && i.Customer.Name.Contains(searchTerm))
+                    i.InvoiceNumber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    (i.Customer != null && i.Customer.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
                 ).ToList();
             }
 
@@ -567,8 +567,8 @@ namespace NordicBeesERP.Services
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 query = query.Where(i => 
-                    i.InvoiceNumber.Contains(searchTerm) || 
-                    i.Customer.Name.Contains(searchTerm));
+                    i.InvoiceNumber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    i.Customer.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
             }
 
             return await query
