@@ -32,30 +32,97 @@
     {
         <MudText Typo="Typo.h5" Class="mb-4">Pasirašyti pristatymą</MudText>
 
-        <!-- Inspection checkboxes -->
-        <MudPaper Class="pa-4 mb-4" Elevation="1" Style="border-left:4px solid #ff9800">
-            <MudText Typo="Typo.subtitle1" Class="mb-3">Priėmimo patikrinimas (BRC8)</MudText>
-            <MudCheckBox @bind-Value="_checkColor" Label="Spalva tinkama" Color="Color.Primary" />
-            <MudCheckBox @bind-Value="_checkSmell" Label="Kvapas tinkamas" Color="Color.Primary" />
-            <MudCheckBox @bind-Value="_checkConsistency" Label="Konsistencija tinkama" Color="Color.Primary" />
-            <MudCheckBox @bind-Value="_checkPackaging" Label="Pakuotės nepažeistos" Color="Color.Primary" />
-            <MudCheckBox @bind-Value="_checkContamination" Label="Nėra užteršimo požymių" Color="Color.Primary" />
-            <MudTextField @bind-Value="_inspectionNotes" Label="Pastabos" Variant="Variant.Outlined"
-                Lines="2" FullWidth="true" Class="mt-3" Placeholder="Papildomos pastabos..." />
-            @{
-                var allOk = _checkColor && _checkSmell && _checkConsistency && _checkPackaging && _checkContamination;
-                var anyOk = _checkColor || _checkSmell || _checkConsistency || _checkPackaging || _checkContamination;
-            }
-            @if (anyOk)
-            {
-                <MudChip T="string" Color="@(allOk ? Color.Success : Color.Warning)" Size="Size.Medium" Class="mt-2">
-                    Rezultatas: @(allOk ? "✓ Tinkamas (OK)" : "⚠ Sąlyginis")
-                </MudChip>
-            }
+        <!-- 1. Pristatymo informacija -->
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Pristatymo informacija</MudText>
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Numeris</MudText>
+                    <MudText Typo="Typo.body1">@_delivery.DeliveryNumber</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Data</MudText>
+                    <MudText Typo="Typo.body1">@_delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Kilmės šalis</MudText>
+                    <MudText Typo="Typo.body1">@(_delivery.OriginCountry ?? "-")</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption">Bendras netto</MudText>
+                    <MudText Typo="Typo.body1">@_delivery.TotalNetWeight.ToString("N1") kg</MudText>
+                </MudItem>
+            </MudGrid>
         </MudPaper>
 
-        <!-- Inline missing supplier data -->
-        @if (_missingFields.Any())
+        <!-- 2. Tiekėjas -->
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Tiekėjas</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.caption">Pavadinimas</MudText>
+                    <MudText Typo="Typo.body1"><b>@_supplierName</b></MudText>
+                </MudItem>
+                @if (!string.IsNullOrWhiteSpace(_supplier?.Address))
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption">Adresas</MudText>
+                        <MudText Typo="Typo.body1">@_supplier.Address</MudText>
+                    </MudItem>
+                }
+                @if (!string.IsNullOrWhiteSpace(_supplier?.NationalIdNumber))
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption">Asmens kodas</MudText>
+                        <MudText Typo="Typo.body1">@_supplier.NationalIdNumber</MudText>
+                    </MudItem>
+                }
+                @if (!string.IsNullOrWhiteSpace(_supplier?.CompanyCode))
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption">Įmonės kodas</MudText>
+                        <MudText Typo="Typo.body1">@_supplier.CompanyCode</MudText>
+                    </MudItem>
+                }
+                @if (!string.IsNullOrWhiteSpace(_supplier?.Phone))
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption">Telefonas</MudText>
+                        <MudText Typo="Typo.body1">@_supplier.Phone</MudText>
+                    </MudItem>
+                }
+                @if (!string.IsNullOrWhiteSpace(_supplier?.Email))
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption">El. paštas</MudText>
+                        <MudText Typo="Typo.body1">@_supplier.Email</MudText>
+                    </MudItem>
+                }
+                @if (!string.IsNullOrWhiteSpace(_supplier?.BankAccount))
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption">IBAN</MudText>
+                        <MudText Typo="Typo.body1">@_supplier.BankAccount</MudText>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Pasirašymo tipas -->
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Pasirašymo tipas</MudText>
+            <MudRadioGroup T="string" @bind-Value="_signedByType">
+                <MudRadio T="string" Value="@("SUPPLIER")" Color="Color.Primary">
+                    <b>Tiekėjas atvyko asmeniškai</b> — tiekėjas pasirašo
+                </MudRadio>
+                <MudRadio T="string" Value="@("RECEIVER")" Color="Color.Primary">
+                    <b>Pristatymas per transportą</b> — MB Lakštena atstovas pasirašo
+                </MudRadio>
+            </MudRadioGroup>
+        </MudPaper>
+
+        <!-- 3. Trūkstami tiekėjo duomenys -->
+        @if (_signedByType == "SUPPLIER" && _missingFields.Any())
         {
             <MudPaper Class="pa-4 mb-4" Elevation="1" Style="border-left:4px solid #f44336">
                 <MudText Typo="Typo.subtitle1" Class="mb-3">Trūkstami tiekėjo duomenys</MudText>
@@ -96,34 +163,33 @@
             </MudPaper>
         }
 
-        <!-- Delivery info -->
-        <MudPaper Class="pa-4 mb-4" Elevation="1">
-            <MudText Typo="Typo.subtitle1" Class="mb-2">Pristatymo informacija</MudText>
-            <MudGrid>
-                <MudItem xs="6">
-                    <MudText Typo="Typo.caption">Numeris</MudText>
-                    <MudText Typo="Typo.body1">@_delivery.DeliveryNumber</MudText>
-                </MudItem>
-                <MudItem xs="6">
-                    <MudText Typo="Typo.caption">Data</MudText>
-                    <MudText Typo="Typo.body1">@_delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudText>
-                </MudItem>
-                <MudItem xs="6">
-                    <MudText Typo="Typo.caption">Tiekėjas</MudText>
-                    <MudText Typo="Typo.body1">@_supplierName</MudText>
-                </MudItem>
-                <MudItem xs="6">
-                    <MudText Typo="Typo.caption">Bendras netto</MudText>
-                    <MudText Typo="Typo.body1">@_delivery.TotalNetWeight.ToString("N1") kg</MudText>
-                </MudItem>
-            </MudGrid>
+        <!-- 4. Priėmimo patikrinimas -->
+        <MudPaper Class="pa-4 mb-4" Elevation="1" Style="border-left:4px solid #ff9800">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Priėmimo patikrinimas (BRC8)</MudText>
+            <MudCheckBox @bind-Value="_checkColor" Label="Spalva tinkama" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkSmell" Label="Kvapas tinkamas" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkConsistency" Label="Konsistencija tinkama" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkPackaging" Label="Pakuotės nepažeistos" Color="Color.Primary" />
+            <MudCheckBox @bind-Value="_checkContamination" Label="Nėra užteršimo požymių" Color="Color.Primary" />
+            <MudTextField @bind-Value="_inspectionNotes" Label="Pastabos" Variant="Variant.Outlined"
+                Lines="2" FullWidth="true" Class="mt-3" Placeholder="Papildomos pastabos..." />
+            @{
+                var allOk = _checkColor && _checkSmell && _checkConsistency && _checkPackaging && _checkContamination;
+                var anyOk = _checkColor || _checkSmell || _checkConsistency || _checkPackaging || _checkContamination;
+            }
+            @if (anyOk)
+            {
+                <MudChip T="string" Color="@(allOk ? Color.Success : Color.Warning)" Size="Size.Medium" Class="mt-2">
+                    Rezultatas: @(allOk ? "✓ Tinkamas (OK)" : "⚠ Sąlyginis")
+                </MudChip>
+            }
         </MudPaper>
 
-        <!-- Containers -->
+        <!-- 5. Pristatymo detalizacija -->
         @if (_containers.Any())
         {
             <MudPaper Class="pa-4 mb-4" Elevation="1">
-                <MudText Typo="Typo.subtitle1" Class="mb-2">Pakuotės</MudText>
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Pristatymo detalizacija</MudText>
                 <MudTable T="NordicBeesERP.Models.WarehouseModule.Container" Items="_containers" Dense="true" Hover="false" Elevation="0">
                     <HeaderContent>
                         <MudTh>Tipas</MudTh>
@@ -150,38 +216,46 @@
                         <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
                         <MudTd Style="text-align:right"><b>@container.NetWeight.ToString("N1")</b></MudTd>
                     </RowTemplate>
-                    <FooterContent>
-                    </FooterContent>
+                    <FooterContent></FooterContent>
                 </MudTable>
-                <div style="border-top:2px solid #e0e0e0; margin-top:4px; padding:8px 4px; display:flex; justify-content:flex-end; gap:32px">
-                    <span style="flex:1"><b>Iš viso (@_containers.Count vnt.)</b></span>
-                    <span style="min-width:80px; text-align:right"><b>@_containers.Sum(c => c.GrossWeight).ToString("N1")</b></span>
-                    <span style="min-width:80px; text-align:right"><b>@_containers.Sum(c => c.TareWeight).ToString("N1")</b></span>
-                    <span style="min-width:80px; text-align:right"><b>@_containers.Sum(c => c.NetWeight).ToString("N1")</b></span>
+                <div style="border-top:2px solid #e0e0e0; margin-top:4px; padding:8px 4px; display:grid; grid-template-columns: 1fr 100px 100px 100px; gap:8px">
+                    <span><b>Iš viso (@_containers.Count vnt.)</b></span>
+                    <span style="text-align:right"><b>@_containers.Sum(c => c.GrossWeight).ToString("N1")</b></span>
+                    <span style="text-align:right"><b>@_containers.Sum(c => c.TareWeight).ToString("N1")</b></span>
+                    <span style="text-align:right"><b>@_containers.Sum(c => c.NetWeight).ToString("N1")</b></span>
                 </div>
             </MudPaper>
         }
 
-        <!-- Terms -->
+        <!-- 6. Patvirtinimo tekstas -->
         <MudPaper Class="pa-4 mb-4" Elevation="0" Style="background:#f0f4ff; border-left:4px solid #1976d2">
             <MudText Typo="Typo.body1">Patvirtinu, kad pristačiau aukščiau nurodytus produktus pagal sutartas sąlygas. Duomenys teisingi.</MudText>
         </MudPaper>
 
-        <!-- Signer name -->
-        @if (!_isCompany)
+        <!-- 7. Vardas -->
+        @if (_signedByType == "SUPPLIER")
         {
-            <MudTextField @bind-Value="_signerName" Label="Pristatė (vardas, pavardė)" Variant="Variant.Outlined"
-                FullWidth="true" Class="mb-4" Required="true" Adornment="Adornment.Start"
-                AdornmentIcon="@Icons.Material.Filled.Person" Style="font-size:18px" />
+            @if (!_isCompany)
+            {
+                <MudTextField @bind-Value="_signerName" Label="Pristatė (vardas, pavardė)" Variant="Variant.Outlined"
+                    FullWidth="true" Class="mb-4" Required="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Person" Style="font-size:18px" />
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    Pristatė: <b>@_supplierName</b>
+                </MudAlert>
+            }
         }
         else
         {
-            <MudAlert Severity="Severity.Info" Class="mb-4">
-                Pristatė: <b>@_supplierName</b>
-            </MudAlert>
+            <MudTextField @bind-Value="_receiverName" Label="MB Lakštena atstovas (vardas, pavardė)" Variant="Variant.Outlined"
+                FullWidth="true" Class="mb-4" Required="true" Adornment="Adornment.Start"
+                AdornmentIcon="@Icons.Material.Filled.Badge" Style="font-size:18px" />
         }
 
-        <!-- Signature canvas -->
+        <!-- 8. Parašas -->
         <MudPaper Class="pa-4 mb-4" Elevation="1" Style="background:white; border-radius:8px">
             <MudText Typo="Typo.subtitle2" Class="mb-3">Parašas (pieškite pirštu)</MudText>
             <canvas id="signatureCanvas" width="800" height="300"
@@ -298,6 +372,8 @@ window.initSignatureCanvas = function(canvasId) {
     private string _inlinePersonCode = "";
     private string _inlineIban = "";
     private bool _inlineNoEmail = false;
+    private string _signedByType = "SUPPLIER";
+    private string _receiverName = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -365,9 +441,14 @@ window.initSignatureCanvas = function(canvasId) {
 
     private async Task SaveSignatureAsync()
     {
-        if (!_isCompany && string.IsNullOrWhiteSpace(_signerName))
+        if (_signedByType == "SUPPLIER" && !_isCompany && string.IsNullOrWhiteSpace(_signerName))
         {
-            Snackbar.Add("Įveskite savo vardą ir pavardę", Severity.Warning);
+            Snackbar.Add("Įveskite tiekėjo vardą ir pavardę", Severity.Warning);
+            return;
+        }
+        if (_signedByType == "RECEIVER" && string.IsNullOrWhiteSpace(_receiverName))
+        {
+            Snackbar.Add("Įveskite MB Lakštena atstovo vardą ir pavardę", Severity.Warning);
             return;
         }
 
@@ -380,15 +461,18 @@ window.initSignatureCanvas = function(canvasId) {
         }
 
         // Validate inline required fields
-        if (string.IsNullOrWhiteSpace(_supplier?.Phone) && string.IsNullOrWhiteSpace(_supplier?.ContactPhone) && string.IsNullOrWhiteSpace(_inlinePhone))
+        if (_signedByType == "SUPPLIER")
         {
-            Snackbar.Add("Įveskite telefono numerį", Severity.Warning);
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(_supplier?.Email) && !(_supplier?.NoEmail ?? false) && string.IsNullOrWhiteSpace(_inlineEmail) && !_inlineNoEmail)
-        {
-            Snackbar.Add("Įveskite el. paštą arba pažymėkite 'Neturi el. pašto'", Severity.Warning);
-            return;
+            if (string.IsNullOrWhiteSpace(_supplier?.Phone) && string.IsNullOrWhiteSpace(_supplier?.ContactPhone) && string.IsNullOrWhiteSpace(_inlinePhone))
+            {
+                Snackbar.Add("Įveskite telefono numerį", Severity.Warning);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_supplier?.Email) && !(_supplier?.NoEmail ?? false) && string.IsNullOrWhiteSpace(_inlineEmail) && !_inlineNoEmail)
+            {
+                Snackbar.Add("Įveskite el. paštą arba pažymėkite 'Neturi el. pašto'", Severity.Warning);
+                return;
+            }
         }
 
         if (_delivery == null) return;
@@ -470,7 +554,20 @@ window.initSignatureCanvas = function(canvasId) {
                 return;
             }
 
-            await DeliveryService.SaveSignatureAsync(Id, _signerName, svg);
+            var finalSignerName = _signedByType == "RECEIVER"
+                ? $"MB Lakštena atstovas: {_receiverName}"
+                : _signerName;
+            await DeliveryService.SaveSignatureAsync(Id, finalSignerName, svg);
+
+            // Save signed_by_type and receiver_name
+            {
+                using var ctx = await ContextFactory.CreateDbContextAsync();
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "UPDATE deliveries SET signed_by_type=@t, receiver_name=@r WHERE id=@id",
+                    new MySqlConnector.MySqlParameter("@t", _signedByType),
+                    new MySqlConnector.MySqlParameter("@r", _receiverName ?? ""),
+                    new MySqlConnector.MySqlParameter("@id", Id));
+            }
             Snackbar.Add("Parašas išsaugotas sėkmingai", Severity.Success);
 
             try
