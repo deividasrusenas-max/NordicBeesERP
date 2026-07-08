@@ -1207,6 +1207,12 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS no_email TINYINT(1) NOT NULL DEFAULT 0;
     ");
 
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD COLUMN IF NOT EXISTS signed_by_type VARCHAR(20) NOT NULL DEFAULT 'SUPPLIER',
+            ADD COLUMN IF NOT EXISTS receiver_name VARCHAR(200) NULL;
+    ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 

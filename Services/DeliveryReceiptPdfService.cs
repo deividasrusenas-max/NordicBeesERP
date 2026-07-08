@@ -39,6 +39,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
         var lineIds = lines.Select(l => l.Id).ToList();
         var containers = lineIds.Any() ? await context.Containers.Where(c => c.DeliveryLineId.HasValue && lineIds.Contains(c.DeliveryLineId.Value)).ToListAsync() : new List<Container>();
         var honeyTypes = await context.HoneyTypes.ToListAsync();
+        var rawMaterialTypes = await context.RawMaterialTypes.ToListAsync();
         var supplier = await context.BusinessPartners.FirstOrDefaultAsync(bp => bp.Id == delivery.SupplierId);
         var companySettings = await _companySettingsService.GetSettingsAsync();
 
@@ -64,10 +65,10 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                                 c.Item().Text($"Įmonės kodas: {companySettings.CompanyCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
                             if (!string.IsNullOrWhiteSpace(companySettings?.VatCode))
                                 c.Item().Text($"PVM kodas: {companySettings.VatCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
-                            if (!string.IsNullOrWhiteSpace(companySettings?.BankAccount))
-                                c.Item().Text($"IBAN: {companySettings.BankAccount}").FontSize(9).FontColor(Colors.Grey.Darken1);
                             if (!string.IsNullOrWhiteSpace(companySettings?.BankName))
                                 c.Item().Text($"Bankas: {companySettings.BankName}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                            if (!string.IsNullOrWhiteSpace(companySettings?.BankAccount))
+                                c.Item().Text($"IBAN: {companySettings.BankAccount}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         });
                         row.RelativeItem().AlignRight().Column(c =>
                         {
@@ -90,6 +91,10 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                             c.Item().Text($"Asmens kodas: {supplier.NationalIdNumber}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(supplier?.VatCode))
                             c.Item().Text($"PVM kodas: {supplier.VatCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(supplier?.Phone))
+                            c.Item().Text($"Tel.: {supplier.Phone}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(supplier?.Email))
+                            c.Item().Text($"El. p.: {supplier.Email}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(supplier?.BankAccount))
                             c.Item().Text($"IBAN: {supplier.BankAccount}").FontSize(9).FontColor(Colors.Grey.Darken1);
                     });
@@ -124,18 +129,24 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
 
                             foreach (var line in lines)
                             {
-                                string containerTypeName = line.ContainerType switch
+                                var honeyTypeName = line.HoneyTypeId.HasValue
+                                    ? honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name
+                                    : null;
+                                var rawMatName = delivery.RawMaterialTypeId.HasValue
+                                    ? rawMaterialTypes.FirstOrDefault(r => r.Id == delivery.RawMaterialTypeId)?.Name
+                                    : null;
+                                var prekeName = !string.IsNullOrEmpty(honeyTypeName)
+                                    ? $"{rawMatName ?? honeyTypeName} — {honeyTypeName}"
+                                    : (rawMatName ?? "-");
+                                string containerTypeDisplay = line.ContainerType switch
                                 {
                                     "BARREL" => "Statinė",
                                     "BUCKET" => "Kibiras",
+                                    "BUCKET_GROUP" => "Kibirai",
                                     _ => line.ContainerType ?? "-"
                                 };
-
-                                var htName = line.HoneyTypeId.HasValue
-                                    ? (honeyTypes.FirstOrDefault(h => h.Id == line.HoneyTypeId)?.Name ?? $"#{line.HoneyTypeId}")
-                                    : "-";
-                                table.Cell().Element(DataCell).Text(htName);
-                                table.Cell().Element(DataCell).Text(containerTypeName);
+                                table.Cell().Element(DataCell).Text(prekeName);
+                                table.Cell().Element(DataCell).Text(containerTypeDisplay);
                                 table.Cell().Element(DataCell).AlignRight().Text(line.ContainerCount.ToString());
                                 table.Cell().Element(DataCell).AlignRight().Text($"{(line.TotalNetWeight ?? 0):N1}");
                             }
@@ -184,6 +195,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                                     {
                                         "BARREL" => "Statinė",
                                         "BUCKET" => "Kibiras",
+                                        "BUCKET_GROUP" => "Kibirai",
                                         _ => container.ContainerType ?? "-"
                                     };
 

@@ -65,6 +65,8 @@ namespace NordicBeesERP.Services
             {
                 invoice.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == invoice.CustomerId);
                 invoice.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == invoice.Id).ToList();
+                if (invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
+                    invoice.Language = invoice.Customer.DefaultLanguage;
             }
             
             if (invoice == null)
@@ -87,6 +89,8 @@ namespace NordicBeesERP.Services
             {
                 invoice.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == invoice.CustomerId);
                 invoice.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == invoice.Id).ToList();
+                if (invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
+                    invoice.Language = invoice.Customer.DefaultLanguage;
             }
             
             if (invoice == null)
@@ -413,7 +417,7 @@ namespace NordicBeesERP.Services
             if (language?.ToUpper() == "EN")
             {
                 return new LocalizationLabels(
-                    DocumentTitle: "VAT INVOICE",
+                    DocumentTitle: "INVOICE",
                     NumberLabel: "No.",
                     Seller: isReverseCharge6 ? "Buyer" : "Seller",
                     Buyer: isReverseCharge6 ? "Seller" : "Buyer",
@@ -869,6 +873,8 @@ namespace NordicBeesERP.Services
                     {
                         inv.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == inv.CustomerId);
                         inv.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == inv.Id).ToList();
+                        if (inv.Customer != null && !string.IsNullOrEmpty(inv.Customer.DefaultLanguage))
+                            inv.Language = inv.Customer.DefaultLanguage;
                         invoices.Add(inv);
                     }
                 }

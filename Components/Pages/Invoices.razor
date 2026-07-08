@@ -173,7 +173,6 @@
                 <MudTh>Suma</MudTh>
                 <MudTh>Liko</MudTh>
                 <MudTh>Būsena</MudTh>
-                <MudTh>Veiksmai</MudTh>
             </HeaderContent>
             <RowTemplate Context="invoice">
                 <MudTd Style="min-width:48px;width:48px;">
@@ -182,17 +181,17 @@
                            @onchange="@((ChangeEventArgs e) => ToggleInvoice(invoice.Id, (bool)e.Value!))"
                            @onclick:stopPropagation="true" />
                 </MudTd>
-                <MudTd>@invoice.InvoiceNumber</MudTd>
-                <MudTd>@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
-                <MudTd>@GetCustomerName(invoice)</MudTd>
-                <MudTd Style="@GetDueDateStyle(invoice)">
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@invoice.InvoiceNumber</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@GetCustomerName(invoice)</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer" Style="@GetDueDateStyle(invoice)">
                     @(invoice.PaymentDueDate?.ToString("yyyy-MM-dd") ?? "-")
                 </MudTd>
-                <MudTd>@invoice.TotalInclVat.ToString("N2") €</MudTd>
-                <MudTd Style="font-weight:bold;color:#1976d2">
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">@invoice.TotalInclVat.ToString("N2") €</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer" Style="font-weight:bold;color:#1976d2">
                     @((invoice.TotalInclVat - invoice.PaidAmount).ToString("N2")) €
                 </MudTd>
-                <MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" style="cursor:pointer">
                     @{
                         var payStatus = invoice.PaymentStatus ?? "unpaid";
                         var statusString = invoice.Status.ToString();
@@ -210,14 +209,6 @@
                         };
                     }
                     <MudChip T="string" Color="@payColor" Size="Size.Small" Style="text-transform:none">@payLabel</MudChip>
-                </MudTd>
-                <MudTd>
-                    <div @onclick:stopPropagation="true">
-                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                       OnClick="@(async () => { ViewInvoice(invoice.Id); })"
-                                       Color="Color.Primary"
-                                       Size="Size.Small" />
-                    </div>
                 </MudTd>
             </RowTemplate>
             <PagerContent>

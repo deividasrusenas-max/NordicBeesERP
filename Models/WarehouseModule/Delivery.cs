@@ -93,6 +93,14 @@ public class Delivery
     [MaxLength(500)]
     public string? ReceiptPdfPath { get; set; }
 
+    [Column("signed_by_type")]
+    [MaxLength(20)]
+    public string SignedByType { get; set; } = "SUPPLIER";
+
+    [Column("receiver_name")]
+    [MaxLength(200)]
+    public string? ReceiverName { get; set; }
+
     [Column("origin_country")]
     [MaxLength(100)]
     public string? OriginCountry { get; set; }
