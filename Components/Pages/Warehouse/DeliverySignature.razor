@@ -9,6 +9,7 @@
 @inject IJSRuntime JS
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject IHoneyTypeService HoneyTypeService
+@inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
 
@@ -328,6 +329,16 @@ window.initSignatureCanvas = function(canvasId) {
 
             await DeliveryService.SaveSignatureAsync(Id, _signerName, svg);
             Snackbar.Add("Parašas išsaugotas sėkmingai", Severity.Success);
+
+            try
+            {
+                await DeliveryReceiptPdfService.GenerateAndSaveReceiptAsync(Id);
+            }
+            catch (Exception pdfEx)
+            {
+                Snackbar.Add($"Įspėjimas: PDF nepavyko išsaugoti ({pdfEx.Message})", Severity.Warning);
+            }
+
             Navigation.NavigateTo($"/warehouse/deliveries/{Id}");
         }
         catch (Exception ex)

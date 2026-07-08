@@ -364,7 +364,26 @@
     {
         try
         {
-            var pdfBytes = await DeliveryReceiptPdfService.GenerateReceiptAsync(Id);
+            byte[] pdfBytes;
+
+            if (!string.IsNullOrWhiteSpace(_delivery?.ReceiptPdfPath))
+            {
+                var baseDir = "/var/lib/nordicbees/delivery-receipts";
+                var fullPath = Path.Combine(baseDir, _delivery.ReceiptPdfPath);
+                if (File.Exists(fullPath))
+                {
+                    pdfBytes = await File.ReadAllBytesAsync(fullPath);
+                }
+                else
+                {
+                    pdfBytes = await DeliveryReceiptPdfService.GenerateReceiptAsync(Id);
+                }
+            }
+            else
+            {
+                pdfBytes = await DeliveryReceiptPdfService.GenerateReceiptAsync(Id);
+            }
+
             var base64 = Convert.ToBase64String(pdfBytes);
             var fileName = $"pristatymo-aktas-{_delivery?.DeliveryNumber ?? Id.ToString()}.pdf";
             await JS.InvokeVoidAsync("downloadFileFromBase64", base64, fileName, "application/pdf");

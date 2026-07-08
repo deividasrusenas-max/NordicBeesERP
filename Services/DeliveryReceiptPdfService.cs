@@ -10,6 +10,7 @@ namespace NordicBeesERP.Services;
 public interface IDeliveryReceiptPdfService
 {
     Task<byte[]> GenerateReceiptAsync(int deliveryId);
+    Task<string> GenerateAndSaveReceiptAsync(int deliveryId);
 }
 
 public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
@@ -282,5 +283,32 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                 });
             });
         }).GeneratePdf();
+    }
+
+    public async Task<string> GenerateAndSaveReceiptAsync(int deliveryId)
+    {
+        var pdfBytes = await GenerateReceiptAsync(deliveryId);
+
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var delivery = await context.Deliveries.FirstOrDefaultAsync(d => d.Id == deliveryId);
+        if (delivery == null) throw new InvalidOperationException($"Delivery {deliveryId} not found");
+
+        var year = delivery.DeliveryDate.Year.ToString();
+        var fileName = $"{delivery.DeliveryNumber ?? $"delivery-{deliveryId}"}.pdf";
+        var relativePath = Path.Combine(year, fileName);
+
+        var baseDir = "/var/lib/nordicbees/delivery-receipts";
+        var yearDir = Path.Combine(baseDir, year);
+        Directory.CreateDirectory(yearDir);
+
+        var fullPath = Path.Combine(yearDir, fileName);
+        await File.WriteAllBytesAsync(fullPath, pdfBytes);
+
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE deliveries SET receipt_pdf_path=@path WHERE id=@id",
+            new MySqlConnector.MySqlParameter("@path", relativePath),
+            new MySqlConnector.MySqlParameter("@id", deliveryId));
+
+        return relativePath;
     }
 }

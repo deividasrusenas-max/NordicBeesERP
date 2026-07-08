@@ -88,4 +88,8 @@ public class Delivery
 
     [Column("inspection_at")]
     public DateTime? InspectionAt { get; set; }
+
+    [Column("receipt_pdf_path")]
+    [MaxLength(500)]
+    public string? ReceiptPdfPath { get; set; }
 }
