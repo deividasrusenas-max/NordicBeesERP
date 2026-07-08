@@ -184,7 +184,40 @@
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.InvoiceNumber</MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@GetCustomerName(invoice)</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">
+                    @{
+                        var remaining = invoice.TotalInclVat - invoice.PaidAmount;
+                        var isPaid = remaining <= 0;
+                    }
+                    @if (invoice.PaymentDueDate.HasValue)
+                    {
+                        var days = (invoice.PaymentDueDate.Value.Date - DateTime.Today).Days;
+                        <span>@invoice.PaymentDueDate.Value.ToString("yyyy-MM-dd")</span>
+                        @if (!isPaid)
+                        {
+                            @if (days == 0)
+                            {
+                                <span Style="color:orange;font-size:11px;margin-left:4px;">(šiandien)</span>
+                            }
+                            else if (days > 0)
+                            {
+                                <span Style="color:green;font-size:11px;margin-left:4px;">(@days d.)</span>
+                            }
+                            else
+                            {
+                                <span Style="color:red;font-size:11px;margin-left:4px;">(@days d.)</span>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.TotalInclVat.ToString("N2") €</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer;font-weight:bold;color:#1976d2">
+                    @((invoice.TotalInclVat - invoice.PaidAmount).ToString("N2")) €
+                </MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">
                     @{
                         var payStatus = invoice.PaymentStatus ?? "unpaid";
