@@ -92,4 +92,8 @@ public class Delivery
     [Column("receipt_pdf_path")]
     [MaxLength(500)]
     public string? ReceiptPdfPath { get; set; }
+
+    [Column("origin_country")]
+    [MaxLength(100)]
+    public string? OriginCountry { get; set; }
 }

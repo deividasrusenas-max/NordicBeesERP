@@ -1198,6 +1198,11 @@ namespace NordicBeesERP.Migrations
     ");
 
             migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD COLUMN IF NOT EXISTS origin_country VARCHAR(100) NULL;
+    ");
+
+            migrationBuilder.Sql(@"
         ALTER TABLE business_partners
             ADD COLUMN IF NOT EXISTS no_email TINYINT(1) NOT NULL DEFAULT 0;
     ");
