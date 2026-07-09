@@ -68,6 +68,9 @@ namespace NordicBeesERP.Models
         [Column("logo_path")]
         public string? LogoPath { get; set; }
 
+        [Column("default_vat_rate")]
+        public decimal DefaultVatRate { get; set; } = 21m;
+
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; }
     }

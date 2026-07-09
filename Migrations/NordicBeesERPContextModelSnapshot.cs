@@ -750,6 +750,10 @@ namespace NordicBeesERP.Migrations
                         .HasColumnType("varchar(255)")
                         .HasColumnName("email");
 
+                    b.Property<decimal>("DefaultVatRate")
+                        .HasColumnType("decimal(5,2)")
+                        .HasColumnName("default_vat_rate");
+
                     b.Property<string>("LogoPath")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)")

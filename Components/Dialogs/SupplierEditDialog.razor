@@ -1,11 +1,13 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Data
+@using NordicBeesERP.Services
 @using MudBlazor
 @inject IDialogService DialogService
 @inject ISupplierService SupplierService
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject ICompanyLookupService CompanyLookupService
+@inject ICompanySettingsService CompanySettingsService
 
 <MudDialog>
     <TitleContent>
@@ -144,6 +146,7 @@
     private bool _lookupLoading = false;
     private CompanyLookupResult? _lookupResult = null;
     private string _lastCompanyCode = "";
+    private CompanySettings _companySettings = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -152,6 +155,7 @@
             .Where(c => c.IsActive)
             .OrderBy(c => c.SortOrder)
             .ToListAsync();
+        _companySettings = await CompanySettingsService.GetSettingsAsync();
     }
 
     protected override void OnParametersSet()
@@ -223,7 +227,7 @@
         if (!string.IsNullOrEmpty(result.CountryCode))
         {
             supplier.CountryCode = result.CountryCode;
-            supplier.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? 21m : 0m;
+            supplier.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? _companySettings.DefaultVatRate : 0m;
             _vatRate = (int)supplier.DefaultVatRate;
         }
         await InvokeAsync(StateHasChanged);

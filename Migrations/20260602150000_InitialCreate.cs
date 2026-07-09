@@ -208,6 +208,7 @@ namespace NordicBeesERP.Migrations
   `email` varchar(255) DEFAULT NULL,
   `phone` varchar(50) DEFAULT NULL,
   `logo_path` varchar(500) DEFAULT NULL,
+  `default_vat_rate` decimal(5,2) NOT NULL DEFAULT 21.00,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

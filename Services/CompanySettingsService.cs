@@ -64,6 +64,7 @@ namespace NordicBeesERP.Services
                     existing.BankAccount = settings.BankAccount;
                     existing.Email = settings.Email;
                     existing.Phone = settings.Phone;
+                    existing.DefaultVatRate = settings.DefaultVatRate;
                     existing.UpdatedAt = DateTime.UtcNow;
                     
                     context.Entry(existing).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
