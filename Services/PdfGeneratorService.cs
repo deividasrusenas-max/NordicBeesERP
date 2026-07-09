@@ -11,6 +11,7 @@ using NordicBeesERP.Data;
 using NordicBeesERP.Models;
 using NordicBeesERP.Services.Dtos;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace NordicBeesERP.Services
@@ -80,6 +81,11 @@ namespace NordicBeesERP.Services
             return await Task.Run(() => GeneratePdfFromInvoiceId(invoiceId));
         }
 
+        public byte[] GenerateInvoicePdfSync(int invoiceId)
+        {
+            return GeneratePdfFromInvoiceId(invoiceId);
+        }
+
         private byte[] GeneratePdfFromInvoiceId(int invoiceId)
         {
             using var context = _contextFactory.CreateDbContext();
@@ -89,6 +95,10 @@ namespace NordicBeesERP.Services
             {
                 invoice.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == invoice.CustomerId);
                 invoice.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == invoice.Id).ToList();
+                foreach (var line in invoice.Lines)
+                {
+                    System.IO.File.AppendAllText("/tmp/pdf_debug.txt", $"[PDF DEBUG] Invoice {invoiceId} Line {line.Id}: Quantity={line.Quantity} (raw), Quantity%1={line.Quantity % 1}, Formatted_F0={line.Quantity.ToString("F0", CultureInfo.InvariantCulture)}, Formatted_G29={line.Quantity.ToString("G29")}\n");
+                }
                 if (invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
                     invoice.Language = invoice.Customer.DefaultLanguage;
             }
@@ -321,12 +331,12 @@ namespace NordicBeesERP.Services
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(rowNum++.ToString()).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(line.Description).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(line.Unit ?? "").FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.Quantity.ToString("G29").TrimEnd('0').TrimEnd('.')).FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2")).FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalExclVat.ToString("N2")).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatQuantity(line.Quantity)).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"{displayVatRate:N0}%").FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(vatAmount.ToString("N2")).FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalInclVat.ToString("N2")).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(vatAmount.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalInclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                     }
                 });
                 
@@ -348,7 +358,7 @@ namespace NordicBeesERP.Services
                         row.ConstantItem(150).Text(labels.TotalInclVatLabel).FontSize(10).Bold();
                         row.ConstantItem(80).AlignRight().Text($"{totalInclVat:N2} €").FontSize(10).Bold();
                     });
-                    if (invoice.Language != "EN")
+                    if (invoice.Language?.ToUpper() != "EN")
                     {
                         col.Item().PaddingTop(5).Text($"{labels.AmountInWordsLabel} {ConvertToLithuanianWords(totalInclVat)}").FontSize(9);
                     }
@@ -475,13 +485,24 @@ namespace NordicBeesERP.Services
         }
         
         // =====================================================
+        // KIEKIO FORMATAVIMO METODAS
+        // =====================================================
+
+        private string FormatQuantity(decimal qty)
+        {
+            if (qty == Math.Floor(qty))
+                return ((long)qty).ToString();
+            return qty.ToString("G29");
+        }
+
+        // =====================================================
         // LITUOMIŠKŲ ŽODŽIŲ KONVERTAVIMO METODAS
         // =====================================================
-        
+
         private string ConvertToLithuanianWords(decimal amount)
         {
             if (amount < 0 || amount > 999999)
-                return amount.ToString("N2") + " €";
+                return amount.ToString("N2", CultureInfo.InvariantCulture) + " €";
             
             var eur = (int)Math.Floor(amount);
             var ct = (int)Math.Round((amount - eur) * 100);
@@ -804,8 +825,8 @@ namespace NordicBeesERP.Services
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(rowNum++.ToString()).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(line.Description).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(line.Unit ?? "").FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.Quantity.ToString("G29").TrimEnd('0').TrimEnd('.')).FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2")).FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatQuantity(line.Quantity)).FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"-{totalExclVat:N2}").FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"{displayVatRate:N0}%").FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"-{vatAmount:N2}").FontSize(8);
