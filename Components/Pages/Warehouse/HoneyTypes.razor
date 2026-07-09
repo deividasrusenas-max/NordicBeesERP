@@ -24,42 +24,15 @@
                 <MudTh Style="width:120px">Veiksmai</MudTh>
             </HeaderContent>
             <RowTemplate Context="item">
-                @if (_editingItem?.Id == item.Id)
-                {
-                    <MudTd>
-                        <MudTextField @bind-Value="_editingItem.Code" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
-                    </MudTd>
-                    <MudTd>
-                        <MudTextField @bind-Value="_editingItem.Name" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" Required="true" />
-                    </MudTd>
-                    <MudTd>
-                        <MudTextField @bind-Value="_editingItem.NameEn" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
-                    </MudTd>
-                    <MudTd>
-                        <MudSwitch T="bool" @bind-Value="_editingItem.IsActive" Color="Color.Success" />
-                    </MudTd>
-                    <MudTd>
-                        <MudNumericField T="int" @bind-Value="_editingItem.SortOrder" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
-                    </MudTd>
-                    <MudTd>
-                        <div class="d-flex gap-1">
-                            <MudIconButton Icon="@Icons.Material.Filled.Save" Size="Size.Small" Color="Color.Success" OnClick="SaveEdit" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Secondary" OnClick="CancelEdit" />
-                        </div>
-                    </MudTd>
-                }
-                else
-                {
-                    <MudTd>@item.Code</MudTd>
-                    <MudTd>@item.Name</MudTd>
-                    <MudTd>@item.NameEn</MudTd>
-                    <MudTd><MudSwitch T="bool" @bind-Value="@item.IsActive" Color="Color.Success" /></MudTd>
-                    <MudTd>@item.SortOrder</MudTd>
-                    <MudTd>
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(item))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteItem(item))" />
-                    </MudTd>
-                }
+                <MudTd>@item.Code</MudTd>
+                <MudTd>@item.Name</MudTd>
+                <MudTd>@item.NameEn</MudTd>
+                <MudTd><MudChip T="string" Color="@(item.IsActive ? Color.Success : Color.Default)" Size="Size.Small">@(item.IsActive ? "Aktyvus" : "Neaktyvus")</MudChip></MudTd>
+                <MudTd>@item.SortOrder</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteItem(item))" />
+                </MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Class="text-center py-4">Įrašų nėra</MudText>
@@ -123,39 +96,6 @@
         _dialogVisible = true;
     }
 
-    private void StartInlineEdit(HoneyType item)
-    {
-        _editingItem = new HoneyType
-        {
-            Id = item.Id, Code = item.Code, Name = item.Name, NameEn = item.NameEn,
-            Description = item.Description, IsActive = item.IsActive, SortOrder = item.SortOrder,
-            CreatedAt = item.CreatedAt
-        };
-    }
-
-    private async Task SaveEdit()
-    {
-        if (string.IsNullOrWhiteSpace(_editingItem.Name))
-        {
-            Snackbar.Add("Pavadinimas privalomas", Severity.Warning);
-            return;
-        }
-
-        if (_editingItem.Id == 0)
-            await HoneyTypeService.CreateAsync(_editingItem);
-        else
-            await HoneyTypeService.UpdateAsync(_editingItem);
-
-        _editingItem = new HoneyType();
-        await LoadData();
-        Snackbar.Add("Išsaugota", Severity.Success);
-    }
-
-    private void CancelEdit()
-    {
-        _editingItem = new HoneyType();
-    }
-
     private async Task SaveItem()
     {
         if (string.IsNullOrWhiteSpace(_editingItem.Name))
@@ -172,13 +112,6 @@
         _dialogVisible = false;
         await LoadData();
         Snackbar.Add("Išsaugota", Severity.Success);
-    }
-
-    private async Task ToggleActive(HoneyType item, bool value)
-    {
-        item.IsActive = value;
-        await HoneyTypeService.UpdateAsync(item);
-        Snackbar.Add(value ? "Aktyvuota" : "Deaktyvuota", Severity.Info);
     }
 
     private async Task DeleteItem(HoneyType item)
