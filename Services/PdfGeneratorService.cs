@@ -3,6 +3,7 @@
 // Framework: .NET 10 + QuestPDF
 // =====================================================
 
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -48,11 +49,13 @@ namespace NordicBeesERP.Services
     {
         private readonly IDbContextFactory<NordicBeesERPContext> _contextFactory;
         private readonly ICompanySettingsService _companySettingsService;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public PdfGeneratorService(IDbContextFactory<NordicBeesERPContext> contextFactory, ICompanySettingsService companySettingsService)
+        public PdfGeneratorService(IDbContextFactory<NordicBeesERPContext> contextFactory, ICompanySettingsService companySettingsService, IWebHostEnvironment webHostEnvironment)
         {
             _contextFactory = contextFactory;
             _companySettingsService = companySettingsService;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         public byte[] GenerateInvoicePdf(int invoiceId)
@@ -213,7 +216,7 @@ namespace NordicBeesERP.Services
                     });
                     
                     // LOGO (viduryje)
-                    row.ConstantItem(100).AlignCenter().AlignMiddle().Image(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "logo.png")).FitWidth();
+                    row.ConstantItem(100).AlignCenter().AlignMiddle().Image(Path.Combine(_webHostEnvironment.WebRootPath, "logo.png")).FitWidth();
                     
                     // PIRKĖJAS (dešinėje)
                     row.RelativeItem().PaddingLeft(40).Column(col =>
@@ -713,7 +716,7 @@ namespace NordicBeesERP.Services
                             });
                             
                             // LOGO (viduryje)
-                            row.ConstantItem(100).AlignCenter().AlignMiddle().Image(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "logo.png")).FitWidth();
+                            row.ConstantItem(100).AlignCenter().AlignMiddle().Image(Path.Combine(_webHostEnvironment.WebRootPath, "logo.png")).FitWidth();
                             
                             // BUYER (dešinėje)
                             row.RelativeItem().PaddingLeft(40).Column(col =>
