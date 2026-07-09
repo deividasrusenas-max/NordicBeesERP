@@ -38,6 +38,8 @@ public static class PdfLocalization
     public const string OfLabel = "iš";
     
     public const string CurrencyCode = "EUR";
+    public const string CountryLt = "Lietuva";
+    public const string CountryEn = "Lithuania";
     
     public const string InvoiceTypeInvoice = "Sąskaita faktūra";
     public const string InvoiceTypeProforma = "Proforma sąskaita";

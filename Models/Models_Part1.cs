@@ -52,7 +52,7 @@ namespace NordicBeesERP.Models
 
         [MaxLength(100)]
         [Column("country")]
-        public string Country { get; set; } = "Lithuania";
+        public string Country { get; set; } = PdfLocalization.CountryEn;
 
         [MaxLength(10)]
         [Column("country_code")]
@@ -144,7 +144,7 @@ namespace NordicBeesERP.Models
 
         [MaxLength(100)]
         [Column("country")]
-        public string Country { get; set; } = "Lithuania";
+        public string Country { get; set; } = PdfLocalization.CountryEn;
 
         [MaxLength(10)]
         [Column("country_code")]
@@ -388,7 +388,7 @@ namespace NordicBeesERP.Models
 
         [MaxLength(100)]
         [Column("country")]
-        public string Country { get; set; } = "Lithuania";
+        public string Country { get; set; } = PdfLocalization.CountryEn;
 
         [Column("description")]
         public string? Description { get; set; }

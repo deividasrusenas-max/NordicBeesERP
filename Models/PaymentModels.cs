@@ -126,7 +126,7 @@ namespace NordicBeesERP.Models
         [Column("payer_name")] public string? PayerName { get; set; }
         [Column("payer_account")] public string? PayerAccount { get; set; }
         [Column("amount")] public decimal Amount { get; set; }
-        [Column("currency")] public string Currency { get; set; } = "EUR";
+        [Column("currency")] public string Currency { get; set; } = PdfLocalization.CurrencyCode;
         [Column("reference")] public string? Reference { get; set; }
         [Column("description")] public string? Description { get; set; }
         [Column("match_status")] public string MatchStatus { get; set; } = "unmatched";

@@ -1037,7 +1037,7 @@ namespace NordicBeesERP.Services
                 AmountInclVat = ocrResult.AmountInclVat,
                 CategoryId = ocrResult.CategoryId,
                 PaidAmount = 0,
-                Currency = string.IsNullOrEmpty(ocrResult.Currency) ? "EUR" : ocrResult.Currency,
+                Currency = string.IsNullOrEmpty(ocrResult.Currency) ? NordicBeesERP.Models.PdfLocalization.CurrencyCode : ocrResult.Currency,
                 Status = status,
                 OcrStatus = "COMPLETED",
                 OcrConfidence = ocrResult.Confidence.Overall,
@@ -1127,7 +1127,7 @@ namespace NordicBeesERP.Services
             invoice.VatRate = ocrResult.VatRate;
             invoice.VatAmount = ocrResult.VatAmount;
             invoice.AmountInclVat = ocrResult.AmountInclVat;
-            invoice.Currency = string.IsNullOrEmpty(ocrResult.Currency) ? "EUR" : ocrResult.Currency;
+            invoice.Currency = string.IsNullOrEmpty(ocrResult.Currency) ? NordicBeesERP.Models.PdfLocalization.CurrencyCode : ocrResult.Currency;
             invoice.OcrStatus = "COMPLETED";
             invoice.OcrConfidence = ocrResult.Confidence.Overall;
             invoice.OcrPipeline = ocrResult.OcrPipeline;

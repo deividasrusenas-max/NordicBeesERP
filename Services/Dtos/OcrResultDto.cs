@@ -1,4 +1,5 @@
 using System.Linq;
+using NordicBeesERP.Models;
 
 public class OcrResultDto
 {
@@ -27,7 +28,7 @@ public class OcrResultDto
     public string InvoiceNumber { get; set; } = "";
     public string InvoiceDate { get; set; } = "";
     public string DueDate { get; set; } = "";
-    public string Currency { get; set; } = "EUR";
+    public string Currency { get; set; } = PdfLocalization.CurrencyCode;
     public decimal AmountExclVat { get; set; }
     public decimal VatRate { get; set; }
     public decimal VatAmount { get; set; }

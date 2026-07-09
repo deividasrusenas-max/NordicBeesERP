@@ -98,7 +98,7 @@ namespace NordicBeesERP.Models
         public string? DefaultLanguage { get; set; } = "lt";
         public decimal DefaultVatRate { get; set; } = 21.00m;
         public string? CountryCode { get; set; } = "LT";
-        public string? Country { get; set; } = "Lietuva";
+        public string? Country { get; set; } = PdfLocalization.CountryLt;
         public string? Notes { get; set; }
         public bool IsActive { get; set; } = true;
 

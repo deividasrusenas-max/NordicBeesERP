@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using NordicBeesERP.Models;
 
 namespace NordicBeesERP.Services.Dtos
 {
@@ -222,7 +223,7 @@ namespace NordicBeesERP.Services.Dtos
         public string? PayerName { get; set; }
         public string? PayerAccount { get; set; }
         public decimal Amount { get; set; }
-        public string Currency { get; set; } = "EUR";
+        public string Currency { get; set; } = PdfLocalization.CurrencyCode;
         public string? Reference { get; set; }
         public string? Description { get; set; }
         public string MatchStatus { get; set; } = "unmatched";

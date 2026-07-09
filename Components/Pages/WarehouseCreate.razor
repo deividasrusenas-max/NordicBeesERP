@@ -21,7 +21,7 @@
 </MudContainer>
 
 @code {
-    private NordicBeesERP.Models.Warehouse warehouse = new NordicBeesERP.Models.Warehouse { IsActive = true, Country = "Lithuania" };
+    private NordicBeesERP.Models.Warehouse warehouse = new NordicBeesERP.Models.Warehouse { IsActive = true, Country = NordicBeesERP.Models.PdfLocalization.CountryEn };
 
     private async Task HandleSubmit()
     {

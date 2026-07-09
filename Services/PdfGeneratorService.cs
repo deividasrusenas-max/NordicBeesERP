@@ -840,17 +840,17 @@ namespace NordicBeesERP.Services
                             col.Item().Row(row =>
                             {
                                 row.ConstantItem(150).Text(labels.TotalExclVatLabel).FontSize(9);
-                                row.ConstantItem(80).AlignRight().Text($"-{subtotalExclVat:N2} {currency?.Code ?? "EUR"}").FontSize(9);
+                                row.ConstantItem(80).AlignRight().Text($"-{subtotalExclVat:N2} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
                             });
                             col.Item().Row(row =>
                             {
                                 row.ConstantItem(150).Text(labels.VatAmountLabel).FontSize(9);
-                                row.ConstantItem(80).AlignRight().Text($"-{totalVat:N2} {currency?.Code ?? "EUR"}").FontSize(9);
+                                row.ConstantItem(80).AlignRight().Text($"-{totalVat:N2} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
                             });
                             col.Item().BorderTop(1).BorderColor(Colors.Grey.Medium).PaddingTop(5).Row(row =>
                             {
                                 row.ConstantItem(150).Text(labels.TotalInclVatLabel).FontSize(10).Bold();
-                                row.ConstantItem(80).AlignRight().Text($"-{totalInclVat:N2} {currency?.Code ?? "EUR"}").FontSize(10).Bold();
+                                row.ConstantItem(80).AlignRight().Text($"-{totalInclVat:N2} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(10).Bold();
                             });
                         });
                         

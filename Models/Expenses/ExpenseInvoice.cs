@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using NordicBeesERP.Models;
 
 namespace NordicBeesERP.Models.Expenses
 {
@@ -83,7 +84,7 @@ namespace NordicBeesERP.Models.Expenses
 
         [Column("currency")]
         [MaxLength(3)]
-        public string Currency { get; set; } = "EUR";
+        public string Currency { get; set; } = PdfLocalization.CurrencyCode;
 
         [Required]
         [Column("paid_amount", TypeName = "decimal(12,2)")]
