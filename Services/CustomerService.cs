@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NordicBeesERP.Data;
 using NordicBeesERP.Models;
 
@@ -7,10 +8,12 @@ namespace NordicBeesERP.Services
     public class CustomerService : ICustomerService
     {
         private readonly IDbContextFactory<NordicBeesERPContext> _dbFactory;
+        private readonly ILogger<CustomerService> _logger;
 
-        public CustomerService(IDbContextFactory<NordicBeesERPContext> dbFactory)
+        public CustomerService(IDbContextFactory<NordicBeesERPContext> dbFactory, ILogger<CustomerService> logger)
         {
             _dbFactory = dbFactory;
+            _logger = logger;
         }
 
         public async Task<List<Customer>> GetCustomersAsync()
@@ -223,7 +226,7 @@ namespace NordicBeesERP.Services
                     DateTime.Now,
                     customer.Id);
 
-                Console.WriteLine($"ExecuteSqlRaw rows affected: {rows}");
+                _logger.LogDebug("ExecuteSqlRaw rows affected: {Rows}", rows);
 
                 if (rows == 0) throw new InvalidOperationException($"Klientas su ID {customer.Id} nerastas arba nepakeistas");
 
