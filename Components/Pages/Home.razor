@@ -68,7 +68,7 @@
 
             <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600">Paskutiniai pristatymai</MudText>
             <MudTable T="Delivery" Items="_recentDeliveries" Dense="true" Hover="true" Striped="true"
-                OnRowClick="@((TableRowClickEventArgs<Delivery> args) => Navigation.NavigateTo($"/warehouse/deliveries/{args.Item.Id}"))"
+                OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) Navigation.NavigateTo($"/warehouse/deliveries/{args.Item.Id}"); })"
                 Style="cursor:pointer" Class="mb-4">
                 <HeaderContent>
                     <MudTh>Nr.</MudTh>
@@ -195,6 +195,21 @@
     private List<Delivery> _recentDeliveries = new();
     private List<NordicBeesERP.Models.BusinessPartner> _suppliers = new();
     private List<(string Name, string Color, decimal BarrelKg, decimal BucketKg)> _honeyTypeStock = new();
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     private static readonly string[] _cardColors = {
         "#dbeafe", "#f0fdf4", "#fef3c7", "#fce7f3", "#ede9fe", "#ffedd5", "#cffafe", "#dcfce7"

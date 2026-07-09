@@ -1,0 +1,866 @@
+# Dead code report for .
+
+
+## 1. Public methods/classes never referenced outside their own file (0 found)
+
+_none found_
+
+
+## 2. Private methods never called (0 found)
+
+_none found_
+
+
+## 3. Injected services declared but never used (12 found)
+
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/InvoiceDetailDialog.razor:464` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/InvoiceDetailDialog.razor:464` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/InvoiceDetailDialog.razor:464` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/InvoiceDetailDialog.razor:401` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+- `Components/Dialogs/InvoiceDetailDialog.razor:464` **ExpenseOcrService** - [Inject] property - never referenced elsewhere in this file
+
+## 4. Razor components never rendered anywhere (829 found)
+
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/almondine-writing/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/almondine-writing/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/boiled-cost/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/boiled-cost/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/DeliverySignature.razor:1` **DeliverySignature** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/chocolate-tin/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/erratic-dirigible/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/helpful-temperature/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/horn-caravan/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/horn-caravan/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/knowledgeable-blizzard/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/DeliverySignature.razor:1` **DeliverySignature** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/polyester-macrame/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/quickest-trust/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/quickest-trust/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/radial-arch/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/radial-arch/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `.kilo/worktrees/unexpected-guppy/Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Dialogs/CreateCreditNoteDialog.razor:1` **CreateCreditNoteDialog** - component name has zero occurrences in any other file
+- `Components/Dialogs/CustomerSelectDialog.razor:1` **CustomerSelectDialog** - component name has zero occurrences in any other file
+- `Components/Dialogs/ExpenseAllocationEditor.razor:1` **ExpenseAllocationEditor** - component name has zero occurrences in any other file
+- `Components/Dialogs/ExpenseBudgetDialog.razor:1` **ExpenseBudgetDialog** - component name has zero occurrences in any other file
+- `Components/Dialogs/ExpenseCashFlow.razor:1` **ExpenseCashFlow** - component name has zero occurrences in any other file
+- `Components/Dialogs/ExpenseSupplierHistory.razor:1` **ExpenseSupplierHistory** - component name has zero occurrences in any other file
+- `Components/Dialogs/PaymentRegisterDialog.razor:1` **PaymentRegisterDialog** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Dialogs/ResolveSupplierDialog.razor:1` **ResolveSupplierDialog** - component name has zero occurrences in any other file
+- `Components/Dialogs/SupplierSelectDialog.razor:1` **SupplierSelectDialog** - component name has zero occurrences in any other file
+- `Components/Layout/EmptyLayout.razor:1` **EmptyLayout** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Layout/ReconnectModal.razor:1` **ReconnectModal** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Admin/Users.razor:1` **Users** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Artwork/ArtworkAssetDetail.razor:1` **ArtworkAssetDetail** - component name has zero occurrences in any other file
+- `Components/Pages/Artwork/ArtworkBrandPage.razor:1` **ArtworkBrandPage** - component name has zero occurrences in any other file
+- `Components/Pages/Artwork/ArtworkBrandsSettings.razor:1` **ArtworkBrandsSettings** - component name has zero occurrences in any other file
+- `Components/Pages/Artwork/ArtworkDashboard.razor:1` **ArtworkDashboard** - component name has zero occurrences in any other file
+- `Components/Pages/Artwork/ArtworkGallery.razor:1` **ArtworkGallery** - component name has zero occurrences in any other file
+- `Components/Pages/Artwork/ArtworkUpload.razor:1` **ArtworkUpload** - component name has zero occurrences in any other file
+- `Components/Pages/CashFlowForecast.razor:1` **CashFlowForecast** - component name has zero occurrences in any other file
+- `Components/Pages/CompanySettingsPage.razor:1` **CompanySettingsPage** - component name has zero occurrences in any other file
+- `Components/Pages/Counter.razor:1` **Counter** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/CreditNoteCreate.razor:1` **CreditNoteCreate** - component name has zero occurrences in any other file
+- `Components/Pages/CreditNoteEdit.razor:1` **CreditNoteEdit** - component name has zero occurrences in any other file
+- `Components/Pages/CreditNotePdfPage.razor:1` **CreditNotePdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/CreditNoteView.razor:1` **CreditNoteView** - component name has zero occurrences in any other file
+- `Components/Pages/CreditNotes.razor:1` **CreditNotes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Customers.razor:1` **Customers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Error.razor:1` **Error** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/ExpenseCategorySettings.razor:1` **ExpenseCategorySettings** - component name has zero occurrences in any other file
+- `Components/Pages/ExpenseForecast.razor:1` **ExpenseForecast** - component name has zero occurrences in any other file
+- `Components/Pages/ExpenseInvoices.razor:1` **ExpenseInvoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/ExpensePayments.razor:1` **ExpensePayments** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/ExpenseSettings.razor:1` **ExpenseSettings** - component name has zero occurrences in any other file
+- `Components/Pages/ExpensesDashboard.razor:1` **ExpensesDashboard** - component name has zero occurrences in any other file
+- `Components/Pages/Home.razor:1` **Home** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Inventory.razor:1` **Inventory** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/InvoiceCreate.razor:1` **InvoiceCreate** - component name has zero occurrences in any other file
+- `Components/Pages/InvoiceEdit.razor:1` **InvoiceEdit** - component name has zero occurrences in any other file
+- `Components/Pages/InvoicePaymentList.razor:1` **InvoicePaymentList** - component name has zero occurrences in any other file
+- `Components/Pages/InvoiceView.razor:1` **InvoiceView** - component name has zero occurrences in any other file
+- `Components/Pages/Invoices.razor:1` **Invoices** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Login.razor:1` **Login** - component name has zero occurrences in any other file
+- `Components/Pages/PaymentHistory.razor:1` **PaymentHistory** - component name has zero occurrences in any other file
+- `Components/Pages/PaymentsDashboard.razor:1` **PaymentsDashboard** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/PdfPage.razor:1` **PdfPage** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/ProductCreate.razor:1` **ProductCreate** - component name has zero occurrences in any other file
+- `Components/Pages/ProductEdit.razor:1` **ProductEdit** - component name has zero occurrences in any other file
+- `Components/Pages/Production/NewBatch.razor:1` **NewBatch** - component name has zero occurrences in any other file
+- `Components/Pages/Products.razor:1` **Products** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Settings.razor:1` **Settings** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/SettingsPages/RawMaterialSettings.razor:1` **RawMaterialSettings** - component name has zero occurrences in any other file
+- `Components/Pages/Statistics/SalesStatistics.razor:1` **SalesStatistics** - component name has zero occurrences in any other file
+- `Components/Pages/Statistics/StatisticsOverview.razor:1` **StatisticsOverview** - component name has zero occurrences in any other file
+- `Components/Pages/Suppliers.razor:1` **Suppliers** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Warehouse/DeliveryCreate.razor:1` **DeliveryCreate** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/DeliveryList.razor:1` **DeliveryList** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/DeliveryPricing.razor:1` **DeliveryPricing** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/DeliveryPricingDetail.razor:1` **DeliveryPricingDetail** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/DeliverySignature.razor:1` **DeliverySignature** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/DeliveryView.razor:1` **DeliveryView** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/HoneyTypes.razor:1` **HoneyTypes** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Warehouse/StockOverview.razor:1` **StockOverview** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/SupplierDebtDetail.razor:1` **SupplierDebtDetail** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/SupplierDebts.razor:1` **SupplierDebts** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/TransferHistory.razor:1` **TransferHistory** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/WriteOff.razor:1` **WriteOff** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouse/WriteOffHistory.razor:1` **WriteOffHistory** - component name has zero occurrences in any other file
+- `Components/Pages/WarehouseCreate.razor:1` **WarehouseCreate** - component name has zero occurrences in any other file
+- `Components/Pages/WarehouseEdit.razor:1` **WarehouseEdit** - component name has zero occurrences in any other file
+- `Components/Pages/Warehouses.razor:1` **Warehouses** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+- `Components/Pages/Weather.razor:1` **Weather** - name appears elsewhere but never as <Tag>, generic type arg, or typeof() - likely a false match (comment/string), worth checking manually
+
+
+---
+This is a regex-based heuristic scan, not a real Roslyn/semantic analysis.
+False positives are possible with reflection, DI-by-interface, JSON deserialization
+targets, EF navigation properties, or names that collide with common words.
+Verify each finding before deleting anything.

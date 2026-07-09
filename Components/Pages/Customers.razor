@@ -120,6 +120,21 @@
     private bool? _filterActive;
     private bool _isAdmin;
     private bool _isManager;
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -161,7 +176,7 @@
 
     private async Task OnRowClick(Customer customer)
     {
-        if (customer != null)
+        if (customer != null && IsDoubleClick(customer))
         {
             await OpenEditDialog(customer);
         }

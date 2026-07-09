@@ -8,39 +8,12 @@
 bin/
 obj/
 
-# Ignore the .env file
-.envappsettings.Development.json
+# Secrets - never commit real credentials
+.env
+appsettings.Local.json
+appsettings.Development.json
 
 # Ignore uploaded files (user uploads, PDFs, etc.)
 wwwroot/uploads/
 wwwroot/lib/
 .aider*
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env
-.env

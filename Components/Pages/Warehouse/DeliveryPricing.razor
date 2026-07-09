@@ -25,7 +25,7 @@
     else
     {
         <MudTable T="Delivery" Items="_deliveries" Dense="true" Hover="true" Striped="true"
-            OnRowClick="@((TableRowClickEventArgs<Delivery> args) => OpenPricingDetail(args.Item.Id))"
+            OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) OpenPricingDetail(args.Item.Id); })"
             Style="cursor:pointer">
             <HeaderContent>
                 <MudTh>Nr.</MudTh>
@@ -64,6 +64,21 @@
     private List<Delivery> _deliveries = new();
     private List<BusinessPartner> _suppliers = new();
     private bool _loading = true;
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     protected override async Task OnInitializedAsync()
     {

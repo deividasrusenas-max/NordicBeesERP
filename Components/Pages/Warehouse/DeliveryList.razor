@@ -60,7 +60,7 @@
 
     <MudTable T="Delivery" Items="_deliveries" Hover="true" Dense="true" Loading="_loading"
         RowClassFunc="@((delivery, i) => _selectedDeliveries.Contains(delivery) ? "selected-row" : "")"
-        OnRowClick="@((TableRowClickEventArgs<Delivery> args) => GoToDelivery(args.Item.Id))">
+        OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) GoToDelivery(args.Item.Id); })">
         <HeaderContent>
             <MudTh Style="width:40px"></MudTh>
             <MudTh>Data</MudTh>
@@ -116,6 +116,21 @@
     private int? _filterSupplierId;
     private DateTime? _filterFrom;
     private DateTime? _filterTo;
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     protected override async Task OnInitializedAsync()
     {

@@ -188,7 +188,7 @@
             </div>
             <MudTable T="ExpenseInvoice" Items="_recentInvoices" Dense="true" Hover="true" Striped="true"
                       RowsPerPage="10"
-                      OnRowClick="@((TableRowClickEventArgs<ExpenseInvoice> args) => _ = OpenInvoiceDetailAsync(args.Item))">
+                       OnRowClick="@((TableRowClickEventArgs<ExpenseInvoice> args) => { if (IsDoubleClick(args.Item)) _ = OpenInvoiceDetailAsync(args.Item); })">
                 <HeaderContent>
                     <MudTh>Nr.</MudTh>
                     <MudTh>Tiekėjas</MudTh>
@@ -253,6 +253,21 @@
     private List<ExpenseInvoice> _pendingSupplierInvoices = new();
     private List<ExpenseInvoice> _needsReviewInvoices = new();
     private Dictionary<int, string> _supplierNames = new();
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     // Aging buckets
     private (int Count, decimal ExclVat, decimal Vat, decimal InclVat) _expenseAgingBucket0To30;

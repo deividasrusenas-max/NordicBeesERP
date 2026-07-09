@@ -135,7 +135,7 @@
             
             @if (_unpaidInvoices.Any())
             {
-                <MudTable T="InvoiceWithPaymentInfo" Items="_unpaidInvoices" Dense="true" Hover="true" Striped="true" RowsPerPage="25" OnRowClick="@((TableRowClickEventArgs<InvoiceWithPaymentInfo> args) => _ = HandleInvoiceClickAsync(args.Item))">
+                <MudTable T="InvoiceWithPaymentInfo" Items="_unpaidInvoices" Dense="true" Hover="true" Striped="true" RowsPerPage="25" OnRowClick="@((TableRowClickEventArgs<InvoiceWithPaymentInfo> args) => { if (IsDoubleClick(args.Item)) _ = HandleInvoiceClickAsync(args.Item); })">
                     <HeaderContent>
                         <MudTh Class="text-no-wrap">Sąskaitos numeris</MudTh>
                         <MudTh>Klientas</MudTh>
@@ -236,6 +236,21 @@
     // _pageSize is no longer used - MudTable handles pagination client-side
     private bool _showAllYears = false;
     private List<InvoiceWithPaymentInfo> _filteredInvoices = new();
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     protected override async Task OnInitializedAsync()
     {

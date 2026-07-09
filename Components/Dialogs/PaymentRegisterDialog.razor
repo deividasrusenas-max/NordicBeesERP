@@ -7,6 +7,7 @@
 @inject IPaymentService PaymentService
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject ISnackbar Snackbar
+@inject IAuthService AuthService
 
 <MudDialog>
     <TitleContent>
@@ -279,7 +280,8 @@
         try
         {
             var invoiceIds = _selectedInvoices.Keys.ToList();
-            var userId = 1; // TODO: Get actual user ID from authentication
+            var currentUser = await AuthService.GetAuthenticatedUserAsync();
+            var userId = currentUser?.Id ?? 1;
             
             await PaymentService.RegisterPaymentAsync(
                 invoiceIds: invoiceIds,

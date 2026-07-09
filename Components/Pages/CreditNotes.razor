@@ -146,6 +146,21 @@
     private string? _searchTerm;
     private DateRange? _dateRange;
     private int _rowsPerPage = 25;
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     private HashSet<string> _selectedStatuses = new();
     private readonly string[] _availableStatuses = { "Draft", "Printed", "Disputed" };
@@ -241,7 +256,10 @@
 
     private async Task OnRowClick(CreditNoteListDto item)
     {
-        ViewCreditNote(item.Id);
+        if (IsDoubleClick(item))
+        {
+            ViewCreditNote(item.Id);
+        }
     }
 
     private void ClearFilters()

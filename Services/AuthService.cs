@@ -14,6 +14,13 @@ public interface IAuthService
     Task<int?> GetCustomerIdAsync();
     Task<int?> GetUserIdAsync();
     Task<ErpUser?> GetUserByIdAsync(int userId);
+
+    /// <summary>
+    /// Returns the display name of the currently authenticated user for audit-log "performed_by" fields.
+    /// Throws UnauthorizedAccessException instead of silently falling back to a generic "system" label,
+    /// so audit trails never mask a missing user context (see standards §6 AUDIT LOG).
+    /// </summary>
+    Task<string> GetRequiredActorNameAsync();
 }
 
 public class AuthService : IAuthService
@@ -86,5 +93,14 @@ public class AuthService : IAuthService
     {
         using var context = await _contextFactory.CreateDbContextAsync();
         return await context.ErpUsers.FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+    }
+
+    public async Task<string> GetRequiredActorNameAsync()
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            throw new UnauthorizedAccessException("No authenticated user found for audit trail. Please sign in again.");
+
+        return !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Email;
     }
 }

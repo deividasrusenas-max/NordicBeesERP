@@ -54,7 +54,7 @@
 
     <MudPaper Elevation="0" Class="mt-2 pa-3">
         <MudTable T="Product" Items="@FilteredProducts" Hover="true" Dense="true" Elevation="0"
-                  OnRowClick="@(async (TableRowClickEventArgs<Product> args) => await OpenEditDialog(args.Item!))"
+                  OnRowClick="@(async (TableRowClickEventArgs<Product> args) => { if (IsDoubleClick(args.Item!)) await OpenEditDialog(args.Item!); })"
                   Style="cursor:pointer" RowsPerPage="25">
             <HeaderContent>
                 <MudTh>Kodas</MudTh>
@@ -122,6 +122,21 @@
     private List<Product>? products;
     private string? _searchText;
     private HashSet<ProductType> _selectedTypes = new();
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     private IEnumerable<Product> FilteredProducts
     {

@@ -48,7 +48,7 @@
 
     <!-- Table -->
     <MudTable T="SupplierDebtRow" Items="_debtRows" Dense="true" Hover="true" Striped="true"
-        OnRowClick="@((TableRowClickEventArgs<SupplierDebtRow> args) => GoToDetail(args.Item.SupplierId))"
+        OnRowClick="@((TableRowClickEventArgs<SupplierDebtRow> args) => { if (IsDoubleClick(args.Item)) GoToDetail(args.Item.SupplierId); })"
         Style="cursor:pointer">
         <HeaderContent>
             <MudTh>Tiekėjas</MudTh>
@@ -77,6 +77,21 @@
     private decimal _totalDebt => _debtRows.Sum(r => r.Debt);
     private int _activeTab = 0;
     private string _debtCardStyle = "";
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     protected override async Task OnInitializedAsync()
     {

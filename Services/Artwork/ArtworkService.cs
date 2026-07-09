@@ -62,10 +62,10 @@ public class ArtworkService : IArtworkService
         if (versionToApprove == null)
             throw new ArgumentException($"Version with ID {versionId} not found.");
 
-        // Get current user
-        var user = await _authService.GetAuthenticatedUserAsync();
-        var performedBy = user?.FullName ?? user?.Email ?? "system";
+        // Get current user (required for audit trail - no silent "system" fallback)
         var userId = await _authService.GetUserIdAsync();
+        if (!userId.HasValue)
+            throw new UnauthorizedAccessException("No authenticated user found for audit trail. Please sign in again.");
 
         var currentTimestamp = DateTime.UtcNow;
 
@@ -147,9 +147,9 @@ public class ArtworkService : IArtworkService
             "UPDATE artwork_versions SET status = @p0, review_comment = @p1, reviewed_by = @p2, reviewed_at = @p3 WHERE id = @p4",
             "rejected", comment, reviewerId, DateTime.UtcNow, versionId);
 
-        var user = await _authService.GetAuthenticatedUserAsync();
-        var performedBy = user?.FullName ?? user?.Email ?? "system";
         var userId = await _authService.GetUserIdAsync();
+        if (!userId.HasValue)
+            throw new UnauthorizedAccessException("No authenticated user found for audit trail. Please sign in again.");
 
         await _context.Database.ExecuteSqlRawAsync(
             "INSERT INTO artwork_audit_log (entity_type, entity_id, action, user_id, details, created_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",

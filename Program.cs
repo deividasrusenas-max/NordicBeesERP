@@ -10,6 +10,11 @@ using NordicBeesERP.Services.Artwork;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Local, git-ignored config for developer-machine secrets (DB password, etc.).
+// Never commit real credentials to appsettings.json / appsettings.Development.json -
+// production already overrides ConnectionStrings__DefaultConnection via docker run -e.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // 1. Registruojame paslaugas
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

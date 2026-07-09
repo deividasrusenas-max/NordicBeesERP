@@ -93,7 +93,7 @@
         @if (_tabIndex == 1 || _isWarehouse)
         {
             <MudTable T="Supplier" Items="@FilteredSuppliers" Hover="true" Dense="true" Elevation="0"
-                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => await OpenEditDialog(args.Item))"
+                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => { if (IsDoubleClick(args.Item)) await OpenEditDialog(args.Item); })"
                       Style="cursor:pointer" RowsPerPage="25">
                 <HeaderContent>
                     <MudTh>Vardas</MudTh>
@@ -129,7 +129,7 @@
         else if (_tabIndex == 2)
         {
             <MudTable T="Supplier" Items="@FilteredSuppliers" Hover="true" Dense="true" Elevation="0"
-                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => await OpenEditDialog(args.Item))"
+                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => { if (IsDoubleClick(args.Item)) await OpenEditDialog(args.Item); })"
                       Style="cursor:pointer" RowsPerPage="25">
                 <HeaderContent>
                     <MudTh>Pavadinimas</MudTh>
@@ -167,7 +167,7 @@
         else
         {
             <MudTable T="Supplier" Items="@FilteredSuppliers" Hover="true" Dense="true" Elevation="0"
-                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => await OpenEditDialog(args.Item))"
+                      OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => { if (IsDoubleClick(args.Item)) await OpenEditDialog(args.Item); })"
                       Style="cursor:pointer" RowsPerPage="25">
                 <HeaderContent>
                     <MudTh>Pavadinimas</MudTh>
@@ -216,6 +216,21 @@
     private bool _isWarehouse;
     private bool _isAdmin;
     private bool _isManager;
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     private IEnumerable<Supplier> FilteredSuppliers
     {

@@ -146,7 +146,7 @@
 
     <!-- MudTable -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-        <MudTable Items="@FilteredInvoices" Dense="@true" Hover="@true" Striped="@true" RowsPerPage="25" Elevation="0" RowStyleFunc="@((inv, _) => GetRowStyle(inv))" OnRowClick="@(async (TableRowClickEventArgs<ExpenseInvoice> args) => await OpenInvoiceDetail(args.Item))" Style="cursor:pointer">
+        <MudTable Items="@FilteredInvoices" Dense="@true" Hover="@true" Striped="@true" RowsPerPage="25" Elevation="0" RowStyleFunc="@((inv, _) => GetRowStyle(inv))" OnRowClick="@(async (TableRowClickEventArgs<ExpenseInvoice> args) => { if (IsDoubleClick(args.Item)) await OpenInvoiceDetail(args.Item); })" Style="cursor:pointer">
             <HeaderContent>
                 <MudTh Style="min-width:48px;width:48px;">
                     <input type="checkbox"
@@ -270,6 +270,21 @@
     private List<Models.Expenses.ExpenseCategory> _expenseCategories = new();
     private HashSet<int> _selectedInvoices = new();
     private bool _isExporting = false;
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private object? _lastClickItem;
+
+    private bool IsDoubleClick(object item)
+    {
+        var now = DateTime.Now;
+        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        {
+            _lastClickItem = null;
+            return true;
+        }
+        _lastClickItem = item;
+        _lastClickTime = now;
+        return false;
+    }
 
     private List<ExpenseInvoice> _attentionInvoices => _invoices
         .Where(i => ExpenseStatusHelper.NeedsAttention(i.Status, i.OcrFlags, i.DueDate))
