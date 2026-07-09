@@ -25,8 +25,8 @@
                     <MudTd Class="text-no-wrap">@invoice.InvoiceNumber</MudTd>
                     <MudTd>@invoice.CustomerName</MudTd>
                     <MudTd>@invoice.InvoiceDate.ToString("dd.MM.yyyy")</MudTd>
-                    <MudTd Class="text-right">@((invoice.TotalInclVat / 1.21m).ToString("N2"))</MudTd>
-                    <MudTd Class="text-right">@((invoice.TotalInclVat - invoice.TotalInclVat / 1.21m).ToString("N2"))</MudTd>
+                    <MudTd Class="text-right">@invoice.SubtotalExclVat.ToString("N2")</MudTd>
+                    <MudTd Class="text-right">@invoice.TotalVat.ToString("N2")</MudTd>
                     <MudTd Class="text-right">@invoice.TotalInclVat.ToString("N2")</MudTd>
                     <MudTd Class="text-right">@invoice.PaidAmount.ToString("N2")</MudTd>
                     <MudTd Class="text-right">@invoice.RemainingAmount.ToString("N2")</MudTd>

@@ -80,8 +80,8 @@
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("0-30"))">
                         <MudText Typo="Typo.caption" Style="color:#166534">0-30 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket0To30.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#166534">@((_agingReport.Bucket0To30.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket0To30.TotalAmount - _agingReport.Bucket0To30.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#166534">@_agingReport.Bucket0To30.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket0To30.TotalVatAmount.ToString("N2") €</MudText>
                         <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket0To30.TotalAmount.ToString("N2") €</MudText>
                     </MudPaper>
                 </MudItem>
@@ -89,8 +89,8 @@
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fefce8; border:1px solid #fde047; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("31-60"))">
                         <MudText Typo="Typo.caption" Style="color:#854d0e">31-60 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket31To60.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#854d0e">@((_agingReport.Bucket31To60.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket31To60.TotalAmount - _agingReport.Bucket31To60.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#854d0e">@_agingReport.Bucket31To60.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket31To60.TotalVatAmount.ToString("N2") €</MudText>
                         <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket31To60.TotalAmount.ToString("N2") €</MudText>
                     </MudPaper>
                 </MudItem>
@@ -98,8 +98,8 @@
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fff7ed; border:1px solid #fdba74; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("61-90"))">
                         <MudText Typo="Typo.caption" Style="color:#9a3412">61-90 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket61To90.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#9a3412">@((_agingReport.Bucket61To90.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket61To90.TotalAmount - _agingReport.Bucket61To90.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#9a3412">@_agingReport.Bucket61To90.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket61To90.TotalVatAmount.ToString("N2") €</MudText>
                         <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket61To90.TotalAmount.ToString("N2") €</MudText>
                     </MudPaper>
                 </MudItem>
@@ -107,8 +107,8 @@
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("90+"))">
                         <MudText Typo="Typo.caption" Style="color:#991b1b">90+ dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket90Plus.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@((_agingReport.Bucket90Plus.TotalAmount / 1.21m).ToString("N2")) € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @((_agingReport.Bucket90Plus.TotalAmount - _agingReport.Bucket90Plus.TotalAmount / 1.21m).ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@_agingReport.Bucket90Plus.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket90Plus.TotalVatAmount.ToString("N2") €</MudText>
                         <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket90Plus.TotalAmount.ToString("N2") €</MudText>
                     </MudPaper>
                 </MudItem>
@@ -276,11 +276,12 @@
             _partialPayments = _filteredInvoices.Count(i => i.PaymentStatus == "partial");
             _totalInvoices = _filteredInvoices.Count;
             
-            // Partial payments - remaining amount (approximate VAT using /1.21m)
-            // _partialAmount = excl VAT, PVM = VAT, Viso su PVM = total incl VAT
+            // Partial payments - remaining amount (proportional split using actual per-invoice VAT)
             var partialInvoices = _filteredInvoices.Where(i => i.PaymentStatus == "partial").ToList();
-            _partialAmount = partialInvoices.Sum(i => i.RemainingAmount / 1.21m);
-            _partialVat = partialInvoices.Sum(i => i.RemainingAmount - (i.RemainingAmount / 1.21m));
+            _partialAmount = partialInvoices.Sum(i => i.TotalInclVat > 0
+                ? i.RemainingAmount * i.SubtotalExclVat / i.TotalInclVat : i.RemainingAmount);
+            _partialVat = partialInvoices.Sum(i => i.TotalInclVat > 0
+                ? i.RemainingAmount * i.TotalVat / i.TotalInclVat : 0);
             _partialTotal = partialInvoices.Sum(i => i.RemainingAmount);
             
             // Calculate debt (remaining amount) breakdown - use SubtotalExclVat and TotalVat from DTO
@@ -296,8 +297,10 @@
             // Overpaid invoices (PaidAmount > TotalInclVat, excluding zero-amount invoices)
             var overpaidInvoices = _filteredInvoices.Where(i => i.TotalInclVat > 0 && i.PaidAmount > i.TotalInclVat).ToList();
             _overpaidCount = overpaidInvoices.Count;
-            _overpaidAmount = overpaidInvoices.Sum(i => (i.PaidAmount - i.TotalInclVat) / 1.21m);
-            _overpaidVat = overpaidInvoices.Sum(i => (i.PaidAmount - i.TotalInclVat) * 0.21m / 1.21m);
+            _overpaidAmount = overpaidInvoices.Sum(i => i.TotalInclVat > 0
+                ? (i.PaidAmount - i.TotalInclVat) * i.SubtotalExclVat / i.TotalInclVat : (i.PaidAmount - i.TotalInclVat));
+            _overpaidVat = overpaidInvoices.Sum(i => i.TotalInclVat > 0
+                ? (i.PaidAmount - i.TotalInclVat) * i.TotalVat / i.TotalInclVat : 0);
             _overpaidTotal = overpaidInvoices.Sum(i => i.PaidAmount - i.TotalInclVat);
 
             // Get overdue invoices (DueDate < today)

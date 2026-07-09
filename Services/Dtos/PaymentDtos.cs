@@ -91,6 +91,8 @@ namespace NordicBeesERP.Services.Dtos
         public decimal TotalAmount { get; set; }
         public int InvoiceCount { get; set; }
         public List<InvoiceWithPaymentInfo> Invoices { get; set; } = new List<InvoiceWithPaymentInfo>();
+        public decimal TotalAmountExclVat => Invoices.Sum(i => i.SubtotalExclVat);
+        public decimal TotalVatAmount => Invoices.Sum(i => i.TotalVat);
     }
 
     // =====================================================
