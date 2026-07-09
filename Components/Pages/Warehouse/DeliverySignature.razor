@@ -11,6 +11,7 @@
 @inject IHoneyTypeService HoneyTypeService
 @inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
 @inject IRawMaterialTypeService RawMaterialTypeService
+@inject ICompanySettingsService CompanySettingsService
 @using MySqlConnector
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
@@ -116,7 +117,7 @@
                     <b>Tiekėjas atvyko asmeniškai</b> — tiekėjas pasirašo
                 </MudRadio>
                 <MudRadio T="string" Value="@("RECEIVER")" Color="Color.Primary">
-                    <b>Pristatymas per transportą</b> — MB Lakštena atstovas pasirašo
+                    <b>Pristatymas per transportą</b> — @_companyName atstovas pasirašo
                 </MudRadio>
             </MudRadioGroup>
         </MudPaper>
@@ -250,7 +251,7 @@
         }
         else
         {
-            <MudTextField @bind-Value="_receiverName" Label="MB Lakštena atstovas (vardas, pavardė)" Variant="Variant.Outlined"
+            <MudTextField @bind-Value="_receiverName" Label="@($"{_companyName} atstovas (vardas, pavardė)")" Variant="Variant.Outlined"
                 FullWidth="true" Class="mb-4" Required="true" Adornment="Adornment.Start"
                 AdornmentIcon="@Icons.Material.Filled.Badge" Style="font-size:18px" />
         }
@@ -374,9 +375,12 @@ window.initSignatureCanvas = function(canvasId) {
     private bool _inlineNoEmail = false;
     private string _signedByType = "SUPPLIER";
     private string _receiverName = "";
+    private string _companyName = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        var settings = await CompanySettingsService.GetSettingsAsync();
+        _companyName = settings.CompanyName;
         _delivery = await DeliveryService.GetByIdAsync(Id);
         if (_delivery != null)
         {
@@ -448,7 +452,7 @@ window.initSignatureCanvas = function(canvasId) {
         }
         if (_signedByType == "RECEIVER" && string.IsNullOrWhiteSpace(_receiverName))
         {
-            Snackbar.Add("Įveskite MB Lakštena atstovo vardą ir pavardę", Severity.Warning);
+            Snackbar.Add($"Įveskite {_companyName} atstovo vardą ir pavardę", Severity.Warning);
             return;
         }
 
@@ -555,7 +559,7 @@ window.initSignatureCanvas = function(canvasId) {
             }
 
             var finalSignerName = _signedByType == "RECEIVER"
-                ? $"MB Lakštena atstovas: {_receiverName}"
+                ? $"{_companyName} atstovas: {_receiverName}"
                 : _signerName;
             await DeliveryService.SaveSignatureAsync(Id, finalSignerName, svg);
 

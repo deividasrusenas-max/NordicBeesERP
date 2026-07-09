@@ -37,10 +37,12 @@ public static class ExpenseStatusHelper
         catch { return new(); }
     }
 
-    public static string GetFlagLabel(string flag) => flag switch
+    public static string GetFlagLabel(string flag) => GetFlagLabel(flag, "MB Lakštenai");
+
+    public static string GetFlagLabel(string flag, string companyName) => flag switch
     {
         "VENDOR_NOT_FOUND"   => "Nežinomas tiekėjas",
-        "WRONG_RECIPIENT"    => "Ne MB Lakštenai",
+        "WRONG_RECIPIENT"    => $"Ne {companyName}",
         "OWN_COMPANY"        => "Savos įmonės sąskaita",
         "MISSING_AMOUNT"     => "Trūksta sumos",
         "MISSING_INV_NUMBER" => "Trūksta numerio",

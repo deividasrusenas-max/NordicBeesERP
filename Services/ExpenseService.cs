@@ -10,11 +10,13 @@ namespace NordicBeesERP.Services
     {
         private readonly IDbContextFactory<NordicBeesERPContext> _dbFactory;
         private readonly IAuthService _authService;
+        private readonly ICompanySettingsService _companySettingsService;
 
-        public ExpenseService(IDbContextFactory<NordicBeesERPContext> dbFactory, IAuthService authService)
+        public ExpenseService(IDbContextFactory<NordicBeesERPContext> dbFactory, IAuthService authService, ICompanySettingsService companySettingsService)
         {
             _dbFactory = dbFactory;
             _authService = authService;
+            _companySettingsService = companySettingsService;
         }
 
         // =====================================================
@@ -976,8 +978,11 @@ namespace NordicBeesERP.Services
 
         public async Task<ExpenseInvoice> CreateFromOcrAsync(OcrResultDto ocrResult, string source = "MANUAL")
         {
+            // OCR ingestion can run from an interactive upload (real user) or the background
+            // OCR queue worker (no HTTP user context). Distinguish the automated case explicitly
+            // instead of masking a missing user as a generic "system" fallback.
             var currentUser = await _authService.GetAuthenticatedUserAsync();
-            var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "system";
+            var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "OCR_PIPELINE";
 
             string status;
             if (ocrResult.Flags.Contains(OcrFlag.WrongRecipient))
@@ -1005,6 +1010,8 @@ namespace NordicBeesERP.Services
             if (dueDate == default) dueDate = invoiceDate.AddDays(30);
 
             await using var ctx = _dbFactory.CreateDbContext();
+
+            var companyName = (await _companySettingsService.GetSettingsAsync()).CompanyName;
 
             var invoice = new ExpenseInvoice
             {
@@ -1038,7 +1045,7 @@ namespace NordicBeesERP.Services
                 OcrFlags = ocrResult.Flags.Any() ? System.Text.Json.JsonSerializer.Serialize(ocrResult.Flags) : null,
                 SupplierVatVerified = ocrResult.ViesVerified,
                 SupplierVatVerifiedName = ocrResult.ViesName,
-                RejectedReason = status == "REJECTED" ? "Sąskaita ne MB Lakštenai" : null,
+                RejectedReason = status == "REJECTED" ? $"Sąskaita ne {companyName}" : null,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
@@ -1083,10 +1090,13 @@ namespace NordicBeesERP.Services
 
         public async Task<ExpenseInvoice> UpdateFromOcrAsync(int invoiceId, OcrResultDto ocrResult)
         {
+            // Same rationale as CreateFromOcrAsync: label unattended re-OCR runs explicitly.
             var currentUser = await _authService.GetAuthenticatedUserAsync();
-            var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "system";
+            var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "OCR_PIPELINE";
 
             await using var ctx = _dbFactory.CreateDbContext();
+
+            var companyNameUpdate = (await _companySettingsService.GetSettingsAsync()).CompanyName;
 
             var invoice = await ctx.ExpenseInvoices.FindAsync(invoiceId);
             if (invoice == null)
@@ -1151,7 +1161,7 @@ namespace NordicBeesERP.Services
 
             invoice.OcrFlags = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
             invoice.Status = newStatus;
-            invoice.RejectedReason = newStatus == "REJECTED" ? "Sąskaita ne MB Lakštenai" : null;
+            invoice.RejectedReason = newStatus == "REJECTED" ? $"Sąskaita ne {companyNameUpdate}" : null;
 
             // Mark all modified properties explicitly
             ctx.Entry(invoice).Property(i => i.SupplierId).IsModified = true;

@@ -163,7 +163,7 @@
                               Style="background:#fff3e0; border-left:4px solid #f59e0b; border-radius:6px;">
                         <div class="d-flex align-center gap-2">
                             <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:#f59e0b;" />
-                            <MudText Typo="Typo.body2">Sistema mano kad sąskaita ne MB Lakštenai — patikrinkite gavėją</MudText>
+                            <MudText Typo="Typo.body2">Sistema mano kad sąskaita ne @_companyName — patikrinkite gavėją</MudText>
                         </div>
                         <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
                                    OnClick="@DismissWrongRecipient"
@@ -367,6 +367,7 @@
     [Inject] IExpenseOcrService ExpenseOcrService { get; set; } = default!;
     [Inject] IExpenseService ExpenseService { get; set; } = default!;
     [Inject] ISnackbar Snackbar { get; set; } = default!;
+    [Inject] ICompanySettingsService CompanySettingsService { get; set; } = default!;
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter] public string? ExistingFilePath { get; set; }
@@ -393,6 +394,7 @@
     private decimal _amountInclVat = 0;
     private int _supplierId = 0;
     private int _confidence = 0;
+    private string _companyName = string.Empty;
     private string _supplierMatchType = "";
     private string _pendingSupplierName = "";
     private string _pendingSupplierVat = "";
@@ -406,6 +408,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _companyName = (await CompanySettingsService.GetSettingsAsync()).CompanyName;
         _categories = await Context.ExpenseCategories
             .Where(c => c.IsActive)
             .OrderBy(c => c.SortOrder)

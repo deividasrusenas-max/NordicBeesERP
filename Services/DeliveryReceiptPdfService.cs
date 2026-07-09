@@ -58,7 +58,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                     {
                         row.RelativeItem().Column(c =>
                         {
-                            c.Item().Text(companySettings?.CompanyName ?? "MB Lakštena").Bold().FontSize(12);
+                            c.Item().Text(companySettings.CompanyName).Bold().FontSize(12);
                             if (!string.IsNullOrWhiteSpace(companySettings?.Address))
                                 c.Item().Text(companySettings.Address).FontSize(9).FontColor(Colors.Grey.Darken1);
                             if (!string.IsNullOrWhiteSpace(companySettings?.CompanyCode))
@@ -290,7 +290,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
 
                     // Footer line
                     col.Item().PaddingTop(20).BorderTop(1).BorderColor(Colors.Grey.Lighten2).PaddingTop(6)
-                        .Text($"Dokumentas sugeneruotas: {DateTime.Now:yyyy-MM-dd HH:mm} | {companySettings?.CompanyName ?? "MB Lakštena"}")
+                        .Text($"Dokumentas sugeneruotas: {DateTime.Now:yyyy-MM-dd HH:mm} | {companySettings.CompanyName}")
                         .FontSize(8).FontColor(Colors.Grey.Medium).AlignCenter();
                 });
             });

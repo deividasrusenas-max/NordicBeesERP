@@ -32,18 +32,8 @@ namespace NordicBeesERP.Services
             
             if (settings == null)
             {
-                // Grąžinti numatytąjį objektą jei duomenų nėra
-                return new CompanySettings
-                {
-                    CompanyName = "MB Lakštena",
-                    CompanyCode = "302905315",
-                    VatCode = "LT100013406816",
-                    Address = "P. Širvio g. 3,  Juodupė, Lietuva / Lithuania",
-                    BankAccount = "LT217189900060467854",
-                    BankSwift = "CBSBLT26",
-                    BankName = "AB Artea Bankas",
-                    UpdatedAt = DateTime.UtcNow
-                };
+                throw new InvalidOperationException(
+                    "Company settings not found in database. Please configure company settings via the admin panel.");
             }
             
             return settings;

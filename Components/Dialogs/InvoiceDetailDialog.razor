@@ -67,7 +67,7 @@
                                                   Style="background:#fff3e0; border-left:4px solid #f59e0b; border-radius:6px;">
                                             <div class="d-flex align-center gap-2">
                                                 <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:#f59e0b;" />
-                                                <MudText Typo="Typo.body2">Sistema mano kad sąskaita ne MB Lakštenai</MudText>
+                                                <MudText Typo="Typo.body2">Sistema mano kad sąskaita ne @_companyName</MudText>
                                             </div>
                                             <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
                                                        OnClick="@DismissWrongRecipientAsync"
@@ -467,10 +467,12 @@
     [Inject] IDbContextFactory<NordicBeesERPContext> DbFactory { get; set; } = default!;
     [Inject] ISnackbar Snackbar { get; set; } = default!;
     [Inject] ILogger<InvoiceDetailDialog> Logger { get; set; } = default!;
+    [Inject] ICompanySettingsService CompanySettingsService { get; set; } = default!;
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public int InvoiceId { get; set; }
 
     private int? _duplicateOfId;
+    private string _companyName = string.Empty;
 
     private ExpenseInvoice? _invoice;
     private List<ExpenseInvoiceLine> _lines = new();
@@ -621,6 +623,7 @@
         if (_loadedInvoiceId == InvoiceId) return;
         _loadedInvoiceId = InvoiceId;
         _isLoading = true;
+        _companyName = (await CompanySettingsService.GetSettingsAsync()).CompanyName;
 
         _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(InvoiceId);
         if (_invoice == null)
@@ -681,7 +684,7 @@
             _invoice.OcrFlags = flags.Any()
                 ? System.Text.Json.JsonSerializer.Serialize(flags)
                 : null;
-            if (_invoice.Status == "REJECTED" && _invoice.RejectedReason == "Sąskaita ne MB Lakštenai")
+            if (_invoice.Status == "REJECTED" && _invoice.RejectedReason?.StartsWith("Sąskaita ne ") == true)
             {
                 _invoice.Status = "NEEDS_REVIEW";
                 _invoice.RejectedReason = null;
@@ -731,10 +734,17 @@
 
     private async Task ApproveAsync()
     {
-        var user = await AuthService.GetAuthenticatedUserAsync();
-        await ExpenseService.ApproveAsync(InvoiceId, user?.FullName ?? "system");
-        Snackbar.Add("Sąskaita patvirtinta", Severity.Success);
-        MudDialog?.Close(DialogResult.Ok(true));
+        try
+        {
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.ApproveAsync(InvoiceId, actor);
+            Snackbar.Add("Sąskaita patvirtinta", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
+        }
     }
 
     private async Task ShowRejectConfirmAsync()
@@ -763,10 +773,17 @@
 
     private async Task ApproveAsDuplicateAsync()
     {
-        var user = await AuthService.GetAuthenticatedUserAsync();
-        await ExpenseService.ApproveAsync(InvoiceId, user?.FullName ?? "system");
-        Snackbar.Add("Sąskaita patvirtinta kaip originali", Severity.Success);
-        MudDialog?.Close(DialogResult.Ok(true));
+        try
+        {
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.ApproveAsync(InvoiceId, actor);
+            Snackbar.Add("Sąskaita patvirtinta kaip originali", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
+        }
     }
 
     private async Task RejectAsDuplicateAsync()
@@ -780,10 +797,17 @@
             Icons.Material.Filled.ContentCopy);
         if (!confirmed) return;
 
-        var user = await AuthService.GetAuthenticatedUserAsync();
-        await ExpenseService.RejectAsync(InvoiceId, "Atmesta kaip dublikatas", user?.FullName ?? "system");
-        Snackbar.Add("Dublikatas atmestas", Severity.Info);
-        MudDialog?.Close(DialogResult.Ok(true));
+        try
+        {
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.RejectAsync(InvoiceId, "Atmesta kaip dublikatas", actor);
+            Snackbar.Add("Dublikatas atmestas", Severity.Info);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
+        }
     }
 
     private async Task<IEnumerable<BusinessPartner>> SearchSuppliers(string val, CancellationToken ct)
@@ -839,8 +863,8 @@
         }
         try
         {
-            var user = await AuthService.GetAuthenticatedUserAsync();
-            await ExpenseService.AssignSupplierAsync(_loadedInvoiceId, _selectedSupplier.Id, user?.FullName ?? "system");
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.AssignSupplierAsync(_loadedInvoiceId, _selectedSupplier.Id, actor);
             _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(_loadedInvoiceId);
             _lines = await ExpenseService.GetInvoiceLinesAsync(_loadedInvoiceId);
             _supplierFound = true;

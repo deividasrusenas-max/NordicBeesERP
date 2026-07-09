@@ -1,9 +1,11 @@
 ﻿@inherits LayoutComponentBase
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
+@using NordicBeesERP.Services
 @inject BlazorAuthStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject ICompanySettingsService CompanySettingsService
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -37,7 +39,7 @@
         <div style="padding:0">
             @Body
             <MudPaper Elevation="0" Class="pa-3 mt-4" Style="background:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
-                <MudText Typo="Typo.caption" Style="color:#94a3b8">© 2026 MB Lakštena · NordicBeesERP v@_version</MudText>
+                <MudText Typo="Typo.caption" Style="color:#94a3b8">© 2026 @_companyName · NordicBeesERP v@_version</MudText>
             </MudPaper>
         </div>
     </MudMainContent>
@@ -48,6 +50,13 @@
     private bool sidebarOpen = true;
 
     private string _version => Configuration["AppVersion"] ?? "0.9.0";
+    private string _companyName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var s = await CompanySettingsService.GetSettingsAsync();
+        _companyName = s.CompanyName;
+    }
 
     private MudTheme _theme = new MudTheme
     {
