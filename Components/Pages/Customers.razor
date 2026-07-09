@@ -1,24 +1,32 @@
 @page "/customers"
-@rendermode InteractiveServer
 @inject ICustomerService CustomerService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @using NordicBeesERP.Components.Dialogs
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>Klientai</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <div class="d-flex justify-space-between align-center mb-3">
         <MudText Typo="Typo.h5">Klientai</MudText>
-<MudButton OnClick="OpenCreateDialog"
-                    StartIcon="@Icons.Material.Filled.Add"
-                    Variant="Variant.Filled"
-                    Color="Color.Primary"
-                    Style="text-transform:none">
-            Naujas klientas
-        </MudButton>
+        @if (_isAdmin || _isManager)
+        {
+            <MudButton OnClick="OpenCreateDialog"
+                        StartIcon="@Icons.Material.Filled.Add"
+                        Variant="Variant.Filled"
+                        Color="Color.Primary"
+                        Style="text-transform:none">
+                Naujas klientas
+            </MudButton>
+        }
     </div>
+
+    @if (_customers == null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
 
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
         <MudTextField @bind-Value="_filterSearch"
@@ -31,102 +39,124 @@
                       Adornment="Adornment.Start" />
     </MudPaper>
 
-    @if (_isLoading)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
-    }
-    else
-    {
-        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-            @if (_customers == null || !_customers.Any())
-            {
-                <MudText Class="text-center py-4">Klientų nėra</MudText>
-            }
-            else
-            {
-                <MudTable Items="@FilteredCustomers"
-                          Dense="true"
-                          Hover="true"
-                          RowsPerPage="25"
-                          Elevation="0"
-                          Style="cursor:pointer"
-                          OnRowClick="@(async (TableRowClickEventArgs<Customer> args) => await OnRowClick(args.Item))">
-                     <HeaderContent>
-                        <MudTh>Pavadinimas</MudTh>
-                        <MudTh>Kodas</MudTh>
-                        <MudTh>PVM kodas</MudTh>
-                        <MudTh>Mokėjimo terminas</MudTh>
-                        <MudTh Style="width: 150px;">Veiksmai</MudTh>
-                    </HeaderContent>
-                     <RowTemplate Context="customer">
-                        <MudTd>
-                            <MudText Typo="Typo.body2">@customer!.Name</MudText>
-                        </MudTd>
-                        <MudTd>
-                            @if (!string.IsNullOrEmpty(customer!.CompanyCode))
-                            {
-                                <MudText Typo="Typo.caption">@customer!.CompanyCode</MudText>
-                            }
-                        </MudTd>
-                        <MudTd>@(customer!.VatCode)</MudTd>
-                        <MudTd>@(customer!.PaymentTermDays) d.</MudTd>
-                        <MudTd>
-                            <div @onclick:stopPropagation="true">
-                                <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                   Color="Color.Primary"
-                                                   OnClick="@(() => OpenEditDialog(customer!))" />
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                   Color="Color.Error"
-                                                   OnClick="@(() => DeleteCustomer(customer!))" />
-                                </MudButtonGroup>
-                            </div>
-                        </MudTd>
-                    </RowTemplate>
-                    <PagerContent>
-                        <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
-                    </PagerContent>
-                    <NoRecordsContent>
-                        <MudText Class="text-center py-4">Klientų nėra</MudText>
-                    </NoRecordsContent>
-                </MudTable>
-            }
-        </MudPaper>
-    }
+    <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
+        @{
+            var isActiveSelected = _filterActive == true;
+            var isInactiveSelected = _filterActive == false;
+        }
+        <MudChip T="string"
+                 Color="@(isActiveSelected ? Color.Success : Color.Default)"
+                 Variant="@(isActiveSelected ? Variant.Filled : Variant.Outlined)"
+                 OnClick="@(() => ToggleActiveFilter(true))"
+                 Size="Size.Small"
+                 Style="@(isActiveSelected ? "" : "opacity:0.7")">
+            Aktyvus
+        </MudChip>
+        <MudChip T="string"
+                 Color="@(isInactiveSelected ? Color.Error : Color.Default)"
+                 Variant="@(isInactiveSelected ? Variant.Filled : Variant.Outlined)"
+                 OnClick="@(() => ToggleActiveFilter(false))"
+                 Size="Size.Small"
+                 Style="@(isInactiveSelected ? "" : "opacity:0.7")">
+            Neaktyvus
+        </MudChip>
+    </div>
+
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable Items="@FilteredCustomers"
+                  Dense="true"
+                  Hover="true"
+                  RowsPerPage="25"
+                  Elevation="0"
+                  Style="cursor:pointer"
+                  OnRowClick="@(async (TableRowClickEventArgs<Customer> args) => await OnRowClick(args.Item))">
+            <HeaderContent>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>Kodas</MudTh>
+                <MudTh>PVM kodas</MudTh>
+                <MudTh>PVM%</MudTh>
+                <MudTh>Mokėjimo terminas</MudTh>
+                <MudTh>Aktyvus</MudTh>
+                <MudTh Style="width:120px;">Veiksmai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="customer">
+                <MudTd>
+                    <MudText Typo="Typo.body2">@customer!.Name</MudText>
+                </MudTd>
+                <MudTd>
+                    @if (!string.IsNullOrEmpty(customer!.CompanyCode))
+                    {
+                        <MudText Typo="Typo.caption">@customer!.CompanyCode</MudText>
+                    }
+                </MudTd>
+                <MudTd>@(customer!.VatCode)</MudTd>
+                <MudTd>@customer!.DefaultVatRate.ToString("N0")%</MudTd>
+                <MudTd>@(customer!.PaymentTermDays) d.</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(customer!.IsActive ? Color.Success : Color.Default)"
+                             Variant="Variant.Outlined">
+                        @(customer!.IsActive ? "Aktyvus" : "Neaktyvus")
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <div @onclick:stopPropagation="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                       OnClick="@(() => OpenEditDialog(customer!))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteCustomer(customer!))" />
+                    </div>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
 </MudContainer>
 
 @code {
-    private List<Customer> _customers = new();
-    private bool _isLoading = false;
+    [CascadingParameter] Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private List<Customer>? _customers;
     private string? _filterSearch = null;
+    private bool? _filterActive;
+    private bool _isAdmin;
+    private bool _isManager;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateTask;
+        _isAdmin = authState.User.IsInRole("Admin");
+        _isManager = authState.User.IsInRole("Manager");
         await LoadCustomers();
     }
 
     private async Task LoadCustomers()
     {
-        _isLoading = true;
-        StateHasChanged();
         _customers = await CustomerService.GetCustomersAsync();
-        _isLoading = false;
-        StateHasChanged();
     }
 
     private List<Customer> FilteredCustomers
     {
         get
         {
+            var list = _customers ?? new List<Customer>();
+
+            if (_filterActive.HasValue)
+                list = list.Where(c => c.IsActive == _filterActive.Value).ToList();
+
             if (string.IsNullOrEmpty(_filterSearch))
-                return _customers;
-            var search = _filterSearch.ToLower();
-            return _customers.Where(c =>
-                c.Name.ToLower().Contains(search) ||
-                (!string.IsNullOrEmpty(c.CompanyCode) && c.CompanyCode.ToLower().Contains(search)) ||
-                (!string.IsNullOrEmpty(c.VatCode) && c.VatCode.ToLower().Contains(search)) ||
-                (!string.IsNullOrEmpty(c.City) && c.City.ToLower().Contains(search))).ToList();
+                return list;
+
+            return list.Where(c =>
+                c.Name.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(c.CompanyCode) && c.CompanyCode.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.VatCode) && c.VatCode.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.City) && c.City.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase))).ToList();
         }
+    }
+
+    private void ToggleActiveFilter(bool value)
+    {
+        _filterActive = _filterActive == value ? null : value;
     }
 
     private async Task OnRowClick(Customer customer)
