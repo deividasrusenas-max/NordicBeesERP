@@ -409,6 +409,26 @@ namespace NordicBeesERP.Migrations
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Sandėlių tipai';
             ");
 
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `printers` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `location` varchar(100) NOT NULL,
+  `endpoint_url` varchar(200) NOT NULL,
+  `connection_type` enum('HTTP','STUB') NOT NULL DEFAULT 'STUB',
+  `label_width_mm` decimal(5,1) NOT NULL DEFAULT 108.0,
+  `label_height_mm` decimal(5,1) NOT NULL DEFAULT 75.0,
+  `darkness` int NOT NULL DEFAULT 25,
+  `dpi` int NOT NULL DEFAULT 200,
+  `last_test_print_at` datetime DEFAULT NULL,
+  `last_test_result` varchar(50) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+            ");
+
             // ── Group 2: depends on Group 1 ──────────────────────────────────
 
             migrationBuilder.Sql(@"
