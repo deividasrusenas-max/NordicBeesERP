@@ -1,0 +1,73 @@
+/* NordicBeesERP — Warehouse / Labeling Module Styles */
+
+/* Tablet action buttons for warehouse weighing station */
+.tablet-action-btn {
+    min-height: 48px;
+    min-width: 48px;
+    font-size: 1rem;
+}
+
+/* Quarantine badge */
+.quarantine-badge {
+    background: #fef2f2;
+    border: 2px solid #dc2626;
+    color: #dc2626;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 6px;
+}
+
+/* Weighing station status indicators */
+.weighing-status-ok {
+    background: #f0fdf4;
+    border-left: 4px solid #16a34a;
+}
+
+.weighing-status-pending {
+    background: #fffbeb;
+    border-left: 4px solid #d97706;
+}
+
+.weighing-status-error {
+    background: #fef2f2;
+    border-left: 4px solid #dc2626;
+}
+
+/* Label preview container */
+.label-preview-container {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+
+.label-preview-container img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #e2e8f0;
+}
+
+/* Print queue status */
+.print-queue-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+.print-queue-item.pending {
+    background: #fffbeb;
+}
+
+.print-queue-item.processing {
+    background: #eff6ff;
+}
+
+.print-queue-item.done {
+    background: #f0fdf4;
+}
+
+.print-queue-item.failed {
+    background: #fef2f2;
+}
