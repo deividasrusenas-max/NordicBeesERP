@@ -106,7 +106,7 @@
                     </MudItem>
                     <MudItem xs="6">
                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="@true"
-                            Style="min-height:100px; font-size:1.3rem" OnClick="@(() => SelectType("BUCKET_GROUP"))">
+                            Style="min-height:100px; font-size:1.3rem" OnClick="@(() => SelectType("BUCKET"))">
                             Kibirai
                         </MudButton>
                     </MudItem>
@@ -271,7 +271,7 @@
         </MudPaper>
     }
 
-    @if (_step == 3 && _containerType == "BUCKET_GROUP")
+    @if (_step == 3 && _containerType == "BUCKET")
     {
         <!-- STEP 3b: Buckets entry -->
         <MudPaper Class="pa-4 mb-4" Elevation="1">
@@ -355,7 +355,7 @@
         </MudPaper>
     }
 
-    @if (_step == 3 && _containerType == "BUCKET_GROUP" && _bucketEntryMode == "different" && _bucketWeighingActive)
+    @if (_step == 3 && _containerType == "BUCKET" && _bucketEntryMode == "different" && _bucketWeighingActive)
     {
         <MudPaper Class="pa-4 mb-4" Elevation="1" Style="border: 3px solid var(--mud-palette-primary)">
             <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-2">@_currentBucketCode</MudText>
@@ -535,7 +535,7 @@
             
             if (!mat.IsHoney)
             {
-                _containerType = "BUCKET_GROUP";
+                _containerType = "BUCKET";
                 _customBucketTare = 0.05m;
                 _bucketUniformGross = 0;
                 _currentBucketGross = 0;
@@ -552,8 +552,8 @@
 
     private void SkipContainerSelection()
     {
-        // For non-MEDUS materials, set container type to BUCKET_GROUP and go to step 3
-        _containerType = "BUCKET_GROUP";
+        // For non-MEDUS materials, set container type to BUCKET and go to step 3
+        _containerType = "BUCKET";
         _customBucketTare = 0.05m;
         _bucketUniformGross = 0;
         _currentBucketGross = 0;
@@ -725,7 +725,7 @@
             _pendingContainers.Add(new Container
             {
                 ContainerCode = code,
-                ContainerType = "BUCKET_GROUP",
+                ContainerType = "BUCKET",
                 ProductId = null,
                 HoneyTypeId = _honeyTypeId,
                 GrossWeight = _bucketUniformGross,
@@ -779,7 +779,7 @@
         _pendingContainers.Add(new Container
         {
             ContainerCode = code,
-            ContainerType = "BUCKET_GROUP",
+            ContainerType = "BUCKET",
             ProductId = null,
             HoneyTypeId = _honeyTypeId,
             GrossWeight = _currentBucketGross,
