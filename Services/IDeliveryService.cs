@@ -9,7 +9,7 @@ public interface IDeliveryService
     Task<Delivery?> GetByIdAsync(int id);
     Task<List<DeliveryLine>> GetLinesByDeliveryIdAsync(int deliveryId);
     Task<List<Container>> GetContainersByDeliveryAsync(int deliveryId);
-    Task<int> CreateDeliveryWithContainersAsync(Delivery delivery, List<DeliveryLine> lines, List<Container> containers);
+    Task<int> CreateDeliveryWithContainersAsync(Delivery delivery, List<DeliveryLine> lines, List<Container> containers, int? operatorId);
     Task UpdatePricesAsync(int deliveryId, List<DeliveryLine> lines, int barrelsOwed);
     Task RecalculateTotalsAsync(int deliveryId);
     Task<string> GenerateDeliveryNumberAsync(string materialCode);

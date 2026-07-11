@@ -825,7 +825,7 @@
                 TotalNetWeight = g.Sum(c => c.GrossWeight - c.TareWeight)
             }).ToList();
 
-            var deliveryId = await DeliveryService.CreateDeliveryWithContainersAsync(delivery, lines, _pendingContainers);
+            var deliveryId = await DeliveryService.CreateDeliveryWithContainersAsync(delivery, lines, _pendingContainers, null);
             Snackbar.Add("Pristatymas priimtas!", Severity.Success);
             Navigation.NavigateTo($"/warehouse/deliveries/{deliveryId}");
         }

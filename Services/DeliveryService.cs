@@ -105,14 +105,24 @@ public class DeliveryService : IDeliveryService
             .ToListAsync();
     }
 
-    public async Task<int> CreateDeliveryWithContainersAsync(Delivery delivery, List<DeliveryLine> lines, List<Container> containers)
+    public async Task<int> CreateDeliveryWithContainersAsync(Delivery delivery, List<DeliveryLine> lines, List<Container> containers, int? operatorId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
+            // Generate delivery_number inside transaction with UNIQUE constraint + retry
+            if (string.IsNullOrEmpty(delivery.DeliveryNumber))
+            {
+                var materialCode = delivery.RawMaterialTypeId.HasValue
+                    ? (await context.RawMaterialTypes.FindAsync(delivery.RawMaterialTypeId.Value))?.Name?.Substring(0, 1).ToUpper() ?? "XX"
+                    : "XX";
+                delivery.DeliveryNumber = await GenerateDeliveryNumberInContextAsync(context, materialCode);
+            }
+
             delivery.CreatedAt = DateTime.Now;
             delivery.UpdatedAt = DateTime.Now;
+            delivery.CreatedByUserId = operatorId;
             context.Deliveries.Add(delivery);
             await context.SaveChangesAsync();
 
@@ -124,7 +134,8 @@ public class DeliveryService : IDeliveryService
             }
             await context.SaveChangesAsync();
 
-            // Map containers to their delivery lines
+            // Map containers to their delivery lines and assign codes inside transaction
+            int seq = 1;
             foreach (var line in lines)
             {
                 var lineContainers = containers.Where(c =>
@@ -140,15 +151,18 @@ public class DeliveryService : IDeliveryService
                         container.SupplierId = delivery.SupplierId;
                         container.WarehouseId = delivery.WarehouseId;
                         container.NetWeight = container.GrossWeight - container.TareWeight;
+                        container.ContainerCode = $"{delivery.DeliveryNumber}/{seq:D3}";
+                        container.ReceivedByUserId = operatorId;
                         container.CreatedAt = DateTime.Now;
                         container.UpdatedAt = DateTime.Now;
                         context.Containers.Add(container);
+                        seq++;
                     }
                 }
             }
             await context.SaveChangesAsync();
 
-            // Create stock movements for each container
+            // Create stock movements for each container (bug fix: CreatedBy = operatorId)
             foreach (var container in containers)
             {
                 context.StockMovements.Add(new StockMovement
@@ -159,7 +173,7 @@ public class DeliveryService : IDeliveryService
                     Quantity = container.GrossWeight - container.TareWeight,
                     ReferenceType = "Delivery",
                     ReferenceId = delivery.Id,
-                    CreatedBy = null,
+                    CreatedBy = operatorId,
                     CreatedAt = DateTime.Now
                 });
             }
@@ -178,6 +192,23 @@ public class DeliveryService : IDeliveryService
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    private async Task<string> GenerateDeliveryNumberInContextAsync(NordicBeesERPContext context, string materialCode)
+    {
+        var code = string.IsNullOrEmpty(materialCode) ? "XX" : materialCode;
+        var prefix = $"PR-{code}{DateTime.Now:yyMM}-";
+
+        var existing = await context.Deliveries
+            .Where(d => d.DeliveryNumber != null && d.DeliveryNumber.StartsWith(prefix))
+            .Select(d => d.DeliveryNumber!)
+            .ToListAsync();
+
+        int next = 1;
+        while (existing.Contains($"{prefix}{next:D3}"))
+            next++;
+
+        return $"{prefix}{next:D3}";
     }
 
     public async Task UpdatePricesAsync(int deliveryId, List<DeliveryLine> updatedLines, int barrelsOwed)
