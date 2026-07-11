@@ -1,0 +1,121 @@
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" />
+            <MudText Typo="Typo.h6">Neatitikties registrojimas</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:480px;">
+            <MudAlert Color="Color.Error" Severity="Severity.Warning" Class="mb-3">
+                Registrokite neatitikimą pagal BRC8 3.9 reikalavimus.
+            </MudAlert>
+
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Sunkiškumas</MudText>
+            <MudSelect @bind-Value="_severity"
+                       Label="Pasirinkite sunkiškumą"
+                       Variant="Variant.Outlined"
+                       FullWidth="@true"
+                       Margin="Margin.Dense"
+                       Class="mb-3"
+                       Required="@true">
+                <MudSelectItem T="string" Value="@("MINOR")">Mažas (MINOR)</MudSelectItem>
+                <MudSelectItem T="string" Value="@("MAJOR")">Didelis (MAJOR)</MudSelectItem>
+                <MudSelectItem T="string" Value="@("CRITICAL")">Kritinis (CRITICAL)</MudSelectItem>
+            </MudSelect>
+
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Aprašymas</MudText>
+            <MudTextField @bind-Value="_description"
+                          Label="Aprašykite neatitikimą"
+                          Variant="Variant.Outlined"
+                          FullWidth="@true"
+                          Margin="Margin.Dense"
+                          Lines="4"
+                          Required="@true"
+                          Immediate="@true"
+                          Error="@_descriptionError"
+                          HelperText="@DescriptionHelperText" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Style="text-transform:none" OnClick="ConfirmAsync" StartIcon="@Icons.Material.Filled.Error">Registroti neatitikimą</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // Named record for dialog return value
+    public record NonConformanceResult(
+        int RefId,
+        string RefType,
+        string Severity,
+        string Description);
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    // Reference context — passed from caller, not editable
+    [Parameter] public int RefId { get; set; }
+    [Parameter] public string RefType { get; set; } = "Container";
+
+    private string _severity = "MINOR";
+    private string? _description = null;
+    private bool _descriptionError = false;
+
+    private string? DescriptionHelperText
+    {
+        get
+        {
+            if (_descriptionError) return "Aprašymas yra privalomas (BRC8 3.9)";
+            if (!string.IsNullOrEmpty(_description)) return $"{_description.Length}/500";
+            return null;
+        }
+    }
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void ConfirmAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_description))
+        {
+            _descriptionError = true;
+            StateHasChanged();
+            return;
+        }
+        _descriptionError = false;
+
+        var result = new NonConformanceResult(
+            RefId,
+            RefType,
+            _severity,
+            _description!.Trim()
+        );
+
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    public static async Task<NonConformanceResult?> ShowAsync(
+        IDialogService dialogService,
+        int refId,
+        string refType = "Container")
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(RefId)] = refId,
+            [nameof(RefType)] = refType,
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+        var dialog = await dialogService.ShowAsync<NonConformanceDialog>("Neatitikties registrojimas", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            return result?.Data as NonConformanceResult;
+        }
+        return null;
+    }
+}

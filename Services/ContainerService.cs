@@ -95,13 +95,8 @@ public class ContainerService : IContainerService
     public async Task UpdateStatusAsync(int id, string newStatus)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var container = await context.Containers.FindAsync(id);
-        if (container != null)
-        {
-            container.Status = newStatus;
-            container.UpdatedAt = DateTime.Now;
-            await context.SaveChangesAsync();
-        }
+    await context.Database.ExecuteSqlRawAsync(
+        "UPDATE containers SET status = {0}, updated_at = NOW() WHERE id = {1}", newStatus, id);
     }
 
     public async Task WriteOffAsync(List<int> containerIds, string reason, int? createdBy)
@@ -110,28 +105,28 @@ public class ContainerService : IContainerService
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
-            foreach (var containerId in containerIds)
-            {
-                var container = await context.Containers.FindAsync(containerId);
-                if (container != null)
-                {
-                    container.Status = "WRITTEN_OFF";
-                    container.UpdatedAt = DateTime.Now;
+        var containers = await context.Containers
+            .Where(c => containerIds.Contains(c.Id))
+            .ToListAsync();
 
-                    context.StockMovements.Add(new StockMovement
-                    {
-                        ContainerId = containerId,
-                        MovementType = "OUT",
-                        FromWarehouseId = container.WarehouseId,
-                        Quantity = container.NetWeight,
-                        ReferenceType = "Manual",
-                        Notes = reason,
-                        CreatedBy = createdBy,
-                        CreatedAt = DateTime.Now
-                    });
-                }
-            }
-            await context.SaveChangesAsync();
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE containers SET status = 'WRITTEN_OFF', updated_at = NOW() WHERE id IN ({0})",
+            string.Join(",", containerIds));
+
+        foreach (var container in containers)
+        {
+            context.StockMovements.Add(new StockMovement
+            {
+                ContainerId = container.Id,
+                MovementType = "OUT",
+                FromWarehouseId = container.WarehouseId,
+                Quantity = container.NetWeight,
+                ReferenceType = "Manual",
+                Notes = reason,
+                CreatedBy = createdBy,
+                CreatedAt = DateTime.Now
+            });
+        }
             await transaction.CommitAsync();
         }
         catch

@@ -979,7 +979,7 @@ namespace NordicBeesERP.Migrations
   `delivery_id` int NOT NULL,
   `product_id` int DEFAULT NULL,
   `honey_type_id` int DEFAULT NULL,
-  `container_type` enum('BARREL','BUCKET_GROUP') NOT NULL,
+  `container_type` enum('BARREL','BUCKET') NOT NULL,
   `container_count` int NOT NULL DEFAULT '1',
   `total_gross_weight` decimal(10,3) NOT NULL DEFAULT '0.000',
   `total_tare_weight` decimal(10,3) NOT NULL DEFAULT '0.000',
@@ -1210,7 +1210,7 @@ namespace NordicBeesERP.Migrations
                 CREATE TABLE IF NOT EXISTS `containers` (
   `id` int NOT NULL AUTO_INCREMENT,
   `container_code` varchar(50) NOT NULL,
-  `container_type` enum('BARREL','BUCKET_GROUP') NOT NULL,
+  `container_type` enum('BARREL','BUCKET') NOT NULL,
   `supplier_id` int NOT NULL,
   `delivery_line_id` int DEFAULT NULL,
   `warehouse_id` int NOT NULL,
@@ -1440,19 +1440,19 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS receiver_name VARCHAR(200) NULL;
     ");
 
-            // ── BUCKET_GROUP → BUCKET conversion (BRC8 labeling module) ─────────────
+            // ── BUCKET → BUCKET conversion (BRC8 labeling module) ─────────────
             // containers/delivery_lines already exist with real data containing
-            // 'BUCKET_GROUP' rows. Must widen enum first, then UPDATE data, then
+            // 'BUCKET' rows. Must widen enum first, then UPDATE data, then
             // narrow enum — a direct UPDATE to 'BUCKET' before widening fails with
             // "Data truncated" since 'BUCKET' isn't yet a valid enum value.
             migrationBuilder.Sql(@"
         ALTER TABLE containers
-            MODIFY container_type ENUM('BARREL','BUCKET_GROUP','BUCKET') NOT NULL;
+            MODIFY container_type ENUM('BARREL','BUCKET') NOT NULL;
     ");
 
             migrationBuilder.Sql(@"
         ALTER TABLE delivery_lines
-            MODIFY container_type ENUM('BARREL','BUCKET_GROUP','BUCKET') NOT NULL;
+            MODIFY container_type ENUM('BARREL','BUCKET') NOT NULL;
     ");
 
             migrationBuilder.Sql(@"
