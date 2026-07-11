@@ -39,4 +39,14 @@ public class DeliveryLine
 
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+    // Labeling module fields
+    [Column("average_weight")]
+    public decimal? AverageWeight { get; set; }
+
+    [Column("weighed_at")]
+    public DateTime? WeighedAt { get; set; }
+
+    [Column("weighed_by_user_id")]
+    public int? WeighedByUserId { get; set; }
 }
