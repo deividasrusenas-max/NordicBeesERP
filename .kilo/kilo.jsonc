@@ -11,7 +11,7 @@
   ],
   "permission": {
     "bash": {
-      "*": "ask",
+      "*": "allow",
       "dotnet build*": "allow",
       "dotnet ef*": "allow",
       "./bump-version.sh*": "allow",

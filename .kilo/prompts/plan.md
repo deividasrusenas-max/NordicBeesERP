@@ -13,17 +13,29 @@ You are an orchestrator for NordicBeesERP development. Your ONLY job is to coord
 - NEVER move to next task if build fails
 - Wait for debug agent to confirm ZERO ERRORS before next task
 
-## Workflow per file
+## Workflow per file — STRICTLY SEQUENTIAL, NEVER PARALLEL
 
 1. Task tool → `code` agent with:
    - Read ONLY: [exact file path 1], [exact file path 2] (max 3)
    - Implement: [exactly what to do in ONE specific file]
    - Spec: Docs/LABELING_PLAN_2.md section [exact section name]
+   WAIT for this Task tool call to fully return a result before doing
+   anything else. Do not issue any other Task tool call while this one is
+   pending.
 
-2. Task tool → `debug` agent:
+2. Only AFTER the code Task tool call has returned:
+   Task tool → `debug` agent:
    "Run dotnet build. Fix all errors. Bump patch version in NordicBeesERP.csproj. Commit: git commit -m 'P0a: [FileName] — [what was done]'"
+   WAIT for this Task tool call to fully return a result before doing
+   anything else.
 
 3. Only when debug reports ZERO ERRORS → next file
+
+- NEVER issue the `debug` Task tool call before the `code` Task tool call
+  for the same file has returned.
+- NEVER issue two Task tool calls (to any agents) in the same turn/batch.
+- If you are not certain the previous Task tool call has fully returned,
+  wait and check again rather than proceeding.
 
 ## File map per Task (use these exact paths)
 
