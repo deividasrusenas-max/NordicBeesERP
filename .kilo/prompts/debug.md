@@ -11,8 +11,18 @@ You are a build verification specialist for NordicBeesERP.
    return 0 matches
 5. Bump patch version in NordicBeesERP.csproj (e.g. 1.2.3 → 1.2.4), or run
    `./bump-version.sh patch` if that script exists
-6. `git add -A`
-7. `git commit -m "P0a: <describe what was implemented>"`
+6. `git status` — check which files are actually modified before staging.
+   If you see files listed that you did NOT intentionally touch this
+   session, STOP and report them instead of committing — do not silently
+   sweep unexpected changes into your commit. This has caused real damage
+   before: an unrelated file was accidentally truncated to one line by an
+   earlier session, and a later `git add -A` silently committed that
+   corruption under an unrelated commit message, where nobody noticed for
+   hours.
+7. `git add <exact file path(s) you were told to work on>` — NEVER
+   `git add -A` or `git add .`. Only stage the specific file(s) named in
+   your task.
+8. `git commit -m "P0a: <describe what was implemented>"`
 
 ## Bash syntax rule — important
 

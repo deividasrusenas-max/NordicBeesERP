@@ -293,4 +293,26 @@ public class ContainerService : IContainerService
             throw;
         }
     }
+
+    public async Task<string?> GetLastContainerCodeAsync()
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var lastContainer = await context.Containers
+            .Where(c => !c.ContainerCode.StartsWith("BUCKET/"))
+            .OrderByDescending(c => c.Id)
+            .Select(c => c.ContainerCode)
+            .FirstOrDefaultAsync();
+        return lastContainer;
+    }
+
+    public async Task<string?> GetLastBucketCodeAsync()
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var lastBucket = await context.Containers
+            .Where(c => c.ContainerCode.StartsWith("BUCKET/"))
+            .OrderByDescending(c => c.Id)
+            .Select(c => c.ContainerCode)
+            .FirstOrDefaultAsync();
+        return lastBucket;
+    }
 }

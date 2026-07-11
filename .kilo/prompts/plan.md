@@ -55,8 +55,9 @@ yourself as a stopgap and note it in your final report.)
      1. dotnet build
      2. grep -r "BUCKET_GROUP" --include="*.cs" --include="*.razor" .
      3. ./bump-version.sh patch
-     4. git add -A
-     5. git commit -m "P0a: [FileName] — [what was done]"
+     4. git status (check nothing unexpected/unrelated is modified before staging)
+     5. git add [exact file path(s) from THIS task only — never -A or .]
+     6. git commit -m "P0a: [FileName] — [what was done]"
    WAIT for this Task tool call to fully return a result before doing
    anything else.
 

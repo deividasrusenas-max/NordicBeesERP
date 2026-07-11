@@ -9,8 +9,17 @@ description: Mandatory commit/version workflow and CI-enforced coding restrictio
 
 1. Make the change (one logical unit — one file or one tightly related group).
 2. `dotnet build` — must be zero errors before committing.
-3. Bump the patch version: run `./bump-version.sh patch` (this modifies `AssemblyInfo.cs`/`.csproj`, commits, tags, and pushes automatically — do not bump the version manually by editing the file yourself).
-4. If `bump-version.sh` doesn't itself create the content commit, commit with the message format below.
+3. **`git status` first** — check which files are actually modified. If
+   anything shows up that you didn't intentionally touch this session,
+   stop and report it rather than committing over it. This project has
+   had a real incident where an unrelated file was silently truncated by
+   an earlier agent session, and a later `git add -A` swept that
+   corruption into an unrelated commit — nobody noticed for hours because
+   the commit message described a different task entirely.
+4. **`git add <exact file path(s) you changed>` — NEVER `git add -A` or
+   `git add .`.** Stage only the specific files you were working on.
+5. Bump the patch version: run `./bump-version.sh patch` (this modifies `AssemblyInfo.cs`/`.csproj`, commits, tags, and pushes automatically — do not bump the version manually by editing the file yourself).
+6. If `bump-version.sh` doesn't itself create the content commit, commit with the message format below.
 
 ## Commit message format
 
