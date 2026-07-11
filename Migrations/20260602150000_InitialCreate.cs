@@ -852,9 +852,13 @@ namespace NordicBeesERP.Migrations
                 CREATE TABLE IF NOT EXISTS `container_weight_corrections` (
   `id` int NOT NULL AUTO_INCREMENT,
   `container_id` int NOT NULL,
-  `old_weight_kg` decimal(10,3) NOT NULL,
-  `new_weight_kg` decimal(10,3) NOT NULL,
-  `reason` text NOT NULL,
+  `old_gross_weight` decimal(10,3) NOT NULL,
+  `new_gross_weight` decimal(10,3) NOT NULL,
+  `old_tare_weight` decimal(10,3) NOT NULL,
+  `new_tare_weight` decimal(10,3) NOT NULL,
+  `old_net_weight` decimal(10,3) NOT NULL,
+  `new_net_weight` decimal(10,3) NOT NULL,
+  `reason` varchar(200) NOT NULL,
   `corrected_by` int NOT NULL,
   `corrected_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -862,7 +866,7 @@ namespace NordicBeesERP.Migrations
   KEY `corrected_by` (`corrected_by`),
   CONSTRAINT `container_weight_corrections_ibfk_1` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
   CONSTRAINT `container_weight_corrections_ibfk_2` FOREIGN KEY (`corrected_by`) REFERENCES `AspNetUsers` (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Svorio korekcijos';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Svorio korekcijos (BRC8 3.7) - bruto/tara/neto atskirai';
             ");
 
             migrationBuilder.Sql(@"
