@@ -215,6 +215,17 @@ namespace NordicBeesERP.Models
         [Column("default_expense_category_id")]
         public int? DefaultExpenseCategoryId { get; set; }
 
+        // Supplier approval fields (BRC8 3.5)
+        [MaxLength(15)]
+        [Column("approval_status")]
+        public string? ApprovalStatus { get; set; }
+
+        [Column("approval_date", TypeName = "date")]
+        public DateTime? ApprovalDate { get; set; }
+
+        [Column("approval_expires_at", TypeName = "date")]
+        public DateTime? ApprovalExpiresAt { get; set; }
+
         // Navigation properties
         public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
         [NotMapped]
