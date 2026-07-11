@@ -1,0 +1,235 @@
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Scale" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Svorio korekcija</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:560px;">
+            <MudAlert Color="Color.Warning" Severity="Severity.Warning" Class="mb-3">
+                Konteinerio etiketė jau išspausdinta. Svorio keitimas reikalauja priežasties (BRC8 3.7).
+            </MudAlert>
+
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Svorio palyginimas (kg)</MudText>
+            <div style="background:#f8fafc; border-radius:8px; padding:12px;" class="mb-3">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:1px solid #e2e8f0;">
+                            <th style="text-align:left; padding:6px 8px; font-size:0.8rem; color:#64748b;">Rodyklė</th>
+                            <th style="text-align:right; padding:6px 8px; font-size:0.8rem; color:#64748b;">Senas</th>
+                            <th style="text-align:center; padding:6px 8px; font-size:0.8rem; color:#64748b;"></th>
+                            <th style="text-align:right; padding:6px 8px; font-size:0.8rem; color:#64748b;">Naujas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid #e2e8f0;">
+                            <td style="padding:8px;">Brutto</td>
+                            <td style="padding:8px; text-align:right; font-weight:500;">@_oldGrossWeight.ToString("F3")</td>
+                            <td style="padding:8px; text-align:center; color:#94a3b8;">→</td>
+                            <td style="padding:4px 8px;">
+                                <MudTextField @bind-Value="_newGrossWeight"
+                                              Type="number"
+                                              Variant="Variant.Outlined"
+                                              Size="Size.Small"
+                                              Adornment="Adornment.End"
+                                              AdornmentText="kg"
+                                              InputStyle="text-align:right; width:140px;"
+                                              Immediate="@true"
+                                              HelperText="@GrossHelperText"
+                                              @attributes="GrossValidationAttrs" />
+                            </td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #e2e8f0;">
+                            <td style="padding:8px;">Tara</td>
+                            <td style="padding:8px; text-align:right; font-weight:500;">@_oldTareWeight.ToString("F3")</td>
+                            <td style="padding:8px; text-align:center; color:#94a3b8;">→</td>
+                            <td style="padding:4px 8px;">
+                                <MudTextField @bind-Value="_newTareWeight"
+                                              Type="number"
+                                              Variant="Variant.Outlined"
+                                              Size="Size.Small"
+                                              Adornment="Adornment.End"
+                                              AdornmentText="kg"
+                                              InputStyle="text-align:right; width:140px;"
+                                              Immediate="@true"
+                                              HelperText="@TareHelperText"
+                                              @attributes="TareValidationAttrs" />
+                            </td>
+                        </tr>
+                        <tr style="background:#eff6ff;">
+                            <td style="padding:8px; font-weight:600;">Netto</td>
+                            <td style="padding:8px; text-align:right; font-weight:600;">@_oldNetWeight.ToString("F3")</td>
+                            <td style="padding:8px; text-align:center; color:#94a3b8;">→</td>
+                            <td style="padding:8px; text-align:right; font-weight:600; color:#2563eb;">@_calculatedNetWeight.ToString("F3")</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Korekcijos priežastis</MudText>
+            <MudTextField @bind-Value="_reason"
+                          Label="Aprašykite korekcijos priežastį"
+                          Variant="Variant.Outlined"
+                          FullWidth="@true"
+                          Margin="Margin.Dense"
+                          Lines="3"
+                          Required="@true"
+                          Immediate="@true"
+                          Error="@_reasonError"
+                          HelperText="@ReasonHelperText" />
+
+            <MudCheckbox @bind="_reprintLabel"
+                         Label="Perspausdinti etiketę su nauju svoriu"
+                         Class="mt-2" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Senas lipdukas lieka galiojantis kaip priėmimo dokumentas.</MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="ConfirmAsync" StartIcon="@Icons.Material.Filled.CheckCircle">Patvirtinti korekciją</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // Named tuple for dialog return value
+    public record WeightCorrectionResult(
+        decimal OldGrossWeight,
+        decimal NewGrossWeight,
+        decimal OldTareWeight,
+        decimal NewTareWeight,
+        decimal OldNetWeight,
+        decimal NewNetWeight,
+        string Reason,
+        bool ReprintLabel);
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    // Old (readonly) values — injected from caller
+    [Parameter] public decimal OldGrossWeight { get; set; }
+    [Parameter] public decimal OldTareWeight { get; set; }
+    [Parameter] public decimal OldNetWeight { get; set; }
+
+    private decimal _oldGrossWeight => OldGrossWeight;
+    private decimal _oldTareWeight => OldTareWeight;
+    private decimal _oldNetWeight => OldNetWeight;
+
+    // Editable new values — default to old values
+    private decimal _newGrossWeight;
+    private decimal _newTareWeight;
+    private bool _reprintLabel = false;
+    private string? _reason = null;
+    private bool _reasonError = false;
+
+    protected override void OnInitialized()
+    {
+        _newGrossWeight = OldGrossWeight;
+        _newTareWeight = OldTareWeight;
+    }
+
+    // Auto-calculate net = gross - tare
+    private decimal _calculatedNetWeight => Math.Max(0m, _newGrossWeight - _newTareWeight);
+
+    // Validation helpers
+    private string? GrossHelperText
+    {
+        get
+        {
+            if (_newGrossWeight <= 0m) return "Brutto turi būti didesnis už 0";
+            if (_newGrossWeight <= _newTareWeight) return "Brutto turi būti didesnis už tarą";
+            return null;
+        }
+    }
+
+    private string? TareHelperText
+    {
+        get
+        {
+            if (_newTareWeight < 0m) return "Tara negali būti neigiama";
+            if (_newTareWeight >= _newGrossWeight) return "Tara turi būti mažesnė už brutto";
+            return null;
+        }
+    }
+
+    private string? ReasonHelperText
+    {
+        get
+        {
+            if (_reasonError) return "Priežastis yra privaloma (BRC8 3.7)";
+            if (!string.IsNullOrEmpty(_reason)) return $"{_reason.Length}/200";
+            return null;
+        }
+    }
+
+    // Dynamic validation attributes for gross weight
+    private IDictionary<string, object?> GrossValidationAttrs => new Dictionary<string, object?>
+    {
+        ["Error"] = _newGrossWeight <= 0m || _newGrossWeight <= _newTareWeight,
+    };
+
+    // Dynamic validation attributes for tare weight
+    private IDictionary<string, object?> TareValidationAttrs => new Dictionary<string, object?>
+    {
+        ["Error"] = _newTareWeight < 0m || _newTareWeight >= _newGrossWeight,
+    };
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void ConfirmAsync()
+    {
+        // Validate reason
+        if (string.IsNullOrWhiteSpace(_reason))
+        {
+            _reasonError = true;
+            StateHasChanged();
+            return;
+        }
+        _reasonError = false;
+
+        // Validate weights
+        if (_newGrossWeight <= 0m) return;
+        if (_newTareWeight < 0m) return;
+        if (_newTareWeight >= _newGrossWeight) return;
+
+        var result = new WeightCorrectionResult(
+            _oldGrossWeight,
+            _newGrossWeight,
+            _oldTareWeight,
+            _newTareWeight,
+            _oldNetWeight,
+            _calculatedNetWeight,
+            _reason!.Trim(),
+            _reprintLabel
+        );
+
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    public static async Task<WeightCorrectionResult?> ShowAsync(
+        IDialogService dialogService,
+        decimal oldGrossWeight,
+        decimal oldTareWeight,
+        decimal oldNetWeight)
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(OldGrossWeight)] = oldGrossWeight,
+            [nameof(OldTareWeight)] = oldTareWeight,
+            [nameof(OldNetWeight)] = oldNetWeight,
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+        var dialog = await dialogService.ShowAsync<WeightCorrectionDialog>("Svorio korekcija", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            return result?.Data as WeightCorrectionResult;
+        }
+        return null;
+    }
+}

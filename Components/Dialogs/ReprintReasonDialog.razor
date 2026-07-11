@@ -1,0 +1,91 @@
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Print" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Perspausdinimo priežastis</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:480px;">
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Priežasties kodas</MudText>
+            <MudSelect @bind-Value="_reasonCode"
+                       Label="Pasirinkite priežastį"
+                       Variant="Variant.Outlined"
+                       FullWidth="@true"
+                       Margin="Margin.Dense"
+                       Class="mb-3"
+                       Required="@true">
+                 <MudSelectItem T="string" Value="@("DAMAGED")">Pažiesta etiketė</MudSelectItem>
+                 <MudSelectItem T="string" Value="@("LOST")">Pamesta etiketė</MudSelectItem>
+                 <MudSelectItem T="string" Value="@("MISPRINT")">Neteisingai išspausdinta</MudSelectItem>
+                 <MudSelectItem T="string" Value="@("OTHER")">Kita</MudSelectItem>
+            </MudSelect>
+
+            @if (_reasonCode == "OTHER")
+            {
+                <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Papildoma informacija</MudText>
+                <MudTextField @bind-Value="_reasonText"
+                              Label="Aprašykite priežastį"
+                              Variant="Variant.Outlined"
+                              FullWidth="@true"
+                              Margin="Margin.Dense"
+                              Lines="3"
+                              Required="@true" />
+            }
+            else
+            {
+                <MudTextField @bind-Value="_reasonText"
+                              Label="Papildoma pastaba (nebūtina)"
+                              Variant="Variant.Outlined"
+                              FullWidth="@true"
+                              Margin="Margin.Dense" />
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="ConfirmAsync" StartIcon="@Icons.Material.Filled.Print">Perspausdinti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _reasonCode = "DAMAGED";
+    private string? _reasonText = null;
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void ConfirmAsync()
+    {
+        if (string.IsNullOrEmpty(_reasonCode))
+        {
+            return;
+        }
+
+        if (_reasonCode == "OTHER" && string.IsNullOrWhiteSpace(_reasonText))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok((ReasonCode: _reasonCode, ReasonText: _reasonText)));
+    }
+
+    public static async Task<(string ReasonCode, string? ReasonText)?> ShowAsync(IDialogService dialogService)
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true };
+        var dialog = await dialogService.ShowAsync<ReprintReasonDialog>("Perspausdinimo priežastis", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            return ((string, string?)?)result?.Data;
+        }
+        return null;
+    }
+}
