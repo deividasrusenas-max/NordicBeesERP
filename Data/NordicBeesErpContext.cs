@@ -711,14 +711,35 @@ namespace NordicBeesERP.Data
 
         public override int SaveChanges()
         {
+            ValidateContainerLabelEvents();
             UpdateTimestamps();
             return base.SaveChanges();
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            ValidateContainerLabelEvents();
             UpdateTimestamps();
             return base.SaveChangesAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// BRC8 3.3 — ContainerLabelEvent is INSERT ONLY.
+        /// Throws on any Modified or Deleted entries for container_label_events.
+        /// Uses non-generic ChangeTracker because the ContainerLabelEvent model may not exist yet.
+        /// </summary>
+        private void ValidateContainerLabelEvents()
+        {
+            var modifiedEvents = ChangeTracker.Entries()
+                .Where(e => e.Entity.GetType().Name == "ContainerLabelEvent"
+                    && (e.State == EntityState.Modified || e.State == EntityState.Deleted));
+
+            if (modifiedEvents.Any())
+            {
+                throw new InvalidOperationException(
+                    "ContainerLabelEvent is INSERT ONLY per BRC8 3.3 compliance. " +
+                    "No updates or deletes allowed after creation.");
+            }
         }
 
         private void UpdateTimestamps()
