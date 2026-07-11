@@ -70,6 +70,20 @@ public class Container
     [Column("quality_params")]
     public string? QualityParams { get; set; }
 
+    // Labeling module fields
+    [MaxLength(10)]
+    [Column("weighing_mode")]
+    public string WeighingMode { get; set; } = "MANUAL";
+
+    [Column("received_by_user_id")]
+    public int? ReceivedByUserId { get; set; }
+
+    [Column("last_label_printed_at")]
+    public DateTime? LastLabelPrintedAt { get; set; }
+
+    [Column("label_print_count")]
+    public int LabelPrintCount { get; set; } = 0;
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
