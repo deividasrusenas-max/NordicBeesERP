@@ -113,7 +113,16 @@ namespace NordicBeesERP.Data
         public DbSet<ArtworkAuditLog> ArtworkAuditLogs { get; set; }
 
         // Printing Module
+        public DbSet<Printer> Printers { get; set; }
+        public DbSet<WeighingStation> WeighingStations { get; set; }
+        public DbSet<PrintJob> PrintJobs { get; set; }
+        public DbSet<ContainerLabelEvent> ContainerLabelEvents { get; set; }
         public DbSet<ContainerWeightCorrection> ContainerWeightCorrections { get; set; }
+        public DbSet<LabelTemplate> LabelTemplates { get; set; }
+
+        // Warehouse Module — new entities
+        public DbSet<SupplierApproval> SupplierApprovals { get; set; }
+        public DbSet<NonConformance> NonConformances { get; set; }
 
         // =====================================================
         // MODEL CONFIGURATION
