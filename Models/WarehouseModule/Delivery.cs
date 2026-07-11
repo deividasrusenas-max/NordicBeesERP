@@ -104,4 +104,24 @@ public class Delivery
     [Column("origin_country")]
     [MaxLength(100)]
     public string? OriginCountry { get; set; }
+
+    // Labeling module fields
+    [MaxLength(20)]
+    [Column("weighing_status")]
+    public string WeighingStatus { get; set; } = "NOT_STARTED";
+
+    [Column("weighing_station_id")]
+    public int? WeighingStationId { get; set; }
+
+    [Column("weighing_started_at")]
+    public DateTime? WeighingStartedAt { get; set; }
+
+    [Column("weighing_completed_at")]
+    public DateTime? WeighingCompletedAt { get; set; }
+
+    [Column("created_by_user_id")]
+    public int? CreatedByUserId { get; set; }
+
+    [Column("inspection_by_user_id")]
+    public int? InspectionByUserId { get; set; }
 }
