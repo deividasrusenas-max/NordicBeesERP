@@ -475,14 +475,6 @@
         _products = await ProductService.GetAllProductsAsync();
         _honeyTypes = await HoneyTypeService.GetActiveAsync();
         _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
-        
-        var lastCode = await ContainerService.GetLastContainerCodeAsync();
-        if (lastCode != null && int.TryParse(lastCode, out int lastNum))
-            _startId = (lastNum + 1).ToString();
-        
-        var lastBucketCode = await ContainerService.GetLastBucketCodeAsync();
-        if (lastBucketCode != null && int.TryParse(lastBucketCode, out int lastBucketNum))
-            _bucketStartId = (lastBucketNum + 1).ToString();
     }
 
     private void GoToStep2()

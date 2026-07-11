@@ -167,28 +167,6 @@ public class ContainerService : IContainerService
         return await query.SumAsync(c => c.NetWeight);
     }
 
-    public async Task<string?> GetLastContainerCodeAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        var last = await context.Containers
-            .Where(c => c.ContainerType == "BARREL")
-            .OrderByDescending(c => c.Id)
-            .Select(c => c.ContainerCode)
-            .FirstOrDefaultAsync();
-        return last;
-    }
-
-    public async Task<string?> GetLastBucketCodeAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        var last = await context.Containers
-            .Where(c => c.ContainerType == "BUCKET")
-            .OrderByDescending(c => c.Id)
-            .Select(c => c.ContainerCode)
-            .FirstOrDefaultAsync();
-        return last;
-    }
-
     public async Task<List<Container>> GetByIdsAsync(List<int> ids)
     {
         using var context = await _contextFactory.CreateDbContextAsync();

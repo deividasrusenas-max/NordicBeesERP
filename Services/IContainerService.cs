@@ -14,8 +14,6 @@ public interface IContainerService
     Task WriteOffAsync(List<int> containerIds, string reason, int? createdBy);
     Task<int> GetCountByWarehouseAsync(int? warehouseId, string? status);
     Task<decimal> GetTotalNetWeightAsync(int? warehouseId, string? status);
-    Task<string?> GetLastContainerCodeAsync();
-    Task<string?> GetLastBucketCodeAsync();
     Task<List<Container>> GetByIdsAsync(List<int> ids);
     Task UpdateHoneyTypeAsync(List<int> containerIds, int honeyTypeId);
 }
