@@ -209,7 +209,7 @@
                                 var productLabel = !string.IsNullOrEmpty(honeyTypeName)
                                     ? $"{rawMatName ?? honeyTypeName} — {honeyTypeName}"
                                     : (rawMatName ?? "-");
-                                var typeName = container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", "BUCKET_GROUP" => "Kibirai", _ => container.ContainerType ?? "-" };
+                                var typeName = container.ContainerType switch { "BARREL" => "Statinė", "BUCKET" => "Kibiras", _ => container.ContainerType ?? "-" };
                             }
                             @($"{productLabel} ({typeName})")
                         </MudTd>

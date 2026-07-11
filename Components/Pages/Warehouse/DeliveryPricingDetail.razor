@@ -430,7 +430,6 @@
     private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
     private string GetContainerTypeName(string? type) => type switch {
         "BARREL" => "Statinė",
-        "BUCKET_GROUP" => "Kibirai",
         "BUCKET" => "Kibiras",
         _ => type ?? "-"
     };

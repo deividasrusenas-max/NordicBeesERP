@@ -142,7 +142,6 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                                 {
                                     "BARREL" => "Statinė",
                                     "BUCKET" => "Kibiras",
-                                    "BUCKET_GROUP" => "Kibirai",
                                     _ => line.ContainerType ?? "-"
                                 };
                                 table.Cell().Element(DataCell).Text(prekeName);
@@ -195,7 +194,6 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                                     {
                                         "BARREL" => "Statinė",
                                         "BUCKET" => "Kibiras",
-                                        "BUCKET_GROUP" => "Kibirai",
                                         _ => container.ContainerType ?? "-"
                                     };
 

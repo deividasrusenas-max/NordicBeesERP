@@ -182,7 +182,7 @@ public class ContainerService : IContainerService
     {
         using var context = await _contextFactory.CreateDbContextAsync();
         var last = await context.Containers
-            .Where(c => c.ContainerType == "BUCKET_GROUP")
+            .Where(c => c.ContainerType == "BUCKET")
             .OrderByDescending(c => c.Id)
             .Select(c => c.ContainerCode)
             .FirstOrDefaultAsync();

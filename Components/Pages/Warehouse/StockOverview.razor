@@ -80,8 +80,8 @@
         <MudItem xs="6" md="3">
             <MudPaper Elevation="0" Class="pa-3" Style="background:#fff3e0; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
                 <MudText Typo="Typo.caption">Kibirai</MudText>
-                <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BUCKET_GROUP") vnt.</MudText>
-                <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+                <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BUCKET") vnt.</MudText>
+                <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BUCKET").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
