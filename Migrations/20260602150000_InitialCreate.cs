@@ -1440,6 +1440,39 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS receiver_name VARCHAR(200) NULL;
     ");
 
+            // ── BUCKET_GROUP → BUCKET conversion (BRC8 labeling module) ─────────────
+            // containers/delivery_lines already exist with real data containing
+            // 'BUCKET_GROUP' rows. Must widen enum first, then UPDATE data, then
+            // narrow enum — a direct UPDATE to 'BUCKET' before widening fails with
+            // "Data truncated" since 'BUCKET' isn't yet a valid enum value.
+            migrationBuilder.Sql(@"
+        ALTER TABLE containers
+            MODIFY container_type ENUM('BARREL','BUCKET_GROUP','BUCKET') NOT NULL;
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE delivery_lines
+            MODIFY container_type ENUM('BARREL','BUCKET_GROUP','BUCKET') NOT NULL;
+    ");
+
+            migrationBuilder.Sql(@"
+        UPDATE containers SET container_type = 'BUCKET' WHERE container_type = 'BUCKET_GROUP';
+    ");
+
+            migrationBuilder.Sql(@"
+        UPDATE delivery_lines SET container_type = 'BUCKET' WHERE container_type = 'BUCKET_GROUP';
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE containers
+            MODIFY container_type ENUM('BARREL','BUCKET') NOT NULL;
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE delivery_lines
+            MODIFY container_type ENUM('BARREL','BUCKET') NOT NULL;
+    ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
