@@ -1,7 +1,13 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
   "instructions": [
-    ".clinerules/nordicbees-standards.md"
+    ".clinerules/nordicbees-standards.md",
+    "AGENTS.md",
+    ".clinerules/FROZEN.md",
+    ".clinerules/UI_STANDARD.md",
+    ".clinerules/DESIGN_SYSTEM.md",
+    ".clinerules/PATTERNS.md",
+    ".clinerules/rules.md"
   ],
   "permission": {
     "bash": {

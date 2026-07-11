@@ -773,9 +773,160 @@ namespace NordicBeesERP.Migrations
   CONSTRAINT `deliveries_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `business_partners` (`id`),
   CONSTRAINT `deliveries_ibfk_2` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=56 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+             ");
+
+            // ── Labeling module tables (Group 3 extension) ────────────────────
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `weighing_stations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `warehouse_id` int NOT NULL,
+  `printer_id` int NOT NULL,
+  `pi_base_url` varchar(200) DEFAULT NULL,
+  `default_container_type` enum('BARREL','BUCKET') DEFAULT NULL,
+  `min_weight_kg` decimal(5,3) NOT NULL DEFAULT 0.500,
+  `scale_protocol` enum('TOLEDO','METTLER','CAS','KERN','NONE') NOT NULL DEFAULT 'NONE',
+  `scale_regex` varchar(200) DEFAULT NULL,
+  `last_calibration_date` date DEFAULT NULL,
+  `next_calibration_date` date DEFAULT NULL,
+  `calibration_cert_number` varchar(100) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `warehouse_id` (`warehouse_id`),
+  KEY `printer_id` (`printer_id`),
+  CONSTRAINT `weighing_stations_ibfk_1` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`),
+  CONSTRAINT `weighing_stations_ibfk_2` FOREIGN KEY (`printer_id`) REFERENCES `printers` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Svėrimo stotys - svarstyklės ir spausdintuvai';
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `print_jobs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `printer_id` int NOT NULL,
+  `station_id` int DEFAULT NULL,
+  `container_id` int NOT NULL,
+  `job_type` enum('RECEIPT_LABEL','QUARANTINE_LABEL','REPRINT') NOT NULL DEFAULT 'RECEIPT_LABEL',
+  `zpl_content` longtext NOT NULL,
+  `status` enum('PENDING','PROCESSING','DONE','FAILED','CANCELLED') NOT NULL DEFAULT 'PENDING',
+  `retry_count` int NOT NULL DEFAULT 0,
+  `max_retries` int NOT NULL DEFAULT 3,
+  `last_error` text DEFAULT NULL,
+  `created_by_user_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `processed_at` datetime DEFAULT NULL,
+  `done_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `printer_id` (`printer_id`),
+  KEY `station_id` (`station_id`),
+  KEY `container_id` (`container_id`),
+  CONSTRAINT `print_jobs_ibfk_1` FOREIGN KEY (`printer_id`) REFERENCES `printers` (`id`),
+  CONSTRAINT `print_jobs_ibfk_2` FOREIGN KEY (`station_id`) REFERENCES `weighing_stations` (`id`),
+  CONSTRAINT `print_jobs_ibfk_3` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
+  CONSTRAINT `print_jobs_ibfk_4` FOREIGN KEY (`created_by_user_id`) REFERENCES `AspNetUsers` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Etiketų spausdinimo darbai';
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `container_label_events` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `container_id` int NOT NULL,
+  `event_type` enum('PRINTED','REPRINTED','QUARANTINE_PRINTED','CANCELLED','PRINT_FAILED') NOT NULL,
+  `print_job_id` int DEFAULT NULL,
+  `reason_code` enum('DAMAGED','LOST','MISPRINT','OTHER') DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `operator_id` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `container_id` (`container_id`),
+  KEY `print_job_id` (`print_job_id`),
+  KEY `operator_id` (`operator_id`),
+  CONSTRAINT `container_label_events_ibfk_1` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
+  CONSTRAINT `container_label_events_ibfk_2` FOREIGN KEY (`print_job_id`) REFERENCES `print_jobs` (`id`),
+  CONSTRAINT `container_label_events_ibfk_3` FOREIGN KEY (`operator_id`) REFERENCES `AspNetUsers` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Etiketų istorija - INSERT ONLY (BRC8 3.3)';
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `container_weight_corrections` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `container_id` int NOT NULL,
+  `old_weight_kg` decimal(10,3) NOT NULL,
+  `new_weight_kg` decimal(10,3) NOT NULL,
+  `reason` text NOT NULL,
+  `corrected_by` int NOT NULL,
+  `corrected_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `container_id` (`container_id`),
+  KEY `corrected_by` (`corrected_by`),
+  CONSTRAINT `container_weight_corrections_ibfk_1` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
+  CONSTRAINT `container_weight_corrections_ibfk_2` FOREIGN KEY (`corrected_by`) REFERENCES `AspNetUsers` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Svorio korekcijos';
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `label_templates` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `description` text,
+  `template_type` enum('ZPL','EPL','PLAIN_TEXT') NOT NULL DEFAULT 'ZPL',
+  `content` longtext NOT NULL,
+  `default_printer_id` int DEFAULT NULL,
+  `width_mm` decimal(5,1) NOT NULL DEFAULT 108.0,
+  `height_mm` decimal(5,1) NOT NULL DEFAULT 75.0,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `default_printer_id` (`default_printer_id`),
+  CONSTRAINT `label_templates_ibfk_1` FOREIGN KEY (`default_printer_id`) REFERENCES `printers` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Etiketų šablonai';
             ");
 
             // ── Group 4: depends on Groups 1-3 ───────────────────────────────
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `supplier_approvals` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `supplier_id` int NOT NULL,
+  `approved_by` int NOT NULL,
+  `approved_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `valid_until` date NOT NULL,
+  `document_path` varchar(500) DEFAULT NULL,
+  `notes` text,
+  PRIMARY KEY (`id`),
+  KEY `supplier_id` (`supplier_id`),
+  KEY `approved_by` (`approved_by`),
+  CONSTRAINT `supplier_approvals_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `business_partners` (`id`),
+  CONSTRAINT `supplier_approvals_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `AspNetUsers` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Tiekėjų patvirtinimai';
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `non_conformances` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `delivery_id` int NOT NULL,
+  `container_id` int DEFAULT NULL,
+  `description` text NOT NULL,
+  `nc_type` enum('QUALITY','WEIGHT','DOCUMENTATION','OTHER') NOT NULL,
+  `discovered_by` int NOT NULL,
+  `discovered_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('OPEN','INVESTIGATING','RESOLVED','CLOSED') NOT NULL DEFAULT 'OPEN',
+  `corrective_action` text,
+  `closed_by` int DEFAULT NULL,
+  `closed_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `delivery_id` (`delivery_id`),
+  KEY `container_id` (`container_id`),
+  KEY `discovered_by` (`discovered_by`),
+  KEY `closed_by` (`closed_by`),
+  CONSTRAINT `non_conformances_ibfk_1` FOREIGN KEY (`delivery_id`) REFERENCES `deliveries` (`id`),
+  CONSTRAINT `non_conformances_ibfk_2` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
+  CONSTRAINT `non_conformances_ibfk_3` FOREIGN KEY (`discovered_by`) REFERENCES `AspNetUsers` (`Id`),
+  CONSTRAINT `non_conformances_ibfk_4` FOREIGN KEY (`closed_by`) REFERENCES `AspNetUsers` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Neprikaitos';
+            ");
 
             migrationBuilder.Sql(@"
                 CREATE TABLE IF NOT EXISTS `expense_line_allocations` (
@@ -1036,6 +1187,22 @@ namespace NordicBeesERP.Migrations
             // ── Group 5: depends on Groups 1-4 ───────────────────────────────
 
             migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `document_files` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `document_type` enum('CERTIFICATE','INVOICE','DELIVERY_NOTE','OTHER') NOT NULL,
+  `document_ref` varchar(100) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` int NOT NULL,
+  `content_type` varchar(100) NOT NULL,
+  `uploaded_by` int NOT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `uploaded_by` (`uploaded_by`),
+  CONSTRAINT `document_files_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `AspNetUsers` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Dokumentų saugojimas';
+            ");
+
+            migrationBuilder.Sql(@"
                 CREATE TABLE IF NOT EXISTS `containers` (
   `id` int NOT NULL AUTO_INCREMENT,
   `container_code` varchar(50) NOT NULL,
@@ -1206,6 +1373,41 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
+        ALTER TABLE `containers`
+            ADD COLUMN IF NOT EXISTS `current_weight_kg` decimal(10,3) DEFAULT NULL COMMENT 'BRC8 3.7: Svoris',
+            ADD COLUMN IF NOT EXISTS `weight_verified_at` datetime DEFAULT NULL COMMENT 'BRC8 3.7: Svorio patvirtinimo laikas',
+            ADD COLUMN IF NOT EXISTS `weight_verified_by` int DEFAULT NULL COMMENT 'BRC8 3.7: Svorio patvirtinimo operatorius',
+            ADD COLUMN IF NOT EXISTS `label_print_count` int NOT NULL DEFAULT 0 COMMENT 'BRC8 3.3: Etiketų spausdinimo skaičius',
+            ADD COLUMN IF NOT EXISTS `quarantine_reason` text DEFAULT NULL COMMENT 'BRC8 6.3: Karantino priežastis',
+            ADD COLUMN IF NOT EXISTS `quarantine_expires` datetime DEFAULT NULL COMMENT 'BRC8 6.3: Karantino pabaiga',
+            ADD COLUMN IF NOT EXISTS `nc_flagged` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'BRC8 6.3: Neprikaitos žymė',
+            ADD COLUMN IF NOT EXISTS `nc_resolved` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'BRC8 6.3: Neprikaitos išspręsta',
+            ADD KEY IF NOT EXISTS `idx_weight_verified_by` (`weight_verified_by`),
+            ADD CONSTRAINT IF NOT EXISTS `containers_ibfk_4` FOREIGN KEY (`weight_verified_by`) REFERENCES `AspNetUsers` (`Id`);
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD COLUMN IF NOT EXISTS `quarantine_reason` text DEFAULT NULL COMMENT 'BRC8 6.3: Karantino priežastis',
+            ADD COLUMN IF NOT EXISTS `quarantine_expires` datetime DEFAULT NULL COMMENT 'BRC8 6.3: Karantino pabaiga';
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE delivery_lines
+            ADD COLUMN IF NOT EXISTS `quarantine_reason` text DEFAULT NULL COMMENT 'BRC8 6.3: Karantino priežastis',
+            ADD COLUMN IF NOT EXISTS `quarantine_expires` datetime DEFAULT NULL COMMENT 'BRC8 6.3: Karantino pabaiga';
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE business_partners
+            ADD COLUMN IF NOT EXISTS `approval_status` enum('PENDING','APPROVED','REJECTED','EXPIRED') NOT NULL DEFAULT 'PENDING' COMMENT 'Tiekėjo patvirtinimo statusas',
+            ADD COLUMN IF NOT EXISTS `approval_expiry` date DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo galiojimo pabaiga',
+            ADD COLUMN IF NOT EXISTS `approved_by` int DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo operatorius',
+            ADD KEY IF NOT EXISTS `approved_by` (`approved_by`),
+            ADD CONSTRAINT IF NOT EXISTS `business_partners_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `AspNetUsers` (`Id`);
+    ");
+
+            migrationBuilder.Sql(@"
         ALTER TABLE deliveries
             ADD COLUMN IF NOT EXISTS inspection_result ENUM('OK','NOK','CONDITIONAL') NULL,
             ADD COLUMN IF NOT EXISTS inspection_notes TEXT NULL,
@@ -1252,12 +1454,15 @@ namespace NordicBeesERP.Migrations
             migrationBuilder.Sql("DROP TABLE IF EXISTS `business_partners`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `companies`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `company_settings`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `container_label_events`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `container_weight_corrections`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `containers`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `credit_note_lines`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `credit_notes`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `currencies`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `deliveries`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `delivery_lines`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `document_files`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `email_invoice_imports`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `erp_users`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `expense_budgets`");
@@ -1273,7 +1478,9 @@ namespace NordicBeesERP.Migrations
             migrationBuilder.Sql("DROP TABLE IF EXISTS `honey_types`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `invoice_lines`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `invoices`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `label_templates`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `lots`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `non_conformances`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `order_lines`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `orders`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `payment_allocations`");
@@ -1282,13 +1489,16 @@ namespace NordicBeesERP.Migrations
             migrationBuilder.Sql("DROP TABLE IF EXISTS `product_categories`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `production_batch_ingredients`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `production_batches`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `print_jobs`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `products`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `raw_material_types`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `stock_movements`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `supplier_approvals`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `supplier_payments`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `warehouse_stock`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `warehouse_stocks`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `warehouse_types`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `weighing_stations`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `warehouses`");
         }
     }
