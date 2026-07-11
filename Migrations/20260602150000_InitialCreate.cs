@@ -1473,6 +1473,14 @@ namespace NordicBeesERP.Migrations
             MODIFY container_type ENUM('BARREL','BUCKET') NOT NULL;
     ");
 
+            // ── Add QUARANTINE to containers.status (BRC8 6.3) ───────────────
+            // Pure addition to the enum, no data conversion needed — safe on
+            // tables that already exist with real data.
+            migrationBuilder.Sql(@"
+        ALTER TABLE containers
+            MODIFY status ENUM('RECEIVED','IN_STOCK','RESERVED','IN_PRODUCTION','QUARANTINE','SOLD','RETURNED','WRITTEN_OFF') NULL DEFAULT 'IN_STOCK';
+    ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
