@@ -80,6 +80,12 @@ builder.Services.AddScoped<IViesService, ViesService>();
 builder.Services.AddScoped<ICompanyLookupService, CompanyLookupService>();
 builder.Services.AddHostedService<OcrQueueWorker>();
 
+// Labeling Module Services
+builder.Services.AddScoped<ILabelTemplateService, ZplLabelTemplateService>();
+builder.Services.AddScoped<ILabelPrintService, LabelPrintService>();
+builder.Services.AddScoped<IPrinterGateway, StubPrinterGateway>();
+builder.Services.AddHostedService<LabelPrintWorker>();
+
 // Artwork Module Services
 builder.Services.Configure<ArtworkStorageOptions>(builder.Configuration.GetSection("ArtworkStorage"));
 builder.Services.Configure<ArtworkPreviewOptions>(builder.Configuration.GetSection("ArtworkPreview"));
