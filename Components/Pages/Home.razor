@@ -232,8 +232,8 @@
             var allContainers = await ContainerService.GetFilteredAsync(null, null, null, "IN_STOCK", null);
             _barrelCount = allContainers.Count(c => c.ContainerType == "BARREL");
             _barrelNetWeight = allContainers.Where(c => c.ContainerType == "BARREL").Sum(c => c.NetWeight);
-            _bucketCount = allContainers.Count(c => c.ContainerType == "BUCKET_GROUP");
-            _bucketNetWeight = allContainers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight);
+            _bucketCount = allContainers.Count(c => c.ContainerType == "BUCKET");
+            _bucketNetWeight = allContainers.Where(c => c.ContainerType == "BUCKET").Sum(c => c.NetWeight);
             _unpricedDeliveries = deliveries.Count(d => d.Status == "RECEIVED");
             _totalDebt = deliveries.Sum(d => Math.Max(0, d.TotalAmount - d.PaidAmount));
             _suppliersWithDebt = deliveries.Where(d => d.TotalAmount - d.PaidAmount > 0).Select(d => d.SupplierId).Distinct().Count();
@@ -244,7 +244,7 @@
                 Name: ht.Name,
                 Color: ht.Color ?? "#f8fafc",
                 BarrelKg: allContainers.Where(c => c.HoneyTypeId == ht.Id && c.ContainerType == "BARREL").Sum(c => c.NetWeight),
-                BucketKg: allContainers.Where(c => c.HoneyTypeId == ht.Id && c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight)
+                BucketKg: allContainers.Where(c => c.HoneyTypeId == ht.Id && c.ContainerType == "BUCKET").Sum(c => c.NetWeight)
             )).ToList();
 
             _loading = false;
