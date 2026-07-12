@@ -127,6 +127,7 @@ public class ContainerService : IContainerService
                 CreatedAt = DateTime.Now
             });
         }
+            await context.SaveChangesAsync();
             await transaction.CommitAsync();
         }
         catch
