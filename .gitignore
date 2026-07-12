@@ -22,6 +22,17 @@ kilo.jsonc.bak_*
 .env.bak_*
 .opencode/secrets/
 
+# AI agent stack config — local tooling setup, not project code.
+# These are hardware/machine-specific (local model endpoints, MCP server
+# paths, agent permission tuning) and should NOT be branch-dependent or
+# reverted by git checkout/stash/branch-switch operations.
+opencode.json
+kilo.jsonc
+.opencode/
+.kilo/
+.planning/
+mempalace.yaml
+
 # Kilo Code secrets - project-level config can't resolve {env:} references,
 # so real keys live here instead. Never commit this directory.
 .kilo/secrets/
