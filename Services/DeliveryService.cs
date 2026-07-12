@@ -136,6 +136,7 @@ public class DeliveryService : IDeliveryService
             await context.SaveChangesAsync();
 
             // Map containers to their delivery lines and assign codes inside transaction
+            // Container codes: {DELIVERY_NUMBER}/{SEQ:D3} — generated ONLY here, never in UI
             int seq = 1;
             foreach (var line in lines)
             {
@@ -146,19 +147,16 @@ public class DeliveryService : IDeliveryService
 
                 foreach (var container in lineContainers)
                 {
-                    if (container.DeliveryLineId == 0 || container.DeliveryLineId == null)
-                    {
-                        container.DeliveryLineId = line.Id;
-                        container.SupplierId = delivery.SupplierId;
-                        container.WarehouseId = delivery.WarehouseId;
-                        container.NetWeight = container.GrossWeight - container.TareWeight;
-                        container.ContainerCode = $"{delivery.DeliveryNumber}/{seq:D3}";
-                        container.ReceivedByUserId = operatorId;
-                        container.CreatedAt = DateTime.Now;
-                        container.UpdatedAt = DateTime.Now;
-                        context.Containers.Add(container);
-                        seq++;
-                    }
+                    container.DeliveryLineId = line.Id;
+                    container.SupplierId = delivery.SupplierId;
+                    container.WarehouseId = delivery.WarehouseId;
+                    container.NetWeight = container.GrossWeight - container.TareWeight;
+                    container.ContainerCode = $"{delivery.DeliveryNumber}/{seq:D3}";
+                    container.ReceivedByUserId = operatorId;
+                    container.CreatedAt = DateTime.Now;
+                    container.UpdatedAt = DateTime.Now;
+                    context.Containers.Add(container);
+                    seq++;
                 }
             }
             await context.SaveChangesAsync();
