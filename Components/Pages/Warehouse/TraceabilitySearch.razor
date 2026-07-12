@@ -1,0 +1,623 @@
+@page "/warehouse/traceability"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Models.Printing
+@using NordicBeesERP.Data
+@using NordicBeesERP.Services
+@inject IDbContextFactory<NordicBeesERPContext> ContextFactory
+@inject ISupplierApprovalService SupplierApprovalService
+@inject ISnackbar Snackbar
+
+<PageTitle>Atsekamumas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Atsekamumas (BRC8 3.9)</MudText>
+
+    <!-- Search input -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="_searchQuery"
+                    Label="Konteinerio kodas arba pristatymo numeris"
+                    Variant="Variant.Outlined"
+                    Clearable="true"
+                    Immediate="true"
+                    Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search"
+                    Placeholder="pvz. LAK001 arba PR-MD2607-001" />
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    Class="tablet-action-btn"
+                    OnClick="@SearchAsync"
+                    Disabled="@_searching"
+                    StartIcon="@Icons.Material.Filled.Search"
+                    FullWidth="@true">
+                    @if (_searching)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <span>Ieškoti</span>
+                    }
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_error != null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+    }
+
+    @if (_traceResult == null && _searchDone)
+    {
+        <MudAlert Severity="Severity.Info" Icon="@Icons.Material.Filled.Info" Class="mb-4">
+            Įrašų nerasta. Patikrinkite kodą ir bandykite dar kartą.
+        </MudAlert>
+    }
+
+    @if (_traceResult != null)
+    {
+        <!-- Container info card -->
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                @Icons.Material.Filled.Inbox Konteineris: @_traceResult.ContainerCode
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Tipas</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:600">@GetContainerTypeText(_traceResult.ContainerType)</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Netto svoris</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.NetWeight.ToString("N1") kg</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Statusas</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="@GetContainerStatusColor(_traceResult.Status)" Class="mt-1">
+                            @GetContainerStatusText(_traceResult.Status)
+                        </MudChip>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Sukurta</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Delivery info card (backward trace) -->
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                @Icons.Material.Filled.LocalShipping Pristatymas: @_traceResult.DeliveryNumber
+            </MudText>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#eff6ff; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Data</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.DeliveryDate.ToString("yyyy-MM-dd")</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#f5f3ff; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Tiekėjas</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.SupplierName</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#f0fdf4; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Žaliava</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.MaterialName</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Style="background:#fff7ed; border-radius:8px; padding:12px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Kilmės šalis</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.OriginCountry ?? "-"</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Supplier approval card -->
+        <MudPaper Class="pa-4 mb-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                @Icons.Material.Filled.Verified User Tiekėjo patvirtinimas
+            </MudText>
+
+            @if (_traceResult.ApprovalExists)
+            {
+                @if (_traceResult.HasActiveApproval)
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.CheckCircle">
+                        <MudText Typo="Typo.body1">
+                            <strong>Patvirtintas</strong>
+                            @if (_traceResult.ApprovalExpiresAt.HasValue)
+                            {
+                                <text> iki @_traceResult.ApprovalExpiresAt.Value.ToString("yyyy-MM-dd")</text>
+                            }
+                            else
+                            {
+                                <text> (neterminuotas)</text>
+                            }
+                        </MudText>
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Warning">
+                        <MudText Typo="Typo.body1">
+                            <strong>Patvirtinimas pasibaigęs</strong>
+                            @if (_traceResult.ApprovalExpiresAt.HasValue)
+                            {
+                                <text> (baigėsi @_traceResult.ApprovalExpiresAt.Value.ToString("yyyy-MM-dd"))</text>
+                            }
+                        </MudText>
+                    </MudAlert>
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Error">
+                    Tiekėjas neturi patvirtinimo įrašo
+                </MudAlert>
+            }
+        </MudPaper>
+
+        <!-- Inspection info card -->
+        @if (!string.IsNullOrEmpty(_traceResult.InspectionResult))
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    @Icons.Material.Filled.HealthAndSafety Priėmimo tikrinimas
+                </MudText>
+
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:12px">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Rezultatas</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@GetInspectionColor(_traceResult.InspectionResult)" Class="mt-1">
+                                @GetInspectionText(_traceResult.InspectionResult)
+                            </MudChip>
+                        </MudPaper>
+                    </MudItem>
+                    @if (!string.IsNullOrEmpty(_traceResult.InspectionBy))
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:12px">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Tikrintojas</MudText>
+                                <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.InspectionBy</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                    @if (_traceResult.InspectionAt.HasValue)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:12px">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Tikrinimo laikas</MudText>
+                                <MudText Typo="Typo.body1" Style="font-weight:600">@_traceResult.InspectionAt.Value.ToString("yyyy-MM-dd HH:mm")</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+                @if (!string.IsNullOrEmpty(_traceResult.InspectionNotes))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2 d-block">Pastabos</MudText>
+                    <MudText Typo="Typo.body2">@_traceResult.InspectionNotes</MudText>
+                }
+            </MudPaper>
+        }
+
+        <!-- Label print history -->
+        @if (_labelEvents.Count > 0)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    @Icons.Material.Filled.Print Etiketų istorija
+                </MudText>
+
+                <MudTable T="LabelEventRow" Items="_labelEvents" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Tipas</MudTh>
+                        <MudTh>Data/laikas</MudTh>
+                        <MudTh>Operatorius</MudTh>
+                        <MudTh>Priežastis</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="evt">
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@GetEventColor(evt.EventType)">
+                                @GetEventText(evt.EventType)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@evt.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                        <MudTd>@evt.OperatorId</MudTd>
+                        <MudTd>@(evt.ReasonText ?? "-")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    @Icons.Material.Filled.Print Etiketų istorija
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Etikęčių įrašų nėra</MudText>
+            </MudPaper>
+        }
+
+        <!-- Forward trace: all containers of this delivery -->
+        @if (_deliveryContainers.Count > 0)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    @Icons.Material.Filled.Storage Visi konteineriai šiame pristatyme (@_deliveryContainers.Count)
+                </MudText>
+
+                <MudTable T="DeliveryContainerRow" Items="_deliveryContainers" Dense="true" Hover="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Kodas</MudTh>
+                        <MudTh>Tipas</MudTh>
+                        <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                        <MudTh>Statusas</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="c">
+                        <MudTd>
+                            <MudText Style="font-weight:600" Class="@(c.ContainerCode == _traceResult.ContainerCode ? "highlighted-container" : "")">
+                                @c.ContainerCode
+                                @if (c.ContainerCode == _traceResult.ContainerCode)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-1">Šis</MudChip>
+                                }
+                            </MudText>
+                        </MudTd>
+                        <MudTd>@GetContainerTypeText(c.ContainerType)</MudTd>
+                        <MudTd Style="text-align:right">@c.NetWeight.ToString("N1")</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@GetContainerStatusColor(c.Status)">
+                                @GetContainerStatusText(c.Status)
+                            </MudChip>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private string _searchQuery = string.Empty;
+    private bool _searching = false;
+    private bool _searchDone = false;
+    private string? _error;
+
+    private TraceResult? _traceResult;
+    private List<LabelEventRow> _labelEvents = new();
+    private List<DeliveryContainerRow> _deliveryContainers = new();
+
+    private async Task SearchAsync()
+    {
+        _error = null;
+        _traceResult = null;
+        _labelEvents.Clear();
+        _deliveryContainers.Clear();
+        _searching = true;
+        _searchDone = false;
+        StateHasChanged();
+
+        try
+        {
+            var query = _searchQuery.Trim();
+            if (string.IsNullOrEmpty(query))
+            {
+                Snackbar.Add("Įveskite konteinerio kodą arba pristatymo numerį", Severity.Warning);
+                _searching = false;
+                StateHasChanged();
+                return;
+            }
+
+            using var context = await ContextFactory.CreateDbContextAsync();
+
+            // Try container code first, then delivery number
+            var container = await context.Containers
+                .FromSqlRaw("SELECT c.* FROM containers c WHERE c.container_code = {0} LIMIT 1", query)
+                .FirstOrDefaultAsync();
+
+            if (container == null)
+            {
+                // Try as delivery number — find any container belonging to that delivery
+                var deliveryId = await context.Deliveries
+                    .FromSqlRaw("SELECT d.id FROM deliveries d WHERE d.delivery_number = {0} LIMIT 1", query)
+                    .Select(d => d.Id)
+                    .FirstOrDefaultAsync();
+
+                if (deliveryId > 0)
+                {
+                    container = await context.Containers
+                        .FromSqlRaw("SELECT c.* FROM containers c JOIN delivery_lines dl ON c.delivery_line_id = dl.id WHERE dl.delivery_id = {0} LIMIT 1", deliveryId)
+                        .FirstOrDefaultAsync();
+
+                    if (container != null)
+                    {
+                        // Also load all containers from this delivery for forward trace
+                        _deliveryContainers = await context.Containers
+                            .FromSqlRaw("SELECT c.* FROM containers c JOIN delivery_lines dl ON c.delivery_line_id = dl.id WHERE dl.delivery_id = {0}", deliveryId)
+                            .Select(c => new DeliveryContainerRow
+                            {
+                                ContainerCode = c.ContainerCode,
+                                ContainerType = c.ContainerType,
+                                NetWeight = c.NetWeight,
+                                Status = c.Status ?? ""
+                            })
+                            .ToListAsync();
+                    }
+                }
+            }
+            else
+            {
+                // Load all containers from the same delivery for forward trace
+                var deliveryId2 = await context.DeliveryLines
+                    .Where(dl => dl.Id == container.DeliveryLineId)
+                    .Select(dl => dl.DeliveryId)
+                    .FirstOrDefaultAsync();
+
+                if (deliveryId2 > 0)
+                {
+                    _deliveryContainers = await context.Containers
+                        .FromSqlRaw("SELECT c.* FROM containers c JOIN delivery_lines dl ON c.delivery_line_id = dl.id WHERE dl.delivery_id = {0}", deliveryId2)
+                        .Select(c => new DeliveryContainerRow
+                        {
+                            ContainerCode = c.ContainerCode,
+                            ContainerType = c.ContainerType,
+                            NetWeight = c.NetWeight,
+                            Status = c.Status ?? ""
+                        })
+                        .ToListAsync();
+                }
+            }
+
+            if (container == null)
+            {
+                _searchDone = true;
+                _searching = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Get delivery info
+            var deliveryLine = await context.DeliveryLines
+                .FirstOrDefaultAsync(dl => dl.Id == container.DeliveryLineId);
+
+            if (deliveryLine == null)
+            {
+                _error = "Konteineris nerastas nė viename pristatyme";
+                _searchDone = true;
+                _searching = false;
+                StateHasChanged();
+                return;
+            }
+
+            var delivery = await context.Deliveries
+                .FirstOrDefaultAsync(d => d.Id == deliveryLine.DeliveryId);
+
+            if (delivery == null)
+            {
+                _error = "Pristatymas nerastas";
+                _searchDone = true;
+                _searching = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Get supplier name
+            var supplier = await context.BusinessPartners
+                .FirstOrDefaultAsync(bp => bp.Id == delivery.SupplierId);
+
+            // Get raw material type name
+            string? materialName = null;
+            if (delivery.RawMaterialTypeId.HasValue)
+            {
+                var rawMat = await context.RawMaterialTypes
+                    .FirstOrDefaultAsync(rm => rm.Id == delivery.RawMaterialTypeId.Value);
+                materialName = rawMat?.Name;
+            }
+
+            // Get honey type name if set on container
+            if (container.HoneyTypeId.HasValue)
+            {
+                var honeyType = await context.HoneyTypes
+                    .FirstOrDefaultAsync(ht => ht.Id == container.HoneyTypeId.Value);
+                if (honeyType != null && !string.IsNullOrEmpty(materialName))
+                    materialName += " — " + honeyType.Name;
+                else if (honeyType != null)
+                    materialName = honeyType.Name;
+            }
+
+            // Supplier approval check
+            var approvalExists = await SupplierApprovalService.IsSupplierApprovedAsync(delivery.SupplierId);
+            var hasActiveApproval = await SupplierApprovalService.HasActiveApprovalAsync(delivery.SupplierId);
+            var currentApproval = await SupplierApprovalService.GetCurrentApprovalAsync(delivery.SupplierId);
+
+            // Label events for this container
+            _labelEvents = await context.ContainerLabelEvents
+                .Where(e => e.ContainerId == container.Id)
+                .OrderByDescending(e => e.CreatedAt)
+                .Select(e => new LabelEventRow
+                {
+                    EventType = e.EventType,
+                    CreatedAt = e.CreatedAt,
+                    OperatorId = e.OperatorId,
+                    ReasonText = e.ReasonText
+                })
+                .ToListAsync();
+
+            _traceResult = new TraceResult
+            {
+                ContainerId = container.Id,
+                ContainerCode = container.ContainerCode,
+                ContainerType = container.ContainerType,
+                NetWeight = container.NetWeight,
+                Status = container.Status ?? "",
+                CreatedAt = container.CreatedAt,
+                DeliveryId = delivery.Id,
+                DeliveryNumber = delivery.DeliveryNumber ?? "",
+                DeliveryDate = delivery.DeliveryDate,
+                SupplierId = delivery.SupplierId,
+                SupplierName = supplier?.Name ?? "Unknown",
+                OriginCountry = delivery.OriginCountry,
+                MaterialName = materialName ?? "-",
+                InspectionResult = delivery.InspectionResult,
+                InspectionNotes = delivery.InspectionNotes,
+                InspectionBy = delivery.InspectionBy,
+                InspectionAt = delivery.InspectionAt,
+                ApprovalExists = approvalExists,
+                HasActiveApproval = hasActiveApproval,
+                ApprovalExpiresAt = currentApproval?.ExpiresAt
+            };
+
+            _searchDone = true;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Klaida ieškant: {ex.Message}";
+            Snackbar.Add($"Klaida: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _searching = false;
+            StateHasChanged();
+        }
+    }
+
+    #region Display helpers
+
+    private string GetContainerTypeText(string type) => type switch
+    {
+        "BARREL" => "Statinė",
+        "BUCKET" => "Kibiras",
+        _ => type
+    };
+
+    private Color GetContainerStatusColor(string? status) => status switch
+    {
+        "RECEIVED" => Color.Default,
+        "IN_STOCK" => Color.Success,
+        "RESERVED" => Color.Warning,
+        "IN_PRODUCTION" => Color.Info,
+        "QUARANTINE" => Color.Error,
+        "SOLD" => Color.Primary,
+        "RETURNED" => Color.Secondary,
+        "WRITTEN_OFF" => Color.Tertiary,
+        _ => Color.Default
+    };
+
+    private string GetContainerStatusText(string? status) => status switch
+    {
+        "RECEIVED" => "Priimtas",
+        "IN_STOCK" => "Sandėlyje",
+        "RESERVED" => "Rezervuotas",
+        "IN_PRODUCTION" => "Gamyboje",
+        "QUARANTINE" => "Karantinas",
+        "SOLD" => "Parduotas",
+        "RETURNED" => "Grąžintas",
+        "WRITTEN_OFF" => "Nurašytas",
+        _ => status ?? "-"
+    };
+
+    private Color GetInspectionColor(string? result) => result switch
+    {
+        "OK" => Color.Success,
+        "CONDITIONAL" => Color.Warning,
+        "NOK" => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetInspectionText(string? result) => result switch
+    {
+        "OK" => "Tinkama",
+        "CONDITIONAL" => "Sąlyginai",
+        "NOK" => "Netinkama",
+        _ => result ?? "-"
+    };
+
+    private Color GetEventColor(string type) => type switch
+    {
+        "PRINTED" => Color.Success,
+        "REPRINTED" => Color.Info,
+        "QUARANTINE_PRINTED" => Color.Warning,
+        "CANCELLED" => Color.Error,
+        "PRINT_FAILED" => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetEventText(string type) => type switch
+    {
+        "PRINTED" => "Išspausdinta",
+        "REPRINTED" => "Perspausdinta",
+        "QUARANTINE_PRINTED" => "Karantino etiketė",
+        "CANCELLED" => "Atšaukta",
+        "PRINT_FAILED" => "Klaida spausdinant",
+        _ => type
+    };
+
+    #endregion
+
+    #region DTOs
+
+    public class TraceResult
+    {
+        public int ContainerId { get; set; }
+        public string ContainerCode { get; set; } = "";
+        public string ContainerType { get; set; } = "";
+        public decimal NetWeight { get; set; }
+        public string Status { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+
+        public int DeliveryId { get; set; }
+        public string DeliveryNumber { get; set; } = "";
+        public DateTime DeliveryDate { get; set; }
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; } = "";
+        public string? OriginCountry { get; set; }
+        public string MaterialName { get; set; } = "";
+
+        public string? InspectionResult { get; set; }
+        public string? InspectionNotes { get; set; }
+        public string? InspectionBy { get; set; }
+        public DateTime? InspectionAt { get; set; }
+
+        public bool ApprovalExists { get; set; }
+        public bool HasActiveApproval { get; set; }
+        public DateTime? ApprovalExpiresAt { get; set; }
+    }
+
+    public class LabelEventRow
+    {
+        public string EventType { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public int? OperatorId { get; set; }
+        public string? ReasonText { get; set; }
+    }
+
+    public class DeliveryContainerRow
+    {
+        public string ContainerCode { get; set; } = "";
+        public string ContainerType { get; set; } = "";
+        public decimal NetWeight { get; set; }
+        public string Status { get; set; } = "";
+    }
+
+    #endregion
+}

@@ -11,6 +11,7 @@
 @inject IRawMaterialTypeService RawMaterialTypeService
 @inject IContainerService ContainerService
 @inject IAuthService AuthService
+@inject ISupplierApprovalService SupplierApprovalService
 
 @using NordicBeesERP.Components.Dialogs
 
@@ -37,7 +38,8 @@
                         OpenOnFocus="true"
                         ShowProgressIndicator="true"
                         Placeholder="Pradėkite rašyti tiekėjo pavadinimą..."
-                        Style="font-size:1.1rem">
+                        Style="font-size:1.1rem"
+                        OnChange="OnSupplierSelected">
                         <NoItemsTemplate>
                             <MudListItem T="BusinessPartner" OnClick="OpenCreateSupplierDialog">
                                 <MudStack Row="true" AlignItems="AlignItems.Center">
@@ -61,8 +63,22 @@
                     <MudDatePicker @bind-Date="_deliveryDate" Label="Data" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
                 </MudItem>
             </MudGrid>
+            @if (_approvalChecked && _approvalExpired)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Text" Dense="true" Class="mt-2">
+                    Tiekėjas neturi galiojančio patvirtinimo (BRC8 3.5).
+                </MudAlert>
+            }
+
+            @if (_approvalChecked && !_approvalExpired && _daysUntilExpiry > 0)
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Class="mt-2">
+                    Tiekėjo patvirtinimas baigiasi po @_daysUntilExpiry dienų
+                </MudChip>
+            }
+
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4"
-                OnClick="GoToStep2" FullWidth="@true" Style="min-height:56px; font-size:1.1rem"
+                OnClick="async () => await GoToStep2()" FullWidth="@true" Style="min-height:56px; font-size:1.1rem"
                 Disabled="@(_selectedSupplier == null || _warehouseId == 0)">
                 Toliau →
             </MudButton>
@@ -428,6 +444,11 @@
     private DateTime? _deliveryDate = DateTime.Today;
     private BusinessPartner? _selectedSupplier;
 
+    // BRC8 3.5 — Supplier approval state
+    private bool _approvalChecked = false;
+    private bool _approvalExpired = false;
+    private int _daysUntilExpiry = 0;
+
     // Lookups
     private List<BusinessPartner> _suppliers = new();
     private List<NordicBeesERP.Models.Warehouse> _warehouses = new();
@@ -486,10 +507,47 @@
             _bucketStartId = (lastBucketNum + 1).ToString();
     }
 
-    private void GoToStep2()
+    private async Task GoToStep2()
     {
+        if (_selectedSupplier == null) return;
+
+        // BRC8 3.5 — Check supplier approval
+        _approvalChecked = false;
+        _approvalExpired = false;
+        _daysUntilExpiry = 0;
+
+        var hasActive = await SupplierApprovalService.HasActiveApprovalAsync(_selectedSupplier.Id);
+
+        if (!hasActive)
+        {
+            _approvalChecked = true;
+            _approvalExpired = true;
+            StateHasChanged();
+            return;
+        }
+
+        // Check if expiry is within 30 days (warning)
+        var currentApproval = await SupplierApprovalService.GetCurrentApprovalAsync(_selectedSupplier.Id);
+        if (currentApproval?.ExpiresAt.HasValue == true)
+        {
+            var daysLeft = (currentApproval.ExpiresAt.Value.Date - DateTime.UtcNow.Date).Days;
+            if (daysLeft <= 30)
+            {
+                _approvalChecked = true;
+                _daysUntilExpiry = daysLeft;
+            }
+        }
+
         _supplierId = _selectedSupplier?.Id ?? 0;
         _step = 2;
+    }
+
+    private void OnSupplierSelected(BusinessPartner? supplier)
+    {
+        // Reset approval state when supplier changes
+        _approvalChecked = false;
+        _approvalExpired = false;
+        _daysUntilExpiry = 0;
     }
 
     private async Task<IEnumerable<BusinessPartner>> SearchSuppliers(string value, CancellationToken ct)
@@ -807,6 +865,50 @@
     private async Task SubmitDelivery()
     {
         _supplierId = _selectedSupplier?.Id ?? 0;
+
+        // BRC8 3.7 — Auto-save intercept: check if any container has labels already printed
+        var labeledContainers = _pendingContainers.Where(c => c.LabelPrintCount > 0).ToList();
+        if (labeledContainers.Any())
+        {
+            var operatorId = await AuthService.GetUserIdAsync();
+
+            // Show WeightCorrectionDialog for each labeled container
+            foreach (var container in labeledContainers)
+            {
+                var oldNet = container.GrossWeight - container.TareWeight;
+                var correction = await WeightCorrectionDialog.ShowAsync(
+                    DialogService,
+                    container.GrossWeight,
+                    container.TareWeight,
+                    oldNet);
+
+                if (correction == null)
+                {
+                    // User cancelled — prevent save
+                    Snackbar.Add("Svorio korekcija atšaukta — pristatymas neišsaugotas. Svorio keitimas su išspausdinta etikete reikalauja priežasties (BRC8 3.7).", Severity.Warning);
+                    return;
+                }
+
+                // Update pending container with corrected weights
+                container.GrossWeight = correction.NewGrossWeight;
+                container.TareWeight = correction.NewTareWeight;
+
+                // Store correction for later persistence (after containers are created)
+                _weightCorrectionsToSave.Add(new PendingWeightCorrection(
+                    container.ContainerCode,
+                    correction.OldGrossWeight,
+                    correction.NewGrossWeight,
+                    correction.OldTareWeight,
+                    correction.NewTareWeight,
+                    correction.OldNetWeight,
+                    correction.NewNetWeight,
+                    correction.Reason,
+                    operatorId ?? 0));
+            }
+
+            Snackbar.Add($"Užregistruota {_weightCorrectionsToSave.Count} svorio korekcija(-ų)", Severity.Info);
+        }
+
         _saving = true;
         try
         {
@@ -836,6 +938,27 @@
 
             var operatorId = await AuthService.GetUserIdAsync();
             var deliveryId = await DeliveryService.CreateDeliveryWithContainersAsync(delivery, lines, _pendingContainers, operatorId);
+
+            // Persist weight corrections (BRC8 3.7 audit trail)
+            if (_weightCorrectionsToSave.Any())
+            {
+                foreach (var correction in _weightCorrectionsToSave)
+                {
+                    // Find the persisted container by code
+                    var persisted = await ContainerService.GetByCodeAsync(correction.ContainerCode);
+                    if (persisted != null)
+                    {
+                        await ContainerService.SaveWeightCorrectionAsync(
+                            persisted.Id,
+                            correction.OldGross, correction.NewGross,
+                            correction.OldTare, correction.NewTare,
+                            correction.OldNet, correction.NewNet,
+                            correction.Reason,
+                            correction.CorrectedBy);
+                    }
+                }
+            }
+
             Snackbar.Add("Pristatymas priimtas!", Severity.Success);
             Navigation.NavigateTo($"/warehouse/deliveries/{deliveryId}");
         }
@@ -849,6 +972,20 @@
             _saving = false;
         }
     }
+
+    // BRC8 3.7 — Pending weight correction record (mapped by container code after persist)
+    private readonly List<PendingWeightCorrection> _weightCorrectionsToSave = new();
+
+    private record PendingWeightCorrection(
+        string ContainerCode,
+        decimal OldGross,
+        decimal NewGross,
+        decimal OldTare,
+        decimal NewTare,
+        decimal OldNet,
+        decimal NewNet,
+        string Reason,
+        int CorrectedBy);
 
     private string GetHoneyTypeName(int? id)
     {
