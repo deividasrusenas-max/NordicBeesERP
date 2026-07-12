@@ -58,4 +58,22 @@ public class StubPrinterGateway : IPrinterGateway
             return new PrintResult(false, ex.Message);
         }
     }
+
+    public Task<PrintResult> PrintLabelAsync(string zpl, Printer printer)
+        => PrintAsync(zpl, printer);
+
+    public async Task<PrintResult> PrintTestPageAsync(Printer printer)
+    {
+        var testZpl = $@"^XA
+^FO20,20^A0N,40,40^FATEST PAGE^FS
+^FO20,80^A0N,25,25^FOPrinter: {printer.Name}^FS
+^FO20,120^A0N,25,25^FOLocation: {printer.Location}^FS
+^FO20,160^A0N,25,25^FOSize: {printer.LabelWidthMm}mm x {printer.LabelHeightMm}mm^FS
+^FO20,200^A0N,25,25^FODarkness: {printer.Darkness}^FS
+^FO20,240^A0N,25,25^FODPI: {printer.Dpi}^FS
+^FO20,280^A0N,25,25^FODate: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC^FS
+^XZ";
+
+        return await PrintAsync(testZpl, printer);
+    }
 }

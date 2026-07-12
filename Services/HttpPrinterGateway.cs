@@ -15,6 +15,22 @@ public class HttpPrinterGateway : IPrinterGateway
         _httpClient = httpClient;
     }
 
+    public Task<PrintResult> PrintLabelAsync(string zpl, Printer printer)
+        => PrintAsync(zpl, printer);
+
+    public async Task<PrintResult> PrintTestPageAsync(Printer printer)
+    {
+        // Minimal ZPL test page: prints "TEST OK" centred on label
+        var testZpl = $@"^XA
+^CI28
+^FO20,20^A0N,40,40^FDTEST OK^FS
+^FO20,80^A0N,20,20^FD{printer.Name}^FS
+^FO20,110^A0N,20,20^FD{DateTime.UtcNow:yyyy-MM-dd HH:mm}^FS
+^XZ";
+
+        return await PrintAsync(testZpl, printer);
+    }
+
     public async Task<PrintResult> PrintAsync(string zpl, Printer printer)
     {
         try
