@@ -1,0 +1,460 @@
+@page "/warehouse/quarantine"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Data
+@using NordicBeesERP.Services
+@using NordicBeesERP.Components.Dialogs
+@using MySqlConnector
+@inject IDbContextFactory<NordicBeesERPContext> ContextFactory
+@inject IContainerService ContainerService
+@inject INonConformanceService NonConformanceService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Karantinas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+    else
+    {
+        <!-- Header -->
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.h5">Karantinas (BRC8 3.8)</MudText>
+            <MudButton OnClick="ReloadAsync"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Outlined"
+                       Color="Color.Default">
+                Atnaujinti
+            </MudButton>
+        </div>
+
+        <!-- Summary alert -->
+        @if (_quarantineContainers.Any())
+        {
+            <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.Warning" Class="mb-4" Variant="Variant.Filled">
+                Karantine yra <b>@_quarantineContainers.Count</b> konteineriai |
+                Bendras netto: <b>@_quarantineContainers.Sum(c => c.NetWeight).ToString("N1") kg</b>
+            </MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Icon="@Icons.Material.Filled.CheckCircle" Class="mb-4">
+                Karantine konteinerių nėra.
+            </MudAlert>
+        }
+
+        @if (_quarantineContainers.Any())
+        {
+            <!-- Quarantine containers table -->
+            <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+                <MudTable Items="@_quarantineContainers"
+                          Dense="true"
+                          Hover="true"
+                          Striped="true"
+                          Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Kodas</MudTh>
+                        <MudTh>Tipas</MudTh>
+                        <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                        <MudTh>Karantino priežastis</MudTh>
+                        <MudTh>Neatitikimas</MudTh>
+                        <MudTh style="width:220px">Veiksmai</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="container">
+                        <MudTd><strong>@container.ContainerCode</strong></MudTd>
+                        <MudTd>@(container.ContainerType == "BARREL" ? "Statinė" : "Kibiras")</MudTd>
+                        <MudTd Style="text-align:right">@container.NetWeight.ToString("N1")</MudTd>
+                        <MudTd>
+                            @if (!string.IsNullOrEmpty(container.QuarantineReason))
+                            {
+                                <MudText Typo="Typo.caption" MaxLines="2">@container.QuarantineReason</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Nenurodyta</MudText>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            @{
+                                var ncs = _ncByContainer.GetValueOrDefault(container.Id, new List<NonConformance>());
+                                if (ncs.Any())
+                                {
+                                    foreach (var nc in ncs)
+                                    {
+                                        <MudChip T="string"
+                                                 Color="@(GetSeverityColor(nc.Severity))"
+                                                 Size="Size.Small"
+                                                 Class="mr-1 mb-1">
+                                            @(GetSeverityLabel(nc.Severity)) — @(GetDispositionLabel(nc.Disposition))
+                                        </MudChip>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nėra</MudText>
+                                }
+                            }
+                        </MudTd>
+                        <MudTd>
+                            <div class="d-flex gap-2">
+                                <MudButton Size="Size.Small"
+                                           Color="Color.Success"
+                                           Variant="Variant.Outlined"
+                                           Class="tablet-action-btn"
+                                           OnClick="@(() => ReleaseContainerAsync(container.Id))"
+                                           StartIcon="@Icons.Material.Filled.CheckCircle"
+                                           Disabled="@_processing">
+                                    Leisti į sandėlį
+                                </MudButton>
+                                <MudButton Size="Size.Small"
+                                           Color="Color.Error"
+                                           Variant="Variant.Outlined"
+                                           Class="tablet-action-btn"
+                                           OnClick="@(() => WriteOffContainerAsync(container))"
+                                           StartIcon="@Icons.Material.Filled.DeleteForever"
+                                           Disabled="@_processing">
+                                    Nurašyti
+                                </MudButton>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+
+            <!-- Bulk actions -->
+            <MudPaper Class="pa-4 mt-4" Elevation="1" Style="background:#fff8e1; border-radius:8px">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Masiniai veiksmai</MudText>
+                <MudStack Row="true" Spacing="3">
+                    <MudButton Color="Color.Success"
+                               Variant="Variant.Filled"
+                               Class="tablet-action-btn"
+                               OnClick="ReleaseAllAsync"
+                               StartIcon="@Icons.Material.Filled.CheckCircle"
+                               Disabled="@_processing">
+                        Leisti visus į sandėlį
+                    </MudButton>
+                    <MudButton Color="Color.Error"
+                               Variant="Variant.Filled"
+                               Class="tablet-action-btn"
+                               OnClick="WriteOffAllAsync"
+                               StartIcon="@Icons.Material.Filled.DeleteForever"
+                               Disabled="@_processing">
+                        Nurašyti visus
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private List<Container> _quarantineContainers = new();
+    private Dictionary<int, List<NonConformance>> _ncByContainer = new();
+    private bool _loading = true;
+    private bool _processing = false;
+    private int? _currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUserId = await AuthService.GetUserIdAsync();
+        await LoadQuarantineAsync();
+    }
+
+    private async Task LoadQuarantineAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+
+            // Load all quarantine containers — read-only, NoTracking is fine
+            _quarantineContainers = await ctx.Containers
+                .Where(c => c.Status == "QUARANTINE")
+                .OrderByDescending(c => c.CreatedAt)
+                .ToListAsync();
+
+            // Load non-conformances for each quarantine container
+            _ncByContainer.Clear();
+            foreach (var container in _quarantineContainers)
+            {
+                var ncs = await NonConformanceService.GetByContainerIdAsync(container.Id);
+                if (ncs.Any())
+                {
+                    _ncByContainer[container.Id] = ncs.ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkeliant karantino duomenis: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        await LoadQuarantineAsync();
+        Snackbar.Add("Duomenys atnaujinti", Severity.Info);
+    }
+
+    /// <summary>
+    /// Release a single container from QUARANTINE to IN_STOCK.
+    /// Uses ExecuteSqlRawAsync per EF Core Rule 1 (global NoTracking).
+    /// Also updates related non-conformance to RESOLVED.
+    /// </summary>
+    private async Task ReleaseContainerAsync(int containerId)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            [nameof(ConfirmDialog.Message)] = "Ar tikrai paleisti konteinerį į sandėlį? Veiksmo atšaukti negalima.",
+            [nameof(ConfirmDialog.Title)] = "Patvirtinimas",
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result?.Canceled ?? true) return;
+
+        _processing = true;
+        StateHasChanged();
+
+        try
+        {
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+            using var transaction = await ctx.Database.BeginTransactionAsync();
+
+            try
+            {
+                // 1. Update container status to IN_STOCK
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "UPDATE containers SET status = 'IN_STOCK', quarantine_reason = NULL, quarantine_expires = NULL, nc_flagged = 0, nc_resolved = 1, updated_at = NOW() WHERE id = {0}",
+                    containerId);
+
+                // 2. Resolve related non-conformances (OPEN → RESOLVED)
+                var ncs = _ncByContainer.GetValueOrDefault(containerId, new List<NonConformance>());
+                foreach (var nc in ncs)
+                {
+                    await NonConformanceService.UpdateStatusAsync(nc.Id, "RESOLVED", _currentUserId);
+                }
+
+                await transaction.CommitAsync();
+                Snackbar.Add("Konteineris paleistas į sandėlį", Severity.Success);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+
+            await LoadQuarantineAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida paleidžiant konteinerį: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    /// <summary>
+    /// Write off a single container from QUARANTINE to WRITTEN_OFF.
+    /// Creates a non-conformance record with REJECTED disposition, then marks it CLOSED.
+    /// </summary>
+    private async Task WriteOffContainerAsync(Container container)
+    {
+        // Collect write-off reason via dialog
+        var parameters = new DialogParameters<WriteOffReasonDialog>
+        {
+            [nameof(WriteOffReasonDialog.ContainerCode)] = container.ContainerCode,
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<WriteOffReasonDialog>("Nurašyti konteinerį", parameters, options);
+        var result = await dialog.Result;
+
+        if (result?.Canceled ?? true) return;
+        var reason = result.Data as string;
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            Snackbar.Add("Nurašymo priežastis yra privaloma", Severity.Warning);
+            return;
+        }
+
+        _processing = true;
+        StateHasChanged();
+
+        try
+        {
+            // 1. Create non-conformance for write-off audit trail
+            var nc = new NonConformance
+            {
+                RefType = "CONTAINER",
+                RefId = container.Id,
+                Description = $"Konteineris nurašytas iš karantino: {reason}",
+                Severity = "MAJOR",
+                DetectedBy = _currentUserId ?? 0,
+                DetectedAt = DateTime.Now,
+                Disposition = "REJECTED",
+                DispositionNotes = reason
+            };
+            var createdNc = await NonConformanceService.CreateAsync(nc);
+
+            // 2. Close the non-conformance
+            await NonConformanceService.UpdateStatusAsync(createdNc.Id, "CLOSED", _currentUserId);
+
+            // 3. Write off the container via ContainerService (uses ExecuteSqlRawAsync internally)
+            await ContainerService.WriteOffAsync(
+                new List<int> { container.Id },
+                $"Karantinas: {reason}",
+                _currentUserId);
+
+            Snackbar.Add($"Konteineris {container.ContainerCode} nurašytas", Severity.Success);
+            await LoadQuarantineAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida nurašant konteinerį: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    /// <summary>
+    /// Release ALL quarantine containers to IN_STOCK at once.
+    /// </summary>
+    private async Task ReleaseAllAsync()
+    {
+        if (!_quarantineContainers.Any()) return;
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            [nameof(ConfirmDialog.Message)] = $"Ar tikrai paleisti visus @_quarantineContainers.Count konteinerių į sandėlį? Veiksmo atšaukti negalima.",
+            [nameof(ConfirmDialog.Title)] = "Masinis paleidimas",
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result?.Canceled ?? true) return;
+
+        _processing = true;
+        StateHasChanged();
+
+        try
+        {
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+            using var transaction = await ctx.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Bulk update all quarantine containers to IN_STOCK
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "UPDATE containers SET status = 'IN_STOCK', quarantine_reason = NULL, quarantine_expires = NULL, nc_flagged = 0, nc_resolved = 1, updated_at = NOW() WHERE status = 'QUARANTINE'");
+
+                // Resolve all related non-conformances
+                var allNcIds = _ncByContainer.Values.SelectMany(list => list).Select(nc => nc.Id).ToList();
+                foreach (var ncId in allNcIds)
+                {
+                    await NonConformanceService.UpdateStatusAsync(ncId, "RESOLVED", _currentUserId);
+                }
+
+                await transaction.CommitAsync();
+                Snackbar.Add($"Paleista @_quarantineContainers.Count konteinerių į sandėlį", Severity.Success);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+
+            await LoadQuarantineAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida atliekant masinį paleidimą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    /// <summary>
+    /// Write off ALL quarantine containers at once.
+    /// </summary>
+    private async Task WriteOffAllAsync()
+    {
+        if (!_quarantineContainers.Any()) return;
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            [nameof(ConfirmDialog.Message)] = $"Ar tikrai nurašyti visus @_quarantineContainers.Count konteinerių? Veiksmo atšaukti negalima.",
+            [nameof(ConfirmDialog.Title)] = "Masinis nurašymas",
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result?.Canceled ?? true) return;
+
+        _processing = true;
+        StateHasChanged();
+
+        try
+        {
+            var ids = _quarantineContainers.Select(c => c.Id).ToList();
+            await ContainerService.WriteOffAsync(ids, "Masinis nurašymas iš karantino", _currentUserId);
+
+            Snackbar.Add($"Nurašyta @_quarantineContainers.Count konteinerių iš karantino", Severity.Success);
+            await LoadQuarantineAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida atliekant masinį nurašymą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    #region Display helpers
+
+    private Color GetSeverityColor(string? severity) => severity switch
+    {
+        "CRITICAL" => Color.Error,
+        "MAJOR" => Color.Warning,
+        "MINOR" => Color.Info,
+        _ => Color.Default
+    };
+
+    private string GetSeverityLabel(string? severity) => severity switch
+    {
+        "CRITICAL" => "Kritinis",
+        "MAJOR" => "Didelis",
+        "MINOR" => "Mažas",
+        _ => severity ?? "-"
+    };
+
+    private string GetDispositionLabel(string? disposition) => disposition switch
+    {
+        "PENDING" => "Laukia",
+        "ACCEPTED" => "Priimta",
+        "REJECTED" => "Atmesta",
+        "REWORKED" => "Perdirbta",
+        "QUARANTINED" => "Karantine",
+        _ => disposition ?? "-"
+    };
+
+    #endregion
+}
