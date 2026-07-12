@@ -295,25 +295,30 @@ public class ContainerService : IContainerService
         }
     }
 
-    public async Task<string?> GetLastContainerCodeAsync()
+    public async Task SaveWeightCorrectionAsync(int containerId, decimal oldGross, decimal newGross,
+        decimal oldTare, decimal newTare, decimal oldNet, decimal newNet,
+        string reason, int correctedBy)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var lastContainer = await context.Containers
-            .Where(c => !c.ContainerCode.StartsWith("BUCKET/"))
-            .OrderByDescending(c => c.Id)
-            .Select(c => c.ContainerCode)
-            .FirstOrDefaultAsync();
-        return lastContainer;
-    }
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Insert audit record into container_weight_corrections
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO container_weight_corrections (container_id, old_gross_weight, new_gross_weight, old_tare_weight, new_tare_weight, old_net_weight, new_net_weight, reason, corrected_by, corrected_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, NOW())",
+                containerId, oldGross, newGross, oldTare, newTare, oldNet, newNet, reason, correctedBy);
 
-    public async Task<string?> GetLastBucketCodeAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        var lastBucket = await context.Containers
-            .Where(c => c.ContainerCode.StartsWith("BUCKET/"))
-            .OrderByDescending(c => c.Id)
-            .Select(c => c.ContainerCode)
-            .FirstOrDefaultAsync();
-        return lastBucket;
+            // 2. Update container weights
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE containers SET gross_weight = {0}, tare_weight = {1}, net_weight = {2}, updated_at = NOW() WHERE id = {3}",
+                newGross, newTare, newNet, containerId);
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }
