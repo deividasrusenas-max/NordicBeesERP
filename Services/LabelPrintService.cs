@@ -22,7 +22,7 @@ public class LabelPrintService : ILabelPrintService
         _templateService = templateService;
     }
 
-    public async Task PrintReceiptLabelAsync(int containerId, int stationId, int? operatorId)
+    public async Task PrintReceiptLabelAsync(int containerId, int stationId, int operatorId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -85,7 +85,7 @@ public class LabelPrintService : ILabelPrintService
         await context.SaveChangesAsync();
     }
 
-    public async Task PrintQuarantineLabelAsync(int containerId, int stationId, int? operatorId, int? nonConformanceId)
+    public async Task PrintQuarantineLabelAsync(int containerId, int stationId, int operatorId, int? nonConformanceId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -149,7 +149,7 @@ public class LabelPrintService : ILabelPrintService
         await context.SaveChangesAsync();
     }
 
-    public async Task ReprintLabelAsync(int containerId, ReprintReasonCode reasonCode, string? reasonText, int? operatorId)
+    public async Task ReprintLabelAsync(int containerId, ReprintReasonCode reasonCode, string? reasonText, int operatorId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 

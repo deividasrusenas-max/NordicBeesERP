@@ -48,8 +48,9 @@ public class PrintJob
     [Column("last_error")]
     public string? LastError { get; set; }
 
+    [Required]
     [Column("created_by_user_id")]
-    public int? CreatedByUserId { get; set; }
+    public int CreatedByUserId { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

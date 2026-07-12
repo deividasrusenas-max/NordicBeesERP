@@ -595,10 +595,10 @@ window.initSignatureCanvas = function(canvasId) {
                 {
                     try
                     {
-                        if (stationId.HasValue)
+                        if (stationId.HasValue && _currentUserId.HasValue)
                         {
                             await LabelPrintService.PrintQuarantineLabelAsync(
-                                container.Id, stationId.Value, _currentUserId, createdNc.Id);
+                                container.Id, stationId.Value, _currentUserId.Value, createdNc.Id);
                         }
                     }
                     catch (Exception printEx)
