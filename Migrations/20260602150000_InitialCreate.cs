@@ -1529,7 +1529,7 @@ namespace NordicBeesERP.Migrations
 
             migrationBuilder.Sql(@"
         ALTER TABLE containers
-            ADD COLUMN IF NOT EXISTS weighing_mode ENUM('MANUAL','SCALE') NOT NULL DEFAULT 'MANUAL',
+            ADD COLUMN IF NOT EXISTS weighing_mode VARCHAR(10) NOT NULL DEFAULT 'MANUAL',
             ADD COLUMN IF NOT EXISTS last_label_printed_at DATETIME NULL;
     ");
 
