@@ -12,6 +12,9 @@
 @inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
 @inject IRawMaterialTypeService RawMaterialTypeService
 @inject ICompanySettingsService CompanySettingsService
+@inject IAuthService AuthService
+@inject INonConformanceService NonConformanceService
+@inject ILabelPrintService LabelPrintService
 @using MySqlConnector
 
 <PageTitle>Pasirašyti pristatymą</PageTitle>
@@ -182,6 +185,12 @@
             {
                 <MudChip T="string" Color="@(allOk ? Color.Success : Color.Warning)" Size="Size.Medium" Class="mt-2">
                     Rezultatas: @(allOk ? "✓ Tinkamas (OK)" : "⚠ Sąlyginis")
+                </MudChip>
+            }
+            @if (!anyOk)
+            {
+                <MudChip T="string" Color="Color.Error" Size="Size.Medium" Class="mt-2">
+                    Rezultatas: ✗ Netinkamas (NOK) — karantinas
                 </MudChip>
             }
         </MudPaper>
@@ -376,9 +385,11 @@ window.initSignatureCanvas = function(canvasId) {
     private string _signedByType = "SUPPLIER";
     private string _receiverName = "";
     private string _companyName = string.Empty;
+    private int? _currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
+        _currentUserId = await AuthService.GetUserIdAsync();
         var settings = await CompanySettingsService.GetSettingsAsync();
         _companyName = settings.CompanyName;
         _delivery = await DeliveryService.GetByIdAsync(Id);
@@ -456,11 +467,15 @@ window.initSignatureCanvas = function(canvasId) {
             return;
         }
 
-        // Validate inspection
+        // Determine inspection result: all → OK, some → CONDITIONAL, none → NOK
+        var allChecked = _checkColor && _checkSmell && _checkConsistency && _checkPackaging && _checkContamination;
         var anyChecked = _checkColor || _checkSmell || _checkConsistency || _checkPackaging || _checkContamination;
-        if (!anyChecked)
+        var inspResult = allChecked ? "OK" : (anyChecked ? "CONDITIONAL" : "NOK");
+
+        // NOK requires notes
+        if (inspResult == "NOK" && string.IsNullOrWhiteSpace(_inspectionNotes))
         {
-            Snackbar.Add("Atlikite priėmimo patikrinimą", Severity.Warning);
+            Snackbar.Add("Netinkamam rezultatui privaloma įvesti pastabas", Severity.Warning);
             return;
         }
 
@@ -535,17 +550,64 @@ window.initSignatureCanvas = function(canvasId) {
                 }
             }
 
-            // Save inspection result
+            // Save inspection result (inspection_by_user_id = int, not inspection_by varchar)
             {
-                var allChecked = _checkColor && _checkSmell && _checkConsistency && _checkPackaging && _checkContamination;
-                var inspResult = allChecked ? "OK" : "CONDITIONAL";
                 using var ctx = await ContextFactory.CreateDbContextAsync();
                 await ctx.Database.ExecuteSqlRawAsync(
-                    "UPDATE deliveries SET inspection_result=@r, inspection_notes=@n, inspection_at=@at WHERE id=@id",
+                    "UPDATE deliveries SET inspection_result=@r, inspection_notes=@n, inspection_by_user_id=@uid, inspection_at=@at WHERE id=@id",
                     new MySqlConnector.MySqlParameter("@r", inspResult),
                     new MySqlConnector.MySqlParameter("@n", _inspectionNotes ?? ""),
+                    new MySqlConnector.MySqlParameter("@uid", _currentUserId.HasValue ? (object)_currentUserId.Value : DBNull.Value),
                     new MySqlConnector.MySqlParameter("@at", DateTime.Now),
                     new MySqlConnector.MySqlParameter("@id", Id));
+            }
+
+            // NOK quarantine flow (BRC8 3.8)
+            if (inspResult == "NOK")
+            {
+                // 1. Create non-conformance record
+                var nc = new NordicBeesERP.Models.WarehouseModule.NonConformance
+                {
+                    RefType = "DELIVERY",
+                    RefId = Id,
+                    Description = _inspectionNotes ?? "Priėmimo patikrinimas nepavyko",
+                    Severity = "CRITICAL",
+                    DetectedBy = _currentUserId ?? 0,
+                    DetectedAt = DateTime.Now,
+                    Disposition = "PENDING"
+                };
+                var createdNc = await NonConformanceService.CreateAsync(nc);
+
+                // 2. Set all containers to QUARANTINE
+                {
+                    using var ctx = await ContextFactory.CreateDbContextAsync();
+                    foreach (var container in _containers)
+                    {
+                        await ctx.Database.ExecuteSqlRawAsync(
+                            "UPDATE containers SET status='QUARANTINE', updated_at=NOW() WHERE id={0}",
+                            container.Id);
+                    }
+                }
+
+                // 3. Print quarantine labels for each container (best effort)
+                var stationId = _delivery?.WeighingStationId;
+                foreach (var container in _containers)
+                {
+                    try
+                    {
+                        if (stationId.HasValue)
+                        {
+                            await LabelPrintService.PrintQuarantineLabelAsync(
+                                container.Id, stationId.Value, _currentUserId, createdNc.Id);
+                        }
+                    }
+                    catch (Exception printEx)
+                    {
+                        Snackbar.Add($"Įspėjimas: karantino lipduko spausdinimas nepavyko ({printEx.Message})", Severity.Warning);
+                    }
+                }
+
+                Snackbar.Add("Pristatymas priskirtas KARANTINUI (BRC8 3.8). Susisiekite su kokybės vadybininku.", Severity.Error);
             }
 
             var svg = await JS.InvokeAsync<string>("getCanvasSvg", "signatureCanvas");
