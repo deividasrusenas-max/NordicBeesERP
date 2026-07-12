@@ -1415,10 +1415,8 @@ namespace NordicBeesERP.Migrations
             migrationBuilder.Sql(@"
         ALTER TABLE business_partners
             ADD COLUMN IF NOT EXISTS `approval_status` enum('PENDING','APPROVED','REJECTED','EXPIRED') NOT NULL DEFAULT 'PENDING' COMMENT 'Tiekėjo patvirtinimo statusas',
-            ADD COLUMN IF NOT EXISTS `approval_expiry` date DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo galiojimo pabaiga',
-            ADD COLUMN IF NOT EXISTS `approved_by` int DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo operatorius',
-            ADD KEY IF NOT EXISTS `approved_by` (`approved_by`),
-            ADD CONSTRAINT IF NOT EXISTS `business_partners_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `erp_users` (`id`);
+            ADD COLUMN IF NOT EXISTS `approval_date` date DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo data',
+            ADD COLUMN IF NOT EXISTS `approval_expires_at` date DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo galiojimo pabaiga';
     ");
 
             migrationBuilder.Sql(@"
@@ -1466,11 +1464,11 @@ namespace NordicBeesERP.Migrations
     ");
 
             migrationBuilder.Sql(@"
-        UPDATE containers SET container_type = 'BUCKET' WHERE container_type = 'BUCKET_GROUP';
+        UPDATE containers SET container_type = 'BUCKET' WHERE container_type = 'BUCKET';
     ");
 
             migrationBuilder.Sql(@"
-        UPDATE delivery_lines SET container_type = 'BUCKET' WHERE container_type = 'BUCKET_GROUP';
+        UPDATE delivery_lines SET container_type = 'BUCKET' WHERE container_type = 'BUCKET';
     ");
 
             migrationBuilder.Sql(@"
@@ -1568,7 +1566,8 @@ namespace NordicBeesERP.Migrations
 
             migrationBuilder.Sql(@"
         ALTER TABLE business_partners
-            ADD COLUMN IF NOT EXISTS is_approved TINYINT(1) NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS approval_status VARCHAR(15) NULL,
+            ADD COLUMN IF NOT EXISTS approval_date DATE NULL,
             ADD COLUMN IF NOT EXISTS approval_expires_at DATE NULL,
             ADD COLUMN IF NOT EXISTS supplier_risk_level ENUM('LOW','MEDIUM','HIGH') NULL,
             ADD COLUMN IF NOT EXISTS default_origin_country VARCHAR(100) NULL DEFAULT 'Lietuva';
