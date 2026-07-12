@@ -829,6 +829,16 @@ namespace NordicBeesERP.Migrations
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Etiketų spausdinimo darbai';
             ");
 
+            // Audit fix: created_by_user_id must be NOT NULL (BRC8 3.3 — every print job has an operator)
+            migrationBuilder.AlterColumn<int>(
+                name: "created_by_user_id",
+                table: "print_jobs",
+                type: "int",
+                nullable: false,
+                oldNullable: true,
+                defaultValue: 0,
+                schema: "nordic_bees_erp");
+
             migrationBuilder.Sql(@"
                 CREATE TABLE IF NOT EXISTS `container_label_events` (
   `id` int NOT NULL AUTO_INCREMENT,
