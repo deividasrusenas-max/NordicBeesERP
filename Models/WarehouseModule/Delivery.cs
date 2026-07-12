@@ -122,6 +122,9 @@ public class Delivery
     [Column("created_by_user_id")]
     public int? CreatedByUserId { get; set; }
 
+    [Column("received_by_user_id")]
+    public int? ReceivedByUserId { get; set; }
+
     [Column("inspection_by_user_id")]
     public int? InspectionByUserId { get; set; }
 }

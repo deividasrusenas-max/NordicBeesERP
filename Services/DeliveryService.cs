@@ -123,6 +123,7 @@ public class DeliveryService : IDeliveryService
             delivery.CreatedAt = DateTime.Now;
             delivery.UpdatedAt = DateTime.Now;
             delivery.CreatedByUserId = operatorId;
+            delivery.ReceivedByUserId = operatorId;
             context.Deliveries.Add(delivery);
             await context.SaveChangesAsync();
 

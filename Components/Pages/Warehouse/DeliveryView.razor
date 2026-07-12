@@ -14,6 +14,7 @@
 @inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
 @inject IJSRuntime JS
 @inject IRawMaterialTypeService RawMaterialTypeService
+@inject IAuthService AuthService
 
 @implements IDisposable
 
@@ -131,6 +132,12 @@
                     <MudText Typo="Typo.body2" Style="font-weight:600">@_delivery.TotalNetWeight.ToString("N1") kg</MudText>
                 </MudPaper>
             </MudItem>
+            <MudItem xs="12" md="3">
+                <MudPaper Elevation="0" Style="background:#fef3c7; border-radius:8px; border-left:4px solid #f59e0b; padding:16px">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Priėmė (BRC8 3.9)</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600">@_receivedByUser</MudText>
+                </MudPaper>
+            </MudItem>
         </MudGrid>
 
         <!-- Delivery Lines -->
@@ -238,6 +245,7 @@
     private List<Container> _containers = new();
     private string _supplierName = "";
     private string _warehouseName = "";
+    private string _receivedByUser = "-";
 
     // Lookups
     private List<Product> _products = new();
@@ -331,6 +339,13 @@
 
         var warehouses = await WarehouseService.GetAllAsync();
         _warehouseName = warehouses.FirstOrDefault(w => w.Id == _delivery.WarehouseId)?.Name ?? "";
+
+        // BRC8 3.9 — resolve received_by_user_id to user name
+        if (_delivery.ReceivedByUserId.HasValue)
+        {
+            var user = await AuthService.GetUserByIdAsync(_delivery.ReceivedByUserId.Value);
+            _receivedByUser = user?.FullName ?? user?.Email ?? $"#{_delivery.ReceivedByUserId}";
+        }
     }
 
     private string GetLineName(DeliveryLine line)

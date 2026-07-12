@@ -825,7 +825,7 @@ namespace NordicBeesERP.Migrations
   CONSTRAINT `print_jobs_ibfk_1` FOREIGN KEY (`printer_id`) REFERENCES `printers` (`id`),
   CONSTRAINT `print_jobs_ibfk_2` FOREIGN KEY (`station_id`) REFERENCES `weighing_stations` (`id`),
   CONSTRAINT `print_jobs_ibfk_3` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
-  CONSTRAINT `print_jobs_ibfk_4` FOREIGN KEY (`created_by_user_id`) REFERENCES `AspNetUsers` (`Id`)
+  CONSTRAINT `print_jobs_ibfk_4` FOREIGN KEY (`created_by_user_id`) REFERENCES `erp_users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Etiketų spausdinimo darbai';
             ");
 
@@ -844,7 +844,7 @@ namespace NordicBeesERP.Migrations
   KEY `operator_id` (`operator_id`),
   CONSTRAINT `container_label_events_ibfk_1` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
   CONSTRAINT `container_label_events_ibfk_2` FOREIGN KEY (`print_job_id`) REFERENCES `print_jobs` (`id`),
-  CONSTRAINT `container_label_events_ibfk_3` FOREIGN KEY (`operator_id`) REFERENCES `AspNetUsers` (`Id`)
+  CONSTRAINT `container_label_events_ibfk_3` FOREIGN KEY (`operator_id`) REFERENCES `erp_users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Etiketų istorija - INSERT ONLY (BRC8 3.3)';
             ");
 
@@ -865,7 +865,7 @@ namespace NordicBeesERP.Migrations
   KEY `container_id` (`container_id`),
   KEY `corrected_by` (`corrected_by`),
   CONSTRAINT `container_weight_corrections_ibfk_1` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
-  CONSTRAINT `container_weight_corrections_ibfk_2` FOREIGN KEY (`corrected_by`) REFERENCES `AspNetUsers` (`Id`)
+  CONSTRAINT `container_weight_corrections_ibfk_2` FOREIGN KEY (`corrected_by`) REFERENCES `erp_users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Svorio korekcijos (BRC8 3.7) - bruto/tara/neto atskirai';
             ");
 
@@ -903,7 +903,7 @@ namespace NordicBeesERP.Migrations
   KEY `supplier_id` (`supplier_id`),
   KEY `approved_by` (`approved_by`),
   CONSTRAINT `supplier_approvals_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `business_partners` (`id`),
-  CONSTRAINT `supplier_approvals_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `AspNetUsers` (`Id`)
+  CONSTRAINT `supplier_approvals_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `erp_users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Tiekėjų patvirtinimai';
             ");
 
@@ -927,8 +927,8 @@ namespace NordicBeesERP.Migrations
   KEY `closed_by` (`closed_by`),
   CONSTRAINT `non_conformances_ibfk_1` FOREIGN KEY (`delivery_id`) REFERENCES `deliveries` (`id`),
   CONSTRAINT `non_conformances_ibfk_2` FOREIGN KEY (`container_id`) REFERENCES `containers` (`id`),
-  CONSTRAINT `non_conformances_ibfk_3` FOREIGN KEY (`discovered_by`) REFERENCES `AspNetUsers` (`Id`),
-  CONSTRAINT `non_conformances_ibfk_4` FOREIGN KEY (`closed_by`) REFERENCES `AspNetUsers` (`Id`)
+  CONSTRAINT `non_conformances_ibfk_3` FOREIGN KEY (`discovered_by`) REFERENCES `erp_users` (`id`),
+  CONSTRAINT `non_conformances_ibfk_4` FOREIGN KEY (`closed_by`) REFERENCES `erp_users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Neprikaitos';
             ");
 
@@ -1202,7 +1202,7 @@ namespace NordicBeesERP.Migrations
   `uploaded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `uploaded_by` (`uploaded_by`),
-  CONSTRAINT `document_files_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `AspNetUsers` (`Id`)
+  CONSTRAINT `document_files_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `erp_users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Dokumentų saugojimas';
             ");
 
@@ -1387,7 +1387,7 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS `nc_flagged` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'BRC8 6.3: Neprikaitos žymė',
             ADD COLUMN IF NOT EXISTS `nc_resolved` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'BRC8 6.3: Neprikaitos išspręsta',
             ADD KEY IF NOT EXISTS `idx_weight_verified_by` (`weight_verified_by`),
-            ADD CONSTRAINT IF NOT EXISTS `containers_ibfk_4` FOREIGN KEY (`weight_verified_by`) REFERENCES `AspNetUsers` (`Id`);
+            ADD CONSTRAINT IF NOT EXISTS `containers_ibfk_4` FOREIGN KEY (`weight_verified_by`) REFERENCES `erp_users` (`id`);
     ");
 
             migrationBuilder.Sql(@"
@@ -1408,7 +1408,7 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS `approval_expiry` date DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo galiojimo pabaiga',
             ADD COLUMN IF NOT EXISTS `approved_by` int DEFAULT NULL COMMENT 'Tiekėjo patvirtinimo operatorius',
             ADD KEY IF NOT EXISTS `approved_by` (`approved_by`),
-            ADD CONSTRAINT IF NOT EXISTS `business_partners_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `AspNetUsers` (`Id`);
+            ADD CONSTRAINT IF NOT EXISTS `business_partners_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `erp_users` (`id`);
     ");
 
             migrationBuilder.Sql(@"
@@ -1479,6 +1479,42 @@ namespace NordicBeesERP.Migrations
             migrationBuilder.Sql(@"
         ALTER TABLE containers
             MODIFY status ENUM('RECEIVED','IN_STOCK','RESERVED','IN_PRODUCTION','QUARANTINE','SOLD','RETURNED','WRITTEN_OFF') NULL DEFAULT 'IN_STOCK';
+    ");
+
+            // ── BRC8 3.9: User ID fields for traceability ─────────────────────
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD COLUMN inspection_by_user_id INT NULL,
+            ADD INDEX `idx_deliveries_inspection_by_user_id` (`inspection_by_user_id`);
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD CONSTRAINT `fk_deliveries_inspection_by_user` FOREIGN KEY (`inspection_by_user_id`) REFERENCES `erp_users` (`id`);
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE containers
+            ADD COLUMN received_by_user_id INT NULL,
+            ADD INDEX `idx_containers_received_by_user_id` (`received_by_user_id`);
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE containers
+            ADD CONSTRAINT `fk_containers_received_by_user` FOREIGN KEY (`received_by_user_id`) REFERENCES `erp_users` (`id`);
+    ");
+
+            // BRC8 3.9: delivery-level received_by_user_id (who accepted the delivery)
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD COLUMN received_by_user_id INT NULL,
+            ADD INDEX `idx_deliveries_received_by_user_id` (`received_by_user_id`);
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD CONSTRAINT `fk_deliveries_received_by_user` FOREIGN KEY (`received_by_user_id`) REFERENCES `erp_users` (`id`);
     ");
 
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
