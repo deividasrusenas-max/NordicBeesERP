@@ -1517,6 +1517,151 @@ namespace NordicBeesERP.Migrations
             ADD CONSTRAINT `fk_deliveries_received_by_user` FOREIGN KEY (`received_by_user_id`) REFERENCES `erp_users` (`id`);
     ");
 
+            // ── BRC8 labeling module — missing containers columns ──────────────
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE containers
+            ADD COLUMN IF NOT EXISTS weighing_mode ENUM('MANUAL','SCALE') NOT NULL DEFAULT 'MANUAL',
+            ADD COLUMN IF NOT EXISTS last_label_printed_at DATETIME NULL;
+    ");
+
+            // ── BRC8 labeling module — missing deliveries columns ──────────────
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD COLUMN IF NOT EXISTS weighing_status ENUM('NOT_STARTED','IN_PROGRESS','COMPLETED') NOT NULL DEFAULT 'NOT_STARTED',
+            ADD COLUMN IF NOT EXISTS weighing_station_id INT NULL,
+            ADD COLUMN IF NOT EXISTS weighing_started_at DATETIME NULL,
+            ADD COLUMN IF NOT EXISTS weighing_completed_at DATETIME NULL,
+            ADD COLUMN IF NOT EXISTS created_by_user_id INT NULL;
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD INDEX IF NOT EXISTS `idx_deliveries_weighing_station_id` (`weighing_station_id`),
+            ADD INDEX IF NOT EXISTS `idx_deliveries_created_by_user_id` (`created_by_user_id`);
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD CONSTRAINT IF NOT EXISTS `fk_deliveries_weighing_station` FOREIGN KEY (`weighing_station_id`) REFERENCES `weighing_stations` (`id`),
+            ADD CONSTRAINT IF NOT EXISTS `fk_deliveries_created_by_user` FOREIGN KEY (`created_by_user_id`) REFERENCES `erp_users` (`id`);
+    ");
+
+            // UNIQUE key on delivery_number (race condition protection)
+            migrationBuilder.Sql(@"
+        ALTER TABLE deliveries
+            ADD UNIQUE KEY IF NOT EXISTS `uk_delivery_number` (`delivery_number`);
+    ");
+
+            // ── BRC8 labeling module — missing business_partners columns ───────
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE business_partners
+            ADD COLUMN IF NOT EXISTS is_approved TINYINT(1) NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS approval_expires_at DATE NULL,
+            ADD COLUMN IF NOT EXISTS supplier_risk_level ENUM('LOW','MEDIUM','HIGH') NULL,
+            ADD COLUMN IF NOT EXISTS default_origin_country VARCHAR(100) NULL DEFAULT 'Lietuva';
+    ");
+
+            // ── BRC8 labeling module — fix container_label_events columns ──────
+            // Spec requires reason_code, reason_text; operator_id should be NULLable
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE container_label_events
+            ADD COLUMN IF NOT EXISTS reason_code ENUM('DAMAGED','LOST','MISPRINT','OTHER') NULL,
+            ADD COLUMN IF NOT EXISTS reason_text VARCHAR(200) NULL;
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE container_label_events
+            MODIFY operator_id INT NULL;
+    ");
+
+            // ── BRC8 labeling module — fix label_templates columns ────────────
+            // Spec: template_type ENUM('RECEIPT_BARREL','RECEIPT_BUCKET','QUARANTINE_BARREL','QUARANTINE_BUCKET','LOT_BARREL','LOT_BUCKET')
+            //       scriban_content LONGTEXT, label_width_mm, label_height_mm, is_default
+            // Existing: template_type ENUM('ZPL','EPL','PLAIN_TEXT'), content, width_mm, height_mm, default_printer_id
+
+            // Widen template_type enum first
+            migrationBuilder.Sql(@"
+        ALTER TABLE label_templates
+            MODIFY template_type ENUM('ZPL','EPL','PLAIN_TEXT','RECEIPT_BARREL','RECEIPT_BUCKET','QUARANTINE_BARREL','QUARANTINE_BUCKET','LOT_BARREL','LOT_BUCKET') NOT NULL DEFAULT 'ZPL';
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE label_templates
+            ADD COLUMN IF NOT EXISTS scriban_content LONGTEXT NULL,
+            ADD COLUMN IF NOT EXISTS label_width_mm DECIMAL(5,1) NOT NULL DEFAULT 108.0,
+            ADD COLUMN IF NOT EXISTS label_height_mm DECIMAL(5,1) NOT NULL DEFAULT 75.0,
+            ADD COLUMN IF NOT EXISTS is_default TINYINT(1) NOT NULL DEFAULT 0;
+    ");
+
+            // ── BRC8 labeling module — fix supplier_approvals columns ──────────
+            // Spec: approval_date, expires_at (NULL = no expiry), risk_level, approval_method,
+            //       cert_number, is_current
+            // Existing: approved_at, valid_until (NOT NULL), document_path
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE supplier_approvals
+            ADD COLUMN IF NOT EXISTS risk_level ENUM('LOW','MEDIUM','HIGH') NOT NULL DEFAULT 'LOW',
+            ADD COLUMN IF NOT EXISTS approval_method ENUM('AUDIT','QUESTIONNAIRE','CERTIFICATION','OTHER') NOT NULL DEFAULT 'OTHER',
+            ADD COLUMN IF NOT EXISTS cert_number VARCHAR(100) NULL,
+            ADD COLUMN IF NOT EXISTS is_current TINYINT(1) NOT NULL DEFAULT 1;
+    ");
+
+            // Rename approved_at → approval_date, valid_until → expires_at (make nullable)
+            migrationBuilder.Sql(@"
+        ALTER TABLE supplier_approvals
+            CHANGE COLUMN approved_at approval_date DATE NOT NULL;
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE supplier_approvals
+            CHANGE COLUMN valid_until expires_at DATE NULL;
+    ");
+
+            // ── BRC8 labeling module — fix non_conformances columns ───────────
+            // Spec: ref_type ENUM('DELIVERY','CONTAINER'), ref_id INT, detected_by, detected_at,
+            //       severity ENUM('MINOR','MAJOR','CRITICAL'), disposition, disposition_by,
+            //       disposition_at, disposition_notes
+            // Existing: delivery_id, container_id, nc_type, discovered_by, discovered_at,
+            //           status, corrective_action, closed_by, closed_at
+
+            // Widen status → disposition enum
+            migrationBuilder.Sql(@"
+        ALTER TABLE non_conformances
+            MODIFY status ENUM('OPEN','INVESTIGATING','RESOLVED','CLOSED','PENDING','ACCEPTED','REJECTED','REWORKED','QUARANTINED') NOT NULL DEFAULT 'OPEN';
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE non_conformances
+            ADD COLUMN IF NOT EXISTS ref_type ENUM('DELIVERY','CONTAINER') NULL,
+            ADD COLUMN IF NOT EXISTS ref_id INT NULL,
+            ADD COLUMN IF NOT EXISTS severity ENUM('MINOR','MAJOR','CRITICAL') NULL,
+            ADD COLUMN IF NOT EXISTS disposition_notes TEXT NULL,
+            ADD COLUMN IF NOT EXISTS detected_by INT NULL,
+            ADD COLUMN IF NOT EXISTS detected_at DATETIME NULL,
+            ADD COLUMN IF NOT EXISTS disposition_by INT NULL,
+            ADD COLUMN IF NOT EXISTS disposition_at DATETIME NULL;
+    ");
+
+            // ── BRC8 labeling module — fix document_files columns ─────────────
+            // Spec: ref_type ENUM('DELIVERY','LOT','ORDER'), ref_id, doc_type,
+            //       original_filename, generated_at, generated_by
+            // Existing: document_type, document_ref, file_size, content_type,
+            //           uploaded_by, uploaded_at
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE document_files
+            ADD COLUMN IF NOT EXISTS ref_type ENUM('DELIVERY','LOT','ORDER') NULL,
+            ADD COLUMN IF NOT EXISTS ref_id INT NULL,
+            ADD COLUMN IF NOT EXISTS doc_type ENUM('PACKING_LIST','CMR','QUALITY_CERT','RECEIPT_ACT') NULL,
+            ADD COLUMN IF NOT EXISTS original_filename VARCHAR(200) NULL,
+            ADD COLUMN IF NOT EXISTS generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS generated_by INT NULL;
+    ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
