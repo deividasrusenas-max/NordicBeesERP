@@ -313,6 +313,11 @@ public class ContainerService : IContainerService
                 "UPDATE containers SET gross_weight = {0}, tare_weight = {1}, net_weight = {2}, updated_at = NOW() WHERE id = {3}",
                 newGross, newTare, newNet, containerId);
 
+            // 3. Insert audit event into container_label_events (BRC8 3.7)
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO container_label_events (container_id, event_type, print_job_id, reason_code, operator_id, created_at) VALUES ({0}, 'WEIGHT_CORRECTED', NULL, NULL, {1}, NOW())",
+                containerId, correctedBy);
+
             await transaction.CommitAsync();
         }
         catch
@@ -322,23 +327,4 @@ public class ContainerService : IContainerService
         }
     }
 
-    public async Task<string?> GetLastContainerCodeAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Containers
-            .Where(c => c.ContainerCode != null && c.ContainerCode.Contains("/"))
-            .OrderByDescending(c => c.CreatedAt)
-            .Select(c => c.ContainerCode)
-            .FirstOrDefaultAsync();
-    }
-
-    public async Task<string?> GetLastBucketCodeAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Containers
-            .Where(c => c.ContainerCode != null && c.ContainerCode.StartsWith("BUCKET"))
-            .OrderByDescending(c => c.CreatedAt)
-            .Select(c => c.ContainerCode)
-            .FirstOrDefaultAsync();
-    }
 }
