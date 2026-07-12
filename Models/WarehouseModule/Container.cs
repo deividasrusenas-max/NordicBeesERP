@@ -70,6 +70,9 @@ public class Container
     [Column("quality_params")]
     public string? QualityParams { get; set; }
 
+    [Column("quarantine_reason")]
+    public string? QuarantineReason { get; set; }
+
     // Labeling module fields
     [MaxLength(10)]
     [Column("weighing_mode")]

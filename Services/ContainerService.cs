@@ -321,4 +321,24 @@ public class ContainerService : IContainerService
             throw;
         }
     }
+
+    public async Task<string?> GetLastContainerCodeAsync()
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Containers
+            .Where(c => c.ContainerCode != null && c.ContainerCode.Contains("/"))
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => c.ContainerCode)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<string?> GetLastBucketCodeAsync()
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Containers
+            .Where(c => c.ContainerCode != null && c.ContainerCode.StartsWith("BUCKET"))
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => c.ContainerCode)
+            .FirstOrDefaultAsync();
+    }
 }
