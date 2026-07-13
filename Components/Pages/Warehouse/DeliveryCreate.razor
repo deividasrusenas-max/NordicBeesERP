@@ -68,6 +68,12 @@
                 <MudAlert Severity="Severity.Error" Variant="Variant.Text" Dense="true" Class="mt-2">
                     Tiekėjas neturi galiojančio patvirtinimo (BRC8 3.5).
                 </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.Assignment"
+                           Class="mt-2"
+                           OnClick="@(() => Navigation.NavigateTo($"/warehouse/suppliers/{_selectedSupplier!.Id}/approval?returnUrl=/warehouse/deliveries/new"))">
+                    Pildyti tiekėjo anketą
+                </MudButton>
             }
 
             @if (_approvalChecked && !_approvalExpired && _daysUntilExpiry > 0)
@@ -875,7 +881,8 @@
                     DialogService,
                     container.GrossWeight,
                     container.TareWeight,
-                    oldNet);
+                    oldNet,
+                    operatorId.Value);
 
                 if (correction == null)
                 {

@@ -901,20 +901,25 @@ namespace NordicBeesERP.Migrations
             // ── Group 4: depends on Groups 1-3 ───────────────────────────────
 
             migrationBuilder.Sql(@"
-                CREATE TABLE IF NOT EXISTS `supplier_approvals` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `supplier_id` int NOT NULL,
-  `approved_by` int NOT NULL,
-  `approved_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `valid_until` date NOT NULL,
-  `document_path` varchar(500) DEFAULT NULL,
-  `notes` text,
-  PRIMARY KEY (`id`),
-  KEY `supplier_id` (`supplier_id`),
-  KEY `approved_by` (`approved_by`),
-  CONSTRAINT `supplier_approvals_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `business_partners` (`id`),
-  CONSTRAINT `supplier_approvals_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `erp_users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Tiekėjų patvirtinimai';
+                 CREATE TABLE IF NOT EXISTS `supplier_approvals` (
+   `id` int NOT NULL AUTO_INCREMENT,
+   `supplier_id` int NOT NULL,
+   `approved_by` int NOT NULL,
+   `approved_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   `valid_until` date NOT NULL,
+   `document_path` varchar(500) DEFAULT NULL,
+   `notes` text,
+   `risk_level` varchar(10) NOT NULL DEFAULT 'MEDIUM',
+   `approval_method` varchar(20) NOT NULL DEFAULT 'OTHER',
+   `cert_number` varchar(100) DEFAULT NULL,
+   `is_current` tinyint(1) NOT NULL DEFAULT 1,
+   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   PRIMARY KEY (`id`),
+   KEY `supplier_id` (`supplier_id`),
+   KEY `approved_by` (`approved_by`),
+   CONSTRAINT `supplier_approvals_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `business_partners` (`id`),
+   CONSTRAINT `supplier_approvals_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `erp_users` (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Tiekėjų patvirtinimai';
             ");
 
             migrationBuilder.Sql(@"
@@ -1608,15 +1613,16 @@ namespace NordicBeesERP.Migrations
 
             // ── BRC8 labeling module — fix supplier_approvals columns ──────────
             // Spec: approval_date, expires_at (NULL = no expiry), risk_level, approval_method,
-            //       cert_number, is_current
+            //       cert_number, is_current, created_at
             // Existing: approved_at, valid_until (NOT NULL), document_path
 
             migrationBuilder.Sql(@"
         ALTER TABLE supplier_approvals
-            ADD COLUMN IF NOT EXISTS risk_level ENUM('LOW','MEDIUM','HIGH') NOT NULL DEFAULT 'LOW',
-            ADD COLUMN IF NOT EXISTS approval_method ENUM('AUDIT','QUESTIONNAIRE','CERTIFICATION','OTHER') NOT NULL DEFAULT 'OTHER',
+            ADD COLUMN IF NOT EXISTS risk_level VARCHAR(10) NOT NULL DEFAULT 'MEDIUM',
+            ADD COLUMN IF NOT EXISTS approval_method VARCHAR(20) NOT NULL DEFAULT 'OTHER',
             ADD COLUMN IF NOT EXISTS cert_number VARCHAR(100) NULL,
-            ADD COLUMN IF NOT EXISTS is_current TINYINT(1) NOT NULL DEFAULT 1;
+            ADD COLUMN IF NOT EXISTS is_current TINYINT(1) NOT NULL DEFAULT 1,
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
     ");
 
             // Rename approved_at → approval_date, valid_until → expires_at (make nullable)
@@ -1728,7 +1734,8 @@ namespace NordicBeesERP.Migrations
             migrationBuilder.Sql("DROP TABLE IF EXISTS `products`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `raw_material_types`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `stock_movements`");
-            migrationBuilder.Sql("DROP TABLE IF EXISTS `supplier_approvals`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `non_conformance`");
+        migrationBuilder.Sql("DROP TABLE IF EXISTS `supplier_approvals`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `supplier_payments`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `warehouse_stock`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `warehouse_stocks`");

@@ -101,6 +101,29 @@ public class NonConformanceService : INonConformanceService
         var newIdObj = await cmd2.ExecuteScalarAsync(ct);
         var newId = newIdObj != null ? Convert.ToInt32(newIdObj) : 0;
 
+        // BRC8 3.9 — Insert ContainerLabelEvent(NON_CONFORMITY) for traceability audit trail.
+        // If RefType="CONTAINER" → event on that single container.
+        // If RefType="DELIVERY" → event on every container belonging to that delivery.
+        if (containerId.HasValue)
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO container_label_events (container_id, event_type, reason_text, operator_id, created_at) VALUES ({0}, 'NON_CONFORMITY', {1}, {2}, NOW())",
+                containerId.Value,
+                nc.Description ?? string.Empty,
+                (object?)nc.DetectedBy ?? DBNull.Value);
+        }
+        else if (deliveryId.HasValue)
+        {
+            // Delivery-level non-conformance: touch every container in the delivery
+            await context.Database.ExecuteSqlRawAsync(
+                @"INSERT INTO container_label_events (container_id, event_type, reason_text, operator_id, created_at)
+                  SELECT id, 'NON_CONFORMITY', {0}, {1}, NOW()
+                  FROM containers WHERE delivery_id = {2}",
+                nc.Description ?? string.Empty,
+                (object?)nc.DetectedBy ?? DBNull.Value,
+                deliveryId.Value);
+        }
+
         return new NonConformance
         {
             Id = Convert.ToInt32(newId),

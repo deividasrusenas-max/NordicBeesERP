@@ -36,3 +36,4 @@ mempalace.yaml
 # Kilo Code secrets - project-level config can't resolve {env:} references,
 # so real keys live here instead. Never commit this directory.
 .kilo/secrets/
+.playwright-mcp/

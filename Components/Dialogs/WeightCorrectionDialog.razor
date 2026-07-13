@@ -104,7 +104,8 @@
         decimal OldNetWeight,
         decimal NewNetWeight,
         string Reason,
-        bool ReprintLabel);
+        bool ReprintLabel,
+        int OperatorId);
 
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
 
@@ -112,6 +113,7 @@
     [Parameter] public decimal OldGrossWeight { get; set; }
     [Parameter] public decimal OldTareWeight { get; set; }
     [Parameter] public decimal OldNetWeight { get; set; }
+    [Parameter] public int OperatorId { get; set; }
 
     private decimal _oldGrossWeight => OldGrossWeight;
     private decimal _oldTareWeight => OldTareWeight;
@@ -205,7 +207,8 @@
             _oldNetWeight,
             _calculatedNetWeight,
             _reason!.Trim(),
-            _reprintLabel
+            _reprintLabel,
+            OperatorId
         );
 
         MudDialog.Close(DialogResult.Ok(result));
@@ -215,13 +218,15 @@
         IDialogService dialogService,
         decimal oldGrossWeight,
         decimal oldTareWeight,
-        decimal oldNetWeight)
+        decimal oldNetWeight,
+        int operatorId)
     {
         var parameters = new DialogParameters
         {
             [nameof(OldGrossWeight)] = oldGrossWeight,
             [nameof(OldTareWeight)] = oldTareWeight,
             [nameof(OldNetWeight)] = oldNetWeight,
+            [nameof(OperatorId)] = operatorId,
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
         var dialog = await dialogService.ShowAsync<WeightCorrectionDialog>("Svorio korekcija", parameters, options);

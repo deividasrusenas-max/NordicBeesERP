@@ -1,0 +1,73 @@
+@using MudBlazor
+@namespace NordicBeesERP.Components.Dialogs
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.DeleteForever" Color="Color.Error" />
+            <MudText Typo="Typo.h6">Nurašyti konteinerį</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div style="min-width:400px;">
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                Konteineris: <b>@ContainerCode</b>
+            </MudText>
+
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Priežastis</MudText>
+            <MudSelect @bind-Value="_reason"
+                       Label="Pasirinkite nurašymo priežastį"
+                       Variant="Variant.Outlined"
+                       FullWidth="@true"
+                       Margin="Margin.Dense"
+                       Class="mb-3"
+                       Required="@true">
+                <MudSelectItem T="string" Value="@("Pažeista pakuotė")">Pažeista pakuotė</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Netinkama kokybė")">Netinkama kokybė</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Pasenusi žaliava")">Pasenusi žaliava</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Užteršta")">Užteršta</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Kita")">Kita</MudSelectItem>
+            </MudSelect>
+
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Pastaba (nebūtina)</MudText>
+            <MudTextField @bind-Value="_notes"
+                          Label="Papildoma informacija"
+                          Variant="Variant.Outlined"
+                          FullWidth="@true"
+                          Margin="Margin.Dense"
+                          Lines="3" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Style="text-transform:none" OnClick="ConfirmAsync" StartIcon="@Icons.Material.Filled.DeleteForever">Nurašyti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string ContainerCode { get; set; } = string.Empty;
+
+    private string _reason = "";
+    private string _notes = "";
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void ConfirmAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_reason))
+        {
+            Snackbar?.Add("Priežastis yra privaloma", Severity.Warning);
+            return;
+        }
+
+        var result = $"{_reason}{(!string.IsNullOrWhiteSpace(_notes) ? $": {_notes.Trim()}" : "")}";
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    [Inject] private ISnackbar? Snackbar { get; set; }
+}

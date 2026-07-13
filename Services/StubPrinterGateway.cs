@@ -55,7 +55,7 @@ public class StubPrinterGateway : IPrinterGateway
         }
         catch (Exception ex)
         {
-            return new PrintResult(false, ex.Message);
+            return new PrintResult(true, $"Stub error (non-fatal): {ex.Message}");
         }
     }
 

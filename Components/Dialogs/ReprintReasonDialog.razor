@@ -1,4 +1,5 @@
 @using MudBlazor
+@using NordicBeesERP.Models.Printing
 @namespace NordicBeesERP.Components.Dialogs
 
 <MudDialog>
@@ -9,24 +10,25 @@
         </div>
     </TitleContent>
     <DialogContent>
-        <div style="min-width:480px;">
-            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Priežasties kodas</MudText>
+        <MudStack Class="min-width-480">
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Priežasties kodas *</MudText>
             <MudSelect @bind-Value="_reasonCode"
+                       T="ReprintReasonCode"
                        Label="Pasirinkite priežastį"
                        Variant="Variant.Outlined"
                        FullWidth="@true"
                        Margin="Margin.Dense"
                        Class="mb-3"
                        Required="@true">
-                 <MudSelectItem T="string" Value="@("DAMAGED")">Pažiesta etiketė</MudSelectItem>
-                 <MudSelectItem T="string" Value="@("LOST")">Pamesta etiketė</MudSelectItem>
-                 <MudSelectItem T="string" Value="@("MISPRINT")">Neteisingai išspausdinta</MudSelectItem>
-                 <MudSelectItem T="string" Value="@("OTHER")">Kita</MudSelectItem>
+                <MudSelectItem T="ReprintReasonCode" Value="@ReprintReasonCode.DAMAGED">Pažeista etiketė</MudSelectItem>
+                <MudSelectItem T="ReprintReasonCode" Value="@ReprintReasonCode.LOST">Pamesta etiketė</MudSelectItem>
+                <MudSelectItem T="ReprintReasonCode" Value="@ReprintReasonCode.MISPRINT">Neteisingai išspausdinta</MudSelectItem>
+                <MudSelectItem T="ReprintReasonCode" Value="@ReprintReasonCode.OTHER">Kita</MudSelectItem>
             </MudSelect>
 
-            @if (_reasonCode == "OTHER")
+            @if (_reasonCode == ReprintReasonCode.OTHER)
             {
-                <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Papildoma informacija</MudText>
+                <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Papildoma informacija *</MudText>
                 <MudTextField @bind-Value="_reasonText"
                               Label="Aprašykite priežastį"
                               Variant="Variant.Outlined"
@@ -34,6 +36,10 @@
                               Margin="Margin.Dense"
                               Lines="3"
                               Required="@true" />
+                @if (_otherRequiredMessageShown)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">Privaloma nurodyti priežastį</MudText>
+                }
             }
             else
             {
@@ -43,48 +49,48 @@
                               FullWidth="@true"
                               Margin="Margin.Dense" />
             }
-        </div>
+        </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">Atšaukti</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="ConfirmAsync" StartIcon="@Icons.Material.Filled.Print">Perspausdinti</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="Cancel">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="Confirm" StartIcon="@Icons.Material.Filled.Print">Perspausdinti</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private string _reasonCode = "DAMAGED";
-    private string? _reasonText = null;
+    private ReprintReasonCode _reasonCode = ReprintReasonCode.DAMAGED;
+    private string? _reasonText;
+    private bool _otherRequiredMessageShown;
 
-    private void CancelAsync()
+    private void Cancel()
     {
         MudDialog.Cancel();
     }
 
-    private void ConfirmAsync()
+    private void Confirm()
     {
-        if (string.IsNullOrEmpty(_reasonCode))
+        // BRC8 3.3 — reason_code is always populated (default DAMAGED), but validate OTHER requires text
+        if (_reasonCode == ReprintReasonCode.OTHER && string.IsNullOrWhiteSpace(_reasonText))
         {
+            _otherRequiredMessageShown = true;
+            StateHasChanged();
             return;
         }
 
-        if (_reasonCode == "OTHER" && string.IsNullOrWhiteSpace(_reasonText))
-        {
-            return;
-        }
-
+        // Return typed enum — caller uses it directly, no string parsing needed
         MudDialog.Close(DialogResult.Ok((ReasonCode: _reasonCode, ReasonText: _reasonText)));
     }
 
-    public static async Task<(string ReasonCode, string? ReasonText)?> ShowAsync(IDialogService dialogService)
+    public static async Task<(ReprintReasonCode ReasonCode, string? ReasonText)?> ShowAsync(IDialogService dialogService)
     {
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true };
         var dialog = await dialogService.ShowAsync<ReprintReasonDialog>("Perspausdinimo priežastis", new DialogParameters(), options);
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
-            return ((string, string?)?)result?.Data;
+            return ((ReprintReasonCode, string?)?)result?.Data;
         }
         return null;
     }

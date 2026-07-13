@@ -24,10 +24,10 @@ public class SupplierApproval
     public int ApprovedBy { get; set; }
 
     [Required]
-    [Column("approval_date", TypeName = "date")]
+    [Column("approved_at", TypeName = "date")]
     public DateTime ApprovalDate { get; set; } = DateTime.UtcNow.Date;
 
-    [Column("expires_at", TypeName = "date")]
+    [Column("valid_until", TypeName = "date")]
     public DateTime? ExpiresAt { get; set; }
 
     [Required]

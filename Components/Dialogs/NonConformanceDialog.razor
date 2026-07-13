@@ -52,13 +52,15 @@
         int RefId,
         string RefType,
         string Severity,
-        string Description);
+        string Description,
+        int OperatorId);
 
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
 
     // Reference context — passed from caller, not editable
     [Parameter] public int RefId { get; set; }
     [Parameter] public string RefType { get; set; } = "Container";
+    [Parameter] public int OperatorId { get; set; }
 
     private string _severity = "MINOR";
     private string? _description = null;
@@ -93,7 +95,8 @@
             RefId,
             RefType,
             _severity,
-            _description!.Trim()
+            _description!.Trim(),
+            OperatorId
         );
 
         MudDialog.Close(DialogResult.Ok(result));
@@ -102,12 +105,14 @@
     public static async Task<NonConformanceResult?> ShowAsync(
         IDialogService dialogService,
         int refId,
+        int operatorId,
         string refType = "Container")
     {
         var parameters = new DialogParameters
         {
             [nameof(RefId)] = refId,
             [nameof(RefType)] = refType,
+            [nameof(OperatorId)] = operatorId,
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
         var dialog = await dialogService.ShowAsync<NonConformanceDialog>("Neatitikties registrojimas", parameters, options);

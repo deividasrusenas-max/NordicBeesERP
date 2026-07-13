@@ -1,0 +1,36 @@
+@* test file, safe to delete *@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Skill Injection Test</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                This is a MudDialog structure example using MudStack layout.
+            </MudText>
+            <MudText Typo="Typo.body2">
+                test file, safe to delete
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CancelAsync">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="ConfirmAsync">Užverti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private void CancelAsync()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void ConfirmAsync()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

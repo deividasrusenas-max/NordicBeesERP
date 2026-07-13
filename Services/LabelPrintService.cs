@@ -22,7 +22,7 @@ public class LabelPrintService : ILabelPrintService
         _templateService = templateService;
     }
 
-    public async Task PrintReceiptLabelAsync(int containerId, int stationId, int operatorId)
+    public async Task<int> PrintReceiptLabelAsync(int containerId, int stationId, int operatorId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -66,26 +66,29 @@ public class LabelPrintService : ILabelPrintService
         context.PrintJobs.Add(job);
         await context.SaveChangesAsync();
 
-        // Update container label tracking
-        container.LastLabelPrintedAt = DateTime.Now;
-        container.LabelPrintCount += 1;
-        context.Containers.Update(container);
-        await context.SaveChangesAsync();
+        var jobId = job.Id;
+
+        // Update container label tracking — ExecuteSqlRawAsync (safe under global NoTracking)
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE containers SET last_label_printed_at = {0}, label_print_count = label_print_count + 1, updated_at = NOW() WHERE id = {1}",
+            DateTime.Now, container.Id);
 
         // Record label event
         var @event = new ContainerLabelEvent
         {
             ContainerId = container.Id,
-            PrintJobId = job.Id,
+            PrintJobId = jobId,
             EventType = "PRINTED",
             OperatorId = operatorId,
             CreatedAt = DateTime.Now
         };
         context.ContainerLabelEvents.Add(@event);
         await context.SaveChangesAsync();
+
+        return jobId;
     }
 
-    public async Task PrintQuarantineLabelAsync(int containerId, int stationId, int operatorId, int? nonConformanceId)
+    public async Task<int> PrintQuarantineLabelAsync(int containerId, int stationId, int operatorId, int? nonConformanceId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -130,26 +133,29 @@ public class LabelPrintService : ILabelPrintService
         context.PrintJobs.Add(job);
         await context.SaveChangesAsync();
 
-        // Update container label tracking
-        container.LastLabelPrintedAt = DateTime.Now;
-        container.LabelPrintCount += 1;
-        context.Containers.Update(container);
-        await context.SaveChangesAsync();
+        var jobId = job.Id;
+
+        // Update container label tracking — ExecuteSqlRawAsync (safe under global NoTracking)
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE containers SET last_label_printed_at = {0}, label_print_count = label_print_count + 1, updated_at = NOW() WHERE id = {1}",
+            DateTime.Now, container.Id);
 
         // Record label event
         var @event = new ContainerLabelEvent
         {
             ContainerId = container.Id,
-            PrintJobId = job.Id,
+            PrintJobId = jobId,
             EventType = "QUARANTINE_PRINTED",
             OperatorId = operatorId,
             CreatedAt = DateTime.Now
         };
         context.ContainerLabelEvents.Add(@event);
         await context.SaveChangesAsync();
+
+        return jobId;
     }
 
-    public async Task ReprintLabelAsync(int containerId, ReprintReasonCode reasonCode, string? reasonText, int operatorId)
+    public async Task<int> ReprintLabelAsync(int containerId, ReprintReasonCode reasonCode, string? reasonText, int operatorId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -190,17 +196,18 @@ public class LabelPrintService : ILabelPrintService
         context.PrintJobs.Add(job);
         await context.SaveChangesAsync();
 
-        // Update container label tracking
-        container.LastLabelPrintedAt = DateTime.Now;
-        container.LabelPrintCount += 1;
-        context.Containers.Update(container);
-        await context.SaveChangesAsync();
+        var jobId = job.Id;
+
+        // Update container label tracking — ExecuteSqlRawAsync (safe under global NoTracking)
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE containers SET last_label_printed_at = {0}, label_print_count = label_print_count + 1, updated_at = NOW() WHERE id = {1}",
+            DateTime.Now, container.Id);
 
         // Record label event
         var @event = new ContainerLabelEvent
         {
             ContainerId = container.Id,
-            PrintJobId = job.Id,
+            PrintJobId = jobId,
             EventType = "REPRINTED",
             OperatorId = operatorId,
             ReasonCode = reasonCode.ToString(),
@@ -209,6 +216,8 @@ public class LabelPrintService : ILabelPrintService
         };
         context.ContainerLabelEvents.Add(@event);
         await context.SaveChangesAsync();
+
+        return jobId;
     }
 
     private static async Task<(Delivery Delivery, string SupplierName, string MaterialName, string WarehouseName)>

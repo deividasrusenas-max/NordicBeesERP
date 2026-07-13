@@ -13,7 +13,7 @@ public enum PrintJobType { RECEIPT_LABEL, QUARANTINE_LABEL, REPRINT }
 public enum PrintJobStatus { PENDING, PROCESSING, DONE, FAILED, CANCELLED }
 
 /// <summary>Container label event type</summary>
-public enum ContainerLabelEventType { PRINTED, REPRINTED, QUARANTINE_PRINTED, CANCELLED, PRINT_FAILED }
+public enum ContainerLabelEventType { PRINTED, REPRINTED, QUARANTINE_PRINTED, CANCELLED, PRINT_FAILED, WEIGHT_CORRECTED, NON_CONFORMITY }
 
 /// <summary>Reason code for reprint events</summary>
 public enum ReprintReasonCode { DAMAGED, LOST, MISPRINT, OTHER }

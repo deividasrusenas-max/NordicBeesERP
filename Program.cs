@@ -58,6 +58,7 @@ builder.Services.AddScoped<ISupplierApprovalService, SupplierApprovalService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
 builder.Services.AddScoped<IDeliveryReceiptPdfService, DeliveryReceiptPdfService>();
+builder.Services.AddScoped<ISupplierApprovalPdfService, SupplierApprovalPdfService>();
 builder.Services.AddScoped<ICompanySettingsService, CompanySettingsService>();
 builder.Services.AddScoped<IHoneyTypeService, HoneyTypeService>();
 builder.Services.AddScoped<IContainerService, ContainerService>();

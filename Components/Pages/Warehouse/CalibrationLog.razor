@@ -1,0 +1,291 @@
+@page "/warehouse/calibration-log"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.Printing
+@using NordicBeesERP.Data
+@using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Services
+@inject IDbContextFactory<NordicBeesERPContext> ContextFactory
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Kalibravimas (BRC8 6.4)</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+    else
+    {
+        <!-- Header -->
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.h5">Kalibravimo žurnalas (BRC8 6.4)</MudText>
+            <MudButton OnClick="ReloadAsync"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Outlined"
+                       Color="Color.Default">
+                Atnaujinti
+            </MudButton>
+        </div>
+
+        <!-- Summary alerts -->
+        @if (_overdueStations.Any())
+        {
+            <MudAlert Severity="Severity.Error" Icon="@Icons.Material.Filled.Error" Class="mb-2" Variant="Variant.Filled">
+                <b>@_overdueStations.Count</b> stoties kalibracija pasibaigė:
+                @foreach (var station in _overdueStations)
+                {
+                    <MudText Typo="Typo.body2" Class="mt-1" Style="display:inline-block; margin-right:16px;">
+                        @station.Name (baigėsi @station.LastCalibrationDate?.ToString("yyyy-MM-dd"))
+                    </MudText>
+                }
+            </MudAlert>
+        }
+
+        @if (_warningStations.Any())
+        {
+            <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.Warning" Class="mb-4" Variant="Variant.Filled">
+                <b>@_warningStations.Count</b> stoties kalibracija baigiasi per 30 dienų:
+                @foreach (var station in _warningStations)
+                {
+                    <MudText Typo="Typo.body2" Class="mt-1" Style="display:inline-block; margin-right:16px;">
+                        @station.Name (baigiasi @station.NextCalibrationDate?.ToString("yyyy-MM-dd"))
+                    </MudText>
+                }
+            </MudAlert>
+        }
+
+        @if (!_stations.Any())
+        {
+            <MudAlert Severity="Severity.Info" Icon="@Icons.Material.Filled.Info" Class="mb-4">
+                Darbo vietos dar nėra sukonfigūruotos. Pridėkite darbo vietas skiltyje "Darbo vietos".
+            </MudAlert>
+        }
+        else
+        {
+            <!-- Stations table -->
+            <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+                <MudTable Items="@_stations"
+                          Dense="true"
+                          Hover="true"
+                          Striped="true"
+                          Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Stotis</MudTh>
+                        <MudTh>Sandėlis</MudTh>
+                        <MudTh>
+                            <span style="text-align:center; display:block;">Paskutinė kalibracija</span>
+                        </MudTh>
+                        <MudTh>
+                            <span style="text-align:center; display:block;">Kita kalibracija</span>
+                        </MudTh>
+                        <MudTh>Sertif. nr.</MudTh>
+                        <MudTh>
+                            <span style="text-align:center; display:block;">Statusas</span>
+                        </MudTh>
+                        <MudTh style="width:220px">Veiksmai</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="station">
+                        <MudTd><strong>@station.Name</strong></MudTd>
+                        <MudTd>
+                            @GetWarehouseName(station.WarehouseId)
+                        </MudTd>
+                        <MudTd Style="text-align:center">
+                            @(station.LastCalibrationDate?.ToString("yyyy-MM-dd") ?? "—")
+                        </MudTd>
+                        <MudTd Style="text-align:center">
+                            @(station.NextCalibrationDate?.ToString("yyyy-MM-dd") ?? "—")
+                        </MudTd>
+                        <MudTd>
+                            @if (!string.IsNullOrEmpty(station.CalibrationCertNumber))
+                            {
+                                <MudChip T="string" Color="Color.Info" Size="Size.Small">
+                                    @station.CalibrationCertNumber
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Nėra</MudText>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            @{
+                                var statusInfo = GetCalibrationStatus(station);
+                            }
+                            <MudChip T="string"
+                                     Color="@statusInfo.Color"
+                                     Size="Size.Small"
+                                     Variant="Variant.Filled">
+                                @statusInfo.Label
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>
+                            <MudButton Size="Size.Small"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Outlined"
+                                       Class="tablet-action-btn"
+                                       OnClick="@(() => OpenCalibrationDialog(station))"
+                                       StartIcon="@Icons.Material.Filled.CalendarToday"
+                                       Disabled="@_processing">
+                                Registruoti kalibraciją
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private List<WeighingStation> _stations = new();
+    private List<WeighingStation> _overdueStations = new();
+    private List<WeighingStation> _warningStations = new();
+    private Dictionary<int, string> _warehouseNames = new();
+    private bool _loading = true;
+    private bool _processing = false;
+    private int? _currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUserId = await AuthService.GetUserIdAsync();
+        await LoadStationsAsync();
+    }
+
+    private async Task LoadStationsAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+
+            // Load all weighing stations (read-only, NoTracking is fine)
+            _stations = await ctx.WeighingStations
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+
+            // Load warehouse names for display
+            var warehouses = await ctx.Warehouses
+                .ToDictionaryAsync(w => w.Id, w => w.Name);
+            _warehouseNames = warehouses;
+
+            // Categorize by calibration status
+            _overdueStations.Clear();
+            _warningStations.Clear();
+
+            foreach (var station in _stations)
+            {
+                var status = GetCalibrationStatus(station);
+                if (status.Key == "OVERDUE")
+                {
+                    _overdueStations.Add(station);
+                }
+                else if (status.Key == "WARNING")
+                {
+                    _warningStations.Add(station);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkeliant darbo vietas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        await LoadStationsAsync();
+        Snackbar.Add("Duomenys atnaujinti", Severity.Info);
+    }
+
+    private string GetWarehouseName(int warehouseId)
+    {
+        return _warehouseNames.GetValueOrDefault(warehouseId, $"ID: {warehouseId}");
+    }
+
+    /// <summary>
+    /// Returns calibration status: OK (green), WARNING (yellow, within 30d), OVERDUE (red), or NONE (grey).
+    /// </summary>
+    private (string Key, Color Color, string Label) GetCalibrationStatus(WeighingStation station)
+    {
+        if (!station.NextCalibrationDate.HasValue)
+        {
+            if (station.LastCalibrationDate.HasValue)
+            {
+                return ("NONE", Color.Default, "Nenustatyta");
+            }
+            return ("NONE", Color.Default, "Nekalibruota");
+        }
+
+        var nextDate = station.NextCalibrationDate.Value.Date;
+        var today = DateTime.Today;
+
+        if (nextDate < today)
+        {
+            return ("OVERDUE", Color.Error, "Pasibaigė");
+        }
+
+        if ((nextDate - today).TotalDays <= 30)
+        {
+            return ("WARNING", Color.Warning, "Baigiasi");
+        }
+
+        return ("OK", Color.Success, "Galioja");
+    }
+
+    /// <summary>
+    /// Opens the CalibrationDialog, then on confirm writes to weighing_stations via ExecuteSqlRawAsync.
+    /// Full call chain: Button OnClick → OpenCalibrationDialog → CalibrationDialog.ShowAsync →
+    /// user confirms → ExecuteSqlRawAsync UPDATE → Snackbar + reload.
+    /// </summary>
+    private async Task OpenCalibrationDialog(WeighingStation station)
+    {
+        var result = await CalibrationDialog.ShowAsync(
+            DialogService,
+            station.Id,
+            station.Name,
+            station.NextCalibrationDate);
+
+        if (result == null) return;
+
+        _processing = true;
+        StateHasChanged();
+
+        try
+        {
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+
+            // Update calibration fields on weighing_stations via ExecuteSqlRawAsync
+            // (EF Core Rule 1: global NoTracking means FindAsync+SaveChanges does nothing)
+            await ctx.Database.ExecuteSqlRawAsync(
+                @"UPDATE weighing_stations
+                  SET last_calibration_date = {0},
+                      next_calibration_date = {1},
+                      calibration_cert_number = {2},
+                      updated_at = NOW()
+                  WHERE id = {3}",
+                result.CalibrationDate,
+                result.NextCalibrationDate,
+                result.CertNumber,
+                station.Id);
+
+            Snackbar.Add($"Stoties \"{station.Name}\" kalibracija užregistruota", Severity.Success);
+            await LoadStationsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įrašant kalibraciją: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+}
