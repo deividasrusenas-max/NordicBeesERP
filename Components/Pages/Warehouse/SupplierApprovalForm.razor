@@ -1,0 +1,506 @@
+@page "/warehouse/supplier-approval-form"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Services
+@inject ISupplierApprovalService ApprovalService
+@inject ISupplierApprovalPdfService ApprovalPdfService
+@inject ICustomerService CustomerService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Tiekėjo patvirtinimas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+
+    @if (_supplier == null)
+    {
+        <MudProgressLinear Color=Color.Primary Indeterminate="true" Class="mb-2" />
+    }
+    else
+    {
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.h5">Tiekėjo patvirtinimas (BRC8 3.5)</MudText>
+            <MudButton Href="@_returnUrl" Variant="Variant.Outlined" Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.ArrowBack">Atgal</MudButton>
+        </div>
+
+        <!-- Supplier info card -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background:#eff6ff; border-radius:8px; border-left:4px solid #2563eb">
+            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Tiekėjas</MudText>
+            <MudText Typo="Typo.h6">@_supplier.Name</MudText>
+            @if (!string.IsNullOrWhiteSpace(_supplier.CompanyCode))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Įm. kodas: @_supplier.CompanyCode</MudText>
+            }
+            @if (!string.IsNullOrWhiteSpace(_supplier.NationalIdNumber))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Asmens kodas: @_supplier.NationalIdNumber</MudText>
+            }
+        </MudPaper>
+
+        <!-- Risk level preview (reactive) -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4"
+                  Style="@(GetRiskBannerStyle())">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="MudBlazor.Justify.SpaceBetween">
+                <MudText Typo="Typo.subtitle1">Automatinis rizikos įvertinimas</MudText>
+                <MudChip T="string" Size="Size.Medium"
+                         Color="@(GetRiskColor())"
+                         Variant="Variant.Filled">
+                    @_computedRiskLevel
+                </MudChip>
+            </MudStack>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                Skaičiuojama pagal klausimyno atsakymus. Galite pataisyti žemiau.
+            </MudText>
+        </MudPaper>
+
+        <!-- Section 1: Hygiene and Food Safety -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background:#f8fafc; border-radius:8px">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Higiena ir maisto sauga</MudText>
+
+            <MudText Typo="Typo.body1" Class="mb-2">Ar tiekėjas turi higienos sertifikatą arba deklaraciją?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qHygieneCert">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip, turi galiojantį</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi / neaišku</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne, neturi</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar laikomasi asmeninės higienos reikalavimų (apdara, rankų plovimas)?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qPersonalHygiene">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra maisto saugos planas (HACCP arba atitinkamas)?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qFoodSafetyPlan">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi / neaišku</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra kenkėjų kontrolės programa?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qPestControl">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi / neaišku</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+        </MudPaper>
+
+        <!-- Section 2: Production Practices -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background:#f8fafc; border-radius:8px">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Gamybos praktikos</MudText>
+
+            <MudText Typo="Typo.body1" Class="mb-2">Ar medus surenkamas iš žinomų, kontroliuojamų bitininkystės plotų?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qSourceTracked">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar nėra naudojamas pesticidų / antibiotikų virš leistinų normų?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qNoPesticides">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip, nėra viršijama</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Neaišku / nėra duomenų</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Yra rizika / buvo viršyta</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar laikomasi tinkamų saugojimo sąlygų (temperatūra, švara)?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qStorageConditions">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra produktų atsekamumo sistema?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qTraceability">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+        </MudPaper>
+
+        <!-- Section 3: Documentation and Certification -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background:#f8fafc; border-radius:8px">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Dokumentacija ir sertifikatai</MudText>
+
+            <MudText Typo="Typo.body1" Class="mb-2">Ar tiekėjas gali pateikti kokybės sertifikatus (ISO, BRC, organinis ir pan.)?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qQualityCerts">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip, turi</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne, neturi</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra laboratorinių tyrimų rezultatai (analizės)?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qLabTests">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+
+            <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar tiekėjas bendradarbiauja tikrinant / audituojant?</MudText>
+            <MudRadioGroup T="string" @bind-Value="_qCooperation">
+                <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
+                <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
+                <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
+            </MudRadioGroup>
+        </MudPaper>
+
+        <!-- Section 4: Approval Details -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background:#f8fafc; border-radius:8px">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Patvirtinimo duomenys</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" @bind-Value="_approvalMethod"
+                               Label="Patvirtinimo būdas" Variant="Variant.Outlined"
+                               Required="@true" FullWidth="@true">
+                        <MudSelectItem Value="@("QUESTIONNAIRE")">Klausimynas</MudSelectItem>
+                        <MudSelectItem Value="@("AUDIT")">Auditas</MudSelectItem>
+                        <MudSelectItem Value="@("CERTIFICATION")">Sertifikatas</MudSelectItem>
+                        <MudSelectItem Value="@("OTHER")">Kita</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_certNumber"
+                                  Label="Sertifikato Nr. (nebūtina)"
+                                  Variant="Variant.Outlined" FullWidth="@true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="_expiresAt"
+                                   Label="Galioja iki (nebūtina — paliktu tuščią jeigu neterminuotas)"
+                                   Variant="Variant.Outlined" FullWidth="@true"
+                                   DateFormat="yyyy-MM-dd" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" @bind-Value="_riskLevelOverride"
+                               Label="@($"Rizikos lygis (automatinis: {_computedRiskLevel})")"
+                               Variant="Variant.Outlined" FullWidth="@true">
+                        <MudSelectItem Value="@("AUTO")">Automatinis (@_computedRiskLevel)</MudSelectItem>
+                        <MudSelectItem Value="@("LOW")">Žemas</MudSelectItem>
+                        <MudSelectItem Value="@("MEDIUM")">Vidutinis</MudSelectItem>
+                        <MudSelectItem Value="@("HIGH")">Aukštas</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_notes"
+                                  Label="Pastabos" Variant="Variant.Outlined"
+                                  Lines="3" FullWidth="@true" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Section 5: Signature -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background:#fff; border-radius:8px; border:1px solid #e0e0e0">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Patvirtinimo parašas</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-3">
+                Nupieškite parašą žemiau, kad patvirtintumėte tiekėjo vertinimą.
+            </MudText>
+            <canvas id="approvalSignatureCanvas" width="800" height="300"
+                    style="border:2px solid #2563eb; border-radius:8px; touch-action:none; cursor:crosshair; background:#fff; display:block; width:100%; height:300px"></canvas>
+            <MudButton Variant="Variant.Text" Color="Color.Default" Class="mt-2" Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="ClearCanvasAsync">Išvalyti parašą</MudButton>
+        </MudPaper>
+
+        <!-- Submit -->
+        <MudStack Row="true" Spacing="3" Justify="Justify.FlexEnd" Class="mb-4">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Large"
+                       OnClick="@(() => Navigation.NavigateTo(_returnUrl))">
+                Atšaukti
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                       OnClick="SubmitAsync" Disabled="@_submitting"
+                       StartIcon="@(_submitting ? null : Icons.Material.Filled.Check)">
+                @if (_submitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Color="Color.Inherit" />
+                }
+                Patvirtinti tiekėją
+            </MudButton>
+        </MudStack>
+    }
+</MudContainer>
+
+<!-- Signature canvas JS (same pattern as DeliverySignature.razor) -->
+<script>
+window.initApprovalSignatureCanvas = function (canvasId) {
+    setTimeout(function () {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0) {
+            canvas.width = Math.round(rect.width);
+            canvas.height = Math.round(rect.height);
+        }
+
+        const ctx = canvas.getContext('2d');
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        const getPos = (e) => {
+            const r = canvas.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+            }
+            return { x: e.clientX - r.left, y: e.clientY - r.top };
+        };
+
+        canvas.addEventListener('mousedown', (e) => { e.preventDefault(); isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+        canvas.addEventListener('mousemove', (e) => { if (!isDrawing) return; e.preventDefault(); const p = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); lastX = p.x; lastY = p.y; });
+        canvas.addEventListener('mouseup', () => { isDrawing = false; });
+        canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { if (!isDrawing) return; e.preventDefault(); const p = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke(); lastX = p.x; lastY = p.y; }, { passive: false });
+        canvas.addEventListener('touchend', () => { isDrawing = false; }, { passive: false });
+
+        window._approvalSignatureCanvases = window._approvalSignatureCanvases || {};
+        window._approvalSignatureCanvases[canvasId] = { canvas, ctx };
+    }, 300);
+};
+
+window.clearApprovalSignatureCanvas = function (canvasId) {
+    const entry = (window._approvalSignatureCanvases || {})[canvasId];
+    if (!entry) return;
+    entry.ctx.clearRect(0, 0, entry.canvas.width, entry.canvas.height);
+};
+
+window.getApprovalCanvasSvg = function (canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return '';
+    const dataUrl = canvas.toDataURL('image/png');
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="200"><image width="500" height="200" href="' + dataUrl + '"/></svg>';
+};
+</script>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int SupplierId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string ReturnUrl { get; set; } = "/suppliers";
+
+    private BusinessPartner? _supplier;
+    private int? _currentUserId;
+    private bool _submitting = false;
+
+    // Return URL with fallback
+    private string _returnUrl => !string.IsNullOrWhiteSpace(ReturnUrl) ? ReturnUrl : "/suppliers";
+
+    // --- Questionnaire answers ---
+    // Each answer: "YES" = 2pts, "PARTIAL" = 1pt, "NO" = 0pts
+    private string _qHygieneCert = "";
+    private string _qPersonalHygiene = "";
+    private string _qFoodSafetyPlan = "";
+    private string _qPestControl = "";
+    private string _qSourceTracked = "";
+    private string _qNoPesticides = "";
+    private string _qStorageConditions = "";
+    private string _qTraceability = "";
+    private string _qQualityCerts = "";
+    private string _qLabTests = "";
+    private string _qCooperation = "";
+
+    // --- Approval details ---
+    private string _approvalMethod = "QUESTIONNAIRE";
+    private string _certNumber = "";
+    private DateTime? _expiresAt;
+    private string _riskLevelOverride = "AUTO";
+    private string _notes = "";
+
+    // --- Computed risk level ---
+    private string _computedRiskLevel => ComputeRiskLevel();
+
+    private string ComputeRiskLevel()
+    {
+        var answers = new[]
+        {
+            _qHygieneCert, _qPersonalHygiene, _qFoodSafetyPlan, _qPestControl,
+            _qSourceTracked, _qNoPesticides, _qStorageConditions, _qTraceability,
+            _qQualityCerts, _qLabTests, _qCooperation
+        };
+
+        var answered = answers.Where(a => !string.IsNullOrEmpty(a)).ToList();
+        if (!answered.Any())
+            return "MEDIUM";
+
+        var totalScore = answered.Sum(a => a switch
+        {
+            "YES" => 2,
+            "PARTIAL" => 1,
+            _ => 0
+        });
+
+        var maxScore = answered.Count * 2;
+        var ratio = (double)totalScore / maxScore;
+
+        // LOW: 80%+ YES, HIGH: any NO on critical questions, else MEDIUM
+        var noCount = answered.Count(a => a == "NO");
+        var criticalNos = new[] { _qHygieneCert, _qFoodSafetyPlan, _qNoPesticides }
+            .Count(a => a == "NO");
+
+        if (criticalNos > 0)
+            return "HIGH";
+        if (ratio >= 0.8)
+            return "LOW";
+        return "MEDIUM";
+    }
+
+    private string GetFinalRiskLevel()
+    {
+        if (_riskLevelOverride == "AUTO")
+            return _computedRiskLevel;
+        return _riskLevelOverride;
+    }
+
+    private Color GetRiskColor()
+    {
+        return GetFinalRiskLevel() switch
+        {
+            "LOW" => Color.Success,
+            "MEDIUM" => Color.Warning,
+            "HIGH" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetRiskBannerStyle()
+    {
+        return GetFinalRiskLevel() switch
+        {
+            "LOW" => "background:#f0fdf4; border-radius:8px; border-left:4px solid #16a34a",
+            "MEDIUM" => "background:#fffbeb; border-radius:8px; border-left:4px solid #d97706",
+            "HIGH" => "background:#fff5f5; border-radius:8px; border-left:4px solid #dc2626",
+            _ => "background:#f8fafc; border-radius:8px"
+        };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUserId = await AuthService.GetUserIdAsync();
+
+        var allSuppliers = await CustomerService.GetSuppliersAsync();
+        _supplier = allSuppliers.FirstOrDefault(s => s.Id == SupplierId);
+
+        if (_supplier == null)
+        {
+            Snackbar.Add("Tiekėjas nerastas", Severity.Error);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initApprovalSignatureCanvas", "approvalSignatureCanvas");
+        }
+    }
+
+    private async Task ClearCanvasAsync()
+    {
+        await JS.InvokeVoidAsync("clearApprovalSignatureCanvas", "approvalSignatureCanvas");
+    }
+
+    private async Task SubmitAsync()
+    {
+        // Validate all questionnaire answered
+        var allQuestions = new[]
+        {
+            _qHygieneCert, _qPersonalHygiene, _qFoodSafetyPlan, _qPestControl,
+            _qSourceTracked, _qNoPesticides, _qStorageConditions, _qTraceability,
+            _qQualityCerts, _qLabTests, _qCooperation
+        };
+
+        var unanswered = allQuestions.Count(q => string.IsNullOrEmpty(q));
+        if (unanswered > 0)
+        {
+            Snackbar.Add($"Atsakykite į visus klausimus (liko @unanswered neišsamdinta)", Severity.Warning);
+            return;
+        }
+
+        // Get signature
+        var svg = await JS.InvokeAsync<string>("getApprovalCanvasSvg", "approvalSignatureCanvas");
+        if (string.IsNullOrWhiteSpace(svg))
+        {
+            Snackbar.Add("Nupieškite parašą prieš patvirtinant", Severity.Warning);
+            return;
+        }
+
+        if (_currentUserId == null || _supplier == null)
+        {
+            Snackbar.Add("Vidinė klaida: vartotojas arba tiekėjas nerastas", Severity.Error);
+            return;
+        }
+
+        _submitting = true;
+        StateHasChanged();
+
+        try
+        {
+            var finalRiskLevel = GetFinalRiskLevel();
+
+            // Build notes with questionnaire summary
+            var questionnaireSummary = $"Klausimyno rezultatai:\n" +
+                $"- Higienos sertifikatas: {_qHygieneCert}\n" +
+                $"- Asmeninė higiena: {_qPersonalHygiene}\n" +
+                $"- Maisto saugos planas: {_qFoodSafetyPlan}\n" +
+                $"- Kenkėjų kontrolė: {_qPestControl}\n" +
+                $"- Šaltinio sekimas: {_qSourceTracked}\n" +
+                $"- Pesticidų kontrolė: {_qNoPesticides}\n" +
+                $"- Santykio sąlygos: {_qStorageConditions}\n" +
+                $"- Atsekamumas: {_qTraceability}\n" +
+                $"- Kokybės sertifikatai: {_qQualityCerts}\n" +
+                $"- Laboratoriniai testai: {_qLabTests}\n" +
+                $"- Bendradarbiavimas: {_qCooperation}\n" +
+                $"Apskaičiuotas rizikos lygis: {_computedRiskLevel}\n" +
+                $"Galutinis rizikos lygis: {finalRiskLevel}";
+
+            var combinedNotes = string.IsNullOrWhiteSpace(_notes)
+                ? questionnaireSummary
+                : $"{questionnaireSummary}\n\nPastabos: {_notes}";
+
+            var approval = new SupplierApproval
+            {
+                SupplierId = _supplier.Id,
+                ApprovedBy = _currentUserId.Value,
+                ApprovalDate = DateTime.UtcNow.Date,
+                ExpiresAt = _expiresAt,
+                RiskLevel = finalRiskLevel,
+                ApprovalMethod = _approvalMethod,
+                CertNumber = string.IsNullOrWhiteSpace(_certNumber) ? null : _certNumber,
+                Notes = combinedNotes,
+                IsCurrent = true
+            };
+
+            var approvalId = await ApprovalService.CreateApprovalAsync(approval);
+
+            // Generate and save PDF
+            try
+            {
+                await ApprovalPdfService.GenerateAndSaveApprovalPdfAsync(approvalId);
+            }
+            catch (Exception pdfEx)
+            {
+                Snackbar.Add($"Įspėjimas: PDF nepavyko išsaugoti ({pdfEx.Message})", Severity.Warning);
+            }
+
+            Snackbar.Add($"Tiekėjas \"{_supplier.Name}\" patvirtintas sėkmingai (rizikos lygis: {finalRiskLevel})", Severity.Success);
+            Navigation.NavigateTo(_returnUrl);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida išsaugant patvirtinimą: {ex.Message}", Severity.Error);
+            _submitting = false;
+            StateHasChanged();
+        }
+    }
+}
