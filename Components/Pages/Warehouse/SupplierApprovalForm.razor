@@ -1,4 +1,4 @@
-@page "/warehouse/supplier-approval-form"
+@page "/warehouse/suppliers/{supplierId:int}/approval"
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Services
@@ -281,10 +281,10 @@ window.getApprovalCanvasSvg = function (canvasId) {
 </script>
 
 @code {
-    [SupplyParameterFromQuery]
-    public int SupplierId { get; set; }
+    [Parameter]
+    public int supplierId { get; set; }
 
-    [SupplyParameterFromQuery]
+    [Parameter]
     public string ReturnUrl { get; set; } = "/suppliers";
 
     private BusinessPartner? _supplier;
@@ -379,7 +379,7 @@ window.getApprovalCanvasSvg = function (canvasId) {
         _currentUserId = await AuthService.GetUserIdAsync();
 
         var allSuppliers = await CustomerService.GetSuppliersAsync();
-        _supplier = allSuppliers.FirstOrDefault(s => s.Id == SupplierId);
+        _supplier = allSuppliers.FirstOrDefault(s => s.Id == supplierId);
 
         if (_supplier == null)
         {
