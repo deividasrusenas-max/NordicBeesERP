@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
-    <Version>0.13.4</Version>
+    <Version>0.13.5</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +24,7 @@
     <PackageReference Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
     <PackageReference Include="System.IO.Packaging" Version="8.0.1" />
     <PackageReference Include="SkiaSharp" Version="2.88.8" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
   </ItemGroup>
 
 </Project>
