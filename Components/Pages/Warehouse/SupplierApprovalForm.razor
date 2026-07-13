@@ -52,7 +52,7 @@
                 </MudChip>
             </MudStack>
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
-                Skaičiuojama pagal klausimyno atsakymus. Galite pataisyti žemiau.
+                Skaičiuojama pagal klausimyno atsakymus.
             </MudText>
         </MudPaper>
 
@@ -175,14 +175,12 @@
                                    DateFormat="yyyy-MM-dd" />
                 </MudItem>
                 <MudItem xs="12" md="6">
-                    <MudSelect T="string" @bind-Value="_riskLevelOverride"
-                               Label="@($"Rizikos lygis (automatinis: {_computedRiskLevel})")"
-                               Variant="Variant.Outlined" FullWidth="@true">
-                        <MudSelectItem Value="@("AUTO")">Automatinis (@_computedRiskLevel)</MudSelectItem>
-                        <MudSelectItem Value="@("LOW")">Žemas</MudSelectItem>
-                        <MudSelectItem Value="@("MEDIUM")">Vidutinis</MudSelectItem>
-                        <MudSelectItem Value="@("HIGH")">Aukštas</MudSelectItem>
-                    </MudSelect>
+                    <MudText Typo="Typo.body1" Class="mb-1">Apskaičiuotas rizikos lygis</MudText>
+                    <MudChip T="string"
+                             Color="@(_computedRiskLevel == "HIGH" ? Color.Error : _computedRiskLevel == "MEDIUM" ? Color.Warning : Color.Success)"
+                             Size="Size.Large">
+                        @(_computedRiskLevel switch { "LOW" => "Žemas", "MEDIUM" => "Vidutinis", "HIGH" => "Aukštas", _ => "Vidutinis" })
+                    </MudChip>
                 </MudItem>
                 <MudItem xs="12">
                     <MudTextField @bind-Value="_notes"
@@ -314,7 +312,6 @@ window.getApprovalCanvasSvg = function (canvasId) {
     private string _approvalMethod = "QUESTIONNAIRE";
     private string _certNumber = "";
     private DateTime? _expiresAt;
-    private string _riskLevelOverride = "AUTO";
     private string _notes = "";
 
     // --- Computed risk level ---
@@ -355,16 +352,9 @@ window.getApprovalCanvasSvg = function (canvasId) {
         return "MEDIUM";
     }
 
-    private string GetFinalRiskLevel()
-    {
-        if (_riskLevelOverride == "AUTO")
-            return _computedRiskLevel;
-        return _riskLevelOverride;
-    }
-
     private Color GetRiskColor()
     {
-        return GetFinalRiskLevel() switch
+        return _computedRiskLevel switch
         {
             "LOW" => Color.Success,
             "MEDIUM" => Color.Warning,
@@ -375,7 +365,7 @@ window.getApprovalCanvasSvg = function (canvasId) {
 
     private string GetRiskBannerStyle()
     {
-        return GetFinalRiskLevel() switch
+        return _computedRiskLevel switch
         {
             "LOW" => "background:#f0fdf4; border-radius:8px; border-left:4px solid #16a34a",
             "MEDIUM" => "background:#fffbeb; border-radius:8px; border-left:4px solid #d97706",
@@ -446,8 +436,6 @@ window.getApprovalCanvasSvg = function (canvasId) {
 
         try
         {
-            var finalRiskLevel = GetFinalRiskLevel();
-
             // Build notes with questionnaire summary
             var questionnaireSummary = $"Klausimyno rezultatai:\n" +
                 $"- Higienos sertifikatas: {_qHygieneCert}\n" +
@@ -461,8 +449,7 @@ window.getApprovalCanvasSvg = function (canvasId) {
                 $"- Kokybės sertifikatai: {_qQualityCerts}\n" +
                 $"- Laboratoriniai testai: {_qLabTests}\n" +
                 $"- Bendradarbiavimas: {_qCooperation}\n" +
-                $"Apskaičiuotas rizikos lygis: {_computedRiskLevel}\n" +
-                $"Galutinis rizikos lygis: {finalRiskLevel}";
+                $"Apskaičiuotas rizikos lygis: {_computedRiskLevel}";
 
             var combinedNotes = string.IsNullOrWhiteSpace(_notes)
                 ? questionnaireSummary
@@ -474,7 +461,7 @@ window.getApprovalCanvasSvg = function (canvasId) {
                 ApprovedBy = _currentUserId.Value,
                 ApprovalDate = DateTime.UtcNow.Date,
                 ExpiresAt = _expiresAt,
-                RiskLevel = finalRiskLevel,
+                RiskLevel = _computedRiskLevel,
                 ApprovalMethod = _approvalMethod,
                 CertNumber = string.IsNullOrWhiteSpace(_certNumber) ? null : _certNumber,
                 Notes = combinedNotes,
@@ -493,7 +480,7 @@ window.getApprovalCanvasSvg = function (canvasId) {
                 Snackbar.Add($"Įspėjimas: PDF nepavyko išsaugoti ({pdfEx.Message})", Severity.Warning);
             }
 
-            Snackbar.Add($"Tiekėjas \"{_supplier.Name}\" patvirtintas sėkmingai (rizikos lygis: {finalRiskLevel})", Severity.Success);
+            Snackbar.Add($"Tiekėjas \"{_supplier.Name}\" patvirtintas sėkmingai (rizikos lygis: {_computedRiskLevel})", Severity.Success);
             Navigation.NavigateTo(_returnUrl);
         }
         catch (Exception ex)
