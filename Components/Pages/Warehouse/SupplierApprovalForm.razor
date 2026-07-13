@@ -485,9 +485,55 @@ window.getApprovalCanvasSvg = function (canvasId) {
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Klaida išsaugant patvirtinimą: {ex.Message}", Severity.Error);
+            Snackbar.Add(FormatSaveError(ex), Severity.Error);
             _submitting = false;
             StateHasChanged();
         }
+    }
+
+    private static string FormatSaveError(Exception ex)
+    {
+        // Walk down to the innermost exception that carries the real DB cause.
+        var current = ex;
+        while (current != null)
+        {
+            // DbUpdateException wraps the real DB error in InnerException.
+            if (current is Microsoft.EntityFrameworkCore.DbUpdateException && current.InnerException != null)
+            {
+                current = current.InnerException;
+                continue;
+            }
+
+            // MySqlConnector reports e.g. "Column 'valid_until' cannot be null"
+            if (current.Message.Contains("cannot be null", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    current.Message,
+                    @"Column '([^']+)' cannot be null",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    var column = match.Groups[1].Value;
+                    var label = column switch
+                    {
+                        "valid_until" => "Galiojimo data",
+                        "approved_at" => "Patvirtinimo data",
+                        "approved_by" => "Patvirtinęs vartotojas",
+                        "supplier_id" => "Tiekėjas",
+                        _ => column
+                    };
+                    return $"Nepavyko išsaugoti: privalomas laukas „{label}” ({column}) yra tuščias.";
+                }
+                return "Nepavyko išsaugoti: vienas iš privalomų laukų negali būti tuščias.";
+            }
+
+            if (current.InnerException != null)
+            {
+                current = current.InnerException;
+                continue;
+            }
+            break;
+        }
+        return $"Klaida išsaugant patvirtinimą: {ex.Message}";
     }
 }
