@@ -20,7 +20,8 @@
     }
     else
     {
-        <div class="d-flex justify-space-between align-center mb-3">
+        <MudForm @ref="_form">
+            <div class="d-flex justify-space-between align-center mb-3">
             <MudText Typo="Typo.h5">Tiekėjo patvirtinimas (BRC8 3.5)</MudText>
             <MudButton Href="@_returnUrl" Variant="Variant.Outlined" Color="Color.Default"
                        StartIcon="@Icons.Material.Filled.ArrowBack">Atgal</MudButton>
@@ -61,28 +62,28 @@
             <MudText Typo="Typo.subtitle1" Class="mb-3">Higiena ir maisto sauga</MudText>
 
             <MudText Typo="Typo.body1" Class="mb-2">Ar tiekėjas turi higienos sertifikatą arba deklaraciją?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qHygieneCert">
+            <MudRadioGroup T="string" @bind-Value="_qHygieneCert" For="@(() => _qHygieneCert)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip, turi galiojantį</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi / neaišku</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne, neturi</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar laikomasi asmeninės higienos reikalavimų (apdara, rankų plovimas)?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qPersonalHygiene">
+            <MudRadioGroup T="string" @bind-Value="_qPersonalHygiene" For="@(() => _qPersonalHygiene)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra maisto saugos planas (HACCP arba atitinkamas)?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qFoodSafetyPlan">
+            <MudRadioGroup T="string" @bind-Value="_qFoodSafetyPlan" For="@(() => _qFoodSafetyPlan)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi / neaišku</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra kenkėjų kontrolės programa?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qPestControl">
+            <MudRadioGroup T="string" @bind-Value="_qPestControl" For="@(() => _qPestControl)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi / neaišku</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
@@ -94,28 +95,28 @@
             <MudText Typo="Typo.subtitle1" Class="mb-3">Gamybos praktikos</MudText>
 
             <MudText Typo="Typo.body1" Class="mb-2">Ar medus surenkamas iš žinomų, kontroliuojamų bitininkystės plotų?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qSourceTracked">
+            <MudRadioGroup T="string" @bind-Value="_qSourceTracked" For="@(() => _qSourceTracked)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar nėra naudojamas pesticidų / antibiotikų virš leistinų normų?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qNoPesticides">
+            <MudRadioGroup T="string" @bind-Value="_qNoPesticides" For="@(() => _qNoPesticides)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip, nėra viršijama</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Neaišku / nėra duomenų</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Yra rizika / buvo viršyta</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar laikomasi tinkamų saugojimo sąlygų (temperatūra, švara)?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qStorageConditions">
+            <MudRadioGroup T="string" @bind-Value="_qStorageConditions" For="@(() => _qStorageConditions)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra produktų atsekamumo sistema?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qTraceability">
+            <MudRadioGroup T="string" @bind-Value="_qTraceability" For="@(() => _qTraceability)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
@@ -127,21 +128,21 @@
             <MudText Typo="Typo.subtitle1" Class="mb-3">Dokumentacija ir sertifikatai</MudText>
 
             <MudText Typo="Typo.body1" Class="mb-2">Ar tiekėjas gali pateikti kokybės sertifikatus (ISO, BRC, organinis ir pan.)?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qQualityCerts">
+            <MudRadioGroup T="string" @bind-Value="_qQualityCerts" For="@(() => _qQualityCerts)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip, turi</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne, neturi</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar yra laboratorinių tyrimų rezultatai (analizės)?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qLabTests">
+            <MudRadioGroup T="string" @bind-Value="_qLabTests" For="@(() => _qLabTests)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
             </MudRadioGroup>
 
             <MudText Typo="Typo.body1" Class="mb-2 mt-3">Ar tiekėjas bendradarbiauja tikrinant / audituojant?</MudText>
-            <MudRadioGroup T="string" @bind-Value="_qCooperation">
+            <MudRadioGroup T="string" @bind-Value="_qCooperation" For="@(() => _qCooperation)" Required="@true" RequiredError="Būtina pasirinkti atsakymą">
                 <MudRadio T="string" Value="@("YES")" Color="Color.Primary" Class="mb-2">Taip</MudRadio>
                 <MudRadio T="string" Value="@("PARTIAL")" Color="Color.Primary" Class="mb-2">Daline apimtimi</MudRadio>
                 <MudRadio T="string" Value="@("NO")" Color="Color.Primary" Class="mb-2">Ne</MudRadio>
@@ -155,8 +156,8 @@
             <MudGrid>
                 <MudItem xs="12" md="6">
                     <MudSelect T="string" @bind-Value="_approvalMethod"
-                               Label="Patvirtinimo būdas" Variant="Variant.Outlined"
-                               Required="@true" FullWidth="@true">
+                                Label="Patvirtinimo būdas" Variant="Variant.Outlined"
+                                Required="@true" RequiredError="Pasirinkite patvirtinimo būdą" FullWidth="@true">
                         <MudSelectItem Value="@("QUESTIONNAIRE")">Klausimynas</MudSelectItem>
                         <MudSelectItem Value="@("AUDIT")">Auditas</MudSelectItem>
                         <MudSelectItem Value="@("CERTIFICATION")">Sertifikatas</MudSelectItem>
@@ -219,6 +220,7 @@
                 Patvirtinti tiekėją
             </MudButton>
         </MudStack>
+        </MudForm>
     }
 </MudContainer>
 
@@ -290,6 +292,7 @@ window.getApprovalCanvasSvg = function (canvasId) {
     private BusinessPartner? _supplier;
     private int? _currentUserId;
     private bool _submitting = false;
+    private MudForm _form = default!;
 
     // Return URL with fallback
     private string _returnUrl => !string.IsNullOrWhiteSpace(ReturnUrl) ? ReturnUrl : "/suppliers";
@@ -402,18 +405,11 @@ window.getApprovalCanvasSvg = function (canvasId) {
 
     private async Task SubmitAsync()
     {
-        // Validate all questionnaire answered
-        var allQuestions = new[]
+        // Validate all mandatory form fields (questionnaire + approval method) via MudForm
+        _form.Validate();
+        if (!_form.IsValid)
         {
-            _qHygieneCert, _qPersonalHygiene, _qFoodSafetyPlan, _qPestControl,
-            _qSourceTracked, _qNoPesticides, _qStorageConditions, _qTraceability,
-            _qQualityCerts, _qLabTests, _qCooperation
-        };
-
-        var unanswered = allQuestions.Count(q => string.IsNullOrEmpty(q));
-        if (unanswered > 0)
-        {
-            Snackbar.Add($"Atsakykite į visus klausimus (liko @unanswered neišsamdinta)", Severity.Warning);
+            Snackbar.Add("Užpildykite visus privalomus laukus", Severity.Warning);
             return;
         }
 
