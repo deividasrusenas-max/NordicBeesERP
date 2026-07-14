@@ -78,6 +78,7 @@ builder.Services.AddScoped<IExpenseOcrService, ExpenseOcrService>();
 builder.Services.AddScoped<IJarsService, JarsService>();
 builder.Services.AddScoped<IViesService, ViesService>();
 builder.Services.AddScoped<ICompanyLookupService, CompanyLookupService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddHostedService<OcrQueueWorker>();
 
 // Artwork Module Services
