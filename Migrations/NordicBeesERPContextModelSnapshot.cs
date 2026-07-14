@@ -2137,124 +2137,6 @@ namespace NordicBeesERP.Migrations
                     b.ToTable("invoice_lines");
                 });
 
-            modelBuilder.Entity("NordicBeesERP.Models.Order", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("created_at");
-
-                    b.Property<int>("CustomerId")
-                        .HasColumnType("int")
-                        .HasColumnName("customer_id");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("longtext")
-                        .HasColumnName("notes");
-
-                    b.Property<DateTime>("OrderDate")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("order_date");
-
-                    b.Property<string>("OrderNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("order_number");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)")
-                        .HasColumnName("status");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("total_amount");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("OrderNumber")
-                        .IsUnique();
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("orders");
-                });
-
-            modelBuilder.Entity("NordicBeesERP.Models.OrderLine", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("created_at");
-
-                    b.Property<decimal>("FulfilledQuantity")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("fulfilled_quantity");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("longtext")
-                        .HasColumnName("notes");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int")
-                        .HasColumnName("order_id");
-
-                    b.Property<decimal>("Price")
-                        .HasPrecision(10, 4)
-                        .HasColumnType("decimal(10,4)")
-                        .HasColumnName("price");
-
-                    b.Property<int?>("ProductId")
-                        .HasColumnType("int")
-                        .HasColumnName("product_id");
-
-                    b.Property<string>("ProductName")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("product_name");
-
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(10, 3)
-                        .HasColumnType("decimal(10,3)")
-                        .HasColumnName("quantity");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("status");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("total_price");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("order_lines");
-                });
 
             modelBuilder.Entity("NordicBeesERP.Models.Payment", b =>
                 {
@@ -3529,16 +3411,6 @@ namespace NordicBeesERP.Migrations
                     b.Navigation("Invoice");
                 });
 
-            modelBuilder.Entity("NordicBeesERP.Models.OrderLine", b =>
-                {
-                    b.HasOne("NordicBeesERP.Models.Order", "Order")
-                        .WithMany("Lines")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
-                });
 
             modelBuilder.Entity("NordicBeesERP.Models.Payment", b =>
                 {
@@ -3663,10 +3535,6 @@ namespace NordicBeesERP.Migrations
                     b.Navigation("Payments");
                 });
 
-            modelBuilder.Entity("NordicBeesERP.Models.Order", b =>
-                {
-                    b.Navigation("Lines");
-                });
 
             modelBuilder.Entity("NordicBeesERP.Models.Payment", b =>
                 {
