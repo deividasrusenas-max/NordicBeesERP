@@ -1,0 +1,356 @@
+@page "/orders/create"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using MudBlazor
+@inject IOrderService OrderService
+@inject ICustomerService CustomerService
+@inject IProductService ProductService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Naujas užsakymas</PageTitle>
+
+<!-- HEADER (sticky, outside MudContainer) -->
+<div style="position:sticky; top:64px; z-index:100; background:#ffffff; padding:12px 24px; border-bottom:1px solid #e2e8f0;">
+    <div class="d-flex justify-space-between align-center" style="max-width:1600px; margin:0 auto;">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:600">Naujas užsakymas</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Užpildykite užsakymo duomenis</MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none"
+                        StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveAsync" Disabled="@_isSaving">
+                Išsaugoti
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none"
+                        OnClick="@Cancel" Disabled="@_isSaving">
+                Atšaukti
+            </MudButton>
+        </div>
+    </div>
+</div>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+    }
+
+    <!-- PAGRINDINĖ INFORMACIJA -->
+    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudAutocomplete T="Customer"
+                                 Label="Klientas *"
+                                 SearchFunc="SearchCustomers"
+                                 @bind-Value="_selectedCustomer"
+                                 Variant="Variant.Outlined"
+                                 Required="true"
+                                 Margin="Margin.Dense"
+                                 Clearable="true"
+                                 Placeholder="Pradėkite rašyti kliento vardą..."
+                                 ToStringFunc="@(c => c?.Name)">
+                    <ItemTemplate>
+                        <MudText Typo="Typo.body2">@context.Name</MudText>
+                    </ItemTemplate>
+                </MudAutocomplete>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudDatePicker T="DateTime"
+                               Label="Užsakymo data *"
+                               Date="@_orderDate"
+                                DateChanged="@(date => _orderDate = date ?? DateTime.Today)"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudDatePicker T="DateTime?"
+                               Label="Pristatymo data"
+                               Date="@_deliveryDate"
+                               DateChanged="@(date => _deliveryDate = date)"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string"
+                              Label="Pastabos"
+                              @bind-Value="_notes"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Lines="2"
+                              Multiline="true" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- EILUTĖS (Line Items) -->
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3 mb-4">
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.h6">Produktai</MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.Add"
+                        OnClick="@AddLine">
+                Pridėti eilutę
+            </MudButton>
+        </div>
+
+        @if (_lines.Count == 0)
+        {
+            <MudText Color="Color.Secondary" Class="text-center py-4">
+                Spauskite "Pridėti eilutę" kad įdėtumėte produktus
+            </MudText>
+        }
+        else
+        {
+            <table class="full-width">
+                <thead>
+                    <tr>
+                        <th style="width:40px">#</th>
+                        <th style="min-width:250px">Produkto pavadinimas *</th>
+                        <th style="width:120px">Kiekis (paletai) *</th>
+                        <th style="width:120px">Kaina</th>
+                        <th style="width:200px">Pastabos</th>
+                        <th style="width:60px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _lines)
+                    {
+                        <tr>
+                            <td style="text-align:center">@line.LineNumber</td>
+                            <td>
+                                <MudAutocomplete T="Product"
+                                                 SearchFunc="SearchProducts"
+                                                 @bind-Value="@line.SelectedProduct"
+                                                 Variant="Variant.Outlined"
+                                                 Margin="Margin.Dense"
+                                                 Dense="true"
+                                                 Clearable="true"
+                                                 Placeholder="Ieškoti produkto..."
+                                                 ToStringFunc="@(p => p != null ? $"{p.Name} ({p.Code})" : null)">
+                                    <ItemTemplate>
+                                        <MudText Typo="Typo.body2">@context.Name (@context.Code)</MudText>
+                                    </ItemTemplate>
+                                </MudAutocomplete>
+                            </td>
+                            <td>
+                                <MudNumericField T="decimal"
+                                                 @bind-Value="@line.Quantity"
+                                                 Variant="Variant.Outlined"
+                                                 Margin="Margin.Dense"
+                                                 Dense="true"
+                                                  Min="0.01m"
+                                                 Step="1"
+                                                 Format="N2" />
+                            </td>
+                            <td>
+                                <MudNumericField T="decimal?"
+                                                 @bind-Value="@line.Price"
+                                                 Variant="Variant.Outlined"
+                                                 Margin="Margin.Dense"
+                                                 Dense="true"
+                                                 Min="0"
+                                                 Format="N2" />
+                            </td>
+                            <td>
+                                <MudTextField T="string"
+                                              @bind-Value="@line.Notes"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Dense="true" />
+                            </td>
+                            <td>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => RemoveLine(line))" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    // --- State ---
+    private bool _isSaving = false;
+    private string? _errorMessage;
+
+    // Header fields
+    private Customer? _selectedCustomer;
+    private DateTime _orderDate = DateTime.Today;
+    private DateTime? _deliveryDate;
+    private string? _notes;
+
+    // Line items
+    private readonly List<OrderLineViewModel> _lines = new();
+
+    // Lookup data
+    private List<Customer> _customers = new();
+    private List<Product> _products = new();
+
+    // --- Lifecycle ---
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomersAsync();
+        await LoadProductsAsync();
+        AddLine(); // Start with one empty line
+    }
+
+    // --- Data Loading ---
+    private async Task LoadCustomersAsync()
+    {
+        try
+        {
+            _customers = await CustomerService.GetCustomersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkraunant klientus: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        try
+        {
+            _products = await ProductService.GetAllProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkraunant produktus: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // --- Search Functions ---
+    private Task<IEnumerable<Customer>> SearchCustomers(string? value, CancellationToken ct = default)
+    {
+        var results = _customers.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var search = value!.ToLower();
+            results = results.Where(c => c.Name.ToLower().Contains(search));
+        }
+        return Task.FromResult(results.Take(50).AsEnumerable());
+    }
+
+    private Task<IEnumerable<Product>> SearchProducts(string? value, CancellationToken ct = default)
+    {
+        var results = _products.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var search = value!.ToLower();
+            results = results.Where(p => p.Name.ToLower().Contains(search) || p.Code.ToLower().Contains(search));
+        }
+        return Task.FromResult(results.Take(50).AsEnumerable());
+    }
+
+    // --- Line Management ---
+    private void AddLine()
+    {
+        var lineNumber = _lines.Count + 1;
+        _lines.Add(new OrderLineViewModel
+        {
+            LineNumber = lineNumber,
+            Quantity = 1m
+        });
+    }
+
+    private void RemoveLine(OrderLineViewModel line)
+    {
+        _lines.Remove(line);
+        // Re-number lines
+        for (int i = 0; i < _lines.Count; i++)
+        {
+            _lines[i].LineNumber = i + 1;
+        }
+    }
+
+    // --- Actions ---
+    private async Task SaveAsync()
+    {
+        _errorMessage = null;
+
+        // Validation
+        if (_selectedCustomer == null)
+        {
+            _errorMessage = "Pasirinkite klientą";
+            return;
+        }
+
+        var validLines = _lines.Where(l => l.SelectedProduct != null && l.Quantity > 0).ToList();
+        if (validLines.Count == 0)
+        {
+            _errorMessage = "Pridėkite bent vieną produktą su kiekiu";
+            return;
+        }
+
+        // Check for lines with missing product
+        var invalidLines = _lines.Where(l => l.Quantity > 0 && l.SelectedProduct == null).ToList();
+        if (invalidLines.Count > 0)
+        {
+            _errorMessage = "Kiekvienai eilutei su kiekiu privalote pasirinkti produktą";
+            return;
+        }
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var order = new Order
+            {
+                OrderDate = _orderDate,
+                CustomerId = _selectedCustomer.Id,
+                DeliveryDate = _deliveryDate,
+                Status = "draft",
+                Notes = _notes
+            };
+
+            var orderLines = validLines.Select((l, idx) => new OrderLine
+            {
+                LineNumber = idx + 1,
+                ProductId = l.SelectedProduct!.Id,
+                Quantity = l.Quantity,
+                Price = l.Price,
+                Notes = l.Notes
+            }).ToList();
+
+            var newOrderId = await OrderService.CreateOrderAsync(order, orderLines);
+
+            Snackbar.Add($"Užsakymas sėkmingai sukurtas", Severity.Success);
+            Navigation.NavigateTo($"/orders/{newOrderId}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Klaida kuriant užsakymą: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/orders");
+    }
+
+    // --- View Model ---
+    private class OrderLineViewModel
+    {
+        public int LineNumber { get; set; }
+        public Product? SelectedProduct { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal? Price { get; set; }
+        public string? Notes { get; set; }
+    }
+}

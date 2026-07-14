@@ -26,4 +26,7 @@ public interface IOrderService
 
     /// Get shipped orders that do not yet have an invoice linked.
     Task<List<Order>> GetUninvoicedShippedOrdersAsync();
+
+    /// Get total pallet/quantity count for an order (sum of order_lines.quantity).
+    Task<decimal> GetOrderPalletCountAsync(int orderId);
 }

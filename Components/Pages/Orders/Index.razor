@@ -1,0 +1,297 @@
+@page "/orders"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using MudBlazor
+@inject IOrderService OrderService
+@inject ICustomerService CustomerService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Užsakymai</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <!-- Header row -->
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Užsakymai</MudText>
+        <MudButton OnClick="OpenCreatePage"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Style="text-transform:none">
+            Naujas užsakymas
+        </MudButton>
+    </div>
+
+    <!-- Loading indicator -->
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+
+    <!-- Filter section -->
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField Value="@_filterSearch"
+                              ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
+                              Label="Paieška pagal Nr. arba klientą"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              FullWidth="@true"
+                              Clearable="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Adornment="Adornment.Start" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudDateRangePicker DateRange="@_dateRange"
+                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadDataAsync(); })"
+                                    Label="Data (nuo / iki)"
+                                    Variant="Variant.Outlined"
+                                    FullWidth="@true"
+                                    Clearable="true" />
+            </MudItem>
+            @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null)
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text"
+                               Color="Color.Secondary"
+                               Size="Size.Small"
+                               OnClick="@(async () => { _filterSearch = null; _dateRange = null; await LoadDataAsync(); StateHasChanged(); })">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Status chip filters -->
+    <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būsena:</MudText>
+        @if (_selectedStatuses.Any())
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       OnClick="@(() => { _selectedStatuses.Clear(); StateHasChanged(); })">
+                Rodyti visas
+            </MudButton>
+        }
+        @foreach (var status in _availableStatuses)
+        {
+            var isSelected = _selectedStatuses.Contains(status);
+            <MudChip T="string"
+                     Color="@(isSelected ? GetStatusColor(status) : Color.Default)"
+                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleStatus(status))"
+                     Size="Size.Small"
+                     Style="@(isSelected ? "" : "opacity:0.7")">
+                @GetStatusLabel(status)
+            </MudChip>
+        }
+    </div>
+
+    <!-- Table -->
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable Items="@FilteredItems"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  RowsPerPage="25"
+                  Elevation="0"
+                  Style="cursor:pointer"
+                  OnRowClick="@( (TableRowClickEventArgs<Order> args) => ViewOrder(args.Item.Id) )">
+            <HeaderContent>
+                <MudTh>Nr.</MudTh>
+                <MudTh>Klientas</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Paletai</MudTh>
+                <MudTh>Būsena</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="order">
+                <MudTd>@order.OrderNumber</MudTd>
+                <MudTd>@GetCustomerName(order.CustomerId)</MudTd>
+                <MudTd>@order.OrderDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd>@GetPalletCount(order)</MudTd>
+                <MudTd>
+                    <MudChip T="string" Color="@GetStatusColor(order.Status)" Size="Size.Small" Style="text-transform:none">@GetStatusLabel(order.Status)</MudChip>
+                    @if (order.IsUninvoiced)
+                    {
+                        <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-1" Style="text-transform:none">Neišrašyta</MudChip>
+                    }
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Įrašų nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<Order> _items = new();
+    private bool _isLoading = false;
+    private Dictionary<int, string> _customerNames = new();
+    private Dictionary<int, decimal> _palletCounts = new();
+
+    // Filter state
+    private string? _filterSearch = null;
+    private DateRange? _dateRange = null;
+    private HashSet<string> _selectedStatuses = new();
+
+    // Available statuses for filtering
+    private readonly List<string> _availableStatuses = new()
+    {
+        "draft", "confirmed", "packing", "ready_for_pickup", "shipped", "cancelled"
+    };
+
+    // Computed
+    private List<Order> FilteredItems => GetFilteredItems();
+
+    // Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomersAsync();
+        await LoadDataAsync();
+    }
+
+    private async Task LoadCustomersAsync()
+    {
+        try
+        {
+            var customers = await CustomerService.GetCustomersAsync();
+            _customerNames = customers.ToDictionary(c => c.Id, c => c.Name);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkraunant klientus: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // Data loading
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var orders = await OrderService.GetOrdersAsync();
+            _items = orders;
+
+            // Load pallet counts for all orders
+            _palletCounts.Clear();
+            foreach (var order in orders)
+            {
+                try
+                {
+                    var count = await OrderService.GetOrderPalletCountAsync(order.Id);
+                    _palletCounts[order.Id] = count;
+                }
+                catch
+                {
+                    _palletCounts[order.Id] = 0m;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkraunant užsakymus: {ex.Message}", Severity.Error);
+        }
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    // Filter logic
+    private List<Order> GetFilteredItems()
+    {
+        var result = _items.AsQueryable();
+
+        // Status filter
+        if (_selectedStatuses.Any())
+        {
+            result = result.Where(o => _selectedStatuses.Contains(o.Status));
+        }
+
+        // Search filter
+        if (!string.IsNullOrWhiteSpace(_filterSearch))
+        {
+            var search = _filterSearch!.ToLower();
+            result = result.Where(o =>
+                o.OrderNumber.ToLower().Contains(search) ||
+                GetCustomerName(o.CustomerId).ToLower().Contains(search));
+        }
+
+        // Date range filter
+        if (_dateRange?.Start != null)
+        {
+            result = result.Where(o => o.OrderDate >= _dateRange.Start.Value);
+        }
+        if (_dateRange?.End != null)
+        {
+            var end = _dateRange.End.Value.Date.AddDays(1);
+            result = result.Where(o => o.OrderDate < end);
+        }
+
+        return result.ToList();
+    }
+
+    private void ToggleStatus(string status)
+    {
+        if (_selectedStatuses.Contains(status))
+        {
+            _selectedStatuses.Remove(status);
+        }
+        else
+        {
+            _selectedStatuses.Add(status);
+        }
+        StateHasChanged();
+    }
+
+    private void ViewOrder(int orderId)
+    {
+        Navigation.NavigateTo($"/orders/{orderId}");
+    }
+
+    private void OpenCreatePage()
+    {
+        Navigation.NavigateTo("/orders/create");
+    }
+
+    // Display helpers
+    private string GetCustomerName(int customerId)
+    {
+        return _customerNames.TryGetValue(customerId, out var name) ? name : "Nežinomas";
+    }
+
+    private decimal GetPalletCount(Order order)
+    {
+        return _palletCounts.TryGetValue(order.Id, out var count) ? count : 0m;
+    }
+
+    private string GetStatusLabel(string status) => status switch
+    {
+        "draft" => "Juodraštis",
+        "confirmed" => "Patvirtintas",
+        "packing" => "Pakuojamas",
+        "ready_for_pickup" => "Pasirengęs",
+        "shipped" => "Išsiųstas",
+        "cancelled" => "Atšauktas",
+        _ => status
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "draft" => Color.Default,
+        "confirmed" => Color.Info,
+        "packing" => Color.Warning,
+        "ready_for_pickup" => Color.Success,
+        "shipped" => Color.Primary,
+        "cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}

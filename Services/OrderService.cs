@@ -297,6 +297,17 @@ public class OrderService : IOrderService
         return orders;
     }
 
+    public async Task<decimal> GetOrderPalletCountAsync(int orderId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var count = await context.Database.SqlQueryRaw<decimal>(
+            "SELECT COALESCE(SUM(quantity), 0) FROM order_lines WHERE order_id = {0}",
+            orderId).FirstAsync();
+
+        return count;
+    }
+
     // =====================================================
     // PRIVATE HELPERS
     // =====================================================
