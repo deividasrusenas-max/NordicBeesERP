@@ -1214,6 +1214,24 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS receiver_name VARCHAR(200) NULL;
     ");
 
+            migrationBuilder.Sql(@"
+        ALTER TABLE order_lines
+            ADD COLUMN IF NOT EXISTS `lot_number` VARCHAR(100) NULL,
+            ADD COLUMN IF NOT EXISTS `expiry_date` DATE NULL,
+            ADD COLUMN IF NOT EXISTS `packed_at` DATETIME NULL,
+            ADD COLUMN IF NOT EXISTS `packed_by_user_id` INT NULL;
+    ");
+
+            migrationBuilder.Sql(@"
+        ALTER TABLE orders
+            MODIFY COLUMN `status` ENUM('draft','confirmed','packing','ready_for_pickup','shipped','cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'draft',
+            ADD COLUMN IF NOT EXISTS `shipped_at` DATETIME NULL,
+            ADD COLUMN IF NOT EXISTS `shipped_by_user_id` INT NULL,
+            ADD COLUMN IF NOT EXISTS `invoice_id` INT NULL,
+            ADD COLUMN IF NOT EXISTS `invoiced_at` DATETIME NULL,
+            ADD COLUMN IF NOT EXISTS `invoiced_by_user_id` INT NULL;
+    ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
