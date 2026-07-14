@@ -68,8 +68,6 @@ namespace NordicBeesERP.Data
         // Sales
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<InvoiceLine> InvoiceLines { get; set; }
-        public DbSet<Order> Orders { get; set; }
-        public DbSet<OrderLine> OrderLines { get; set; }
 
         // Credit Notes
         public DbSet<CreditNote> CreditNotes { get; set; }
@@ -325,36 +323,6 @@ namespace NordicBeesERP.Data
                 entity.HasOne(e => e.Invoice)
                     .WithMany(e => e.Lines)
                     .HasForeignKey(e => e.InvoiceId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // ===== ORDERS =====
-            modelBuilder.Entity<Order>(entity =>
-            {
-                entity.HasIndex(e => e.OrderNumber).IsUnique();
-                entity.HasIndex(e => e.CustomerId);
-                entity.HasIndex(e => e.Status);
-
-                // Convert enum to string
-                entity.Property(e => e.Status)
-                    .HasConversion<string>()
-                    .HasMaxLength(20);
-            });
-
-            // ===== ORDER LINES =====
-            modelBuilder.Entity<OrderLine>(entity =>
-            {
-                entity.HasIndex(e => e.OrderId);
-                entity.HasIndex(e => e.ProductId);
-
-                // Decimal precision
-                entity.Property(e => e.Quantity).HasPrecision(10, 3);
-                entity.Property(e => e.Price).HasPrecision(10, 4);
-
-                // Relationships
-                entity.HasOne(e => e.Order)
-                    .WithMany(e => e.Lines)
-                    .HasForeignKey(e => e.OrderId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
