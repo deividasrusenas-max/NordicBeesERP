@@ -29,6 +29,7 @@ namespace NordicBeesERP.Services
         Task<List<int>> GetInvoiceYearsAsync();
         Task<byte[]> GeneratePdfAsync(int invoiceId);
         Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null);
+        Task<List<Invoice>> SearchInvoicesAsync(string searchTerm, int customerId);
     }
 
     public class InvoiceService : IInvoiceService
