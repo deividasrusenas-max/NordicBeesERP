@@ -111,8 +111,7 @@
                     <tr>
                         <th style="width:40px">#</th>
                         <th style="min-width:250px">Produkto pavadinimas *</th>
-                        <th style="width:120px">Kiekis (paletai) *</th>
-                        <th style="width:120px">Kaina</th>
+                        <th style="width:120px">Kiekis paletėmis *</th>
                         <th style="width:200px">Pastabos</th>
                         <th style="width:60px"></th>
                     </tr>
@@ -145,15 +144,6 @@
                                                  Dense="true"
                                                   Min="0.01m"
                                                  Step="1"
-                                                 Format="N2" />
-                            </td>
-                            <td>
-                                <MudNumericField T="decimal?"
-                                                 @bind-Value="@line.Price"
-                                                 Variant="Variant.Outlined"
-                                                 Margin="Margin.Dense"
-                                                 Dense="true"
-                                                 Min="0"
                                                  Format="N2" />
                             </td>
                             <td>

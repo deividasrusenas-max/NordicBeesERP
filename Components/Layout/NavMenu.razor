@@ -34,6 +34,17 @@
 
         @if (_isAdmin || _isManager || _isWarehouse)
         {
+            <MudNavGroup Title="Užsakymai" Icon="@Icons.Material.Filled.ShoppingCart">
+                <MudNavLink Href="/orders" Icon="@Icons.Material.Filled.List">Užsakymų sąrašas</MudNavLink>
+                @if (_isAdmin || _isManager)
+                {
+                    <MudNavLink Href="/orders/create" Icon="@Icons.Material.Filled.Add">Naujas užsakymas</MudNavLink>
+                }
+            </MudNavGroup>
+        }
+
+        @if (_isAdmin || _isManager || _isWarehouse)
+        {
             <MudNavGroup Title="Tiekėjai ir klientai" Icon="@Icons.Material.Filled.People">
                 <MudNavLink Href="/suppliers" Icon="@Icons.Material.Filled.LocalShipping">Tiekėjai</MudNavLink>
                 <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
