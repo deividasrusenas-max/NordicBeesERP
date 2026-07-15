@@ -1,0 +1,472 @@
+@page "/orders/{OrderId:int}"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using MudBlazor
+@using NordicBeesERP.Modules.Orders.Pages.Orders
+@inject IOrderService OrderService
+@inject ICustomerService CustomerService
+@inject IProductService ProductService
+@inject IAuthService AuthService
+@inject IInvoiceService InvoiceService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IPackLineCallbackService PackLineCallback
+@inject NavigationManager Navigation
+
+<PageTitle>U&#381;sakymas @_order?.OrderNumber</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+
+    <!-- Loading -->
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+
+    @if (_order == null && !_isLoading)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">
+            &#381;sakymas nerastas.
+        </MudAlert>
+        <MudButton OnClick="@(() => Navigation.NavigateTo("/orders"))" Variant="Variant.Text" Color="Color.Primary">
+            &#8592; Atgal i&#353; &#381;sakymus
+        </MudButton>
+    }
+
+    @if (_order != null)
+    {
+        <!-- Header row -->
+        <div class="d-flex justify-space-between align-center mb-3">
+            <div>
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.h5" Style="font-weight:600">
+                        @_order.OrderNumber
+                    </MudText>
+                    <MudChip T="string" Color="@GetStatusColor(_order.Status)" Size="Size.Small" Style="text-transform:none">
+                        @GetStatusLabel(_order.Status)
+                    </MudChip>
+                    @if (_order.IsUninvoiced)
+                    {
+                        <MudChip T="string" Color="Color.Error" Size="Size.Small" Style="text-transform:none">Nei&#353;ra&#353;yta</MudChip>
+                    }
+                </div>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @_customerName &nbsp;|&nbsp; @_order.OrderDate.ToString("yyyy-MM-dd")
+                    @if (_order.DeliveryDate.HasValue)
+                    {
+                        <text>&nbsp;|&nbsp; Pristatymas: @_order.DeliveryDate.Value.ToString("yyyy-MM-dd")</text>
+                    }
+                </MudText>
+            </div>
+            <div class="d-flex gap-2">
+                <MudButton OnClick="@(() => Navigation.NavigateTo("/orders"))"
+                           Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Style="text-transform:none">
+                    &#8592; Atgal i&#353; &#381;sakymus
+                </MudButton>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        @if (!string.IsNullOrEmpty(_order.Notes))
+        {
+            <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
+                <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Pastabos</MudText>
+                <MudText Typo="Typo.body1">@_order.Notes</MudText>
+            </MudPaper>
+        }
+
+        <!-- Line Items -->
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3 mb-4">
+            <div class="d-flex justify-space-between align-center mb-3">
+                <MudText Typo="Typo.h6">Produktai</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @_order.Lines.Count eilut&#237;
+                </MudText>
+            </div>
+
+            <MudTable Items="@_order.Lines" Dense="true" Hover="true" Striped="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh Style="width:40px">#</MudTh>
+                    <MudTh>Produkto pavadinimas</MudTh>
+                    <MudTh Style="width:120px">Kiekis (paletai)</MudTh>
+                    <MudTh Style="width:150px">Partijos Nr.</MudTh>
+                    <MudTh Style="width:150px">Galiojimo data</MudTh>
+                    <MudTh Style="width:100px">B&#291;sen&#257;</MudTh>
+                    <MudTh Style="width:160px"></MudTh>
+                </HeaderContent>
+                <RowTemplate Context="line">
+                    <MudTd>@line.LineNumber</MudTd>
+                    <MudTd>@GetProductName(line.ProductId)</MudTd>
+                    <MudTd>@line.Quantity.ToString("N0")</MudTd>
+                    <MudTd>
+                        @if (!string.IsNullOrEmpty(line.LotNumber))
+                        {
+                            <MudText Typo="Typo.body2">@line.LotNumber</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">&#8212;</MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (line.ExpiryDate.HasValue)
+                        {
+                            <MudText Typo="Typo.body2">@line.ExpiryDate.Value.ToString("yyyy-MM-dd")</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">&#8212;</MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (line.PackedAt.HasValue)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Style="text-transform:none">
+                                &#10003; Pakuota
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Style="text-transform:none">
+                                &#9679; Nepakuota
+                            </MudChip>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (line.PackedAt == null)
+                        {
+                            <MudButton Size="Size.Small"
+                                        Variant="Variant.Outlined"
+                                        Color="Color.Primary"
+                                        StartIcon="@Icons.Material.Filled.Inventory2"
+                                        OnClick="@(() => OpenPackDialog(line))"
+                                        Style="text-transform:none">
+                                Paruo&#353;ti siuntimui
+                            </MudButton>
+                        }
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Class="text-center py-4">Eilu&#305;i&#381; n&#237;ra</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </MudPaper>
+
+        <!-- Kurjeris pa&#235;m&#235; button (only when ready_for_pickup) -->
+        @if (_order.Status == "ready_for_pickup")
+        {
+            <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3 mb-4">
+                <div class="d-flex justify-space-between align-center">
+                    <MudText Typo="Typo.body1">
+                        Visos eilut&#237;&#353; pakuotos &#8212; &#381;sakymas pasiruo&#353;&#237;&#353;s kurjeriui pa&#353;imti.
+                    </MudText>
+                    <MudButton Size="Size.Large"
+                               Variant="Variant.Filled"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.LocalShipping"
+                               OnClick="@MarkShippedAsync"
+                               Disabled="@_isActioning"
+                               Style="text-transform:none">
+                        Kurjeris pa&#235;m&#235;
+                    </MudButton>
+                </div>
+            </MudPaper>
+        }
+
+        <!-- Shipped info -->
+        @if (_order.Status == "shipped" && _order.ShippedAt.HasValue)
+        {
+            <MudPaper Elevation="0" Style="background:#f0fdf4; border-radius:8px; padding:16px" Class="mb-4">
+                <MudText Typo="Typo.overline" Color="Color.Success">I&#353;si&#353;ta</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @_order.ShippedAt.Value.ToString("yyyy-MM-dd HH:mm")
+                </MudText>
+            </MudPaper>
+        }
+
+        <!-- Invoice section (visible ONLY when shipped AND Admin) -->
+        @if (_order.Status == "shipped" && _isAdmin)
+        {
+            <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">S&#259;skaitos susiejimas</MudText>
+
+                @if (_order.InvoiceId.HasValue && _linkedInvoice != null)
+                {
+                    <!-- Already linked - show read-only info -->
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.overline" Color="Color.Secondary">S&#259;skaitos Nr.</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight:600">
+                                @_linkedInvoice.InvoiceNumber
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.overline" Color="Color.Secondary">S&#259;skaitos data</MudText>
+                            <MudText Typo="Typo.body1">
+                                @_linkedInvoice.InvoiceDate.ToString("yyyy-MM-dd")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                }
+                else
+                {
+                    <!-- Not linked yet - show input -->
+                    <MudGrid>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="_invoiceIdInput"
+                                          Label="S&#259;skaitos Nr."
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          HelperText="P&#259;&#353;iokite &#353;i&#347; &#381;sakym&#259; susieta s&#259;skaitos numer&#237;." />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudButton Variant="Variant.Filled"
+                                        Color="Color.Primary"
+                                        StartIcon="@Icons.Material.Filled.Link"
+                                        OnClick="@LinkInvoiceAsync"
+                                        Disabled="@( _isActioning || string.IsNullOrWhiteSpace(_invoiceIdInput))"
+                                        Style="text-transform:none; margin-top:16px;">
+                                Susieti
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    private Order? _order;
+    private Invoice? _linkedInvoice;
+    private bool _isLoading = true;
+    private bool _isActioning = false;
+    private bool _isAdmin;
+
+    private Dictionary<int, string> _customerNames = new();
+    private Dictionary<int, string> _productNames = new();
+    private string _customerName = "Ne&#381;inomas";
+
+    // Invoice linking state
+    private string _invoiceIdInput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateTask;
+        _isAdmin = authState.User.IsInRole("Admin");
+
+        await LoadLookupsAsync();
+        await LoadOrderAsync();
+    }
+
+    private async Task LoadLookupsAsync()
+    {
+        try
+        {
+            var customers = await CustomerService.GetCustomersAsync();
+            _customerNames = customers.ToDictionary(c => c.Id, c => c.Name);
+
+            var products = await ProductService.GetAllProductsAsync();
+            _productNames = products.ToDictionary(p => p.Id, p => p.Name);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida i&#353;kraunant duomenis: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadOrderAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _order = await OrderService.GetOrderByIdAsync(OrderId);
+
+            if (_order != null)
+            {
+                _customerName = GetCustomerName(_order.CustomerId);
+
+                // If order has a linked invoice, fetch it for display
+                if (_order.InvoiceId.HasValue)
+                {
+                    try
+                    {
+                        _linkedInvoice = await InvoiceService.GetInvoiceAsync(_order.InvoiceId.Value);
+                    }
+                    catch
+                    {
+                        // Invoice might have been deleted; ignore
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida i&#353;kraunant &#381;sakym&#259;: {ex.Message}", Severity.Error);
+        }
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    // --- Pack Dialog ---
+    private async Task OpenPackDialog(OrderLine line)
+    {
+        var productName = GetProductName(line.ProductId);
+        var result = await PackLineDialog.ShowAsync(DialogService, line, productName, PackLineCallback);
+
+        if (result != null)
+        {
+            _isActioning = true;
+            StateHasChanged();
+
+            try
+            {
+                var userId = await AuthService.GetUserIdAsync();
+                if (userId == null)
+                {
+                    Snackbar.Add("N&#237;ra prisijung&#237;&#353;io naudotojo.", Severity.Error);
+                    return;
+                }
+
+                await OrderService.PackLineAsync(line.Id, result.LotNumber, result.ExpiryDate, userId.Value);
+                Snackbar.Add("Eilut&#237; s&#237;kmingai pakuota.", Severity.Success);
+                await LoadOrderAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Klaida pakuojant: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                _isActioning = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    // --- Mark Shipped ---
+    private async Task MarkShippedAsync()
+    {
+        if (_order == null) return;
+
+        _isActioning = true;
+        StateHasChanged();
+
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId == null)
+            {
+                Snackbar.Add("N&#237;ra prisijung&#237;&#353;io naudotojo.", Severity.Error);
+                return;
+            }
+
+            await OrderService.MarkShippedAsync(_order.Id, userId.Value);
+            Snackbar.Add("&#381;sakymas pa&#381;ym&#237;tas kaip i&#353;si&#353;tas.", Severity.Success);
+            await LoadOrderAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida &#381;ymint i&#353;si&#353;t&#259;: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isActioning = false;
+            StateHasChanged();
+        }
+    }
+
+    // --- Link Invoice ---
+    private async Task LinkInvoiceAsync()
+    {
+        if (_order == null) return;
+        if (string.IsNullOrWhiteSpace(_invoiceIdInput))
+        {
+            Snackbar.Add("P&#259;&#353;iokite s&#259;skaitos numer&#237;.", Severity.Warning);
+            return;
+        }
+
+        _isActioning = true;
+        StateHasChanged();
+
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId == null)
+            {
+                Snackbar.Add("N&#237;ra prisijung&#237;&#353;io naudotojo.", Severity.Error);
+                return;
+            }
+
+            // First resolve the invoice number to an invoice ID
+            var invoices = await InvoiceService.GetInvoicesAsync();
+            var invoice = invoices.FirstOrDefault(i => i.InvoiceNumber == _invoiceIdInput.Trim());
+
+            if (invoice == null)
+            {
+                Snackbar.Add($"S&#259;skaita @_invoiceIdInput nerasta.", Severity.Error);
+                return;
+            }
+
+            await OrderService.LinkInvoiceAsync(_order.Id, invoice.Id, userId.Value);
+            Snackbar.Add($"S&#259;skaita @_invoiceIdInput s&#237;kmingai susieta.", Severity.Success);
+
+            // Reload order to reflect changes
+            await LoadOrderAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida susiejant s&#259;skait&#259;: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isActioning = false;
+            StateHasChanged();
+        }
+    }
+
+    // --- Display Helpers ---
+    private string GetCustomerName(int customerId)
+    {
+        return _customerNames.TryGetValue(customerId, out var name) ? name : "Ne&#381;inomas";
+    }
+
+    private string GetProductName(int productId)
+    {
+        return _productNames.TryGetValue(productId, out var name) ? name : "Ne&#381;inomas";
+    }
+
+    private string GetStatusLabel(string status) => status switch
+    {
+        "draft" => "Juodra&#353;tis",
+        "confirmed" => "Patvirtintas",
+        "packing" => "Pakuojamas",
+        "ready_for_pickup" => "Pasiruo&#353;&#237;&#353;s",
+        "shipped" => "I&#353;si&#353;tas",
+        "cancelled" => "At&#353;auktas",
+        _ => status
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "draft" => Color.Default,
+        "confirmed" => Color.Info,
+        "packing" => Color.Warning,
+        "ready_for_pickup" => Color.Success,
+        "shipped" => Color.Primary,
+        "cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}
