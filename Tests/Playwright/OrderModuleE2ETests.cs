@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -20,8 +21,8 @@ public class OrderModuleE2ETests : IAsyncLifetime
     private IBrowser? _browser;
     private IPage? _page;
     private readonly string _baseUrl = "http://localhost:5081";
-    private readonly string _adminEmail = "admin@lakstena.local";
-    private readonly string _adminPassword = "Admin123!";
+    private string _adminEmail;
+    private string _adminPassword;
     private readonly string _artifactsDir = ".playwright-mcp";
 
     // Captured during tests
@@ -36,6 +37,18 @@ public class OrderModuleE2ETests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        // Load admin credentials from appsettings.Development.json
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: false)
+            .Build();
+
+        _adminEmail = config["Admin:Email"];
+        _adminPassword = config["Admin:Password"];
+
+        if (string.IsNullOrWhiteSpace(_adminEmail) || string.IsNullOrWhiteSpace(_adminPassword))
+            throw new Exception("Admin:Email/Admin:Password not found in appsettings.Development.json — see AGENTS.md");
+
         var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
         _browser = await playwright.Chromium.LaunchAsync(new() { Headless = false });
         _page = await _browser.NewPageAsync();
