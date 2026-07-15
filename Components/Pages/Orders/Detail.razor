@@ -212,21 +212,25 @@
                 }
                 else
                 {
-                    <!-- Not linked yet - show input -->
+                    <!-- Not linked yet - show autocomplete -->
                     <MudGrid>
-                        <MudItem xs="12" sm="4">
-                            <MudTextField @bind-Value="_invoiceIdInput"
-                                          Label="Sąskaitos Nr."
-                                          Variant="Variant.Outlined"
-                                          Margin="Margin.Dense"
-                                          HelperText="Prašykite šį užsakymą susietą sąskaitos numerį." />
+                        <MudItem xs="12" sm="8">
+                            <MudAutocomplete T="Invoice"
+                                             @bind-Value="_selectedInvoiceOption"
+                                             Label="Sąskaitos Nr."
+                                             Placeholder="Pradėkite rašyti sąskaitos numerį..."
+                                             SearchFunc="SearchInvoices"
+                                             ToStringFunc="@(i => i != null ? $"{i.InvoiceNumber} ({i.InvoiceDate:yyyy-MM-dd})" : "")"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             FullWidth="@true" />
                         </MudItem>
                         <MudItem xs="12" sm="4">
                             <MudButton Variant="Variant.Filled"
                                         Color="Color.Primary"
                                         StartIcon="@Icons.Material.Filled.Link"
                                         OnClick="@LinkInvoiceAsync"
-                                        Disabled="@( _isActioning || string.IsNullOrWhiteSpace(_invoiceIdInput))"
+                                        Disabled="@( _isActioning || _selectedInvoiceOption == null)"
                                         Style="text-transform:none; margin-top:16px;">
                                 Susieti
                             </MudButton>
@@ -256,7 +260,7 @@
     private string _customerName = "Nežinomas";
 
     // Invoice linking state
-    private string _invoiceIdInput = string.Empty;
+    private Invoice? _selectedInvoiceOption;
 
     protected override async Task OnInitializedAsync()
     {
@@ -327,6 +331,7 @@
 
         if (result != null)
         {
+            Snackbar.Add($"DEBUG ExpiryDate={result.ExpiryDate}", Severity.Info);
             _isActioning = true;
             StateHasChanged();
 
@@ -387,13 +392,32 @@
         }
     }
 
+    // --- Invoice Autocomplete Search ---
+    private async Task<IEnumerable<Invoice>> SearchInvoices(string term, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+            return Array.Empty<Invoice>();
+        if (_order == null)
+            return Array.Empty<Invoice>();
+        try
+        {
+            return await InvoiceService.SearchInvoicesAsync(term, _order.CustomerId);
+        }
+        catch (OperationCanceledException) { return Array.Empty<Invoice>(); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error searching invoices: {ex.Message}");
+            return Array.Empty<Invoice>();
+        }
+    }
+
     // --- Link Invoice ---
     private async Task LinkInvoiceAsync()
     {
         if (_order == null) return;
-        if (string.IsNullOrWhiteSpace(_invoiceIdInput))
+        if (_selectedInvoiceOption == null)
         {
-            Snackbar.Add("Prašykite sąskaitos numerį.", Severity.Warning);
+            Snackbar.Add("Pasirinkite sąskaitą iš sąrašo.", Severity.Warning);
             return;
         }
 
@@ -409,18 +433,8 @@
                 return;
             }
 
-            // First resolve the invoice number to an invoice ID
-            var invoices = await InvoiceService.GetInvoicesAsync();
-            var invoice = invoices.FirstOrDefault(i => i.InvoiceNumber == _invoiceIdInput.Trim());
-
-            if (invoice == null)
-            {
-                Snackbar.Add($"Sąskaita @_invoiceIdInput nerasta.", Severity.Error);
-                return;
-            }
-
-            await OrderService.LinkInvoiceAsync(_order.Id, invoice.Id, userId.Value);
-            Snackbar.Add($"Sąskaita @_invoiceIdInput sėkmingai susieta.", Severity.Success);
+            await OrderService.LinkInvoiceAsync(_order.Id, _selectedInvoiceOption.Id, userId.Value);
+            Snackbar.Add($"Sąskaita {_selectedInvoiceOption.InvoiceNumber} sėkmingai susieta.", Severity.Success);
 
             // Reload order to reflect changes
             await LoadOrderAsync();

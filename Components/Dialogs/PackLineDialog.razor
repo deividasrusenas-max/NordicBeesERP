@@ -14,7 +14,8 @@
                       Label="Partijos Nr."
                       Variant="Variant.Outlined"
                       Margin="Margin.Dense" />
-        <MudDatePicker @bind-Value="_expiryDate"
+        <MudDatePicker Date="_expiryDate"
+                       DateChanged="@((DateTime? d) => _expiryDate = d)"
                        Label="Galiojimo data"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
