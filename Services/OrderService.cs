@@ -214,7 +214,7 @@ public class OrderService : IOrderService
         return newOrderId;
     }
 
-    public async Task PackLineAsync(int orderLineId, string lotNumber, DateTime expiryDate, int userId)
+    public async Task PackLineAsync(int orderLineId, string lotNumber, DateTime? expiryDate, int userId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 

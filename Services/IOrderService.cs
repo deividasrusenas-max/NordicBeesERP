@@ -16,7 +16,7 @@ public interface IOrderService
     Task<int> CreateOrderAsync(Order order, List<OrderLine> lines);
 
     /// Pack a single order line with lot/expiry info.
-    Task PackLineAsync(int orderLineId, string lotNumber, DateTime expiryDate, int userId);
+    Task PackLineAsync(int orderLineId, string lotNumber, DateTime? expiryDate, int userId);
 
     /// Mark an order as shipped (auto-checks if all lines packed → ready for pickup).
     Task MarkShippedAsync(int orderId, int userId);

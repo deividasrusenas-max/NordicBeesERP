@@ -3,7 +3,7 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
 @using MudBlazor
-@using NordicBeesERP.Modules.Orders.Pages.Orders
+@using NordicBeesERP.Components.Dialogs
 @inject IOrderService OrderService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
@@ -11,7 +11,6 @@
 @inject IInvoiceService InvoiceService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject IPackLineCallbackService PackLineCallback
 @inject NavigationManager Navigation
 
 <PageTitle>U&#381;sakymas @_order?.OrderNumber</PageTitle>
@@ -324,7 +323,7 @@
     private async Task OpenPackDialog(OrderLine line)
     {
         var productName = GetProductName(line.ProductId);
-        var result = await PackLineDialog.ShowAsync(DialogService, line, productName, PackLineCallback);
+        var result = await PackLineDialog.PackLineResult.ShowAsync(DialogService, line, productName);
 
         if (result != null)
         {

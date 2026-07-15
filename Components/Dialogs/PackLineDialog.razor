@@ -1,0 +1,76 @@
+@namespace NordicBeesERP.Components.Dialogs
+@using MudBlazor
+@using NordicBeesERP.Models
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Inventory2" Color="@Color.Primary" />
+            <MudText Typo="Typo.h6">Pakuoti eilut&#237; — @ProductName</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_lotNumber"
+                      Label="Partijos Nr."
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" />
+        <MudDatePicker @bind-Value="_expiryDate"
+                       Label="Galiojimo data"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       FirstDayOfWeek="DayOfWeek.Monday"
+                       Format="yyyy-MM-dd" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Default"
+                   Style="text-transform:none"
+                   OnClick="@Cancel">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Style="text-transform:none"
+                   OnClick="@Confirm">Patvirtinti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public OrderLine Line { get; set; } = default!;
+    [Parameter] public string ProductName { get; set; } = string.Empty;
+
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _lotNumber = string.Empty;
+    private DateTime? _expiryDate;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(new PackLineResult
+        {
+            LotNumber = _lotNumber,
+            ExpiryDate = _expiryDate
+        }));
+    }
+
+    public class PackLineResult
+    {
+        public string LotNumber { get; init; } = string.Empty;
+        public DateTime? ExpiryDate { get; init; }
+
+        public static async Task<PackLineResult?> ShowAsync(IDialogService dialogService, OrderLine line, string productName)
+        {
+            var parameters = new DialogParameters<PackLineDialog>
+            {
+                [nameof(Line)] = line,
+                [nameof(ProductName)] = productName
+            };
+            var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+            var dialog = await dialogService.ShowAsync<PackLineDialog>("Pakuoti eilut&#237;", parameters, options);
+            var result = await dialog.Result;
+            if (result == null || result.Canceled)
+                return null;
+            return result.Data as PackLineResult;
+        }
+    }
+}
