@@ -323,7 +323,7 @@ public class OrderService : IOrderService
         {
             // All lines packed — auto-transition to ready_for_pickup (only from confirmed or packing)
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE orders SET status = 'ready_for_pickup', updated_at = NOW() WHERE id = {0} AND status IN ('packing', 'confirmed')",
+                "UPDATE orders SET status = 'ready_for_pickup', updated_at = NOW() WHERE id = {0} AND status IN ('draft', 'packing', 'confirmed')",
                 orderId);
         }
     }
