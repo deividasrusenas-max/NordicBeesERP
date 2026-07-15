@@ -220,7 +220,7 @@ public class OrderService : IOrderService
 
         // Get the order_id for this line
         var orderId = await context.Database.SqlQueryRaw<int>(
-            "SELECT order_id FROM order_lines WHERE id = {0}", orderLineId).FirstAsync();
+            "SELECT order_id AS Value FROM order_lines WHERE id = {0}", orderLineId).FirstAsync();
 
         // Update the line with packing info
         await context.Database.ExecuteSqlRawAsync(
@@ -302,7 +302,7 @@ public class OrderService : IOrderService
         await using var context = await _contextFactory.CreateDbContextAsync();
 
         var count = await context.Database.SqlQueryRaw<decimal>(
-            "SELECT COALESCE(SUM(quantity), 0) FROM order_lines WHERE order_id = {0}",
+            "SELECT COALESCE(SUM(quantity), 0) AS Value FROM order_lines WHERE order_id = {0}",
             orderId).FirstAsync();
 
         return count;
@@ -316,7 +316,7 @@ public class OrderService : IOrderService
     {
         // Count unpacked lines
         var unpackedCount = await context.Database.SqlQueryRaw<int>(
-            "SELECT COUNT(*) FROM order_lines WHERE order_id = {0} AND packed_at IS NULL",
+            "SELECT COUNT(*) AS Value FROM order_lines WHERE order_id = {0} AND packed_at IS NULL",
             orderId).FirstAsync();
 
         if (unpackedCount == 0)
