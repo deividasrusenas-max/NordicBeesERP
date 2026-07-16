@@ -82,9 +82,8 @@ public class Delivery
     [Column("inspection_notes")]
     public string? InspectionNotes { get; set; }
 
-    [Column("inspection_by")]
-    [MaxLength(200)]
-    public string? InspectionBy { get; set; }
+    [Column("inspection_by_user_id")]
+    public int? InspectionByUserId { get; set; }
 
     [Column("inspection_at")]
     public DateTime? InspectionAt { get; set; }

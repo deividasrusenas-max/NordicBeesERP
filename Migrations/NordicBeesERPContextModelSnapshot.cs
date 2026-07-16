@@ -2792,6 +2792,10 @@ namespace NordicBeesERP.Migrations
                         .HasColumnType("longtext")
                         .HasColumnName("invoice_number");
 
+                    b.Property<int?>("InspectionByUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("inspection_by_user_id");
+
                     b.Property<bool>("NeedReturnBarrels")
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("need_return_barrels");
