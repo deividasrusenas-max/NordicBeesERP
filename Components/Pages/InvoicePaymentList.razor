@@ -6,6 +6,7 @@
 @inject ICustomerService CustomerService
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px">
     <MudText Typo="Typo.h6" Class="mb-3">Sąskaitų mokėjimų sąrašas</MudText>
@@ -31,7 +32,7 @@
     </MudGrid>
     
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadInvoicesAsync">Filtruoti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">Filtruoti</MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFilters">Valyti</MudButton>
     </MudStack>
 
@@ -85,10 +86,28 @@
     private DateTime? _toDate;
     private int _rowsPerPage = 25;
 
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? StatusParam { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateTime? DateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateTime? DateTo { get; set; }
+
         private bool _disposed = false;
 
-        protected override async Task OnInitializedAsync()
+        protected override async Task OnParametersSetAsync()
         {
+            _searchTerm = FilterSearch;
+            _selectedStatus = StatusParam;
+            _fromDate = DateFrom;
+            _toDate = DateTo;
+
             await LoadInvoicesAsync();
         }
 
@@ -125,16 +144,38 @@
     private void OnStatusChanged(string? status)
     {
         _selectedStatus = status;
-        LoadInvoicesAsync();
+        var newUrl = BuildFilterUrl();
+        Navigation.NavigateTo(newUrl, replace: false);
+    }
+
+    private void ApplyFilters()
+    {
+        var newUrl = BuildFilterUrl();
+        Navigation.NavigateTo(newUrl, replace: false);
     }
 
     private void ClearFilters()
     {
-        _selectedStatus = null;
-        _searchTerm = null;
-        _fromDate = null;
-        _toDate = null;
-        LoadInvoicesAsync();
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
+    }
+
+    private string BuildFilterUrl()
+    {
+        var path = Navigation.Uri.Split('?')[0];
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(_searchTerm))
+            queryParams.Add($"q={Uri.EscapeDataString(_searchTerm)}");
+
+        if (_selectedStatus != null)
+            queryParams.Add($"status={Uri.EscapeDataString(_selectedStatus)}");
+
+        if (_fromDate.HasValue)
+            queryParams.Add($"from={_fromDate.Value:yyyy-MM-dd}");
+        if (_toDate.HasValue)
+            queryParams.Add($"to={_toDate.Value:yyyy-MM-dd}");
+
+        return path + (queryParams.Any() ? "?" + string.Join("&", queryParams) : "");
     }
 
     private Color GetStatusColor(string status)
