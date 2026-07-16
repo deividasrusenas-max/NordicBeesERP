@@ -29,7 +29,8 @@
     }
 
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
-        <MudTextField @bind-Value="_searchText"
+        <MudTextField Value="@_searchText"
+                      ValueChanged="@((string val) => OnSearchChanged(val))"
                       Placeholder="Ieškoti pagal pavadinimą, kodą..."
                       Variant="Variant.Outlined"
                       Immediate="true"
@@ -39,7 +40,9 @@
                       Adornment="Adornment.Start" />
     </MudPaper>
 
-    <MudTabs @bind-ActivePanelIndex="_tabIndex" Elevation="0" Rounded="true" Square="false" Class="mt-2 mb-0">
+    <MudTabs ActivePanelIndex="@_tabIndex"
+             ActivePanelIndexChanged="@((int i) => OnTabChanged(i))"
+             Elevation="0" Rounded="true" Square="false" Class="mt-2 mb-0">
         @if (!_isWarehouse)
         {
             <MudTabPanel Text="VISI" />
@@ -219,6 +222,90 @@
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
 
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "vat")]
+    public string? VatRates { get; set; }
+
+    [SupplyParameterFromQuery(Name = "active")]
+    public string? ActiveFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tab")]
+    public int? TabIndex { get; set; }
+
+    // Lifecycle: restore filter state from URL on every navigation
+    protected override void OnParametersSet()
+    {
+        _searchText = FilterSearch;
+
+        if (!string.IsNullOrEmpty(VatRates))
+        {
+            try
+            {
+                _selectedVatRates = new HashSet<decimal>(
+                    VatRates.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(x => decimal.Parse(x.Trim(), System.Globalization.CultureInfo.InvariantCulture)));
+            }
+            catch
+            {
+                _selectedVatRates = new HashSet<decimal>();
+            }
+        }
+        else
+        {
+            _selectedVatRates = new HashSet<decimal>();
+        }
+
+        _filterActive = ActiveFilter switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => null
+        };
+
+        if (TabIndex.HasValue)
+            _tabIndex = TabIndex.Value;
+
+        StateHasChanged();
+    }
+
+    // Filter change handlers
+    private void OnSearchChanged(string val)
+    {
+        _searchText = val;
+        Navigation.NavigateTo(BuildFilterUrl(), replace: true);
+    }
+
+    private void OnTabChanged(int i)
+    {
+        _tabIndex = i;
+        Navigation.NavigateTo(BuildFilterUrl(), replace: false);
+    }
+
+    private string BuildFilterUrl()
+    {
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(_searchText))
+            queryParams.Add($"q={Uri.EscapeDataString(_searchText)}");
+
+        if (_selectedVatRates.Any())
+            queryParams.Add($"vat={string.Join(",", _selectedVatRates.Select(r => r.ToString(System.Globalization.CultureInfo.InvariantCulture)))}");
+
+        if (_filterActive == true)
+            queryParams.Add("active=1");
+        else if (_filterActive == false)
+            queryParams.Add("active=0");
+
+        if (_tabIndex != 0)
+            queryParams.Add($"tab={_tabIndex}");
+
+        var baseUri = Navigation.Uri.Split('?')[0];
+        return queryParams.Any() ? baseUri + "?" + string.Join("&", queryParams) : baseUri;
+    }
+
     private bool IsDoubleClick(object item)
     {
         var now = DateTime.Now;
@@ -288,11 +375,13 @@
     {
         if (!_selectedVatRates.Remove(rate))
             _selectedVatRates.Add(rate);
+        Navigation.NavigateTo(BuildFilterUrl(), replace: false);
     }
 
     private void ToggleActiveFilter(bool value)
     {
         _filterActive = _filterActive == value ? null : value;
+        Navigation.NavigateTo(BuildFilterUrl(), replace: false);
     }
 
     private async Task OpenCreateDialog(PartnerType partnerType)
