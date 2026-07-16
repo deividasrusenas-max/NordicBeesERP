@@ -54,8 +54,8 @@
         <MudGrid>
             <MudItem xs="12" sm="6" md="4">
                 <MudTextField Value="@_filterSearch"
-                              ValueChanged="@(async (string val) => { _filterSearch = val; _selectedInvoices.Clear(); await LoadDataAsync(); })"
-                              Label="Paieška pagal Nr. arba klientą"
+                                ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
+                               Label="Paieška pagal Nr. arba klientą"
                               Variant="Variant.Outlined"
                                Immediate="true"
                                FullWidth="@true"
@@ -65,20 +65,20 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudDateRangePicker DateRange="@_dateRange"
-                                     DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; _selectedInvoices.Clear(); await LoadDataAsync(); })"
+                                        DateRangeChanged="@(async (DateRange dr) => await UpdateDateRangeAsync(dr))"
                                     Label="Data (nuo / iki)"
                                      Variant="Variant.Outlined"
                                      FullWidth="@true"
                                      Clearable="true" />
             </MudItem>
-            @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null)
+            @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null || _selectedStatuses.Any())
             {
                 <MudItem xs="12">
                     <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
                                Variant="Variant.Text"
                                Color="Color.Secondary"
                                Size="Size.Small"
-                                OnClick="@(async () => { _filterSearch = null; _dateRange = null; _selectedInvoices.Clear(); await LoadDataAsync(); StateHasChanged(); })">
+                                 OnClick="@(async () => await ClearFiltersAsync())">
                         Išvalyti filtrus
                     </MudButton>
                 </MudItem>
@@ -93,7 +93,7 @@
         {
             <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
                        StartIcon="@Icons.Material.Filled.FilterAltOff"
-                        OnClick="@(() => { _selectedStatuses.Clear(); _selectedInvoices.Clear(); StateHasChanged(); })">
+                         OnClick="@(async () => await ClearFiltersAsync())">
                 Rodyti visas
             </MudButton>
         }
@@ -103,7 +103,7 @@
             <MudChip T="string"
                      Color="@(isSelected ? GetStatusColor(status) : Color.Default)"
                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatus(status))"
+                       OnClick="@(async () => await ToggleStatusAsync(status))"
                      Size="Size.Small"
                      Style="@(isSelected ? "" : "opacity:0.7")">
                 @GetStatusLabel(status)
@@ -113,7 +113,7 @@
 
     <!-- Tabs -->
     <MudTabs ActivePanelIndex="_selectedTab"
-             ActivePanelIndexChanged="OnTabChanged"
+              ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))"
              Elevation="0" Rounded="true" Square="false" Class="mt-2">
         <MudTabPanel Text="Visos" />
         <MudTabPanel Text="Nesumokėtos" />
@@ -136,7 +136,7 @@
                 </MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
                            StartIcon="@Icons.Material.Filled.PictureAsPdf"
-                           OnClick="GenerateBulkPdfAsync"
+                            OnClick="@(async () => await GenerateBulkPdfAsync())"
                            Disabled="@_isGenerating"
                            Style="text-transform:none">
                     @if (_isGenerating)
@@ -270,6 +270,25 @@
     private DateRange? _dateRange = null;
     private HashSet<string> _selectedStatuses = new();
 
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateTime? DateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateTime? DateTo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? StatusCsv { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tab")]
+    public int? Tab { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? InvoiceTypeParam { get; set; }
+
     // Available statuses for filtering
     private readonly List<string> _availableStatuses = new()
     {
@@ -280,8 +299,20 @@
     private List<Invoice> FilteredItems => GetFilteredItems();
 
     // Lifecycle
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        _filterSearch = FilterSearch;
+        _dateRange = (DateFrom.HasValue || DateTo.HasValue)
+            ? new DateRange(DateFrom, DateTo)
+            : null;
+        _selectedStatuses = !string.IsNullOrEmpty(StatusCsv)
+            ? new HashSet<string>(StatusCsv.Split(','))
+            : new HashSet<string>();
+        _selectedTab = Tab ?? 0;
+        if (!string.IsNullOrEmpty(InvoiceTypeParam))
+            _invoiceType = InvoiceTypeParam;
+
+        _selectedInvoices.Clear();
         await LoadDataAsync();
     }
 
@@ -316,6 +347,9 @@
     {
         _invoiceType = type;
         _selectedInvoices.Clear();
+
+        var newUrl = BuildFilterUrl(_filterSearch, _dateRange?.Start, _dateRange?.End, _selectedStatuses, _selectedTab, type);
+        Navigation.NavigateTo(newUrl, replace: false);
         await LoadDataAsync();
     }
 
@@ -352,25 +386,76 @@
         return result.ToList();
     }
 
-    private void ToggleStatus(string status)
+    private async Task ToggleStatusAsync(string status)
     {
-        if (_selectedStatuses.Contains(status))
-        {
-            _selectedStatuses.Remove(status);
-        }
+        var newStatuses = new HashSet<string>(_selectedStatuses);
+        if (newStatuses.Contains(status))
+            newStatuses.Remove(status);
         else
-        {
-            _selectedStatuses.Add(status);
-        }
+            newStatuses.Add(status);
+
+        _selectedStatuses = newStatuses;
         _selectedInvoices.Clear();
-        StateHasChanged();
+
+        var newUrl = BuildFilterUrl(_filterSearch, _dateRange?.Start, _dateRange?.End, _selectedStatuses, _selectedTab);
+        Navigation.NavigateTo(newUrl, replace: false);
     }
 
-    private void OnTabChanged(int index)
+    private async Task OnTabChangedAsync(int index)
     {
         _selectedTab = index;
         _selectedInvoices.Clear();
-        StateHasChanged();
+
+        var newUrl = BuildFilterUrl(_filterSearch, _dateRange?.Start, _dateRange?.End, _selectedStatuses, index);
+        Navigation.NavigateTo(newUrl, replace: false);
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
+    }
+
+    private async Task UpdateFilterSearchAsync(string val)
+    {
+        _filterSearch = val;
+        _selectedInvoices.Clear();
+
+        var newUrl = BuildFilterUrl(val, _dateRange?.Start, _dateRange?.End, _selectedStatuses, _selectedTab);
+        Navigation.NavigateTo(newUrl, replace: true);
+    }
+
+    private async Task UpdateDateRangeAsync(DateRange dr)
+    {
+        _dateRange = dr;
+        _selectedInvoices.Clear();
+
+        var newUrl = BuildFilterUrl(_filterSearch, dr.Start, dr.End, _selectedStatuses, _selectedTab);
+        Navigation.NavigateTo(newUrl, replace: false);
+    }
+
+    private string BuildFilterUrl(string? filterSearch, DateTime? dateFrom, DateTime? dateTo, IEnumerable<string>? statuses, int tab, string? type = null)
+    {
+        var path = Navigation.Uri.Split('?')[0];
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(filterSearch))
+            queryParams.Add($"q={Uri.EscapeDataString(filterSearch)}");
+
+        if (dateFrom.HasValue)
+            queryParams.Add($"from={dateFrom.Value:yyyy-MM-dd}");
+        if (dateTo.HasValue)
+            queryParams.Add($"to={dateTo.Value:yyyy-MM-dd}");
+
+        if (statuses?.Any() == true)
+            queryParams.Add($"status={string.Join(",", statuses)}");
+
+        if (tab != 0)
+            queryParams.Add($"tab={tab}");
+
+        if (!string.IsNullOrEmpty(type) && type != "LAK")
+            queryParams.Add($"type={type}");
+
+        return path + (queryParams.Any() ? "?" + string.Join("&", queryParams) : "");
     }
 
     private void ViewInvoice(int invoiceId)
