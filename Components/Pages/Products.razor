@@ -2,6 +2,7 @@
 @inject IProductService ProductService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 @using NordicBeesERP.Components.Dialogs
 @using NordicBeesERP.Models
 @using MudBlazor
@@ -20,7 +21,8 @@
     }
 
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
-        <MudTextField @bind-Value="_searchText"
+        <MudTextField Value="@_searchText"
+                      ValueChanged="@((string val) => UpdateSearchAsync(val))"
                       Placeholder="Ieškoti pagal kodą, pavadinimą, EAN..."
                       Variant="Variant.Outlined"
                       Immediate="true"
@@ -125,6 +127,10 @@
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
 
+    // URL query-string parameter (synchronized with _searchText)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
     private bool IsDoubleClick(object item)
     {
         var now = DateTime.Now;
@@ -159,14 +165,29 @@
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        _searchText = FilterSearch;
         await LoadProducts();
     }
 
     private async Task LoadProducts()
     {
         products = await ProductService.GetAllProductsAsync();
+    }
+
+    private void UpdateSearchAsync(string val)
+    {
+        _searchText = val;
+        Navigation.NavigateTo(BuildFilterUrl(), replace: true);
+    }
+
+    private string BuildFilterUrl()
+    {
+        var path = "/products";
+        if (!string.IsNullOrWhiteSpace(_searchText))
+            return $"{path}?q={Uri.EscapeDataString(_searchText)}";
+        return path;
     }
 
     private void ToggleTypeFilter(ProductType type)
