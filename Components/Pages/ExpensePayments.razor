@@ -6,6 +6,7 @@
 @using MudBlazor
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject MudBlazor.ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <PageTitle>Išlaidų mokėjimai</PageTitle>
 
@@ -16,7 +17,7 @@
         <MudGrid>
             <MudItem xs="12" sm="6" md="6">
                 <MudTextField Value="@_filterSearch"
-                              ValueChanged="@(async (string val) => { _filterSearch = val; await LoadPaymentsAsync(); })"
+                              ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
                               Label="Paieška pagal sąskaitą / tiekėją / referencę"
                               Variant="Variant.Outlined"
                               Immediate="true"
@@ -27,7 +28,7 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="6">
                 <MudDateRangePicker DateRange="@_dateRange"
-                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadPaymentsAsync(); })"
+                                    DateRangeChanged="@(async (DateRange dr) => await UpdateDateRangeAsync(dr))"
                                     Label="Data (nuo / iki)"
                                     Variant="Variant.Outlined"
                                     FullWidth="@true"
@@ -38,7 +39,7 @@
                 <MudItem xs="12">
                     <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
                                Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                               OnClick="@(async () => { _filterSearch = null; _dateRange = null; await LoadPaymentsAsync(); })">
+                                OnClick="@(async () => await ClearFiltersAsync())">
                         Išvalyti filtrus
                     </MudButton>
                 </MudItem>
@@ -86,8 +87,25 @@
     private string? _filterSearch;
     private DateRange? _dateRange;
 
-    protected override async Task OnInitializedAsync()
-        => await LoadPaymentsAsync();
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateTime? DateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateTime? DateTo { get; set; }
+
+    // Lifecycle
+    protected override async Task OnParametersSetAsync()
+    {
+        _filterSearch = FilterSearch;
+        _dateRange = (DateFrom.HasValue || DateTo.HasValue)
+            ? new DateRange(DateFrom, DateTo)
+            : null;
+        await LoadPaymentsAsync();
+    }
 
     private async Task LoadPaymentsAsync()
     {
@@ -145,4 +163,38 @@
         }
     }
 
+    // Filter handlers
+    private async Task UpdateFilterSearchAsync(string val)
+    {
+        _filterSearch = val;
+        var url = BuildFilterUrl();
+        Navigation.NavigateTo(url, replace: true);
+    }
+
+    private async Task UpdateDateRangeAsync(DateRange dr)
+    {
+        _dateRange = dr;
+        var url = BuildFilterUrl();
+        Navigation.NavigateTo(url, replace: true);
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        Navigation.NavigateTo("/expense-payments");
+    }
+
+    private string BuildFilterUrl()
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrEmpty(_filterSearch))
+            parts.Add($"q={Uri.EscapeDataString(_filterSearch)}");
+
+        if (_dateRange?.Start.HasValue == true)
+            parts.Add($"from={_dateRange.Start.Value:yyyy-MM-dd}");
+        if (_dateRange?.End.HasValue == true)
+            parts.Add($"to={_dateRange.End.Value:yyyy-MM-dd}");
+
+        return "/expense-payments" + (parts.Count > 0 ? "?" + string.Join("&", parts) : "");
+    }
 }
