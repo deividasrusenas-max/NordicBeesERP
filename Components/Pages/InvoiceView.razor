@@ -383,6 +383,9 @@
     [Parameter]
     public int Id { get; set; }
 
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     private Invoice? _invoice;
     private List<InvoiceLine> _invoiceLines = new List<InvoiceLine>();
 
@@ -579,7 +582,8 @@
 
     private void HandleBack()
     {
-        Navigation.NavigateTo("/invoices");
+        var target = !string.IsNullOrEmpty(ReturnUrl) ? Uri.UnescapeDataString(ReturnUrl) : "/invoices";
+        Navigation.NavigateTo(target);
     }
 
     private void HandleEdit()

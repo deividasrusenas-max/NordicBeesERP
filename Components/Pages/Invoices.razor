@@ -460,7 +460,8 @@
 
     private void ViewInvoice(int invoiceId)
     {
-        Navigation.NavigateTo($"/invoices/{invoiceId}");
+        var returnUrl = Uri.EscapeDataString(Navigation.Uri.Replace(Navigation.BaseUri.TrimEnd('/'), ""));
+        Navigation.NavigateTo($"/invoices/{invoiceId}?returnUrl={returnUrl}");
     }
 
     private void OpenCreateDialog()
