@@ -5,7 +5,6 @@
 @inject ISnackbar Snackbar
 @using NordicBeesERP.Components.Dialogs
 @using Microsoft.AspNetCore.Components.Authorization
-
 <PageTitle>Klientai</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
@@ -29,7 +28,8 @@
     }
 
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
-        <MudTextField @bind-Value="_filterSearch"
+        <MudTextField Value="_filterSearch"
+                      ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
                       Placeholder="Ieškoti pagal pavadinimą, kodą, PVM kodą..."
                       Variant="Variant.Outlined"
                       Immediate="true"
@@ -115,6 +115,13 @@
 @code {
     [CascadingParameter] Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "active")]
+    public bool? FilterActive { get; set; }
+
     private List<Customer>? _customers;
     private string? _filterSearch = null;
     private bool? _filterActive;
@@ -136,8 +143,12 @@
         return false;
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        // Sync URL query params into working-state fields before loading data
+        _filterSearch = FilterSearch;
+        _filterActive = FilterActive;
+
         var authState = await AuthStateTask;
         _isAdmin = authState.User.IsInRole("Admin");
         _isManager = authState.User.IsInRole("Manager");
@@ -147,6 +158,26 @@
     private async Task LoadCustomers()
     {
         _customers = await CustomerService.GetCustomersAsync();
+    }
+
+    private async Task UpdateFilterSearchAsync(string val)
+    {
+        _filterSearch = val;
+        Navigation.NavigateTo(BuildFilterUrl(), replace: true);
+    }
+
+    private string BuildFilterUrl()
+    {
+        var path = Navigation.Uri.Split('?')[0];
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(_filterSearch))
+            queryParams.Add($"q={Uri.EscapeDataString(_filterSearch)}");
+
+        if (_filterActive.HasValue)
+            queryParams.Add($"active={(_filterActive.Value ? 1 : 0)}");
+
+        return path + (queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : "");
     }
 
     private List<Customer> FilteredCustomers
@@ -172,6 +203,7 @@
     private void ToggleActiveFilter(bool value)
     {
         _filterActive = _filterActive == value ? null : value;
+        Navigation.NavigateTo(BuildFilterUrl(), replace: false);
     }
 
     private async Task OnRowClick(Customer customer)
