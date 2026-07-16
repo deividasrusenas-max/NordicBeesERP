@@ -112,7 +112,6 @@
                         {
                             CreditNoteStatus.Draft => ("Juodraštis", Color.Default),
                             CreditNoteStatus.Printed => ("Atspausdinta", Color.Primary),
-                            CreditNoteStatus.Disputed => ("Ginčijama", Color.Warning),
                             _ => (creditNote.Status.ToString(), Color.Default)
                         };
                     }
@@ -163,7 +162,7 @@
     }
 
     private HashSet<string> _selectedStatuses = new();
-    private readonly string[] _availableStatuses = { "Draft", "Printed", "Disputed" };
+    private readonly string[] _availableStatuses = { "Draft", "Printed" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -191,7 +190,6 @@
                 {
                     "Draft" => CreditNoteStatus.Draft,
                     "Printed" => CreditNoteStatus.Printed,
-                    "Disputed" => CreditNoteStatus.Disputed,
                     _ => null
                 };
             }
@@ -238,7 +236,6 @@
             {
                 "Draft" => CreditNoteStatus.Draft,
                 "Printed" => CreditNoteStatus.Printed,
-                "Disputed" => CreditNoteStatus.Disputed,
                 _ => CreditNoteStatus.Draft
             };
             filtered = filtered.Where(c => c.Status == status);
@@ -274,7 +271,6 @@
     {
         "Draft" => "Juodraštis",
         "Printed" => "Atspausdinta",
-        "Disputed" => "Ginčijama",
         _ => status
     };
 
@@ -282,7 +278,6 @@
     {
         "Draft" => Color.Default,
         "Printed" => Color.Primary,
-        "Disputed" => Color.Warning,
         _ => Color.Default
     };
 

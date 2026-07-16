@@ -42,12 +42,7 @@
                      Trinti
                  </MudButton>
              }
-               @if (_creditNote?.Status != CreditNoteStatus.Draft)
-               {
-                   <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="@HandleDisputeCreditNote" StartIcon="@Icons.Material.Filled.ReportProblem">
-                       Ginčyti
-                   </MudButton>
-               }
+
              <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@NavigateToPdf" StartIcon="@Icons.Material.Filled.Print">
                  Spausdinti
              </MudButton>
@@ -254,7 +249,7 @@
         {
             CreditNoteStatus.Draft => "Juodraštis",
             CreditNoteStatus.Printed => "Atspausdinta",
-            CreditNoteStatus.Disputed => "Ginčijama",
+
             _ => status.ToString()
         };
     }
@@ -265,7 +260,7 @@
         {
             CreditNoteStatus.Draft => Color.Default,
             CreditNoteStatus.Printed => Color.Primary,
-            CreditNoteStatus.Disputed => Color.Warning,
+
             _ => Color.Default
         };
     }
@@ -299,16 +294,6 @@
         Navigation.NavigateTo("/credit-notes");
     }
 
-    private async Task HandleDisputeCreditNote()
-    {
-        var userId = await _authService.GetUserIdAsync();
-        if (userId.HasValue)
-        {
-            await CreditNoteService.SetDisputedAsync(Id, userId.Value);
-            await LoadCreditNoteAsync();
-            Snackbar.Add("Kreditinė sąskaita pažymėta kaip ginčijama", Severity.Warning);
-        }
-    }
 
     private async Task HandleDeleteCreditNote()
     {

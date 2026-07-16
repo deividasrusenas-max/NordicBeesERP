@@ -144,7 +144,7 @@
     // Available statuses for filtering
     private readonly List<string> _availableStatuses = new()
     {
-        "draft", "confirmed", "packing", "ready_for_pickup", "shipped", "cancelled"
+        "draft", "confirmed", "packing", "ready_for_pickup", "shipped"
     };
 
     // Computed
@@ -280,7 +280,6 @@
         "packing" => "Pakuojamas",
         "ready_for_pickup" => "Pasirengęs",
         "shipped" => "Išsiųstas",
-        "cancelled" => "Atšauktas",
         _ => status
     };
 
@@ -291,7 +290,6 @@
         "packing" => Color.Warning,
         "ready_for_pickup" => Color.Success,
         "shipped" => Color.Primary,
-        "cancelled" => Color.Error,
         _ => Color.Default
     };
 }

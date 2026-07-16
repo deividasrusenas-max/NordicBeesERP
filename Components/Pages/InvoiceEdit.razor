@@ -527,8 +527,6 @@
         InvoiceStatus.Draft => Color.Warning,
         InvoiceStatus.Confirmed => Color.Primary,
         InvoiceStatus.Paid => Color.Success,
-        InvoiceStatus.Disputed => Color.Error,
-        InvoiceStatus.Cancelled => Color.Dark,
         _ => Color.Default
     };
 
@@ -537,8 +535,6 @@
         InvoiceStatus.Draft => "Juodraštas",
         InvoiceStatus.Confirmed => "Patvirtinta",
         InvoiceStatus.Paid => "Apmokėta",
-        InvoiceStatus.Disputed => "Ginčijama",
-        InvoiceStatus.Cancelled => "Atšaukta",
         _ => status.ToString()
     };
 

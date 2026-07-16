@@ -60,20 +60,6 @@
                 </MudButton>
             }
             
-            @if (_invoice?.Status == InvoiceStatus.Confirmed)
-            {
-                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@HandleDispute" StartIcon="@Icons.Material.Filled.ReportProblem" Style="text-transform:none">
-                    Ginčijama
-                </MudButton>
-            }
-            
-            @if (_invoice?.Status == InvoiceStatus.Disputed)
-            {
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@HandleConfirm" StartIcon="@Icons.Material.Filled.Undo" Style="text-transform:none">
-                    Atstatyti
-                </MudButton>
-            }
-            
             @if (_invoice?.PaymentStatus != "paid")
             {
                 <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@RegisterPayment" Style="text-transform:none">
@@ -411,7 +397,6 @@
             InvoiceStatus.Draft => "Juodraštas",
             InvoiceStatus.Confirmed => "Patvirtinta",
             InvoiceStatus.Paid => "Apmokėta",
-            InvoiceStatus.Disputed => "Ginčijama",
             _ => "Nežinoma"
         };
     }
@@ -423,7 +408,6 @@
             InvoiceStatus.Draft => Color.Warning,
             InvoiceStatus.Confirmed => Color.Primary,
             InvoiceStatus.Paid => Color.Success,
-            InvoiceStatus.Disputed => Color.Error,
             _ => Color.Default
         };
     }
@@ -570,13 +554,6 @@
     {
         if (_invoice is null) return;
         await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, InvoiceStatus.Confirmed);
-        await LoadInvoiceAsync();
-    }
-
-    private async Task HandleDispute()
-    {
-        if (_invoice is null) return;
-        await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, InvoiceStatus.Disputed);
         await LoadInvoiceAsync();
     }
 
