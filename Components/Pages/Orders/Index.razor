@@ -81,12 +81,12 @@
         {
             var isSelected = _selectedStatuses.Contains(status);
             <MudChip T="string"
-                     Color="@(isSelected ? GetStatusColor(status) : Color.Default)"
-                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                      OnClick="@(async () => await ToggleStatusAsync(status))"
-                     Size="Size.Small"
-                     Style="@(isSelected ? "" : "opacity:0.7")">
-                @GetStatusLabel(status)
+                      Color="@(isSelected ? StatusDisplayHelper.GetColor(status, _statusDisplay) : Color.Default)"
+                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                       OnClick="@(async () => await ToggleStatusAsync(status))"
+                      Size="Size.Small"
+                      Style="@(isSelected ? "" : "opacity:0.7")">
+                @StatusDisplayHelper.GetLabel(status, _statusDisplay)
             </MudChip>
         }
     </div>
@@ -114,7 +114,7 @@
                 <MudTd>@order.OrderDate.ToString("yyyy-MM-dd")</MudTd>
                 <MudTd>@GetPalletCount(order)</MudTd>
                 <MudTd>
-                    <MudChip T="string" Color="@GetStatusColor(order.Status)" Size="Size.Small" Style="text-transform:none">@GetStatusLabel(order.Status)</MudChip>
+                    <MudChip T="string" Color="@StatusDisplayHelper.GetColor(order.Status, _statusDisplay)" Size="Size.Small" Style="text-transform:none">@StatusDisplayHelper.GetLabel(order.Status, _statusDisplay)</MudChip>
                     @if (order.IsUninvoiced)
                     {
                         <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-1" Style="text-transform:none">Neišrašyta</MudChip>
@@ -343,23 +343,12 @@
         return _palletCounts.TryGetValue(order.Id, out var count) ? count : 0m;
     }
 
-    private string GetStatusLabel(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        "draft" => "Juodraštis",
-        "confirmed" => "Patvirtintas",
-        "packing" => "Pakuojamas",
-        "ready_for_pickup" => "Pasirengęs",
-        "shipped" => "Išsiųstas",
-        _ => status
-    };
-
-    private Color GetStatusColor(string status) => status switch
-    {
-        "draft" => Color.Default,
-        "confirmed" => Color.Info,
-        "packing" => Color.Warning,
-        "ready_for_pickup" => Color.Success,
-        "shipped" => Color.Primary,
-        _ => Color.Default
+        { "draft", ("Juodraštis", Color.Default) },
+        { "confirmed", ("Patvirtintas", Color.Info) },
+        { "packing", ("Pakuojamas", Color.Warning) },
+        { "ready_for_pickup", ("Pasirengęs", Color.Success) },
+        { "shipped", ("Išsiųstas", Color.Primary) }
     };
 }
