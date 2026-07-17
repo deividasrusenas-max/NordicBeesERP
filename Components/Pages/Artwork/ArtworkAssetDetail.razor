@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.Artwork
 @using NordicBeesERP.Services.Artwork
+@using NordicBeesERP.Helpers
 @using MudBlazor
 @inject IArtworkService ArtworkService
 @inject IAuthService AuthService
@@ -217,7 +218,7 @@
                         <MudText Typo="Typo.body2">@version.OriginalFilename</MudText>
                     </MudTd>
                     <MudTd>
-                        <MudChip T="string" Color="@GetStatusColor(version.Status)" Variant="Variant.Filled">@GetStatusLabel(version.Status)</MudChip>
+                        <MudChip T="string" Color="@StatusDisplayHelper.GetColor(version.Status, _statusDisplay)" Variant="Variant.Filled">@StatusDisplayHelper.GetLabel(version.Status, _statusDisplay)</MudChip>
                         @if (version.Status == "rejected" && !string.IsNullOrEmpty(version.ReviewComment))
                         {
                             <MudText Typo="Typo.caption" Style="color:#ef4444">
@@ -256,6 +257,15 @@
     private bool _isAdmin;
     private bool _isLoading = true;
     private System.Threading.Timer? _refreshTimer;
+
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
+    {
+        ["approved"] = ("Patvirtinta", Color.Success),
+        ["pending"] = ("Laukiama", Color.Warning),
+        ["rejected"] = ("Atmesta", Color.Error),
+        ["superseded"] = ("Pakeista", Color.Primary),
+        ["archived"] = ("Archyvuota", Color.Dark),
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -391,32 +401,10 @@ private async Task OpenFullPreview(int versionId)
     await dialogRef.Result;
 }
 
-    private string GetStatusLabel(string status)
-    {
-        return status?.ToLowerInvariant() switch
-        {
-            "approved" => "Patvirtinta",
-            "pending" => "Laukiama",
-            "rejected" => "Atmesta",
-            "superseded" => "Pakeista",
-            "archived" => "Archyvuota",
-            _ => status ?? "Nežinoma"
-        };
-    }
-
     private string GetChangeDescriptionDisplay(string? description)
     {
         if (string.IsNullOrEmpty(description)) return "-";
         return description;
     }
 
-    private Color GetStatusColor(string status) => status?.ToLowerInvariant() switch
-    {
-        "approved" => Color.Success,
-        "pending" => Color.Warning,
-        "rejected" => Color.Error,
-        "superseded" => Color.Primary,
-        "archived" => Color.Dark,
-        _ => Color.Default
-    };
 }
