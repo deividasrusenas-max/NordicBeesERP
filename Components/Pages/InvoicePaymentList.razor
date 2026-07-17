@@ -61,7 +61,7 @@
             <MudTd DataLabel="Sumokėta" Style="text-align:right">@invoice.PaidAmount.ToString("N2")</MudTd>
             <MudTd DataLabel="Likęs mokėjimas" Style="text-align:right; font-weight:600">@invoice.RemainingAmount.ToString("N2")</MudTd>
             <MudTd DataLabel="Būsena">
-                <MudChip T="string" Color="@GetStatusColor(invoice.PaymentStatus)" Size="Size.Small">@invoice.PaymentStatus</MudChip>
+                <MudChip T="string" Color="@StatusDisplayHelper.GetColor(invoice.PaymentStatus, _statusDisplay)" Size="Size.Small">@invoice.PaymentStatus</MudChip>
             </MudTd>
             <MudTd DataLabel="Veiksmai">
                 <MudTooltip Text="Registruoti mokėjimą">
@@ -168,15 +168,12 @@
         Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
     }
 
-    private Color GetStatusColor(string status)
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        return status switch
-        {
-            "paid" => Color.Success,
-            "partial" => Color.Warning,
-            _ => Color.Error
-        };
-    }
+        { "unpaid", ("Neapmokėta", Color.Error) },
+        { "partial", ("Dalinai apmokėta", Color.Warning) },
+        { "paid", ("Apmokėta", Color.Success) }
+    };
 
     private void RegisterPayment(int invoiceId)
     {
