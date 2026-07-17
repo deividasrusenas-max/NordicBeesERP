@@ -275,7 +275,7 @@
     public string? StatusCsv { get; set; }
 
     [SupplyParameterFromQuery(Name = "year")]
-    public bool? YearFilter { get; set; }
+    public string? YearFilter { get; set; }
 
     [SupplyParameterFromQuery(Name = "tab")]
     public string? TabParam { get; set; }
@@ -319,7 +319,7 @@
     {
         _filterSearch = FilterSearch;
         _dateRange = (DateFrom.HasValue || DateTo.HasValue) ? new DateRange(DateFrom, DateTo) : null;
-        _showCurrentYear = YearFilter ?? false;
+        _showCurrentYear = FilterUrlBuilder.ParseBool(YearFilter) ?? false;
         _selectedStatuses = !string.IsNullOrEmpty(StatusCsv) ? new HashSet<string>(StatusCsv.Split(',')) : new HashSet<string>();
         if (TabParam == "attention")
             _selectedTab = 5;
