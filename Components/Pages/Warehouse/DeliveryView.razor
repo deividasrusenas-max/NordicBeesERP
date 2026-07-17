@@ -31,7 +31,7 @@
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
                 <MudText Typo="Typo.h5">Pristatymas @_delivery.DeliveryNumber</MudText>
-                <MudChip T="string" Color="@GetStatusColor(_delivery.Status)">@GetStatusText(_delivery.Status)</MudChip>
+                <MudChip T="string" Color="@StatusDisplayHelper.GetColor(_delivery.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(_delivery.Status, _statusDisplay)</MudChip>
                 @if (_delivery.SupplierSignedAt.HasValue)
                 {
                     <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.VerifiedUser">
@@ -324,16 +324,12 @@
         _ => containerType
     };
 
-    private Color GetStatusColor(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        "RECEIVED" => Color.Default, "PRICED" => Color.Info,
-        "PARTIAL_PAID" => Color.Warning, "PAID" => Color.Success, _ => Color.Default
-    };
-
-    private string GetStatusText(string status) => status switch
-    {
-        "RECEIVED" => "Priimtas", "PRICED" => "Įkainotas",
-        "PARTIAL_PAID" => "Dalinai", "PAID" => "Apmokėtas", _ => status
+        { "RECEIVED", ("Priimtas", Color.Default) },
+        { "PRICED", ("Įkainotas", Color.Info) },
+        { "PARTIAL_PAID", ("Dalinai", Color.Warning) },
+        { "PAID", ("Apmokėtas", Color.Success) }
     };
 
     private string GetContainerStatusName(string? status) => status switch
