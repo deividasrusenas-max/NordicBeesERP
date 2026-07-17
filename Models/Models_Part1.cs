@@ -180,7 +180,7 @@ namespace NordicBeesERP.Models
         [Column("default_language")]
         public string DefaultLanguage { get; set; } = "LT";
 
-        [Column("default_vat_rate")]
+        [Column("default_vat_rate", TypeName = "decimal(5,2)")]
         public decimal DefaultVatRate { get; set; } = 0m;
 
         // Tiekėjo specifiniai laukai
