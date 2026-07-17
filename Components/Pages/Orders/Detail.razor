@@ -4,6 +4,7 @@
 @using NordicBeesERP.Services
 @using MudBlazor
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 @inject IOrderService OrderService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
@@ -28,7 +29,7 @@
         <MudAlert Severity="Severity.Error" Class="mb-3">
             Užsakymas nerastas.
         </MudAlert>
-        <MudButton OnClick="@(() => Navigation.NavigateTo("/orders"))" Variant="Variant.Text" Color="Color.Primary">
+        <MudButton OnClick="@(() => HandleBack())" Variant="Variant.Text" Color="Color.Primary">
             ← Atgal į užsakymus
         </MudButton>
     }
@@ -59,7 +60,7 @@
                 </MudText>
             </div>
             <div class="d-flex gap-2">
-                <MudButton OnClick="@(() => Navigation.NavigateTo("/orders"))"
+                <MudButton OnClick="@(() => HandleBack())"
                            Variant="Variant.Outlined"
                            Color="Color.Default"
                            Style="text-transform:none">
@@ -245,6 +246,9 @@
 @code {
     [Parameter]
     public int OrderId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
 
     [CascadingParameter]
     public Task<AuthenticationState> AuthStateTask { get; set; } = default!;
@@ -448,6 +452,12 @@
             _isActioning = false;
             StateHasChanged();
         }
+    }
+
+    // --- Navigation ---
+    private void HandleBack()
+    {
+        Navigation.NavigateTo(FilterUrlBuilder.ResolveReturnUrl(ReturnUrl, "/orders"));
     }
 
     // --- Display Helpers ---
