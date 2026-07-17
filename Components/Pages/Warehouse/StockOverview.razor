@@ -118,7 +118,7 @@
             <MudTd Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
             <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
             <MudTd Style="text-align:right"><strong>@container.NetWeight.ToString("N1")</strong></MudTd>
-            <MudTd><MudChip T="string" Size="Size.Small" Color="@GetStatusColor(container.Status)">@GetStatusText(container.Status)</MudChip></MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(container.Status, _containerStatusDisplay)">@StatusDisplayHelper.GetLabel(container.Status, _containerStatusDisplay)</MudChip></MudTd>
             <MudTd>@GetWarehouseName(container.WarehouseId)</MudTd>
             <MudTd>@container.CreatedAt.ToString("MM-dd")</MudTd>
         </RowTemplate>
@@ -316,18 +316,12 @@
     private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
     private string GetWarehouseName(int id) => _warehouses.FirstOrDefault(w => w.Id == id)?.Name ?? $"#{id}";
 
-    private Color GetStatusColor(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _containerStatusDisplay = new()
     {
-        "IN_STOCK" => Color.Success, "RECEIVED" => Color.Default,
-        "RESERVED" => Color.Warning, "IN_PRODUCTION" => Color.Info,
-        _ => Color.Default
-    };
-
-    private string GetStatusText(string status) => status switch
-    {
-        "IN_STOCK" => "Sandėlyje", "RECEIVED" => "Priimtas",
-        "RESERVED" => "Rezervuotas", "IN_PRODUCTION" => "Gamyboje",
-        _ => status
+        ["IN_STOCK"] = ("Sandėlyje", Color.Success),
+        ["RECEIVED"] = ("Priimtas", Color.Default),
+        ["RESERVED"] = ("Rezervuotas", Color.Warning),
+        ["IN_PRODUCTION"] = ("Gamyboje", Color.Info),
     };
 
     // Transfer dialog
