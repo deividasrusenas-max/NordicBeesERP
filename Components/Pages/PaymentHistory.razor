@@ -6,6 +6,7 @@
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Models
@@ -202,30 +203,21 @@
     private async Task UpdateSearchAsync(string val)
     {
         _searchTerm = val;
-        var newUrl = BuildFilterUrl();
+        var newUrl = FilterUrlBuilder.Build("/payments/history",
+            ("q", _searchTerm),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)));
         Navigation.NavigateTo(newUrl, replace: true);
     }
 
     private async Task UpdateDateRangeAsync(DateRange dr)
     {
         _dateRange = dr;
-        var newUrl = BuildFilterUrl();
+        var newUrl = FilterUrlBuilder.Build("/payments/history",
+            ("q", _searchTerm),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)));
         Navigation.NavigateTo(newUrl, replace: false);
-    }
-
-    private string BuildFilterUrl()
-    {
-        var queryParams = new List<string>();
-
-        if (!string.IsNullOrEmpty(_searchTerm))
-            queryParams.Add($"q={Uri.EscapeDataString(_searchTerm)}");
-
-        if (_dateRange?.Start.HasValue == true)
-            queryParams.Add($"from={_dateRange.Start.Value:yyyy-MM-dd}");
-        if (_dateRange?.End.HasValue == true)
-            queryParams.Add($"to={_dateRange.End.Value:yyyy-MM-dd}");
-
-        return "/payments/history" + (queryParams.Any() ? "?" + string.Join("&", queryParams) : "");
     }
 
     private async Task HandleSortAsync(SortDirection sortDirection, string sortLabel)
