@@ -1,6 +1,7 @@
 @page "/warehouse/supplier-debts/{SupplierId:int}"
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Helpers
 @inject IDeliveryService DeliveryService
 @inject ICustomerService CustomerService
 @inject ISupplierPaymentService PaymentService
@@ -71,7 +72,7 @@
                 @((delivery.TotalAmount - delivery.PaidAmount).ToString("N2"))
             </MudTd>
             <MudTd DataLabel="Būsena">
-                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(delivery.Status)">@GetStatusText(delivery.Status)</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(delivery.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(delivery.Status, _statusDisplay)</MudChip>
             </MudTd>
         </RowTemplate>
     </MudTable>
@@ -134,27 +135,11 @@
         return debt > 0 ? "text-align:right; color:red; font-weight:bold" : "text-align:right; color:green";
     }
 
-    private Color GetStatusColor(string status)
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        return status switch
-        {
-            "RECEIVED" => Color.Default,
-            "PRICED" => Color.Info,
-            "PARTIAL_PAID" => Color.Warning,
-            "PAID" => Color.Success,
-            _ => Color.Default
-        };
-    }
-
-    private string GetStatusText(string status)
-    {
-        return status switch
-        {
-            "RECEIVED" => "Priimtas",
-            "PRICED" => "Įkainotas",
-            "PARTIAL_PAID" => "Dalinai",
-            "PAID" => "Apmokėtas",
-            _ => status
-        };
-    }
+        { "RECEIVED", ("Priimtas", Color.Default) },
+        { "PRICED", ("Įkainotas", Color.Info) },
+        { "PARTIAL_PAID", ("Dalinai", Color.Warning) },
+        { "PAID", ("Apmokėtas", Color.Success) }
+    };
 }
