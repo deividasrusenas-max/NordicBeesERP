@@ -95,13 +95,9 @@ public class ContainerService : IContainerService
     public async Task UpdateStatusAsync(int id, string newStatus)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var container = await context.Containers.FindAsync(id);
-        if (container != null)
-        {
-            container.Status = newStatus;
-            container.UpdatedAt = DateTime.Now;
-            await context.SaveChangesAsync();
-        }
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE containers SET status = {0}, updated_at = NOW() WHERE id = {1}",
+            newStatus, id);
     }
 
     public async Task WriteOffAsync(List<int> containerIds, string reason, int? createdBy)
@@ -112,11 +108,12 @@ public class ContainerService : IContainerService
         {
             foreach (var containerId in containerIds)
             {
-                var container = await context.Containers.FindAsync(containerId);
+                var container = await context.Containers.FirstOrDefaultAsync(c => c.Id == containerId);
                 if (container != null)
                 {
-                    container.Status = "WRITTEN_OFF";
-                    container.UpdatedAt = DateTime.Now;
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE containers SET status = {0}, updated_at = NOW() WHERE id = {1}",
+                        "WRITTEN_OFF", container.Id);
 
                     context.StockMovements.Add(new StockMovement
                     {
