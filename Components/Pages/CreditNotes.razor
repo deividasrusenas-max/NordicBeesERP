@@ -75,12 +75,12 @@
         {
             var isSelected = _selectedStatuses.Contains(status);
             <MudChip T="string"
-                     Color="@(isSelected ? GetStatusColor(status) : Color.Default)"
+                     Color="@(isSelected ? StatusDisplayHelper.GetColor(status, _statusDisplay) : Color.Default)"
                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
                      OnClick="@(() => ToggleStatusAsync(status))"
                      Size="Size.Small"
                      Style="@(isSelected ? "" : "opacity:0.7")">
-                @GetStatusLabel(status)
+                @StatusDisplayHelper.GetLabel(status, _statusDisplay)
             </MudChip>
         }
     </div>
@@ -291,18 +291,10 @@
         Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
     }
 
-    private string GetStatusLabel(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        "Draft" => "Juodraštis",
-        "Printed" => "Atspausdinta",
-        _ => status
-    };
-
-    private Color GetStatusColor(string status) => status switch
-    {
-        "Draft" => Color.Default,
-        "Printed" => Color.Primary,
-        _ => Color.Default
+        { "Draft", ("Juodraštis", Color.Default) },
+        { "Printed", ("Atspausdinta", Color.Primary) }
     };
 
     private async Task ToggleStatusAsync(string status)
