@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 @inject IDeliveryService DeliveryService
 @inject ICustomerService CustomerService
 @inject IHoneyTypeService HoneyTypeService
@@ -54,7 +55,7 @@
                     Atsisiųsti aktą
                 </MudButton>
             }
-            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/warehouse/deliveries">Atgal</MudButton>
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => HandleBack())">Atgal</MudButton>
         </MudStack>
 
         <!-- Save indicator -->
@@ -190,6 +191,12 @@
 
 @code {
     [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+
+    private void HandleBack()
+    {
+        Navigation.NavigateTo(FilterUrlBuilder.ResolveReturnUrl(ReturnUrl, "/warehouse/deliveries"));
+    }
 
     private Delivery? _delivery;
     private List<DeliveryLine> _lines = new();

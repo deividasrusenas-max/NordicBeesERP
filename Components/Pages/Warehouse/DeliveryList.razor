@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Helpers
 @inject IDeliveryService DeliveryService
 @inject ICustomerService CustomerService
 @inject IInvoiceService InvoiceService
@@ -53,7 +54,7 @@
             </MudItem>
         </MudGrid>
         <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadData">Filtruoti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">Filtruoti</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ClearFilters">Valyti</MudButton>
         </MudStack>
     </MudPaper>
@@ -116,6 +117,20 @@
     private int? _filterSupplierId;
     private DateTime? _filterFrom;
     private DateTime? _filterTo;
+
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? QStatus { get; set; }
+
+    [SupplyParameterFromQuery(Name = "supplier")]
+    public int? QSupplierId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateTime? QFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateTime? QTo { get; set; }
+
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
 
@@ -132,8 +147,13 @@
         return false;
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        _filterStatus = QStatus;
+        _filterSupplierId = QSupplierId;
+        _filterFrom = QFrom;
+        _filterTo = QTo;
+
         _suppliers = await CustomerService.GetSuppliersAsync();
         await LoadData();
     }
@@ -145,13 +165,19 @@
         _loading = false;
     }
 
-    private async Task ClearFilters()
+    private void ApplyFilters()
     {
-        _filterStatus = null;
-        _filterSupplierId = null;
-        _filterFrom = null;
-        _filterTo = null;
-        await LoadData();
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("status", FilterUrlBuilder.ToQueryValue(_filterStatus)),
+            ("supplier", FilterUrlBuilder.ToQueryValue(_filterSupplierId)),
+            ("from", FilterUrlBuilder.ToQueryValue(_filterFrom)),
+            ("to", FilterUrlBuilder.ToQueryValue(_filterTo)));
+        Navigation.NavigateTo(newUrl);
+    }
+
+    private void ClearFilters()
+    {
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0]);
     }
 
     private void ToggleSelection(Delivery delivery)
@@ -164,7 +190,8 @@
 
     private void GoToDelivery(int id)
     {
-        Navigation.NavigateTo($"/warehouse/deliveries/{id}");
+        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/warehouse/deliveries/{id}", Navigation.Uri, Navigation.BaseUri);
+        Navigation.NavigateTo(detailUrl);
     }
 
     private string GetSupplierName(int id)
