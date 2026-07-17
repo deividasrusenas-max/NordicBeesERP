@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @using NordicBeesERP.Components.Dialogs
 @using NordicBeesERP.Models
+@using NordicBeesERP.Helpers
 @using MudBlazor
 
 <PageTitle>Prekės</PageTitle>
@@ -179,15 +180,7 @@
     private void UpdateSearchAsync(string val)
     {
         _searchText = val;
-        Navigation.NavigateTo(BuildFilterUrl(), replace: true);
-    }
-
-    private string BuildFilterUrl()
-    {
-        var path = "/products";
-        if (!string.IsNullOrWhiteSpace(_searchText))
-            return $"{path}?q={Uri.EscapeDataString(_searchText)}";
-        return path;
+        Navigation.NavigateTo(FilterUrlBuilder.Build("/products", ("q", _searchText)), replace: true);
     }
 
     private void ToggleTypeFilter(ProductType type)
