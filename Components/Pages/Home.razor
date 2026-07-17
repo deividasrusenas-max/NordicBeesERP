@@ -2,6 +2,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Helpers
 @inject IDeliveryService DeliveryService
 @inject IContainerService ContainerService
 @inject IHoneyTypeService HoneyTypeService
@@ -85,8 +86,8 @@
                     <MudTd Style="text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
                     <MudTd Style="text-align:right">@d.TotalAmount.ToString("N2")</MudTd>
                     <MudTd>
-                        <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(d.Status)" Style="font-size:0.75rem">
-                            @GetStatusText(d.Status)
+                        <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(d.Status, _statusDisplay)" Style="font-size:0.75rem">
+                            @StatusDisplayHelper.GetLabel(d.Status, _statusDisplay)
                         </MudChip>
                     </MudTd>
                 </RowTemplate>
@@ -258,16 +259,12 @@
 
     private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
 
-    private Color GetStatusColor(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        "RECEIVED" => Color.Default, "PRICED" => Color.Info,
-        "PARTIAL_PAID" => Color.Warning, "PAID" => Color.Success, _ => Color.Default
-    };
-
-    private string GetStatusText(string status) => status switch
-    {
-        "RECEIVED" => "Priimtas", "PRICED" => "Įkainotas",
-        "PARTIAL_PAID" => "Dalinai", "PAID" => "Apmokėtas", _ => status
+        { "RECEIVED", ("Priimtas", Color.Default) },
+        { "PRICED", ("Įkainotas", Color.Info) },
+        { "PARTIAL_PAID", ("Dalinai", Color.Warning) },
+        { "PAID", ("Apmokėtas", Color.Success) }
     };
 
     private string GetUnpricedStyle() => _unpricedDeliveries > 0 ? "font-weight:700; color:#d97706" : "font-weight:700";
