@@ -24,6 +24,10 @@ public static class FilterUrlBuilder
     public static string? ToQueryValue(int? value) =>
         value?.ToString();
 
+    // Single string value (returns null to omit when null/empty)
+    public static string? ToQueryValue(string? value) =>
+        string.IsNullOrEmpty(value) ? null : value;
+
     public static string? ToQueryValue(IEnumerable<string>? values) =>
         values != null && values.Any() ? string.Join(",", values) : null;
 
