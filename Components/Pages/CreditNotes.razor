@@ -4,6 +4,7 @@
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 @using MudBlazor
 @inject ICreditNoteService _creditNoteService
 @inject NavigationManager Navigation
@@ -30,7 +31,7 @@
         <MudGrid>
             <MudItem xs="12" sm="6" md="4">
                 <MudTextField Value="@_searchTerm"
-                              ValueChanged="@(async (string val) => { _searchTerm = val; await LoadCreditNotesAsync(); })"
+                              ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
                               Label="Paieška pagal Nr. arba klientą"
                               Variant="Variant.Outlined"
                               Immediate="true"
@@ -41,7 +42,7 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudDateRangePicker DateRange="@_dateRange"
-                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadCreditNotesAsync(); })"
+                                    DateRangeChanged="@(async (DateRange dr) => await UpdateDateRangeAsync(dr))"
                                     Label="Data (nuo / iki)"
                                     Variant="Variant.Outlined"
                                     FullWidth="@true"
@@ -52,7 +53,7 @@
                 <MudItem xs="12">
                     <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
                                Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                               OnClick="@(async () => { ClearFilters(); })">
+                               OnClick="@(async () => await ClearFiltersAsync())">
                         Išvalyti filtrus
                     </MudButton>
                 </MudItem>
@@ -66,7 +67,7 @@
         {
             <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
                        StartIcon="@Icons.Material.Filled.FilterAltOff"
-                       OnClick="@(() => { _selectedStatuses.Clear(); StateHasChanged(); })">
+                       OnClick="@(async () => await ToggleStatusAsync(_selectedStatuses.First()))">
                 Rodyti visas
             </MudButton>
         }
@@ -76,7 +77,7 @@
             <MudChip T="string"
                      Color="@(isSelected ? GetStatusColor(status) : Color.Default)"
                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatus(status))"
+                     OnClick="@(() => ToggleStatusAsync(status))"
                      Size="Size.Small"
                      Style="@(isSelected ? "" : "opacity:0.7")">
                 @GetStatusLabel(status)
@@ -163,6 +164,32 @@
 
     private HashSet<string> _selectedStatuses = new();
     private readonly string[] _availableStatuses = { "Draft", "Printed" };
+
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateTime? DateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateTime? DateTo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? StatusCsv { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _searchTerm = FilterSearch;
+        _dateRange = (DateFrom.HasValue || DateTo.HasValue)
+            ? new DateRange(DateFrom, DateTo)
+            : null;
+        _selectedStatuses = !string.IsNullOrEmpty(StatusCsv)
+            ? new HashSet<string>(StatusCsv.Split(','))
+            : new HashSet<string>();
+
+        await LoadCreditNotesAsync();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -259,12 +286,9 @@
         }
     }
 
-    private void ClearFilters()
+    private async Task ClearFiltersAsync()
     {
-        _searchTerm = null;
-        _selectedStatuses.Clear();
-        _dateRange = null;
-        FilterData();
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
     }
 
     private string GetStatusLabel(string status) => status switch
@@ -281,7 +305,7 @@
         _ => Color.Default
     };
 
-    private void ToggleStatus(string status)
+    private async Task ToggleStatusAsync(string status)
     {
         if (_selectedStatuses.Contains(status))
         {
@@ -292,7 +316,13 @@
             _selectedStatuses.Clear();
             _selectedStatuses.Add(status);
         }
-        FilterData();
+
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _searchTerm),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)));
+        Navigation.NavigateTo(newUrl, replace: false);
     }
 
     private void CreateNewCreditNote()
@@ -302,11 +332,36 @@
 
     private void ViewCreditNote(int id)
     {
-        Navigation.NavigateTo($"/credit-notes/{id}");
+        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/credit-notes/{id}", Navigation.Uri, Navigation.BaseUri);
+        Navigation.NavigateTo(detailUrl);
     }
 
     private void EditCreditNote(int id)
     {
         Navigation.NavigateTo($"/credit-notes/{id}/edit");
+    }
+
+    private async Task UpdateFilterSearchAsync(string val)
+    {
+        _searchTerm = val;
+
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", val),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)));
+        Navigation.NavigateTo(newUrl, replace: true);
+    }
+
+    private async Task UpdateDateRangeAsync(DateRange dr)
+    {
+        _dateRange = dr;
+
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _searchTerm),
+            ("from", FilterUrlBuilder.ToQueryValue(dr.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(dr.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)));
+        Navigation.NavigateTo(newUrl, replace: false);
     }
 }

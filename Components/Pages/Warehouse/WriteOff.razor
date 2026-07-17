@@ -1,6 +1,7 @@
 @page "/warehouse/write-off"
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Helpers
 @inject IContainerService ContainerService
 @inject IWarehouseService WarehouseService
 @inject IHoneyTypeService HoneyTypeService
@@ -110,14 +111,39 @@
 
     private int? _warehouseId;
     private int? _honeyTypeId;
+    private int? _supplierId;
+    private string? _status;
     private string? _searchCode;
+
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "warehouse")]
+    public int? FilterWarehouseId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "honeyType")]
+    public int? FilterHoneyTypeId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "supplier")]
+    public int? FilterSupplierId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? FilterStatus { get; set; }
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
 
     private string _writeOffReason = "";
     private string _writeOffNotes = "";
     private bool _processing = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        // Sync URL query params to filter fields
+        _warehouseId = FilterWarehouseId;
+        _honeyTypeId = FilterHoneyTypeId;
+        _supplierId = FilterSupplierId;
+        _status = FilterStatus;
+        _searchCode = FilterSearch;
+
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _honeyTypes = (await HoneyTypeService.GetActiveAsync()).ToList();
         _suppliers = (await CustomerService.GetSuppliersAsync()).ToList();
@@ -126,7 +152,16 @@
     private async Task LoadContainers()
     {
         _selectedContainers.Clear();
-        _containers = await ContainerService.GetFilteredAsync(_warehouseId, _honeyTypeId, null, null, _searchCode);
+
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("warehouse", FilterUrlBuilder.ToQueryValue(_warehouseId)),
+            ("honeyType", FilterUrlBuilder.ToQueryValue(_honeyTypeId)),
+            ("supplier", FilterUrlBuilder.ToQueryValue(_supplierId)),
+            ("status", FilterUrlBuilder.ToQueryValue(_status)),
+            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)));
+        Navigation.NavigateTo(newUrl, replace: false);
+
+        _containers = await ContainerService.GetFilteredAsync(_warehouseId, _honeyTypeId, _supplierId, _status, _searchCode);
     }
 
     private async Task ConfirmWriteOff()
@@ -155,4 +190,16 @@
 
     private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
     private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
+
+    private async Task ClearFilters()
+    {
+        _warehouseId = null;
+        _honeyTypeId = null;
+        _supplierId = null;
+        _status = null;
+        _searchCode = null;
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
+        _containers.Clear();
+        _selectedContainers.Clear();
+    }
 }

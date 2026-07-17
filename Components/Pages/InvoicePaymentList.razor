@@ -145,29 +145,27 @@
     private void OnStatusChanged(string? status)
     {
         _selectedStatus = status;
-        var newUrl = BuildFilterUrl();
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", FilterUrlBuilder.ToQueryValue(_searchTerm)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatus)),
+            ("from", FilterUrlBuilder.ToQueryValue(_fromDate)),
+            ("to", FilterUrlBuilder.ToQueryValue(_toDate)));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
     private void ApplyFilters()
     {
-        var newUrl = BuildFilterUrl();
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", FilterUrlBuilder.ToQueryValue(_searchTerm)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatus)),
+            ("from", FilterUrlBuilder.ToQueryValue(_fromDate)),
+            ("to", FilterUrlBuilder.ToQueryValue(_toDate)));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
     private void ClearFilters()
     {
         Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
-    }
-
-    private string BuildFilterUrl()
-    {
-        var path = Navigation.Uri.Split('?')[0];
-        return FilterUrlBuilder.Build(path,
-            ("q", FilterUrlBuilder.ToQueryValue(_searchTerm)),
-            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatus)),
-            ("from", FilterUrlBuilder.ToQueryValue(_fromDate)),
-            ("to", FilterUrlBuilder.ToQueryValue(_toDate)));
     }
 
     private Color GetStatusColor(string status)

@@ -6,6 +6,7 @@
 @using NordicBeesERP.Helpers
 @using MudBlazor
 @using System.Globalization
+@inject NavigationManager Navigation
 @inject IExpenseService ExpenseService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -46,7 +47,7 @@
         <MudGrid>
             <MudItem xs="12" sm="6" md="4">
                 <MudTextField Value="@_filterSearch"
-                              ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
+                              ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
                               Label="Paieška pagal Nr. arba tiekėją"
                               Variant="Variant.Outlined"
                               Immediate="true"
@@ -57,18 +58,18 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudDateRangePicker DateRange="@_dateRange"
-                                    DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadDataAsync(); })"
+                                    DateRangeChanged="@(async (DateRange dr) => await UpdateDateRangeAsync(dr))"
                                     Label="Data (nuo / iki)"
                                     Variant="Variant.Outlined"
                                     FullWidth="@true"
                                     Clearable="true" />
             </MudItem>
             <MudItem xs="12" sm="6" md="4" Class="d-flex align-center">
-                @if (!string.IsNullOrEmpty(_filterSearch) || (_dateRange?.Start != null))
+                @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null || _selectedStatuses.Any() || _showCurrentYear)
                 {
                     <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
                                Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                               OnClick="@(async () => { _filterSearch = null; _dateRange = null; await LoadDataAsync(); StateHasChanged(); })">
+                               OnClick="@(async () => await ClearFiltersAsync())">
                         Išvalyti filtrus
                     </MudButton>
                 }
@@ -78,7 +79,7 @@
 
     <!-- Year toggle -->
     <div class="d-flex align-center mb-3">
-        <MudSwitch Label="Rodyti tik dabartinį metą" Checked="@_showCurrentYear" CheckedChanged="OnYearToggleChanged" Color="Color.Primary" T="bool" />
+        <MudSwitch Label="Rodyti tik dabartinį metą" Checked="@_showCurrentYear" CheckedChanged="@(async (bool v) => await OnYearToggleChangedAsync(v))" Color="Color.Primary" T="bool" />
     </div>
 
     <!-- Status filter chips -->
@@ -88,7 +89,7 @@
         {
             <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
                        StartIcon="@Icons.Material.Filled.FilterAltOff"
-                       OnClick="@(() => { _selectedStatuses.Clear(); StateHasChanged(); })">
+                       OnClick="@(async () => await ClearStatusesAsync())">
                 Rodyti visas
             </MudButton>
         }
@@ -98,7 +99,7 @@
             <MudChip T="string"
                      Color="@(isSelected ? ExpenseStatusHelper.GetColor(status) : Color.Default)"
                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatus(status))"
+                      OnClick="@(async () => await ToggleStatusAsync(status))"
                      Size="Size.Small"
                      Style="@(isSelected ? "" : "opacity:0.7")">
                 @ExpenseStatusHelper.GetLabel(status)
@@ -107,7 +108,7 @@
     </div>
 
     <!-- MudTabs with 6 tabs -->
-    <MudTabs ActivePanelIndex="_selectedTab" ActivePanelIndexChanged="OnTabChanged" Elevation="0" Rounded="true" Square="false" Class="mt-2">
+    <MudTabs ActivePanelIndex="_selectedTab" ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))" Elevation="0" Rounded="true" Square="false" Class="mt-2">
         <MudTabPanel Text="Visos" />
         <MudTabPanel Text="Nesumokėtos" />
         <MudTabPanel Text="Pradelsta" />
@@ -259,6 +260,23 @@
     private List<ExpenseInvoice> _invoices = new();
     private List<ExpenseInvoice> _pendingSupplierInvoices = new();
     private bool _isLoading = false;
+
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateTime? DateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateTime? DateTo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? StatusCsv { get; set; }
+
+    [SupplyParameterFromQuery(Name = "year")]
+    public bool? YearFilter { get; set; }
+
     [SupplyParameterFromQuery(Name = "tab")]
     public string? TabParam { get; set; }
 
@@ -294,10 +312,20 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _expenseCategories = await ExpenseService.GetCategoriesAsync(isActive: true);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _filterSearch = FilterSearch;
+        _dateRange = (DateFrom.HasValue || DateTo.HasValue) ? new DateRange(DateFrom, DateTo) : null;
+        _showCurrentYear = YearFilter ?? false;
+        _selectedStatuses = !string.IsNullOrEmpty(StatusCsv) ? new HashSet<string>(StatusCsv.Split(',')) : new HashSet<string>();
         if (TabParam == "attention")
             _selectedTab = 5;
-
-        _expenseCategories = await ExpenseService.GetCategoriesAsync(isActive: true);
+        else if (TabParam != null && int.TryParse(TabParam, out var tab))
+            _selectedTab = tab;
+        _selectedInvoices.Clear();
         await LoadDataAsync();
     }
 
@@ -448,25 +476,78 @@
         return result;
     }
 
-    private void OnTabChanged(int index)
+    private string _basePageUrl() => Navigation.Uri.Split('?')[0];
+
+    private string _buildUrl() => FilterUrlBuilder.Build(_basePageUrl(),
+        ("q", _filterSearch),
+        ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+        ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+        ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+        ("year", FilterUrlBuilder.ToQueryValue(_showCurrentYear)),
+        ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
+
+    private async Task UpdateFilterSearchAsync(string val)
     {
-        _selectedTab = index;
-        StateHasChanged();
+        _filterSearch = val;
+        _selectedInvoices.Clear();
+        Navigation.NavigateTo(FilterUrlBuilder.Build(_basePageUrl(),
+            ("q", val),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("year", FilterUrlBuilder.ToQueryValue(_showCurrentYear)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)), replace: true);
     }
 
-    private async Task OnYearToggleChanged(bool checkedValue)
+    private async Task UpdateDateRangeAsync(DateRange dr)
+    {
+        _dateRange = dr;
+        _selectedInvoices.Clear();
+        Navigation.NavigateTo(FilterUrlBuilder.Build(_basePageUrl(),
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(dr.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(dr.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("year", FilterUrlBuilder.ToQueryValue(_showCurrentYear)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)), replace: false);
+    }
+
+    private async Task OnYearToggleChangedAsync(bool checkedValue)
     {
         _showCurrentYear = checkedValue;
-        StateHasChanged();
+        _selectedInvoices.Clear();
+        Navigation.NavigateTo(_buildUrl(), replace: false);
     }
 
-    private void ToggleStatus(string status)
+    private async Task ToggleStatusAsync(string status)
     {
-        if (_selectedStatuses.Contains(status))
-            _selectedStatuses.Remove(status);
+        var newStatuses = new HashSet<string>(_selectedStatuses);
+        if (newStatuses.Contains(status))
+            newStatuses.Remove(status);
         else
-            _selectedStatuses.Add(status);
-        StateHasChanged();
+            newStatuses.Add(status);
+        _selectedStatuses = newStatuses;
+        _selectedInvoices.Clear();
+        Navigation.NavigateTo(_buildUrl(), replace: false);
+    }
+
+    private async Task ClearStatusesAsync()
+    {
+        _selectedStatuses.Clear();
+        _selectedInvoices.Clear();
+        Navigation.NavigateTo(_buildUrl(), replace: false);
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _selectedTab = index;
+        _selectedInvoices.Clear();
+        Navigation.NavigateTo(_buildUrl(), replace: false);
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        Navigation.NavigateTo(_basePageUrl(), replace: false);
     }
 
     private string GetSupplierName(ExpenseInvoice invoice)

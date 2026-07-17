@@ -1,6 +1,7 @@
 @page "/warehouse/stock"
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Helpers
 @inject IContainerService ContainerService
 @inject IWarehouseService WarehouseService
 @inject ICustomerService CustomerService
@@ -10,6 +11,7 @@
 @inject IRawMaterialTypeService RawMaterialTypeService
 @inject IDbContextFactory<NordicBeesERPContext> DbContextFactory
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <PageTitle>Sandėlio likučiai</PageTitle>
 
@@ -20,7 +22,7 @@
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
         <MudGrid>
             <MudItem xs="12" md="2">
-                <MudSelect T="int?" @bind-Value="_filterWarehouseId" Label="Sandėlis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
                     @foreach (var w in _warehouses)
                     {
                         <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
@@ -28,7 +30,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudSelect T="int?" @bind-Value="_filterHoneyTypeId" Label="Medaus rūšis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                <MudSelect T="int?" Value="_filterHoneyTypeId" ValueChanged="@(async (int? v) => { _filterHoneyTypeId = v; await ApplyFiltersFromUrl(); })" Label="Medaus rūšis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
                     @foreach (var h in _honeyTypes)
                     {
                         <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
@@ -36,7 +38,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudSelect T="int?" @bind-Value="_filterSupplierId" Label="Tiekėjas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                <MudSelect T="int?" Value="_filterSupplierId" ValueChanged="@(async (int? v) => { _filterSupplierId = v; await ApplyFiltersFromUrl(); })" Label="Tiekėjas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
                     @foreach (var s in _suppliers)
                     {
                         <MudSelectItem T="int?" Value="s.Id">@s.Name</MudSelectItem>
@@ -44,7 +46,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudSelect T="string" @bind-Value="_filterStatus" Label="Statusas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                <MudSelect T="string" Value="_filterStatus" ValueChanged="@(async (string v) => { _filterStatus = v; await ApplyFiltersFromUrl(); })" Label="Statusas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
                     <MudSelectItem Value="@("IN_STOCK")">Sandėlyje</MudSelectItem>
                     <MudSelectItem Value="@("RECEIVED")">Priimtas</MudSelectItem>
                     <MudSelectItem Value="@("RESERVED")">Rezervuotas</MudSelectItem>
@@ -52,7 +54,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudTextField @bind-Value="_searchCode" Label="Paieška (ID)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                <MudTextField Value="_searchCode" ValueChanged="@(async (string v) => { _searchCode = v; await ApplyFiltersFromUrl(); })" Label="Paieška (ID)" Variant="Variant.Outlined" Margin="Margin.Dense"
                     Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" />
             </MudItem>
             <MudItem xs="12" md="2" Class="d-flex align-end gap-2">
@@ -215,16 +217,41 @@
     private string? _filterStatus;
     private string? _searchCode;
 
+    // URL query-string parameters (synchronized with filter state)
+    [SupplyParameterFromQuery(Name = "warehouse")]
+    public int? WarehouseId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "honeyType")]
+    public int? HoneyTypeId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "supplier")]
+    public int? SupplierId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? Status { get; set; }
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? SearchCode { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _suppliers = await CustomerService.GetSuppliersAsync();
         _honeyTypes = await HoneyTypeService.GetAllAsync();
-        
-        // Default: pirmas sandėlis
-        if (_warehouses.Any())
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _filterWarehouseId = WarehouseId;
+        _filterHoneyTypeId = HoneyTypeId;
+        _filterSupplierId = SupplierId;
+        _filterStatus = Status;
+        _searchCode = SearchCode;
+
+        // Default: pirmas sandėlis (only if no URL param)
+        if (!_filterWarehouseId.HasValue && _warehouses.Any())
             _filterWarehouseId = _warehouses.First().Id;
-        
+
         await LoadData();
     }
 
@@ -269,14 +296,20 @@
             .Sum(c => c.NetWeight);
     }
 
-    private async Task ClearFilters()
+    private void ClearFilters()
     {
-        _filterWarehouseId = null;
-        _filterHoneyTypeId = null;
-        _filterSupplierId = null;
-        _filterStatus = null;
-        _searchCode = null;
-        await LoadData();
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
+    }
+
+    private async Task ApplyFiltersFromUrl()
+    {
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("warehouse", FilterUrlBuilder.ToQueryValue(_filterWarehouseId)),
+            ("honeyType", FilterUrlBuilder.ToQueryValue(_filterHoneyTypeId)),
+            ("supplier", FilterUrlBuilder.ToQueryValue(_filterSupplierId)),
+            ("status", FilterUrlBuilder.ToQueryValue(_filterStatus)),
+            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)));
+        Navigation.NavigateTo(newUrl, replace: false);
     }
 
     private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";

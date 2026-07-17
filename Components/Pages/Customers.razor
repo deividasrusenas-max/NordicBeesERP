@@ -164,15 +164,10 @@
     private async Task UpdateFilterSearchAsync(string val)
     {
         _filterSearch = val;
-        Navigation.NavigateTo(BuildFilterUrl(), replace: true);
-    }
-
-    private string BuildFilterUrl()
-    {
         var path = Navigation.Uri.Split('?')[0];
-        return FilterUrlBuilder.Build(path,
+        Navigation.NavigateTo(FilterUrlBuilder.Build(path,
             ("q", _filterSearch),
-            ("active", FilterUrlBuilder.ToQueryValue(_filterActive)));
+            ("active", FilterUrlBuilder.ToQueryValue(_filterActive))), replace: true);
     }
 
     private List<Customer> FilteredCustomers
@@ -198,7 +193,10 @@
     private void ToggleActiveFilter(bool value)
     {
         _filterActive = _filterActive == value ? null : value;
-        Navigation.NavigateTo(BuildFilterUrl(), replace: false);
+        var path = Navigation.Uri.Split('?')[0];
+        Navigation.NavigateTo(FilterUrlBuilder.Build(path,
+            ("q", _filterSearch),
+            ("active", FilterUrlBuilder.ToQueryValue(_filterActive))), replace: false);
     }
 
     private async Task OnRowClick(Customer customer)
