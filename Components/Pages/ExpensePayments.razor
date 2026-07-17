@@ -3,6 +3,7 @@
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Models
 @using NordicBeesERP.Data
+@using NordicBeesERP.Helpers
 @using MudBlazor
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject MudBlazor.ISnackbar Snackbar
@@ -185,16 +186,9 @@
 
     private string BuildFilterUrl()
     {
-        var parts = new List<string>();
-
-        if (!string.IsNullOrEmpty(_filterSearch))
-            parts.Add($"q={Uri.EscapeDataString(_filterSearch)}");
-
-        if (_dateRange?.Start.HasValue == true)
-            parts.Add($"from={_dateRange.Start.Value:yyyy-MM-dd}");
-        if (_dateRange?.End.HasValue == true)
-            parts.Add($"to={_dateRange.End.Value:yyyy-MM-dd}");
-
-        return "/expense-payments" + (parts.Count > 0 ? "?" + string.Join("&", parts) : "");
+        return FilterUrlBuilder.Build("/expense-payments",
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)));
     }
 }

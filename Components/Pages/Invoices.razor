@@ -349,7 +349,13 @@
         _invoiceType = type;
         _selectedInvoices.Clear();
 
-        var newUrl = BuildFilterUrl(_filterSearch, _dateRange?.Start, _dateRange?.End, _selectedStatuses, _selectedTab, type);
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+            ("type", !string.IsNullOrEmpty(type) && type != "LAK" ? type : null));
         Navigation.NavigateTo(newUrl, replace: false);
         await LoadDataAsync();
     }
@@ -398,7 +404,12 @@
         _selectedStatuses = newStatuses;
         _selectedInvoices.Clear();
 
-        var newUrl = BuildFilterUrl(_filterSearch, _dateRange?.Start, _dateRange?.End, _selectedStatuses, _selectedTab);
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
@@ -407,7 +418,12 @@
         _selectedTab = index;
         _selectedInvoices.Clear();
 
-        var newUrl = BuildFilterUrl(_filterSearch, _dateRange?.Start, _dateRange?.End, _selectedStatuses, index);
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", index != 0 ? index.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
@@ -421,7 +437,12 @@
         _filterSearch = val;
         _selectedInvoices.Clear();
 
-        var newUrl = BuildFilterUrl(val, _dateRange?.Start, _dateRange?.End, _selectedStatuses, _selectedTab);
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", val),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: true);
     }
 
@@ -430,20 +451,13 @@
         _dateRange = dr;
         _selectedInvoices.Clear();
 
-        var newUrl = BuildFilterUrl(_filterSearch, dr.Start, dr.End, _selectedStatuses, _selectedTab);
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(dr.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(dr.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: false);
-    }
-
-    private string BuildFilterUrl(string? filterSearch, DateTime? dateFrom, DateTime? dateTo, IEnumerable<string>? statuses, int tab, string? type = null)
-    {
-        var path = Navigation.Uri.Split('?')[0];
-        return FilterUrlBuilder.Build(path,
-            ("q", filterSearch),
-            ("from", FilterUrlBuilder.ToQueryValue(dateFrom)),
-            ("to", FilterUrlBuilder.ToQueryValue(dateTo)),
-            ("status", FilterUrlBuilder.ToQueryValue(statuses)),
-            ("tab", tab != 0 ? tab.ToString() : null),
-            ("type", !string.IsNullOrEmpty(type) && type != "LAK" ? type : null));
     }
 
     private void ViewInvoice(int invoiceId)
