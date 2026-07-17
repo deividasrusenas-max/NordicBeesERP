@@ -102,12 +102,12 @@
         {
             var isSelected = _selectedStatuses.Contains(status);
             <MudChip T="string"
-                     Color="@(isSelected ? GetStatusColor(status) : Color.Default)"
-                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                       OnClick="@(async () => await ToggleStatusAsync(status))"
-                     Size="Size.Small"
-                     Style="@(isSelected ? "" : "opacity:0.7")">
-                @GetStatusLabel(status)
+                      Color="@(isSelected ? StatusDisplayHelper.GetColor(status, _statusDisplay) : Color.Default)"
+                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                        OnClick="@(async () => await ToggleStatusAsync(status))"
+                      Size="Size.Small"
+                      Style="@(isSelected ? "" : "opacity:0.7")">
+                 @StatusDisplayHelper.GetLabel(status, _statusDisplay)
             </MudChip>
         }
     </div>
@@ -227,13 +227,13 @@
                             "paid" => "Apmokėta",
                             "partial" => "Dalinai",
                             "unpaid" => statusString == "Draft" ? "Juodraštas" : "Neapmokėta",
-                            _ => GetStatusLabel(statusString)
+                            _ => StatusDisplayHelper.GetLabel(statusString, _statusDisplay)
                         };
                         var payColor = payStatus switch {
                             "paid" => Color.Success,
                             "partial" => Color.Warning,
                             "unpaid" => statusString == "Draft" ? Color.Default : Color.Error,
-                            _ => GetStatusColor(statusString)
+                            _ => StatusDisplayHelper.GetColor(statusString, _statusDisplay)
                         };
                     }
                     <MudChip T="string" Color="@payColor" Size="Size.Small" Style="text-transform:none">@payLabel</MudChip>
@@ -482,24 +482,13 @@
         return invoice.Customer?.Name ?? "Nežinomas";
     }
 
-    private string GetStatusLabel(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        "Draft" => "Juodraštis",
-        "Confirmed" => "Patvirtinta",
-        "Paid" => "Apmokėta",
-        "Disputed" => "Ginčijama",
-        "Cancelled" => "Atšaukta",
-        _ => status
-    };
-
-    private Color GetStatusColor(string status) => status switch
-    {
-        "Draft" => Color.Default,
-        "Confirmed" => Color.Warning,
-        "Paid" => Color.Success,
-        "Disputed" => Color.Error,
-        "Cancelled" => Color.Dark,
-        _ => Color.Default
+        ["Draft"] = ("Juodraštis", Color.Default),
+        ["Confirmed"] = ("Patvirtinta", Color.Warning),
+        ["Paid"] = ("Apmokėta", Color.Success),
+        ["Disputed"] = ("Ginčijama", Color.Error),
+        ["Cancelled"] = ("Atšaukta", Color.Dark),
     };
 
     private string GetDueDateStyle(Invoice invoice)
