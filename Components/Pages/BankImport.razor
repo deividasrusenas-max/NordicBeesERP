@@ -9,6 +9,7 @@
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Models
 @using NordicBeesERP.Data
+@using NordicBeesERP.Helpers
 @using MudBlazor
 @implements IDisposable
 
@@ -37,7 +38,7 @@
                     <MudTd DataLabel="Susieta">@import.MatchedRows</MudTd>
                     <MudTd DataLabel="Nesusieta">@import.UnmatchedRows</MudTd>
                     <MudTd DataLabel="Statusas">
-                        <MudChip T="string" Color="@GetStatusColor(import.Status)" Size="Size.Small">@GetStatusDisplay(import.Status)</MudChip>
+                        <MudChip T="string" Color="@StatusDisplayHelper.GetColor((import.Status ?? "").ToLower(), _statusDisplay)" Size="Size.Small">@StatusDisplayHelper.GetLabel((import.Status ?? "").ToLower(), _statusDisplay)</MudChip>
                     </MudTd>
                     <MudTd DataLabel="Veiksmai">
                         <MudTooltip Text="Peržiūrėti">
@@ -205,7 +206,7 @@
                     </MudItem>
                     <MudItem xs="12" sm="6">
                         <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">
-                            <MudChip T="string" Color="@GetStatusColor(_currentImport?.Status)" Size="Size.Small">@GetStatusDisplay(_currentImport?.Status)</MudChip>
+                            <MudChip T="string" Color="@StatusDisplayHelper.GetColor((_currentImport?.Status ?? "").ToLower(), _statusDisplay)" Size="Size.Small">@StatusDisplayHelper.GetLabel((_currentImport?.Status ?? "").ToLower(), _statusDisplay)</MudChip>
                         </MudText>
                     </MudItem>
                 </MudGrid>
@@ -321,28 +322,13 @@
         }
     }
     
-    private Color GetStatusColor(string? status)
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        return (status ?? "").ToLower() switch
-        {
-            "completed" => Color.Success,
-            "failed" => Color.Error,
-            "processing" => Color.Warning,
-            _ => Color.Info
-        };
-    }
-    
-    private string GetStatusDisplay(string? status)
-    {
-        return (status ?? "").ToLower() switch
-        {
-            "pending" => "Laukiama",
-            "completed" => "Atlikta",
-            "failed" => "Klaida",
-            "processing" => "Vykdoma",
-            _ => status
-        };
-    }
+        ["pending"] = ("Laukiama", Color.Info),
+        ["completed"] = ("Atlikta", Color.Success),
+        ["failed"] = ("Klaida", Color.Error),
+        ["processing"] = ("Vykdoma", Color.Warning),
+    };
     
     private string FormatFileSize(long bytes)
     {
