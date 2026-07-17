@@ -121,7 +121,7 @@
     public string? FilterSearch { get; set; }
 
     [SupplyParameterFromQuery(Name = "active")]
-    public bool? FilterActive { get; set; }
+    public string? FilterActive { get; set; }
 
     private List<Customer>? _customers;
     private string? _filterSearch = null;
@@ -148,7 +148,7 @@
     {
         // Sync URL query params into working-state fields before loading data
         _filterSearch = FilterSearch;
-        _filterActive = FilterActive;
+        _filterActive = FilterUrlBuilder.ParseBool(FilterActive);
 
         var authState = await AuthStateTask;
         _isAdmin = authState.User.IsInRole("Admin");
