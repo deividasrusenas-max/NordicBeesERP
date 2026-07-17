@@ -61,8 +61,10 @@ public class AuthService : IAuthService
         }
         else
         {
-            existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
-            await context.SaveChangesAsync();
+            var newHash = BCrypt.Net.BCrypt.HashPassword(password);
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE erp_users SET password_hash = {0} WHERE email = {1}",
+                newHash, email);
         }
     }
 
