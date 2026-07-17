@@ -88,7 +88,7 @@
             <MudTd Style="text-align:right">@context.PaidAmount.ToString("N2")</MudTd>
             <MudTd Style="text-align:right">@((context.TotalAmount - context.PaidAmount).ToString("N2"))</MudTd>
             <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)">@GetStatusText(context.Status)</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(context.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(context.Status, _statusDisplay)</MudChip>
             </MudTd>
             <MudTd>
                 @if (!string.IsNullOrEmpty(context.InvoiceNumber))
@@ -204,22 +204,12 @@
         return _suppliers.FirstOrDefault(s => s.Id == supplierId)?.VatCode;
     }
 
-    private Color GetStatusColor(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        "RECEIVED" => Color.Default,
-        "PRICED" => Color.Info,
-        "PARTIAL_PAID" => Color.Warning,
-        "PAID" => Color.Success,
-        _ => Color.Default
-    };
-
-    private string GetStatusText(string status) => status switch
-    {
-        "RECEIVED" => "Priimtas",
-        "PRICED" => "Įkainotas",
-        "PARTIAL_PAID" => "Dalinai",
-        "PAID" => "Apmokėtas",
-        _ => status
+        { "RECEIVED", ("Priimtas", Color.Default) },
+        { "PRICED", ("Įkainotas", Color.Info) },
+        { "PARTIAL_PAID", ("Dalinai", Color.Warning) },
+        { "PAID", ("Apmokėtas", Color.Success) }
     };
 
     private async Task CreateInvoicesForSelected()
