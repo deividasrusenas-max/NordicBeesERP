@@ -452,13 +452,6 @@ public class WarehouseStock
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; }
 
-    [Required]
-    [Column("honey_batch_id")]
-    public int HoneyBatchId { get; set; }
-
-    [Column("expiration_date")]
-    public DateTime? ExpirationDate { get; set; }
-
     // Navigation
     [ForeignKey("WarehouseId")]
     [NotMapped]
@@ -467,10 +460,6 @@ public class WarehouseStock
     [ForeignKey("ProductId")]
     [NotMapped]
     public virtual Product Product { get; set; } = null!;
-
-    [ForeignKey("HoneyBatchId")]
-    [NotMapped]
-    public virtual HoneyBatch HoneyBatch { get; set; } = null!;
 }
     // =====================================================
     // MEDAUS SUPIRKIMAS

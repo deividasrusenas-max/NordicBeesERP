@@ -639,18 +639,27 @@ public class Invoice
     }
 
     // =====================================================
-    // VIENETAI (UNITS)
+    // VIENETAI (UNITS OF MEASURE)
     // =====================================================
 
-    [Table("units")]
-    public class Unit
+    public enum UnitType
+    {
+        Weight,
+        Volume,
+        Piece,
+        Length,
+        Area
+    }
+
+    [Table("units_of_measure")]
+    public class UnitOfMeasure
     {
         [Key]
         [Column("id")]
         public int Id { get; set; }
 
         [Required]
-        [MaxLength(20)]
+        [MaxLength(10)]
         [Column("code")]
         public string Code { get; set; } = string.Empty;
 
@@ -659,11 +668,16 @@ public class Invoice
         [Column("name")]
         public string Name { get; set; } = string.Empty;
 
-        [Column("description")]
-        public string? Description { get; set; }
+        [MaxLength(50)]
+        [Column("name_en")]
+        public string? NameEn { get; set; }
 
-    [Column("is_active")]
-    public bool IsActive { get; set; } = true;
+        [Required]
+        [Column("unit_type")]
+        public UnitType UnitType { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
     }
 
     // =====================================================

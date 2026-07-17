@@ -10,8 +10,6 @@
         <MudTh>Kiekis</MudTh>
         <MudTh>Likutis</MudTh>
         <MudTh>Atnaujinta</MudTh>
-        <MudTh>HoneyBatch ID (LOT Numeris)</MudTh>
-        <MudTh>Galioti iki</MudTh>
     </HeaderContent>
     <RowTemplate Context="stock">
         <MudTd>@stock.Warehouse.Code</MudTd>
@@ -19,8 +17,6 @@
         <MudTd>@stock.Quantity</MudTd>
         <MudTd>@stock.AvailableQuantity</MudTd>
         <MudTd>@stock.LastMovementDate?.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
-        <MudTd>@stock.HoneyBatchId</MudTd>
-        <MudTd>@stock.ExpirationDate?.ToString("yyyy-MM-dd")</MudTd>
     </RowTemplate>
 </MudTable>
 

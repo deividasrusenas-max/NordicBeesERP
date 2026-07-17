@@ -64,6 +64,9 @@ namespace NordicBeesERP.Data
         public DbSet<WarehouseType> WarehouseTypes { get; set; }
         public DbSet<QualityParamConfig> QualityParamConfigs { get; set; }
         public DbSet<RawMaterialType> RawMaterialTypes { get; set; }
+        public DbSet<LabelTemplate> LabelTemplates { get; set; }
+        public DbSet<PrintJob> PrintJobs { get; set; }
+        public DbSet<NonConformance> NonConformances { get; set; }
 
         // Sales
         public DbSet<Invoice> Invoices { get; set; }
@@ -97,7 +100,7 @@ namespace NordicBeesERP.Data
          public DbSet<NordicBeesERP.Models.InvoiceAudit> InvoiceAudits { get; set; }
 
         // Units
-        public DbSet<Unit> Units { get; set; }
+        public DbSet<UnitOfMeasure> UnitsOfMeasure { get; set; }
 
         // Company Settings
         public DbSet<CompanySettings> CompanySettings { get; set; }
