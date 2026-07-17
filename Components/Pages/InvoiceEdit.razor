@@ -6,6 +6,7 @@
 @using NordicBeesERP.Services
 @using NordicBeesERP.Components.Dialogs
 @using MudBlazor
+@using NordicBeesERP.Helpers
 @inject IInvoiceService _invoiceService
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
@@ -91,7 +92,7 @@
             </MudItem>
              <MudItem xs="12" sm="4">
                  <MudText Typo="Typo.caption" Color="Color.Secondary">Būsena</MudText>
-                 <MudChip T="string" Color="GetStatusColor(_status)" Variant="Variant.Outlined">@GetStatusText(_status)</MudChip>
+                 <MudChip T="string" Color="StatusDisplayHelper.GetColor(_status.ToString(), _statusDisplay)" Variant="Variant.Outlined">@StatusDisplayHelper.GetLabel(_status.ToString(), _statusDisplay)</MudChip>
              </MudItem>
         </MudGrid>
     </MudPaper>
@@ -522,20 +523,11 @@
         await InvokeAsync(() => Navigation.NavigateTo($"/invoices/{Id}"));
     }
 
-    private Color GetStatusColor(InvoiceStatus status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        InvoiceStatus.Draft => Color.Warning,
-        InvoiceStatus.Confirmed => Color.Primary,
-        InvoiceStatus.Paid => Color.Success,
-        _ => Color.Default
-    };
-
-    private string GetStatusText(InvoiceStatus status) => status switch
-    {
-        InvoiceStatus.Draft => "Juodraštas",
-        InvoiceStatus.Confirmed => "Patvirtinta",
-        InvoiceStatus.Paid => "Apmokėta",
-        _ => status.ToString()
+        { "Draft", ("Juodraštas", Color.Warning) },
+        { "Confirmed", ("Patvirtinta", Color.Primary) },
+        { "Paid", ("Apmokėta", Color.Success) }
     };
 
     public class InvoiceLineInput
