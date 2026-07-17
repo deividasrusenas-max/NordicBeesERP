@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
+@using NordicBeesERP.Helpers
 @using MudBlazor
 @using System.IO.Compression
 @inject IInvoiceService InvoiceService
@@ -436,32 +437,19 @@
     private string BuildFilterUrl(string? filterSearch, DateTime? dateFrom, DateTime? dateTo, IEnumerable<string>? statuses, int tab, string? type = null)
     {
         var path = Navigation.Uri.Split('?')[0];
-        var queryParams = new List<string>();
-
-        if (!string.IsNullOrEmpty(filterSearch))
-            queryParams.Add($"q={Uri.EscapeDataString(filterSearch)}");
-
-        if (dateFrom.HasValue)
-            queryParams.Add($"from={dateFrom.Value:yyyy-MM-dd}");
-        if (dateTo.HasValue)
-            queryParams.Add($"to={dateTo.Value:yyyy-MM-dd}");
-
-        if (statuses?.Any() == true)
-            queryParams.Add($"status={string.Join(",", statuses)}");
-
-        if (tab != 0)
-            queryParams.Add($"tab={tab}");
-
-        if (!string.IsNullOrEmpty(type) && type != "LAK")
-            queryParams.Add($"type={type}");
-
-        return path + (queryParams.Any() ? "?" + string.Join("&", queryParams) : "");
+        return FilterUrlBuilder.Build(path,
+            ("q", filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(dateFrom)),
+            ("to", FilterUrlBuilder.ToQueryValue(dateTo)),
+            ("status", FilterUrlBuilder.ToQueryValue(statuses)),
+            ("tab", tab != 0 ? tab.ToString() : null),
+            ("type", !string.IsNullOrEmpty(type) && type != "LAK" ? type : null));
     }
 
     private void ViewInvoice(int invoiceId)
     {
-        var returnUrl = Uri.EscapeDataString(Navigation.Uri.Replace(Navigation.BaseUri.TrimEnd('/'), ""));
-        Navigation.NavigateTo($"/invoices/{invoiceId}?returnUrl={returnUrl}");
+        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/invoices/{invoiceId}", Navigation.Uri, Navigation.BaseUri);
+        Navigation.NavigateTo(detailUrl);
     }
 
     private void OpenCreateDialog()
