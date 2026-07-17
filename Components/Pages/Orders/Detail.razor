@@ -43,8 +43,8 @@
                     <MudText Typo="Typo.h5" Style="font-weight:600">
                         @_order.OrderNumber
                     </MudText>
-                    <MudChip T="string" Color="@GetStatusColor(_order.Status)" Size="Size.Small" Style="text-transform:none">
-                        @GetStatusLabel(_order.Status)
+                    <MudChip T="string" Color="@StatusDisplayHelper.GetColor(_order.Status, _statusDisplay)" Size="Size.Small" Style="text-transform:none">
+                        @StatusDisplayHelper.GetLabel(_order.Status, _statusDisplay)
                     </MudChip>
                     @if (_order.IsUninvoiced)
                     {
@@ -471,23 +471,12 @@
         return _productNames.TryGetValue(productId, out var name) ? name : "Nežinomas";
     }
 
-    private string GetStatusLabel(string status) => status switch
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        "draft" => "Juodraštis",
-        "confirmed" => "Patvirtintas",
-        "packing" => "Pakuojamas",
-        "ready_for_pickup" => "Pasiruošęs",
-        "shipped" => "Išsiųstas",
-        _ => status
-    };
-
-    private Color GetStatusColor(string status) => status switch
-    {
-        "draft" => Color.Default,
-        "confirmed" => Color.Info,
-        "packing" => Color.Warning,
-        "ready_for_pickup" => Color.Success,
-        "shipped" => Color.Primary,
-        _ => Color.Default
+        { "draft", ("Juodraštis", Color.Default) },
+        { "confirmed", ("Patvirtintas", Color.Info) },
+        { "packing", ("Pakuojamas", Color.Warning) },
+        { "ready_for_pickup", ("Pasiruošęs", Color.Success) },
+        { "shipped", ("Išsiųstas", Color.Primary) }
     };
 }
