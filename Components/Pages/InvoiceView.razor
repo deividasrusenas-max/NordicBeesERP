@@ -12,6 +12,7 @@
 @inject IAuthService AuthService
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 @using Microsoft.AspNetCore.Components.Web
 @inject NavigationManager Navigation
 
@@ -26,7 +27,7 @@
             <MudText Typo="Typo.h5" Style="font-weight:600" Color="Color.Primary">@(_invoice?.InvoiceNumber ?? "...")</MudText>
             @if (_invoice is not null)
             {
-                <MudChip T="string" Color="GetStatusColor(_invoice.Status)" Variant="Variant.Outlined">@GetStatusText(_invoice.Status)</MudChip>
+                <MudChip T="string" Color="StatusDisplayHelper.GetColor(_invoice.Status.ToString(), _statusDisplay)" Variant="Variant.Outlined">@StatusDisplayHelper.GetLabel(_invoice.Status.ToString(), _statusDisplay)</MudChip>
             }
         </div>
         
@@ -390,27 +391,12 @@
         }
     }
 
-    private string GetStatusText(InvoiceStatus status)
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        return status switch
-        {
-            InvoiceStatus.Draft => "Juodraštas",
-            InvoiceStatus.Confirmed => "Patvirtinta",
-            InvoiceStatus.Paid => "Apmokėta",
-            _ => "Nežinoma"
-        };
-    }
-
-    private Color GetStatusColor(InvoiceStatus status)
-    {
-        return status switch
-        {
-            InvoiceStatus.Draft => Color.Warning,
-            InvoiceStatus.Confirmed => Color.Primary,
-            InvoiceStatus.Paid => Color.Success,
-            _ => Color.Default
-        };
-    }
+        { "Draft", ("Juodraštas", Color.Warning) },
+        { "Confirmed", ("Patvirtinta", Color.Primary) },
+        { "Paid", ("Apmokėta", Color.Success) }
+    };
 
     private Color GetPaymentStatusColor()
     {
