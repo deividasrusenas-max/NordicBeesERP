@@ -1,6 +1,7 @@
 @page "/credit-notes/{Id:int}"
 
 @using NordicBeesERP.Services.Dtos
+@using NordicBeesERP.Helpers
 
 @* =====================================================
    NORDIC BEES ERP - VIEW CREDIT NOTE PAGE
@@ -23,7 +24,7 @@
             {
                 <div class="d-flex align-center gap-2">
                     <MudText Typo="Typo.h3" Class="font-weight-bold" Style="font-size: 2rem !important;" Color="Color.Primary">@_creditNote.CreditNoteNumber</MudText>
-                    <MudChip Color="GetStatusColor(_creditNote.Status)" T="string">@GetStatusText(_creditNote.Status)</MudChip>
+                    <MudChip Color="StatusDisplayHelper.GetColor(_creditNote.Status.ToString(), _statusDisplay)" T="string">@StatusDisplayHelper.GetLabel(_creditNote.Status.ToString(), _statusDisplay)</MudChip>
                 </div>
             }
         </div>
@@ -243,27 +244,11 @@
         }
     }
 
-    private string GetStatusText(CreditNoteStatus status)
+    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        return status switch
-        {
-            CreditNoteStatus.Draft => "Juodraštis",
-            CreditNoteStatus.Printed => "Atspausdinta",
-
-            _ => status.ToString()
-        };
-    }
-
-    private Color GetStatusColor(CreditNoteStatus status)
-    {
-        return status switch
-        {
-            CreditNoteStatus.Draft => Color.Default,
-            CreditNoteStatus.Printed => Color.Primary,
-
-            _ => Color.Default
-        };
-    }
+        ["Draft"] = ("Juodraštis", Color.Default),
+        ["Printed"] = ("Atspausdinta", Color.Primary)
+    };
 
     private string GetPaymentStatusText()
     {
