@@ -11,7 +11,7 @@ using NordicBeesERP.Data;
 namespace NordicBeesERP.Migrations
 {
     [DbContext(typeof(NordicBeesERPContext))]
-    [Migration("20260717201656_ReconcileSnapshot")]
+    [Migration("20260718213214_ReconcileSnapshot")]
     partial class ReconcileSnapshot
     {
         /// <inheritdoc />
@@ -155,7 +155,7 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 7, 17, 20, 16, 56, 10, DateTimeKind.Utc).AddTicks(7890),
+                            CreatedAt = new DateTime(2026, 7, 18, 21, 32, 14, 376, DateTimeKind.Utc).AddTicks(3500),
                             IsActive = true,
                             Name = "Nordic Bees",
                             Slug = "nordic-bees"
@@ -163,7 +163,7 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 7, 17, 20, 16, 56, 10, DateTimeKind.Utc).AddTicks(7890),
+                            CreatedAt = new DateTime(2026, 7, 18, 21, 32, 14, 376, DateTimeKind.Utc).AddTicks(3510),
                             IsActive = true,
                             Name = "Honeymark",
                             Slug = "honeymark"
@@ -171,7 +171,7 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 7, 17, 20, 16, 56, 10, DateTimeKind.Utc).AddTicks(7890),
+                            CreatedAt = new DateTime(2026, 7, 18, 21, 32, 14, 376, DateTimeKind.Utc).AddTicks(3510),
                             IsActive = true,
                             Name = "MEDŽIO",
                             Slug = "medzio"
@@ -513,7 +513,7 @@ namespace NordicBeesERP.Migrations
                         .HasColumnName("default_language");
 
                     b.Property<decimal>("DefaultVatRate")
-                        .HasColumnType("decimal(65,30)")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("default_vat_rate");
 
                     b.Property<string>("Email")
@@ -753,7 +753,7 @@ namespace NordicBeesERP.Migrations
                         .HasColumnName("company_name");
 
                     b.Property<decimal>("DefaultVatRate")
-                        .HasColumnType("decimal(65,30)")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("default_vat_rate");
 
                     b.Property<string>("Email")
@@ -3260,52 +3260,52 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4650),
+                            CreatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 375, DateTimeKind.Local).AddTicks(9950),
                             IsActive = true,
                             IsHoney = true,
                             Name = "Medus",
                             SortOrder = 1,
-                            UpdatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4690)
+                            UpdatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 375, DateTimeKind.Local).AddTicks(9990)
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4700),
+                            CreatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 375, DateTimeKind.Local).AddTicks(9990),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Bičių duona",
                             SortOrder = 2,
-                            UpdatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4700)
+                            UpdatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 376, DateTimeKind.Local)
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4700),
+                            CreatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 376, DateTimeKind.Local),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Pikis",
                             SortOrder = 3,
-                            UpdatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4700)
+                            UpdatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 376, DateTimeKind.Local)
                         },
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4700),
+                            CreatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 376, DateTimeKind.Local),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Propolis",
                             SortOrder = 4,
-                            UpdatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4700)
+                            UpdatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 376, DateTimeKind.Local)
                         },
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4710),
+                            CreatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 376, DateTimeKind.Local),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Vaškas",
                             SortOrder = 5,
-                            UpdatedAt = new DateTime(2026, 7, 17, 23, 16, 56, 10, DateTimeKind.Local).AddTicks(4710)
+                            UpdatedAt = new DateTime(2026, 7, 19, 0, 32, 14, 376, DateTimeKind.Local)
                         });
                 });
 
