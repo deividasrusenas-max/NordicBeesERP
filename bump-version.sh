@@ -49,7 +49,13 @@ fi
 # under global NoTracking). This is a known, previously-shipped bug
 # class -- mechanical check instead of trusting any agent to remember.
 echo "Checking for FindAsync+SaveChangesAsync anti-pattern (gate 2/2)..."
-CHANGED_CS=$(git status --porcelain | grep -E "\.cs$" | awk "{print \$2}")
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+if [ -n "$LAST_TAG" ]; then
+  CHANGED_CS=$(git diff --name-only "$LAST_TAG" HEAD -- "*.cs")
+else
+  # No tags yet -- fall back to the most recent commit only.
+  CHANGED_CS=$(git diff --name-only HEAD~1 HEAD -- "*.cs" 2>/dev/null)
+fi
 BAD_FILES=""
 for f in $CHANGED_CS; do
   if [ -f "$f" ] && grep -q "FindAsync(" "$f" && grep -q "SaveChangesAsync()" "$f"; then
