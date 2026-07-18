@@ -148,6 +148,47 @@ agent's own report):
   naming mismatches: `units_of_measure` vs snapshot's `units`,
   `warehouse_stock` vs snapshot's `warehouse_stocks`).
 
+## CRITICAL — dev vs staging are NOT the same, do not assume
+
+Verified 2026-07-18: EVERY operation in the generated
+`20260717201656_ReconcileSnapshot.cs` migration targets something that
+ALREADY EXISTS EXACTLY AS-IS in the DEV database (all 4 new module
+tables — label_templates, non_conformances, print_jobs, printers — all
+10 `deliveries` columns, `business_partners.no_email`, and
+`company_settings.default_vat_rate` all confirmed present via direct
+DESCRIBE/SHOW COLUMNS queries). This means for DEV, the correct action
+is: mark this migration Applied in `__EFMigrationsHistory` WITHOUT
+running any of its SQL.
+
+**Staging has NOT been checked and must NOT be assumed to match dev.**
+The printing/labeling module (label_templates, print_jobs, printers,
+non_conformances) may genuinely be MISSING on staging if it was only
+ever applied to dev. If so, staging needs the actual `CreateTable`
+operations for those 4 tables to run for real — it cannot just be
+marked Applied like dev. The `deliveries`/`business_partners` columns
+(older, from DeliverySignatureColumns work) may or may not already be
+on staging depending on when that was deployed there — also unverified.
+
+Before touching staging: run the same DESCRIBE/SHOW TABLES verification
+used for dev (see the investigation findings above) against the staging
+connection, and write a SEPARATE staging-specific reconciliation plan —
+do not reuse dev's "mark Applied only" conclusion for staging without
+this check.
+
+## Known follow-up: regenerate ReconcileSnapshot after model fixes
+
+`Models/Models_Part1.cs` CompanySettings.DefaultVatRate was missing a
+decimal(5,2) precision annotation, causing the generated migration to
+include a wrong `AlterColumn` to `decimal(65,30)` (would have corrupted
+the real VAT rate column if ever run). Fixed 2026-07-18 (commit — check
+git log on this branch). Once any model fix like this lands, the
+ALREADY-GENERATED `20260717201656_ReconcileSnapshot.cs` file does NOT
+auto-update — it still contains the stale/wrong operation as literal
+code. Before finalizing reconciliation: delete the existing
+ReconcileSnapshot migration files and re-run
+`dotnet ef migrations add ReconcileSnapshot` so the regenerated file
+reflects the corrected model.
+
 ## Suggested first message for the new session
 
 "Investigate whether Migrations/NordicBeesERPContextModelSnapshot.cs
