@@ -79,5 +79,9 @@ sed -i '' "s/<Version>$CURRENT<\/Version>/<Version>$NEW<\/Version>/" NordicBeesE
 echo "Version bumped: $CURRENT -> $NEW"
 git add appsettings.json NordicBeesERP.csproj bump-version.sh
 git commit -m "chore: bump version to $NEW"
-git tag -a "v$NEW" -m "v$NEW"
-git push && git push origin "v$NEW"
+if ! git tag -a "v$NEW" -m "v$NEW"; then
+  echo "ERROR: git tag failed (tag v$NEW likely already exists on a different commit). Refusing to push. Resolve the version collision manually." >&2
+  exit 1
+fi
+git push
+git push origin "v$NEW"
