@@ -164,7 +164,9 @@ namespace NordicBeesERP.Services
                 .Where(a => a.InvoiceId == invoiceId)
                 .SumAsync(a => a.AllocatedAmount);
 
-            var invoice = await context.Invoices.FindAsync(invoiceId);
+            var invoice = await context.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
 
             var status = totalAllocated == 0 ? "unpaid"
@@ -706,7 +708,6 @@ namespace NordicBeesERP.Services
                 await RecalculateInvoiceStatusInternalAsync(context, invoiceId);
             }
 
-            await context.SaveChangesAsync();
             return true;
         }
 
@@ -806,22 +807,28 @@ namespace NordicBeesERP.Services
         {
             using var context = await _contextFactory.CreateDbContextAsync();
 
-            var row = await context.BankImportRows.FindAsync(bankImportRowId);
+            var row = await context.BankImportRows
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == bankImportRowId);
             if (row == null)
             {
                 throw new InvalidOperationException("Bank import row not found");
             }
 
-            var invoice = await context.Invoices.FindAsync(invoiceId);
+            var invoice = await context.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null)
             {
                 throw new InvalidOperationException("Invoice not found");
             }
 
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE bank_import_rows SET matched_invoice_id = {0}, match_status = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                invoiceId, "manual_match", bankImportRowId);
+
             row.MatchedInvoiceId = invoiceId;
             row.MatchStatus = "manual_match";
-
-            await context.SaveChangesAsync();
             return row;
         }
 
@@ -838,7 +845,9 @@ namespace NordicBeesERP.Services
                 throw new InvalidOperationException("Bank import row or matched invoice not found");
             }
 
-            var invoice = await context.Invoices.FindAsync(row.MatchedInvoiceId.Value);
+            var invoice = await context.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == row.MatchedInvoiceId.Value);
             if (invoice == null)
             {
                 throw new InvalidOperationException($"Invoice {row.MatchedInvoiceId} not found");
@@ -850,8 +859,9 @@ namespace NordicBeesERP.Services
                 .FirstOrDefaultAsync();
             if (existingPayment != null)
             {
-                row.MatchStatus = "already_paid";
-                await context.SaveChangesAsync();
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE bank_import_rows SET match_status = {0}, updated_at = CURRENT_TIMESTAMP WHERE id = {1}",
+                    "already_paid", bankImportRowId);
                 throw new InvalidOperationException($"Sąskaita {row.MatchedInvoiceId} jau apmokėta iš banko importo");
             }
 
@@ -889,9 +899,9 @@ namespace NordicBeesERP.Services
             await RecalculateInvoiceStatusInternalAsync(context, row.MatchedInvoiceId.Value);
 
             // Update bank import row
-            row.MatchStatus = "auto_match";
-            row.PaymentId = payment.Id;
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE bank_import_rows SET match_status = {0}, payment_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                "auto_match", payment.Id, bankImportRowId);
 
             // Log audit entry
             await LogAuditEntryAsync(context, payment.Id, null, "create", null, payment.Amount, userId, JsonSerializer.Serialize(new

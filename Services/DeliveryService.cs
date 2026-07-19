@@ -186,35 +186,25 @@ public class DeliveryService : IDeliveryService
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
+            var now = DateTime.Now;
+
             foreach (var line in updatedLines)
             {
-                var existing = await context.DeliveryLines.FindAsync(line.Id);
-                if (existing != null)
-                {
-                    existing.UnitPrice = line.UnitPrice;
-                    existing.LineTotal = (existing.TotalNetWeight ?? 0m) * (line.UnitPrice ?? 0m);
-                    existing.UpdatedAt = DateTime.Now;
-                    context.Entry(existing).Property(x => x.UnitPrice).IsModified = true;
-                    context.Entry(existing).Property(x => x.LineTotal).IsModified = true;
-                    context.Entry(existing).Property(x => x.UpdatedAt).IsModified = true;
-                }
+                var unitPrice = line.UnitPrice ?? 0m;
+                var lineTotal = (line.TotalNetWeight ?? 0m) * unitPrice;
+
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE delivery_lines SET unit_price = {0}, line_total = {1}, updated_at = {2} WHERE id = {3}",
+                    unitPrice, lineTotal, now, line.Id);
             }
-            
-            // Perskaičiuojam TotalAmount iš updatedLines (kurios jau turi naują UnitPrice)
-            var delivery = await context.Deliveries.FirstOrDefaultAsync(d => d.Id == deliveryId);
-            if (delivery != null)
-            {
-                delivery.TotalAmount = updatedLines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m));
-                delivery.BarrelsOwed = barrelsOwed;
-                delivery.Status = "RECEIVED";
-                delivery.UpdatedAt = DateTime.Now;
-                context.Entry(delivery).Property(d => d.TotalAmount).IsModified = true;
-                context.Entry(delivery).Property(d => d.BarrelsOwed).IsModified = true;
-                context.Entry(delivery).Property(d => d.Status).IsModified = true;
-                context.Entry(delivery).Property(d => d.UpdatedAt).IsModified = true;
-            }
-            
-            await context.SaveChangesAsync();
+
+            // Recalculate TotalAmount from updated lines
+            var totalAmount = updatedLines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m));
+
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE deliveries SET total_amount = {0}, barrels_owed = {1}, status = {2}, updated_at = {3} WHERE id = {4}",
+                totalAmount, barrelsOwed, "RECEIVED", now, deliveryId);
+
             await transaction.CommitAsync();
         }
         catch

@@ -47,3 +47,21 @@ jobs:
             echo "❌ Directory.GetCurrentDirectory found. Use IWebHostEnvironment.WebRootPath."
             exit 1
           fi
+
+      - name: Check for FindAsync+SaveChangesAsync anti-pattern (FROZEN.md)
+        run: |
+          BAD_FILES=""
+          for f in $(grep -rl "FindAsync(" --include="*.cs" \
+            --exclude-dir=bin --exclude-dir=obj \
+            --exclude-dir=.kilo --exclude-dir=Migrations .); do
+            if grep -q "SaveChangesAsync()" "$f"; then
+              BAD_FILES="$BAD_FILES$f
+"
+            fi
+          done
+          if [ -n "$BAD_FILES" ]; then
+            echo "❌ FROZEN.md anti-pattern found (FindAsync + SaveChangesAsync in same file):"
+            echo -e "$BAD_FILES"
+            echo "Fix with ExecuteSqlRawAsync per FROZEN.md."
+            exit 1
+          fi

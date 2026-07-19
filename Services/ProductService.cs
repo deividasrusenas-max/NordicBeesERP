@@ -24,7 +24,7 @@ namespace NordicBeesERP.Services
         public async Task<Product?> GetProductByIdAsync(int id)
         {
             using var context = _dbFactory.CreateDbContext();
-            return await context.Products.FindAsync(id);
+            return await context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
         }
 
         public async Task<Product?> GetProductByCodeAsync(string code)
@@ -113,14 +113,17 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
 
-            var product = await context.Products.FindAsync(id);
-            if (product == null)
+            var exists = await context.Products
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == id);
+            if (!exists)
             {
                 return false;
             }
 
-            context.Products.Remove(product);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM products WHERE id = {0}",
+                id);
 
             return true;
         }

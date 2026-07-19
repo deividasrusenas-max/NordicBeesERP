@@ -178,56 +178,71 @@ namespace NordicBeesERP.Services
         public async Task<BusinessPartner> UpdateBusinessPartnerAsync(BusinessPartner partner)
         {
             using var context = _dbFactory.CreateDbContext();
-            
-            var existing = await context.BusinessPartners.FindAsync(partner.Id);
-            if (existing == null)
+
+            var exists = await context.BusinessPartners
+                .AsNoTracking()
+                .AnyAsync(bp => bp.Id == partner.Id);
+            if (!exists)
             {
                 throw new InvalidOperationException($"BusinessPartner with ID {partner.Id} not found");
             }
-            
-            existing.Name = partner.Name;
-            existing.City = partner.City;
-            existing.VatCode = partner.VatCode;
-            existing.PaymentTermDays = partner.PaymentTermDays;
-            existing.DefaultLanguage = partner.DefaultLanguage;
-            existing.DefaultVatRate = partner.DefaultVatRate;
-            existing.CompanyCode = partner.CompanyCode;
-            existing.Address = partner.Address;
-            existing.PostalCode = partner.PostalCode;
-            existing.Country = partner.Country;
-            existing.CountryCode = partner.CountryCode;
-            existing.Phone = partner.Phone;
-            existing.ContactPhone = partner.ContactPhone;
-            existing.Email = partner.Email;
-            existing.InvoiceEmail = partner.InvoiceEmail;
-            existing.BankAccount = partner.BankAccount;
-            existing.Notes = partner.Notes;
-            existing.IsActive = partner.IsActive;
-            existing.SupplierFirstName = partner.SupplierFirstName;
-            existing.SupplierLastName = partner.SupplierLastName;
-            existing.NationalIdNumber = partner.NationalIdNumber;
-            existing.SupplierType = partner.SupplierType;
-            existing.DefaultExpenseCategoryId = partner.DefaultExpenseCategoryId;
-            existing.UpdatedAt = DateTime.Now;
-            
-            await context.SaveChangesAsync();
-            
-            return existing;
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE business_partners SET
+                    name = {0}, company_code = {1}, vat_code = {2},
+                    address = {3}, city = {4}, postal_code = {5}, country = {6}, country_code = {7},
+                    phone = {8}, contact_phone = {9}, email = {10}, invoice_email = {11},
+                    bank_account = {12}, payment_term_days = {13},
+                    default_language = {14}, default_vat_rate = {15}, notes = {16}, is_active = {17},
+                    supplier_first_name = {18}, supplier_last_name = {19}, national_id_number = {20},
+                    supplier_type = {21}, default_expense_category_id = {22}, updated_at = {23}
+                WHERE id = {24}",
+                partner.Name,
+                partner.CompanyCode,
+                partner.VatCode,
+                partner.Address,
+                partner.City,
+                partner.PostalCode,
+                partner.Country,
+                partner.CountryCode,
+                partner.Phone,
+                partner.ContactPhone,
+                partner.Email,
+                partner.InvoiceEmail,
+                partner.BankAccount,
+                partner.PaymentTermDays,
+                partner.DefaultLanguage ?? "lt",
+                partner.DefaultVatRate,
+                partner.Notes,
+                partner.IsActive,
+                partner.SupplierFirstName,
+                partner.SupplierLastName,
+                partner.NationalIdNumber,
+                partner.SupplierType,
+                partner.DefaultExpenseCategoryId,
+                DateTime.Now,
+                partner.Id);
+
+            partner.UpdatedAt = DateTime.Now;
+            return partner;
         }
 
         public async Task<bool> DeleteBusinessPartnerAsync(int id)
         {
             using var context = _dbFactory.CreateDbContext();
-            
-            var partner = await context.BusinessPartners.FindAsync(id);
-            if (partner == null)
+
+            var exists = await context.BusinessPartners
+                .AsNoTracking()
+                .AnyAsync(bp => bp.Id == id);
+            if (!exists)
             {
                 return false;
             }
-            
-            context.BusinessPartners.Remove(partner);
-            await context.SaveChangesAsync();
-            
+
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}",
+                id);
+
             return true;
         }
 

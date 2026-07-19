@@ -186,14 +186,13 @@ namespace NordicBeesERP.Services
                 await context.ExpenseInvoiceLines.AddRangeAsync(lines);
                 await context.SaveChangesAsync();
                 
-                // Update invoice totals based on lines
-                invoice.AmountExclVat = lines.Sum(l => l.AmountExclVat);
-                invoice.VatAmount = lines.Sum(l => l.AmountInclVat - l.AmountExclVat);
-                invoice.AmountInclVat = lines.Sum(l => l.AmountInclVat);
-                context.Entry(invoice).Property(i => i.AmountExclVat).IsModified = true;
-                context.Entry(invoice).Property(i => i.VatAmount).IsModified = true;
-                context.Entry(invoice).Property(i => i.AmountInclVat).IsModified = true;
-                await context.SaveChangesAsync();
+                // Update invoice totals based on lines (raw SQL — NoTracking means IsModified won't work)
+                var amountExclVat = lines.Sum(l => l.AmountExclVat);
+                var vatAmount = lines.Sum(l => l.AmountInclVat - l.AmountExclVat);
+                var amountInclVat = lines.Sum(l => l.AmountInclVat);
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE expense_invoices SET amount_excl_vat = {0}, vat_amount = {1}, amount_incl_vat = {2} WHERE id = {3}",
+                    amountExclVat, vatAmount, amountInclVat, invoice.Id);
             }
             
             // Log invoice creation
@@ -206,19 +205,31 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            context.Entry(invoice).Property(i => i.InvoiceNumber).IsModified = true;
-            context.Entry(invoice).Property(i => i.InvoiceDate).IsModified = true;
-            context.Entry(invoice).Property(i => i.DueDate).IsModified = true;
-            context.Entry(invoice).Property(i => i.AmountExclVat).IsModified = true;
-            context.Entry(invoice).Property(i => i.VatRate).IsModified = true;
-            context.Entry(invoice).Property(i => i.VatAmount).IsModified = true;
-            context.Entry(invoice).Property(i => i.AmountInclVat).IsModified = true;
-            context.Entry(invoice).Property(i => i.Notes).IsModified = true;
-            context.Entry(invoice).Property(i => i.Status).IsModified = true;
-            context.Entry(invoice).Property(i => i.UpdatedAt).IsModified = true;
-
             invoice.UpdatedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    invoice_number = {0},
+                    invoice_date = {1},
+                    due_date = {2},
+                    amount_excl_vat = {3},
+                    vat_rate = {4},
+                    vat_amount = {5},
+                    amount_incl_vat = {6},
+                    notes = {7},
+                    status = {8},
+                    updated_at = {9}
+                WHERE id = {10}",
+                invoice.InvoiceNumber,
+                invoice.InvoiceDate,
+                invoice.DueDate,
+                invoice.AmountExclVat,
+                invoice.VatRate,
+                invoice.VatAmount,
+                invoice.AmountInclVat,
+                invoice.Notes,
+                invoice.Status,
+                invoice.UpdatedAt,
+                invoice.Id);
             
             // Recalculate OCR flags after saving invoice changes
             var lines = await context.ExpenseInvoiceLines.Where(l => l.InvoiceId == invoice.Id).ToListAsync();
@@ -250,11 +261,15 @@ namespace NordicBeesERP.Services
                 f == OcrFlag.WrongRecipient || f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch || f == OcrFlag.LowConfidence))
             {
                 invoice.Status = invoice.SupplierId == null ? "PENDING_SUPPLIER" : "PENDING";
-                context.Entry(invoice).Property(i => i.Status).IsModified = true;
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE expense_invoices SET status = {0}, updated_at = {1} WHERE id = {2}",
+                    invoice.Status, DateTime.UtcNow, invoice.Id);
             }
             
-            context.Update(invoice);
-            await context.SaveChangesAsync();
+            // Also persist ocr_flags
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_invoices SET ocr_flags = {0}, updated_at = {1} WHERE id = {2}",
+                invoice.OcrFlags, DateTime.UtcNow, invoice.Id);
             
             return invoice;
         }
@@ -263,12 +278,15 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var invoice = await context.ExpenseInvoices.FindAsync(id);
-            if (invoice == null)
+            var exists = await context.ExpenseInvoices
+                .AsNoTracking()
+                .AnyAsync(i => i.Id == id);
+            if (!exists)
                 return false;
 
-            context.ExpenseInvoices.Remove(invoice);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM expense_invoices WHERE id = {0}",
+                id);
             
             return true;
         }
@@ -303,16 +321,23 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            context.Entry(line).Property(l => l.Description).IsModified = true;
-            context.Entry(line).Property(l => l.AmountExclVat).IsModified = true;
-            context.Entry(line).Property(l => l.VatRate).IsModified = true;
-            context.Entry(line).Property(l => l.AmountInclVat).IsModified = true;
-            context.Entry(line).Property(l => l.SortOrder).IsModified = true;
-
             // Recalculate totals
             line.AmountInclVat = line.AmountExclVat * (1 + line.VatRate / 100);
             
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoice_lines SET
+                    description = {0},
+                    amount_excl_vat = {1},
+                    vat_rate = {2},
+                    amount_incl_vat = {3},
+                    sort_order = {4}
+                WHERE id = {5}",
+                line.Description,
+                line.AmountExclVat,
+                line.VatRate,
+                line.AmountInclVat,
+                line.SortOrder,
+                line.Id);
             
             return line;
         }
@@ -321,12 +346,15 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var line = await context.ExpenseInvoiceLines.FindAsync(id);
-            if (line == null)
+            var exists = await context.ExpenseInvoiceLines
+                .AsNoTracking()
+                .AnyAsync(l => l.Id == id);
+            if (!exists)
                 return false;
 
-            context.ExpenseInvoiceLines.Remove(line);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM expense_invoice_lines WHERE id = {0}",
+                id);
             
             return true;
         }
@@ -357,12 +385,18 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            context.Entry(allocation).Property(a => a.CategoryId).IsModified = true;
-            context.Entry(allocation).Property(a => a.CostCenterId).IsModified = true;
-            context.Entry(allocation).Property(a => a.AllocatedAmount).IsModified = true;
-            context.Entry(allocation).Property(a => a.AllocatedPercent).IsModified = true;
-
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_line_allocations SET
+                    category_id = {0},
+                    cost_center_id = {1},
+                    allocated_amount = {2},
+                    allocated_percent = {3}
+                WHERE id = {4}",
+                allocation.CategoryId,
+                allocation.CostCenterId,
+                allocation.AllocatedAmount,
+                allocation.AllocatedPercent,
+                allocation.Id);
             
             return allocation;
         }
@@ -371,12 +405,15 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var allocation = await context.ExpenseLineAllocations.FindAsync(id);
-            if (allocation == null)
+            var exists = await context.ExpenseLineAllocations
+                .AsNoTracking()
+                .AnyAsync(a => a.Id == id);
+            if (!exists)
                 return false;
 
-            context.ExpenseLineAllocations.Remove(allocation);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM expense_line_allocations WHERE id = {0}",
+                id);
             
             return true;
         }
@@ -399,7 +436,9 @@ namespace NordicBeesERP.Services
             using var context = _dbFactory.CreateDbContext();
             
             // Get invoice info before payment is added
-            var invoice = await context.ExpenseInvoices.FindAsync(payment.InvoiceId);
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == payment.InvoiceId);
             var oldStatus = invoice?.Status;
             
             payment.CreatedAt = DateTime.UtcNow;
@@ -409,12 +448,14 @@ namespace NordicBeesERP.Services
             // Recalculate paid amount and update status
             await RecalculateInvoiceStatusAsync(payment.InvoiceId);
             
-            // Get new status after recalculation
-            await context.Entry(invoice!).ReloadAsync();
-            var newStatus = invoice!.Status;
+            // Get new status after recalculation (re-query — ReloadAsync on detached entity silently fails)
+            var updatedInvoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == payment.InvoiceId);
+            var newStatus = updatedInvoice?.Status;
             
             // Log payment added
-            await LogAuditAsync(context, payment.InvoiceId, invoice.InvoiceNumber, "PAYMENT_ADDED", 
+            await LogAuditAsync(context, payment.InvoiceId, invoice?.InvoiceNumber ?? "Unknown", "PAYMENT_ADDED", 
                 $"Amount: {payment.Amount:C}", oldStatus, newStatus);
             
             return payment;
@@ -424,26 +465,33 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var payment = await context.ExpensePayments.FindAsync(id);
+            var payment = await context.ExpensePayments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (payment == null)
                 return false;
 
             var invoiceId = payment.InvoiceId;
             
             // Get invoice info before payment is deleted
-            var invoice = await context.ExpenseInvoices.FindAsync(invoiceId);
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             var oldStatus = invoice?.Status;
             var invoiceNumber = invoice?.InvoiceNumber ?? "Unknown";
             
-            context.ExpensePayments.Remove(payment);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM expense_payments WHERE id = {0}",
+                id);
             
             // Recalculate paid amount and update status
             await RecalculateInvoiceStatusAsync(invoiceId);
             
-            // Get new status after recalculation
-            await context.Entry(invoice!).ReloadAsync();
-            var newStatus = invoice!.Status;
+            // Get new status after recalculation (re-query — ReloadAsync on detached entity silently fails)
+            var updatedInvoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            var newStatus = updatedInvoice?.Status;
             
             // Log payment deleted
             await LogAuditAsync(context, invoiceId, invoiceNumber, "PAYMENT_DELETED", 
@@ -456,31 +504,33 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var existing = await context.ExpensePayments.FindAsync(payment.Id);
-            if (existing == null)
+            var exists = await context.ExpensePayments
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == payment.Id);
+            if (!exists)
                 throw new InvalidOperationException($"Payment with ID {payment.Id} not found");
 
-            var oldStatus = existing.Invoice != null ? existing.Invoice.Status : null;
-            var invoiceId = existing.InvoiceId;
+            var invoiceId = payment.InvoiceId;
 
-            existing.PaymentDate = payment.PaymentDate;
-            existing.Amount = payment.Amount;
-            existing.PaymentMethod = payment.PaymentMethod;
-            existing.Reference = payment.Reference;
-            existing.Notes = payment.Notes;
-
-            context.Entry(existing).Property(p => p.PaymentDate).IsModified = true;
-            context.Entry(existing).Property(p => p.Amount).IsModified = true;
-            context.Entry(existing).Property(p => p.PaymentMethod).IsModified = true;
-            context.Entry(existing).Property(p => p.Reference).IsModified = true;
-            context.Entry(existing).Property(p => p.Notes).IsModified = true;
-
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_payments SET
+                    payment_date = {0},
+                    amount = {1},
+                    payment_method = {2},
+                    reference = {3},
+                    notes = {4}
+                WHERE id = {5}",
+                payment.PaymentDate,
+                payment.Amount,
+                payment.PaymentMethod,
+                payment.Reference,
+                payment.Notes,
+                payment.Id);
             
             // Recalculate invoice paid amount and status
             await RecalculateInvoiceStatusAsync(invoiceId);
             
-            return existing;
+            return payment;
         }
 
         // =====================================================
@@ -519,9 +569,10 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            context.Entry(budget).Property(b => b.PlannedAmount).IsModified = true;
-
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_budgets SET planned_amount = {0} WHERE id = {1}",
+                budget.PlannedAmount,
+                budget.Id);
             
             return budget;
         }
@@ -530,12 +581,15 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var budget = await context.ExpenseBudgets.FindAsync(id);
-            if (budget == null)
+            var exists = await context.ExpenseBudgets
+                .AsNoTracking()
+                .AnyAsync(b => b.Id == id);
+            if (!exists)
                 return false;
 
-            context.ExpenseBudgets.Remove(budget);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM expense_budgets WHERE id = {0}",
+                id);
             
             return true;
         }
@@ -572,13 +626,20 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            context.Entry(category).Property(c => c.Name).IsModified = true;
-            context.Entry(category).Property(c => c.Code).IsModified = true;
-            context.Entry(category).Property(c => c.ParentId).IsModified = true;
-            context.Entry(category).Property(c => c.IsActive).IsModified = true;
-            context.Entry(category).Property(c => c.SortOrder).IsModified = true;
-
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_categories SET
+                    name = {0},
+                    code = {1},
+                    parent_id = {2},
+                    is_active = {3},
+                    sort_order = {4}
+                WHERE id = {5}",
+                category.Name,
+                category.Code,
+                category.ParentId,
+                category.IsActive,
+                category.SortOrder,
+                category.Id);
             
             return category;
         }
@@ -587,13 +648,15 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var category = await context.ExpenseCategories.FindAsync(id);
-            if (category == null)
+            var exists = await context.ExpenseCategories
+                .AsNoTracking()
+                .AnyAsync(c => c.Id == id);
+            if (!exists)
                 return false;
 
-            category.IsActive = isActive;
-            context.Entry(category).Property(c => c.IsActive).IsModified = true;
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_categories SET is_active = {0} WHERE id = {1}",
+                isActive, id);
             
             return true;
         }
@@ -602,14 +665,16 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var category = await context.ExpenseCategories.FindAsync(id);
-            if (category == null)
+            var exists = await context.ExpenseCategories
+                .AsNoTracking()
+                .AnyAsync(c => c.Id == id);
+            if (!exists)
                 return false;
 
             // Soft delete: set is_active = false
-            category.IsActive = false;
-            context.Entry(category).Property(c => c.IsActive).IsModified = true;
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_categories SET is_active = {0} WHERE id = {1}",
+                false, id);
             
             return true;
         }
@@ -645,11 +710,16 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            context.Entry(center).Property(c => c.Name).IsModified = true;
-            context.Entry(center).Property(c => c.Code).IsModified = true;
-            context.Entry(center).Property(c => c.IsActive).IsModified = true;
-
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_cost_centers SET
+                    name = {0},
+                    code = {1},
+                    is_active = {2}
+                WHERE id = {3}",
+                center.Name,
+                center.Code,
+                center.IsActive,
+                center.Id);
             
             return center;
         }
@@ -658,12 +728,15 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var center = await context.ExpenseCostCenters.FindAsync(id);
-            if (center == null)
+            var exists = await context.ExpenseCostCenters
+                .AsNoTracking()
+                .AnyAsync(c => c.Id == id);
+            if (!exists)
                 return false;
 
-            context.ExpenseCostCenters.Remove(center);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM expense_cost_centers WHERE id = {0}",
+                id);
             
             return true;
         }
@@ -675,14 +748,16 @@ namespace NordicBeesERP.Services
         public async Task<ExpenseInvoice?> GetInvoiceAsync(int id)
         {
             using var context = _dbFactory.CreateDbContext();
-            return await context.ExpenseInvoices.FindAsync(id);
+            return await context.ExpenseInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
         }
 
         public async Task RecalculateInvoiceStatusAsync(int invoiceId)
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var invoice = await context.ExpenseInvoices.FindAsync(invoiceId);
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null)
                 return;
 
@@ -693,28 +768,27 @@ namespace NordicBeesERP.Services
                 .Where(p => p.InvoiceId == invoiceId)
                 .SumAsync(p => p.Amount);
 
-            invoice.PaidAmount = totalPayments;
-
             // Perduodame currentStatus, kad neprarastume APPROVED žymės
-            invoice.Status = ExpenseStatusHelper.Recalculate(
+            var newStatus = ExpenseStatusHelper.Recalculate(
                 totalPayments,
                 invoice.AmountInclVat,
                 invoice.DueDate,
                 invoice.Status);
 
-            // Mark all modified properties explicitly
-            context.Entry(invoice).Property(i => i.PaidAmount).IsModified = true;
-            context.Entry(invoice).Property(i => i.Status).IsModified = true;
-            context.Entry(invoice).Property(i => i.UpdatedAt).IsModified = true;
-            invoice.UpdatedAt = DateTime.UtcNow;
-
-            await context.SaveChangesAsync();
+            var updatedAt = DateTime.UtcNow;
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    paid_amount = {0},
+                    status = {1},
+                    updated_at = {2}
+                WHERE id = {3}",
+                totalPayments, newStatus, updatedAt, invoiceId);
             
             // Log status change if it changed
-            if (oldStatus != invoice.Status)
+            if (oldStatus != newStatus)
             {
                 await LogAuditAsync(context, invoiceId, invoiceNumber, "STATUS_CHANGED", 
-                    $"Status changed from {oldStatus} to {invoice.Status}", oldStatus, invoice.Status);
+                    $"Status changed from {oldStatus} to {newStatus}", oldStatus, newStatus);
             }
         }
 
@@ -747,7 +821,9 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var invoice = await context.ExpenseInvoices.FindAsync(invoiceId);
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null)
                 return;
 
@@ -755,17 +831,19 @@ namespace NordicBeesERP.Services
                 .Where(l => l.InvoiceId == invoiceId)
                 .ToListAsync();
 
-            invoice.AmountExclVat = lines.Sum(l => l.AmountExclVat);
-            invoice.VatAmount = lines.Sum(l => l.AmountInclVat - l.AmountExclVat);
-            invoice.AmountInclVat = lines.Sum(l => l.AmountInclVat);
+            var amountExclVat = lines.Sum(l => l.AmountExclVat);
+            var vatAmount = lines.Sum(l => l.AmountInclVat - l.AmountExclVat);
+            var amountInclVat = lines.Sum(l => l.AmountInclVat);
+            var updatedAt = DateTime.UtcNow;
 
-            context.Entry(invoice).Property(i => i.AmountExclVat).IsModified = true;
-            context.Entry(invoice).Property(i => i.VatAmount).IsModified = true;
-            context.Entry(invoice).Property(i => i.AmountInclVat).IsModified = true;
-            context.Entry(invoice).Property(i => i.UpdatedAt).IsModified = true;
-            invoice.UpdatedAt = DateTime.UtcNow;
-
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    amount_excl_vat = {0},
+                    vat_amount = {1},
+                    amount_incl_vat = {2},
+                    updated_at = {3}
+                WHERE id = {4}",
+                amountExclVat, vatAmount, amountInclVat, updatedAt, invoiceId);
         }
 
         public async Task<List<ExpenseInvoice>> GetSupplierHistoryAsync(int supplierId, int year)
@@ -835,24 +913,37 @@ namespace NordicBeesERP.Services
         public async Task AssignSupplierAsync(int invoiceId, int supplierId, string performedBy)
         {
             using var context = _dbFactory.CreateDbContext();
-            var invoice = await context.ExpenseInvoices.FindAsync(invoiceId);
+            
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
+            
             var oldStatus = invoice.Status;
-            invoice.SupplierId = supplierId;
-            invoice.Status = "PENDING";
-            invoice.UpdatedAt = DateTime.Now;
-
+            var invoiceNumber = invoice.InvoiceNumber;
+            
+            // Recalculate OCR flags (remove VENDOR_NOT_FOUND)
             var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
             flags.Remove("VENDOR_NOT_FOUND");
-            invoice.OcrFlags = System.Text.Json.JsonSerializer.Serialize(flags);
-
-            context.Update(invoice);
+            var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
+            
+            var now = DateTime.Now;
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    supplier_id = {0},
+                    status = {1},
+                    updated_at = {2},
+                    ocr_flags = {3}
+                WHERE id = {4}",
+                supplierId, "PENDING", now, ocrFlagsJson, invoiceId);
+            
+            // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
             context.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
             {
-                InvoiceId = invoiceId, InvoiceNumber = invoice.InvoiceNumber,
+                InvoiceId = invoiceId, InvoiceNumber = invoiceNumber,
                 Action = "SUPPLIER_ASSIGNED", ActionDetails = $"Tiekėjo ID: {supplierId}",
                 OldStatus = oldStatus, NewStatus = "PENDING",
-                PerformedBy = performedBy, PerformedAt = DateTime.Now
+                PerformedBy = performedBy, PerformedAt = now
             });
             await context.SaveChangesAsync();
         }
@@ -888,34 +979,59 @@ namespace NordicBeesERP.Services
                 return 0;
 
             int assignedCount = 0;
+            var now = DateTime.Now;
             foreach (var invoice in matchingInvoices)
             {
                 var oldStatus = invoice.Status;
-                invoice.SupplierId = supplierId;
-                invoice.Status = "PENDING";
-                invoice.UpdatedAt = DateTime.Now;
-
-                // Assign default category from supplier if invoice category is NULL
-                if (supplier?.DefaultExpenseCategoryId.HasValue == true && invoice.CategoryId == null)
-                {
-                    invoice.CategoryId = supplier.DefaultExpenseCategoryId.Value;
-                }
-
+                var invoiceNumber = invoice.InvoiceNumber;
+                
+                // Recalculate OCR flags (remove VENDOR_NOT_FOUND)
                 var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
                 flags.Remove("VENDOR_NOT_FOUND");
-                invoice.OcrFlags = System.Text.Json.JsonSerializer.Serialize(flags);
-
-                context.Update(invoice);
+                var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
+                
+                // Build category update if needed
+                string? categoryIdSql = null;
+                if (supplier?.DefaultExpenseCategoryId.HasValue == true && invoice.CategoryId == null)
+                {
+                    categoryIdSql = supplier.DefaultExpenseCategoryId.Value.ToString();
+                }
+                
+                if (categoryIdSql != null)
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        UPDATE expense_invoices SET
+                            supplier_id = {0},
+                            status = {1},
+                            updated_at = {2},
+                            ocr_flags = {3},
+                            category_id = {4}
+                        WHERE id = {5}",
+                        supplierId, "PENDING", now, ocrFlagsJson, categoryIdSql, invoice.Id);
+                }
+                else
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        UPDATE expense_invoices SET
+                            supplier_id = {0},
+                            status = {1},
+                            updated_at = {2},
+                            ocr_flags = {3}
+                        WHERE id = {4}",
+                        supplierId, "PENDING", now, ocrFlagsJson, invoice.Id);
+                }
+                
+                // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
                 context.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
                 {
                     InvoiceId = invoice.Id,
-                    InvoiceNumber = invoice.InvoiceNumber,
+                    InvoiceNumber = invoiceNumber,
                     Action = "SUPPLIER_AUTO_ASSIGNED",
                     ActionDetails = $"Auto-assign: VAT={vatCode}, Name={supplierName}",
                     OldStatus = oldStatus,
                     NewStatus = "PENDING",
                     PerformedBy = "SYSTEM",
-                    PerformedAt = DateTime.Now
+                    PerformedAt = now
                 });
                 assignedCount++;
             }
@@ -927,19 +1043,31 @@ namespace NordicBeesERP.Services
         public async Task ApproveAsync(int invoiceId, string performedBy)
         {
             using var context = _dbFactory.CreateDbContext();
-            var invoice = await context.ExpenseInvoices.FindAsync(invoiceId);
+            
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
+            
             var oldStatus = invoice.Status;
-            invoice.Status = "PENDING";
-            invoice.ApprovedBy = performedBy;
-            invoice.ApprovedAt = DateTime.Now;
-            invoice.UpdatedAt = DateTime.Now;
-            context.Update(invoice);
+            var invoiceNumber = invoice.InvoiceNumber;
+            var now = DateTime.Now;
+            
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    status = {0},
+                    approved_by = {1},
+                    approved_at = {2},
+                    updated_at = {3}
+                WHERE id = {4}",
+                "PENDING", performedBy, now, now, invoiceId);
+            
+            // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
             context.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
             {
-                InvoiceId = invoiceId, InvoiceNumber = invoice.InvoiceNumber,
+                InvoiceId = invoiceId, InvoiceNumber = invoiceNumber,
                 Action = "APPROVED", OldStatus = oldStatus, NewStatus = "PENDING",
-                PerformedBy = performedBy, PerformedAt = DateTime.Now
+                PerformedBy = performedBy, PerformedAt = now
             });
             await context.SaveChangesAsync();
         }
@@ -955,19 +1083,31 @@ namespace NordicBeesERP.Services
         public async Task RejectAsync(int invoiceId, string reason, string performedBy)
         {
             using var context = _dbFactory.CreateDbContext();
-            var invoice = await context.ExpenseInvoices.FindAsync(invoiceId);
+            
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
+            
             var oldStatus = invoice.Status;
-            invoice.Status = "REJECTED";
-            invoice.RejectedReason = reason;
-            invoice.UpdatedAt = DateTime.Now;
-            context.Update(invoice);
+            var invoiceNumber = invoice.InvoiceNumber;
+            var now = DateTime.Now;
+            
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    status = {0},
+                    rejected_reason = {1},
+                    updated_at = {2}
+                WHERE id = {3}",
+                "REJECTED", reason, now, invoiceId);
+            
+            // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
             context.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
             {
-                InvoiceId = invoiceId, InvoiceNumber = invoice.InvoiceNumber,
+                InvoiceId = invoiceId, InvoiceNumber = invoiceNumber,
                 Action = "REJECTED", ActionDetails = reason,
                 OldStatus = oldStatus, NewStatus = "REJECTED",
-                PerformedBy = performedBy, PerformedAt = DateTime.Now
+                PerformedBy = performedBy, PerformedAt = now
             });
             await context.SaveChangesAsync();
         }
@@ -1098,7 +1238,9 @@ namespace NordicBeesERP.Services
 
             var companyNameUpdate = (await _companySettingsService.GetSettingsAsync()).CompanyName;
 
-            var invoice = await ctx.ExpenseInvoices.FindAsync(invoiceId);
+            var invoice = await ctx.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null)
                 throw new InvalidOperationException($"Invoice {invoiceId} not found");
 
@@ -1110,33 +1252,6 @@ namespace NordicBeesERP.Services
             if (invoiceDate == default) invoiceDate = DateTime.Today;
             DateTime.TryParse(ocrResult.DueDate, out var dueDate);
             if (dueDate == default) dueDate = invoiceDate.AddDays(30);
-
-            invoice.SupplierId = ocrResult.SupplierId;
-            invoice.PendingSupplierName = ocrResult.SupplierId == null ? ocrResult.SupplierName : null;
-            invoice.PendingSupplierVat = ocrResult.SupplierId == null ? ocrResult.SupplierVatCode : null;
-            invoice.PendingSupplierAddress = ocrResult.SupplierId == null ? ocrResult.SupplierAddress : null;
-            invoice.PendingSupplierCity = ocrResult.SupplierId == null ? ocrResult.SupplierCity : null;
-            invoice.PendingSupplierPostalCode = ocrResult.SupplierId == null ? ocrResult.SupplierPostalCode : null;
-            invoice.PendingSupplierCountryCode = ocrResult.SupplierId == null ? ocrResult.SupplierCountryCode : null;
-            invoice.PendingSupplierCompanyCode = ocrResult.SupplierId == null ? ocrResult.SupplierCompanyCode : null;
-            invoice.PendingSupplierBankAccount = ocrResult.SupplierId == null ? ocrResult.SupplierBankAccount : null;
-            invoice.InvoiceNumber = !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : null;
-            invoice.InvoiceDate = invoiceDate;
-            invoice.DueDate = dueDate;
-            invoice.AmountExclVat = ocrResult.AmountExclVat;
-            invoice.VatRate = ocrResult.VatRate;
-            invoice.VatAmount = ocrResult.VatAmount;
-            invoice.AmountInclVat = ocrResult.AmountInclVat;
-            invoice.Currency = string.IsNullOrEmpty(ocrResult.Currency) ? NordicBeesERP.Models.PdfLocalization.CurrencyCode : ocrResult.Currency;
-            invoice.OcrStatus = "COMPLETED";
-            invoice.OcrConfidence = ocrResult.Confidence.Overall;
-            invoice.OcrPipeline = ocrResult.OcrPipeline;
-            if (!string.IsNullOrEmpty(ocrResult.OriginalFilePath))
-                invoice.OriginalFilePath = ocrResult.OriginalFilePath;
-            invoice.OriginalFilename = ocrResult.OriginalFilename;
-            invoice.SupplierVatVerified = ocrResult.ViesVerified;
-            invoice.SupplierVatVerifiedName = ocrResult.ViesName;
-            invoice.UpdatedAt = DateTime.Now;
 
             // Determine flags and status
             var flags = new List<string>(ocrResult.Flags);
@@ -1159,43 +1274,83 @@ namespace NordicBeesERP.Services
             else
                 newStatus = "PENDING";
 
-            invoice.OcrFlags = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
-            invoice.Status = newStatus;
-            invoice.RejectedReason = newStatus == "REJECTED" ? $"Sąskaita ne {companyNameUpdate}" : null;
+            var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
+            var rejectedReason = newStatus == "REJECTED" ? $"Sąskaita ne {companyNameUpdate}" : null;
+            var now = DateTime.Now;
 
-            // Mark all modified properties explicitly
-            ctx.Entry(invoice).Property(i => i.SupplierId).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierName).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierVat).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierAddress).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierCity).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierPostalCode).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierCountryCode).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierCompanyCode).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.PendingSupplierBankAccount).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.InvoiceNumber).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.InvoiceDate).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.DueDate).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.AmountExclVat).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.VatRate).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.VatAmount).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.AmountInclVat).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.Currency).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.OcrStatus).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.OcrConfidence).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.OcrPipeline).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.OcrFlags).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.SupplierVatVerified).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.SupplierVatVerifiedName).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.OriginalFilePath).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.OriginalFilename).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.Status).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.RejectedReason).IsModified = true;
-            ctx.Entry(invoice).Property(i => i.UpdatedAt).IsModified = true;
+            // Single UPDATE for all invoice fields
+            await ctx.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    supplier_id = {0},
+                    pending_supplier_name = {1},
+                    pending_supplier_vat = {2},
+                    pending_supplier_address = {3},
+                    pending_supplier_city = {4},
+                    pending_supplier_postal_code = {5},
+                    pending_supplier_country_code = {6},
+                    pending_supplier_company_code = {7},
+                    pending_supplier_bank_account = {8},
+                    invoice_number = {9},
+                    invoice_date = {10},
+                    due_date = {11},
+                    amount_excl_vat = {12},
+                    vat_rate = {13},
+                    vat_amount = {14},
+                    amount_incl_vat = {15},
+                    currency = {16},
+                    ocr_status = {17},
+                    ocr_confidence = {18},
+                    ocr_pipeline = {19},
+                    ocr_flags = {20},
+                    supplier_vat_verified = {21},
+                    supplier_vat_verified_name = {22},
+                    original_file_path = {23},
+                    original_filename = {24},
+                    status = {25},
+                    rejected_reason = {26},
+                    updated_at = {27}
+                WHERE id = {28}",
+                ocrResult.SupplierId,
+                ocrResult.SupplierId == null ? ocrResult.SupplierName : null,
+                ocrResult.SupplierId == null ? ocrResult.SupplierVatCode : null,
+                ocrResult.SupplierId == null ? ocrResult.SupplierAddress : null,
+                ocrResult.SupplierId == null ? ocrResult.SupplierCity : null,
+                ocrResult.SupplierId == null ? ocrResult.SupplierPostalCode : null,
+                ocrResult.SupplierId == null ? ocrResult.SupplierCountryCode : null,
+                ocrResult.SupplierId == null ? ocrResult.SupplierCompanyCode : null,
+                ocrResult.SupplierId == null ? ocrResult.SupplierBankAccount : null,
+                !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : null,
+                invoiceDate,
+                dueDate,
+                ocrResult.AmountExclVat,
+                ocrResult.VatRate,
+                ocrResult.VatAmount,
+                ocrResult.AmountInclVat,
+                string.IsNullOrEmpty(ocrResult.Currency) ? NordicBeesERP.Models.PdfLocalization.CurrencyCode : ocrResult.Currency,
+                "COMPLETED",
+                ocrResult.Confidence.Overall,
+                ocrResult.OcrPipeline,
+                ocrFlagsJson,
+                ocrResult.ViesVerified,
+                ocrResult.ViesName,
+                !string.IsNullOrEmpty(ocrResult.OriginalFilePath) ? ocrResult.OriginalFilePath : invoice.OriginalFilePath,
+                ocrResult.OriginalFilename,
+                newStatus,
+                rejectedReason,
+                now,
+                invoiceId);
 
-            // Replace invoice lines
-            var existingLines = await ctx.ExpenseInvoiceLines.Where(l => l.InvoiceId == invoiceId).ToListAsync();
-            ctx.ExpenseInvoiceLines.RemoveRange(existingLines);
+            // Replace invoice lines — delete old, insert new
+            var existingLines = await ctx.ExpenseInvoiceLines
+                .Where(l => l.InvoiceId == invoiceId)
+                .Select(l => l.Id)
+                .ToListAsync();
+            if (existingLines.Any())
+            {
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM expense_invoice_lines WHERE invoice_id = {0}",
+                    invoiceId);
+            }
 
             for (int i = 0; i < ocrResult.Lines.Count; i++)
             {
@@ -1216,11 +1371,11 @@ namespace NordicBeesERP.Services
             }
             await ctx.SaveChangesAsync();
 
-            // Audit log
+            // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
             ctx.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
             {
                 InvoiceId = invoice.Id,
-                InvoiceNumber = invoice.InvoiceNumber,
+                InvoiceNumber = !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : invoiceNumber,
                 Action = "OCR_RETRIED",
                 ActionDetails = $"Pakartotinis OCR, tikslumas: {ocrResult.Confidence.Overall}%, požymiai: {string.Join(", ", flags)}",
                 OldStatus = oldStatus,

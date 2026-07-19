@@ -335,7 +335,9 @@ namespace NordicBeesERP.Services
         {
             using var context = _contextFactory.CreateDbContext();
             
-            var creditNote = await context.CreditNotes.FindAsync(creditNoteId);
+            var creditNote = await context.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cn => cn.Id == creditNoteId);
             if (creditNote == null)
                 throw new InvalidOperationException($"Credit note with ID {creditNoteId} not found.");
             
@@ -343,10 +345,10 @@ namespace NordicBeesERP.Services
             if (creditNote.Status == CreditNoteStatus.Draft)
                 throw new InvalidOperationException("Only printed or disputed credit notes can be marked as disputed.");
             
-            creditNote.Status = CreditNoteStatus.Disputed;
-            creditNote.UpdatedAt = DateTime.UtcNow;
-            
-            await context.SaveChangesAsync();
+            var newUpdatedAt = DateTime.UtcNow;
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE credit_notes SET status = {0}, updated_at = {1} WHERE id = {2}",
+                (int)CreditNoteStatus.Disputed, newUpdatedAt, creditNoteId);
         }
 
         // =====================================================
@@ -461,8 +463,10 @@ namespace NordicBeesERP.Services
             creditNote.ReverseCharge = request.ReverseCharge;
             creditNote.Notes = request.Notes;
             
-            // Get new customer and currency from original invoice
-            var originalInvoice = await context.Invoices.FindAsync(request.OriginalInvoiceId);
+            // Get new customer and currency from original invoice (read-only lookup)
+            var originalInvoice = await context.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == request.OriginalInvoiceId);
             if (originalInvoice != null)
             {
                 creditNote.CustomerId = originalInvoice.CustomerId;
@@ -519,12 +523,26 @@ namespace NordicBeesERP.Services
                 newTotalVat += line.VatAmount;
             }
             
-            creditNote.SubtotalExclVat = newSubtotalExclVat;
-            creditNote.TotalVat = newTotalVat;
-            creditNote.TotalInclVat = newSubtotalExclVat + newTotalVat;
-            creditNote.UpdatedAt = DateTime.UtcNow;
-            
+            var newTotalInclVat = newSubtotalExclVat + newTotalVat;
+            var newUpdatedAt = DateTime.UtcNow;
+
+            // Persist line removals/additions first
             await context.SaveChangesAsync();
+
+            // Then update the credit note header via raw SQL
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE credit_notes SET
+                    credit_date = {0}, original_invoice_id = {1}, applied_invoice_id = {2},
+                    language = {3}, reverse_charge = {4}, notes = {5},
+                    customer_id = {6}, currency_id = {7},
+                    subtotal_excl_vat = {8}, total_vat = {9}, total_incl_vat = {10},
+                    updated_at = {11}
+                WHERE id = {12}",
+                creditNote.CreditDate, creditNote.OriginalInvoiceId, creditNote.AppliedInvoiceId,
+                creditNote.Language, creditNote.ReverseCharge, creditNote.Notes,
+                creditNote.CustomerId, creditNote.CurrencyId,
+                newSubtotalExclVat, newTotalVat, newTotalInclVat,
+                newUpdatedAt, creditNote.Id);
         }
 
         // =====================================================

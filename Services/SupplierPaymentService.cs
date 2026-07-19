@@ -70,14 +70,13 @@ public class SupplierPaymentService : ISupplierPaymentService
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
-            var payment = await context.SupplierPayments.FindAsync(id);
+            var payment = await context.SupplierPayments.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
             if (payment != null)
             {
                 var deliveryId = payment.DeliveryId;
-                context.SupplierPayments.Remove(payment);
-                await context.SaveChangesAsync();
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM supplier_payments WHERE id = {0}", id);
                 await transaction.CommitAsync();
-                
+
                 // Update delivery status
                 await _deliveryService.UpdateDeliveryStatusAsync(deliveryId);
             }
@@ -95,22 +94,20 @@ public class SupplierPaymentService : ISupplierPaymentService
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
-            var existing = await context.SupplierPayments.FindAsync(payment.Id);
+            var existing = await context.SupplierPayments.AsNoTracking().FirstOrDefaultAsync(p => p.Id == payment.Id);
             if (existing == null) return;
-            
-            existing.Amount = payment.Amount;
-            existing.PaymentDate = payment.PaymentDate;
-            existing.PaymentMethod = payment.PaymentMethod;
-            existing.Notes = payment.Notes;
-            
-            context.Entry(existing).Property(x => x.Amount).IsModified = true;
-            context.Entry(existing).Property(x => x.PaymentDate).IsModified = true;
-            context.Entry(existing).Property(x => x.PaymentMethod).IsModified = true;
-            context.Entry(existing).Property(x => x.Notes).IsModified = true;
-            
-            await context.SaveChangesAsync();
+
+            // Save via raw SQL (NoTracking — Update + SaveChanges would silently do nothing)
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE supplier_payments SET amount = {0}, payment_date = {1}, payment_method = {2}, notes = {3} WHERE id = {4}",
+                payment.Amount,
+                payment.PaymentDate,
+                payment.PaymentMethod,
+                payment.Notes,
+                payment.Id);
+
             await transaction.CommitAsync();
-            
+
             // Update delivery status
             await _deliveryService.UpdateDeliveryStatusAsync(payment.DeliveryId);
         }

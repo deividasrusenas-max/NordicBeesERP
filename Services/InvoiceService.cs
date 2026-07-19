@@ -215,14 +215,12 @@ namespace NordicBeesERP.Services
             
             if (invoice.DeliveryId.HasValue && invoice.DeliveryId > 0)
             {
-                var delivery = await context.Deliveries.FindAsync(invoice.DeliveryId.Value);
-                if (delivery != null)
+                var deliveryExists = await context.Deliveries.AsNoTracking().AnyAsync(d => d.Id == invoice.DeliveryId.Value);
+                if (deliveryExists)
                 {
-                    delivery.InvoiceId = invoice.Id;
-                    delivery.InvoiceNumber = invoice.InvoiceNumber;
-                    context.Entry(delivery).Property(d => d.InvoiceId).IsModified = true;
-                    context.Entry(delivery).Property(d => d.InvoiceNumber).IsModified = true;
-                    await context.SaveChangesAsync();
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE deliveries SET invoice_id = {0}, invoice_number = {1}, updated_at = NOW() WHERE id = {2}",
+                        invoice.Id, invoice.InvoiceNumber, invoice.DeliveryId.Value);
                 }
             }
             
@@ -318,30 +316,25 @@ namespace NordicBeesERP.Services
         public async Task<int> DeleteInvoiceAsync(int id)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            
-            var invoice = await context.Invoices.FindAsync(id);
-            if (invoice == null)
-                return 0;
-
-            context.Invoices.Remove(invoice);
-            return await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", id);
+            return 1;
         }
 
         public async Task<int> UpdateInvoiceStatusAsync(int id, InvoiceStatus newStatus)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            
-            var invoice = await context.Invoices.FindAsync(id);
+
+            var invoice = await context.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == id);
             if (invoice == null)
                 return 0;
 
-            context.Attach(invoice);
-
             // Validate: block confirmation when total is zero but lines exist
+            int lineCount = await context.InvoiceLines.CountAsync(l => l.InvoiceId == id);
             if (newStatus == InvoiceStatus.Confirmed &&
                 invoice.TotalInclVat == 0 &&
-                invoice.Lines != null &&
-                invoice.Lines.Count > 0)
+                lineCount > 0)
             {
                 throw new InvalidOperationException(
                     "Invoice has lines but total is zero. Please check invoice lines before confirming.");
@@ -356,11 +349,15 @@ namespace NordicBeesERP.Services
             }
 
             var oldStatus = invoice.Status;
-            invoice.Status = newStatus;
-            invoice.UpdatedAt = DateTime.UtcNow;
 
-            // Save status change first
-            await context.SaveChangesAsync();
+            // Save status change via raw SQL (NoTracking — Update + SaveChanges would silently do nothing)
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE invoices SET status = {0}, updated_at = {1}, payment_due_date = {2} WHERE id = {3}",
+                (int)newStatus,
+                DateTime.UtcNow,
+                invoice.PaymentDueDate,
+                id
+            );
 
             // Insert audit log entry if status actually changed
             if (oldStatus != newStatus)
@@ -626,7 +623,7 @@ namespace NordicBeesERP.Services
                 throw new InvalidOperationException($"Pristatymas su id {deliveryId} nerastas");
             
             // Get supplier info
-            var supplier = await context.BusinessPartners.FindAsync(delivery.SupplierId);
+            var supplier = await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == delivery.SupplierId);
             if (supplier == null)
                 throw new InvalidOperationException($"Tiekėjas su id {delivery.SupplierId} nerastas");
             
@@ -664,14 +661,12 @@ namespace NordicBeesERP.Services
             invoice = CalculateInvoiceTotals(invoice);
             
             context.Invoices.Add(invoice);
-            
-            // Update delivery with invoice reference
-            delivery.InvoiceId = invoice.Id;
-            delivery.InvoiceNumber = invoiceNumber;
-            context.Entry(delivery).Property(d => d.InvoiceId).IsModified = true;
-            context.Entry(delivery).Property(d => d.InvoiceNumber).IsModified = true;
-            
             await context.SaveChangesAsync();
+
+            // Update delivery with invoice reference (delivery is detached — use raw SQL)
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE deliveries SET invoice_id = {0}, invoice_number = {1}, updated_at = NOW() WHERE id = {2}",
+                invoice.Id, invoiceNumber, delivery.Id);
             
             return invoice.Id;
         }

@@ -199,15 +199,14 @@ public class ContainerService : IContainerService
         try
         {
             var containers = await context.Containers.Where(c => containerIds.Contains(c.Id)).ToListAsync();
-            
+
+            // 1. Update container honey_type_id via raw SQL
             foreach (var c in containers)
             {
-                c.HoneyTypeId = honeyTypeId;
-                c.UpdatedAt = DateTime.Now;
-                context.Entry(c).Property(x => x.HoneyTypeId).IsModified = true;
-                context.Entry(c).Property(x => x.UpdatedAt).IsModified = true;
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE containers SET honey_type_id = {0}, updated_at = NOW() WHERE id = {1}",
+                    honeyTypeId, c.Id);
             }
-            await context.SaveChangesAsync();
 
             // Perskaido DeliveryLine pagal rūšis
             var deliveryLineIds = containers
@@ -218,7 +217,7 @@ public class ContainerService : IContainerService
 
             foreach (var lineId in deliveryLineIds)
             {
-                var line = await context.DeliveryLines.FindAsync(lineId);
+                var line = await context.DeliveryLines.AsNoTracking().FirstOrDefaultAsync(l => l.Id == lineId);
                 if (line == null) continue;
 
                 // Gauti visus šios eilutės konteinerius
@@ -232,12 +231,12 @@ public class ContainerService : IContainerService
                 // Jei tik viena grupė — nereikia skaidyti
                 if (groups.Count <= 1)
                 {
-                    line.HoneyTypeId = groups.First().Key;
-                    line.TotalNetWeight = lineContainers.Sum(c => c.NetWeight);
-                    line.ContainerCount = lineContainers.Sum(c => c.Quantity);
-                    context.Entry(line).Property(x => x.HoneyTypeId).IsModified = true;
-                    context.Entry(line).Property(x => x.TotalNetWeight).IsModified = true;
-                    context.Entry(line).Property(x => x.ContainerCount).IsModified = true;
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE delivery_lines SET honey_type_id = {0}, total_net_weight = {1}, container_count = {2}, updated_at = NOW() WHERE id = {3}",
+                        groups.First().Key,
+                        lineContainers.Sum(c => c.NetWeight),
+                        lineContainers.Sum(c => c.Quantity),
+                        lineId);
                     continue;
                 }
 
@@ -248,19 +247,17 @@ public class ContainerService : IContainerService
                     if (first)
                     {
                         // Pirmą grupę atnaujinam esamoje eilutėje
-                        line.HoneyTypeId = group.Key;
-                        line.ContainerCount = group.Sum(c => c.Quantity);
-                        line.TotalNetWeight = group.Sum(c => c.NetWeight);
-                        line.UpdatedAt = DateTime.Now;
-                        context.Entry(line).Property(x => x.HoneyTypeId).IsModified = true;
-                        context.Entry(line).Property(x => x.ContainerCount).IsModified = true;
-                        context.Entry(line).Property(x => x.TotalNetWeight).IsModified = true;
-                        context.Entry(line).Property(x => x.UpdatedAt).IsModified = true;
+                        await context.Database.ExecuteSqlRawAsync(
+                            "UPDATE delivery_lines SET honey_type_id = {0}, container_count = {1}, total_net_weight = {2}, updated_at = NOW() WHERE id = {3}",
+                            group.Key,
+                            group.Sum(c => c.Quantity),
+                            group.Sum(c => c.NetWeight),
+                            lineId);
                         first = false;
                     }
                     else
                     {
-                        // Kitas grupes — naujos eilutės
+                        // Kitas grupes — naujos eilutės (genuine INSERT — SaveChangesAsync is correct here)
                         var newLine = new DeliveryLine
                         {
                             DeliveryId = line.DeliveryId,
@@ -276,39 +273,48 @@ public class ContainerService : IContainerService
                         context.DeliveryLines.Add(newLine);
                         await context.SaveChangesAsync();
 
-                        // Perkelt konteinerius į naują eilutę
+                        // Perkelt konteinerius į naują eilutę via raw SQL
                         foreach (var c in group)
                         {
-                            c.DeliveryLineId = newLine.Id;
-                            context.Entry(c).Property(x => x.DeliveryLineId).IsModified = true;
+                            await context.Database.ExecuteSqlRawAsync(
+                                "UPDATE containers SET delivery_line_id = {0}, updated_at = NOW() WHERE id = {1}",
+                                newLine.Id, c.Id);
                         }
                     }
                 }
             }
 
-            await context.SaveChangesAsync();
-
             // Perskaičiuoti delivery totals
             var deliveryIds = containers
                 .Where(c => c.DeliveryLineId.HasValue)
-                .Select(c => context.DeliveryLines.Find(c.DeliveryLineId!.Value)?.DeliveryId ?? 0)
+                .Select(c => c.DeliveryLineId!.Value)
+                .Distinct()
+                .ToList();
+
+            var deliveryLineMap = await context.DeliveryLines
+                .Where(dl => deliveryIds.Contains(dl.Id))
+                .Select(dl => new { dl.Id, dl.DeliveryId })
+                .ToListAsync();
+
+            var uniqueDeliveryIds = deliveryLineMap
+                .Select(dl => dl.DeliveryId)
                 .Where(id => id > 0)
                 .Distinct()
                 .ToList();
 
-            foreach (var deliveryId in deliveryIds)
+            foreach (var deliveryId in uniqueDeliveryIds)
             {
-                var delivery = await context.Deliveries.FindAsync(deliveryId);
-                if (delivery != null)
-                {
-                    var allLines = await context.DeliveryLines.Where(l => l.DeliveryId == deliveryId).ToListAsync();
-                    delivery.TotalNetWeight = allLines.Sum(l => l.TotalNetWeight ?? 0);
-                    delivery.TotalAmount = allLines.Sum(l => l.LineTotal ?? 0);
-                    delivery.UpdatedAt = DateTime.Now;
-                }
+                var allLines = await context.DeliveryLines
+                    .Where(l => l.DeliveryId == deliveryId)
+                    .ToListAsync();
+
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE deliveries SET total_net_weight = {0}, total_amount = {1}, updated_at = NOW() WHERE id = {2}",
+                    allLines.Sum(l => l.TotalNetWeight ?? 0),
+                    allLines.Sum(l => l.LineTotal ?? 0),
+                    deliveryId);
             }
 
-            await context.SaveChangesAsync();
             await transaction.CommitAsync();
         }
         catch

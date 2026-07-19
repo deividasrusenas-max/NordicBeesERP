@@ -52,7 +52,7 @@ namespace NordicBeesERP.Services
         public async Task<BusinessPartner?> GetBusinessPartnerByIdAsync(int id)
         {
             using var context = _dbFactory.CreateDbContext();
-            return await context.BusinessPartners.FindAsync(id);
+            return await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
         }
 
         public async Task<BusinessPartner> CreateBusinessPartnerAsync(BusinessPartner partner)
@@ -71,13 +71,60 @@ namespace NordicBeesERP.Services
         public async Task<BusinessPartner> UpdateBusinessPartnerAsync(BusinessPartner partner)
         {
             using var context = _dbFactory.CreateDbContext();
-            
-            var existing = await context.BusinessPartners.FindAsync(partner.Id);
+
+            var existing = await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(p => p.Id == partner.Id);
             if (existing == null)
             {
                 throw new InvalidOperationException($"BusinessPartner with ID {partner.Id} not found");
             }
 
+            var now = DateTime.Now;
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE business_partners SET " +
+                "partner_type = {0}, " +
+                "name = {1}, " +
+                "company_code = {2}, " +
+                "vat_code = {3}, " +
+                "address = {4}, " +
+                "city = {5}, " +
+                "postal_code = {6}, " +
+                "country = {7}, " +
+                "country_code = {8}, " +
+                "phone = {9}, " +
+                "contact_phone = {10}, " +
+                "email = {11}, " +
+                "invoice_email = {12}, " +
+                "bank_account = {13}, " +
+                "payment_term_days = {14}, " +
+                "default_language = {15}, " +
+                "default_vat_rate = {16}, " +
+                "notes = {17}, " +
+                "is_active = {18}, " +
+                "updated_at = {19} " +
+                "WHERE id = {20}",
+                partner.PartnerType.ToString().ToLower(),
+                partner.Name,
+                partner.CompanyCode,
+                partner.VatCode,
+                partner.Address,
+                partner.City,
+                partner.PostalCode,
+                partner.Country,
+                partner.CountryCode,
+                partner.Phone,
+                partner.ContactPhone,
+                partner.Email,
+                partner.InvoiceEmail,
+                partner.BankAccount,
+                partner.PaymentTermDays,
+                partner.DefaultLanguage,
+                partner.DefaultVatRate,
+                partner.Notes,
+                partner.IsActive,
+                now,
+                partner.Id);
+
+            // Refresh local object to return up-to-date values
             existing.PartnerType = partner.PartnerType;
             existing.Name = partner.Name;
             existing.CompanyCode = partner.CompanyCode;
@@ -92,15 +139,13 @@ namespace NordicBeesERP.Services
             existing.Email = partner.Email;
             existing.InvoiceEmail = partner.InvoiceEmail;
             existing.BankAccount = partner.BankAccount;
-            existing.PaymentTermDays = partner.PaymentTermDays ;
+            existing.PaymentTermDays = partner.PaymentTermDays;
             existing.DefaultLanguage = partner.DefaultLanguage;
             existing.DefaultVatRate = partner.DefaultVatRate;
             existing.Notes = partner.Notes;
-                existing.IsActive = partner.IsActive;
-            existing.UpdatedAt = DateTime.Now;
+            existing.IsActive = partner.IsActive;
+            existing.UpdatedAt = now;
 
-            await context.SaveChangesAsync();
-            
             return existing;
         }
 
@@ -114,8 +159,7 @@ namespace NordicBeesERP.Services
                 return false;
             }
 
-            context.BusinessPartners.Remove(partner);
-            await context.SaveChangesAsync();
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", id);
             
             return true;
         }
@@ -208,20 +252,20 @@ namespace NordicBeesERP.Services
                     WHERE id = {18}",
                     partnerType.ToString().ToLower(),
                     customer.Name,
-                    customer.CompanyCode ?? "",
-                    customer.VatCode ?? "",
-                    customer.Address ?? "",
-                    customer.City ?? "",
-                    customer.PostalCode ?? "",
+                    customer.CompanyCode,
+                    customer.VatCode,
+                    customer.Address,
+                    customer.City,
+                    customer.PostalCode,
                     customer.Country ?? PdfLocalization.CountryEn,
                     customer.CountryCode ?? "LT",
-                    customer.Phone ?? "",
-                    customer.Email ?? "",
-                    customer.BankAccount ?? "",
+                    customer.Phone,
+                    customer.Email,
+                    customer.BankAccount,
                     customer.PaymentTermDays,
                     customer.DefaultLanguage ?? "lt",
                     customer.DefaultVatRate,
-                    customer.Notes ?? "",
+                    customer.Notes,
                     customer.IsActive,
                     DateTime.Now,
                     customer.Id);
