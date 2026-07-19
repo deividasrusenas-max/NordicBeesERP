@@ -43,6 +43,22 @@ if ! dotnet build --nologo -v quiet > /tmp/bump-version-build.log 2>&1; then
   exit 1
 fi
 
+# GATE 1.5: run the test suite. Skips gracefully (does not block) if the
+# test DB env var is unset, since not every dev machine has
+# nordic_bees_erp_test configured -- but if TEST_DB_CONNECTION IS set,
+# a failing test blocks the release just like a failing build.
+if [ -n "$TEST_DB_CONNECTION" ]; then
+  echo "Running dotnet test (gate 1.5)..."
+  if ! dotnet test --nologo -v quiet > /tmp/bump-version-test.log 2>&1; then
+    echo "ERROR: bump-version.sh refused to run -- tests FAILED." >&2
+    echo "See /tmp/bump-version-test.log for details:" >&2
+    tail -n 40 /tmp/bump-version-test.log >&2
+    exit 1
+  fi
+else
+  echo "Skipping dotnet test (gate 1.5) -- TEST_DB_CONNECTION not set on this machine."
+fi
+
 # GATE 2: refuse to release if any staged/modified .cs file matches the
 # #1 recurring FROZEN.md anti-pattern: FindAsync() + SaveChangesAsync()
 # in the same file (detached-entity write that silently persists 0 rows
