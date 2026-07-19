@@ -121,7 +121,7 @@ namespace NordicBeesERP.Services
         public async Task<BusinessPartner?> GetBusinessPartnerByIdAsync(int id)
         {
             using var context = _dbFactory.CreateDbContext();
-            return await context.BusinessPartners.FindAsync(id);
+            return await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == id);
         }
 
         public async Task<Supplier?> GetSupplierByIdAsync(int id)

@@ -69,8 +69,8 @@ public class WarehouseService : IWarehouseService
     public async Task DeleteAsync(int id)
     {
         using var context = _dbContextFactory.CreateDbContext();
-        var warehouse = await context.Warehouses.FindAsync(id);
-        if (warehouse != null)
+        var warehouseExists = await context.Warehouses.AsNoTracking().AnyAsync(w => w.Id == id);
+        if (warehouseExists)
         {
             await context.Database.ExecuteSqlRawAsync("DELETE FROM warehouses WHERE id = {0}", id);
         }

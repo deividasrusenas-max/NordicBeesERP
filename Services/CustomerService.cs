@@ -153,8 +153,8 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             
-            var partner = await context.BusinessPartners.FindAsync(id);
-            if (partner == null)
+            var partnerExists = await context.BusinessPartners.AsNoTracking().AnyAsync(bp => bp.Id == id);
+            if (partnerExists == false)
             {
                 return false;
             }
