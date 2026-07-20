@@ -185,9 +185,9 @@ public class OrderService : IOrderService
             order.OrderNumber,
             order.OrderDate,
             order.CustomerId,
-            (object?)order.DeliveryDate ?? DBNull.Value,
+            order.DeliveryDate,
             status,
-            (object?)order.Notes ?? DBNull.Value
+            order.Notes
         );
 
         var newOrderId = await context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
@@ -202,12 +202,12 @@ public class OrderService : IOrderService
                 line.LineNumber,
                 line.ProductId,
                 line.Quantity,
-                (object?)line.Price ?? DBNull.Value,
-                (object?)line.Notes ?? DBNull.Value,
-                (object?)line.LotNumber ?? DBNull.Value,
-                (object?)line.ExpiryDate ?? DBNull.Value,
-                (object?)line.PackedAt ?? DBNull.Value,
-                (object?)line.PackedByUserId ?? DBNull.Value
+                line.Price,
+                line.Notes,
+                line.LotNumber,
+                line.ExpiryDate,
+                line.PackedAt,
+                line.PackedByUserId
             );
         }
 
