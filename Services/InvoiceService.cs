@@ -353,7 +353,7 @@ namespace NordicBeesERP.Services
             // Save status change via raw SQL (NoTracking — Update + SaveChanges would silently do nothing)
             await context.Database.ExecuteSqlRawAsync(
                 "UPDATE invoices SET status = {0}, updated_at = {1}, payment_due_date = {2} WHERE id = {3}",
-                (int)newStatus,
+                newStatus.ToString(),
                 DateTime.UtcNow,
                 invoice.PaymentDueDate,
                 id
