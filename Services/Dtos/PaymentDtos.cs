@@ -225,6 +225,7 @@ namespace NordicBeesERP.Services.Dtos
         public decimal Amount { get; set; }
         public string Currency { get; set; } = PdfLocalization.CurrencyCode;
         public string? Reference { get; set; }
+        public string? BankRef { get; set; }
         public string? Description { get; set; }
         public string MatchStatus { get; set; } = "unmatched";
         public int? MatchedInvoiceId { get; set; }

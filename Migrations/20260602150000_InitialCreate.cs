@@ -433,6 +433,10 @@ namespace NordicBeesERP.Migrations
             ");
 
             migrationBuilder.Sql(@"
+                ALTER TABLE `bank_import_rows` ADD COLUMN `bank_ref` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER `reference`;
+            ");
+
+            migrationBuilder.Sql(@"
                 CREATE TABLE IF NOT EXISTS `expense_categories` (
   `id` int NOT NULL AUTO_INCREMENT,
   `parent_id` int DEFAULT NULL,

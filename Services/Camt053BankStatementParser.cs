@@ -145,6 +145,7 @@ public static class Camt053BankStatementParser
             Description = description,
             Reference = reference,
             MatchStatus = matchStatus,
+            BankRef = bankRef,
             CreatedAt = DateTime.UtcNow
         };
     }

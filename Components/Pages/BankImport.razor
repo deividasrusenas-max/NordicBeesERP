@@ -437,6 +437,8 @@
             Description = rowViewModel.Description,
             Reference = rowViewModel.Reference,
             PayerName = rowViewModel.PayerName,
+            PayerAccount = rowViewModel.PayerAccount,
+            BankRef = rowViewModel.BankRef,
             MatchStatus = rowViewModel.MatchStatus,
             CreatedAt = DateTime.UtcNow
         };
@@ -485,16 +487,68 @@
                 1
             );
 
-            foreach (var row in _parsedRows)
+            // --- Transaction-level dedup: skip rows whose bank_ref already exists ---
+            var dedupBankRefs = _parsedRows
+                .Where(r => !string.IsNullOrEmpty(r.BankRef))
+                .Select(r => r.BankRef!)
+                .Distinct()
+                .ToList();
+
+            var existingBankRefs = new HashSet<string>();
+            if (dedupBankRefs.Count > 0)
             {
-                row.ImportId = _importId;
-                await SaveBankImportRowAsync(row);
+                using var ctxDedup = DbContextFactory.CreateDbContext();
+                var existingRows = await ctxDedup.BankImportRows
+                    .Where(r => r.BankRef != null && dedupBankRefs.Contains(r.BankRef))
+                    .Select(r => r.BankRef!)
+                    .ToListAsync();
+                existingBankRefs = new HashSet<string>(existingRows);
+            }
+
+            // Fallback: for rows with null BankRef, check date+amount+payer_account
+            var duplicateIndices = new HashSet<int>();
+            using (var ctxFallbackDedup = DbContextFactory.CreateDbContext())
+            {
+                for (int i = 0; i < _parsedRows.Count; i++)
+                {
+                    var r = _parsedRows[i];
+                    if (!string.IsNullOrEmpty(r.BankRef))
+                    {
+                        // Primary dedup: bank_ref match
+                        if (existingBankRefs.Contains(r.BankRef))
+                            duplicateIndices.Add(i);
+                    }
+                    else
+                    {
+                        // Fallback dedup: date+amount+payer_account
+                        var fallbackMatch = await ctxFallbackDedup.BankImportRows.AnyAsync(x =>
+                            x.RowDate == r.RowDate &&
+                            x.Amount == r.Amount &&
+                            x.PayerAccount == r.PayerAccount &&
+                            x.PayerAccount != null);
+                        if (fallbackMatch)
+                            duplicateIndices.Add(i);
+                    }
+                }
+            }
+
+            int skippedDuplicates = duplicateIndices.Count;
+
+            int insertedCount = 0;
+            for (int i = 0; i < _parsedRows.Count; i++)
+            {
+                if (duplicateIndices.Contains(i))
+                    continue;
+
+                _parsedRows[i].ImportId = _importId;
+                await SaveBankImportRowAsync(_parsedRows[i]);
+                insertedCount++;
             }
 
             // Write all matches (auto + manual) to DB and finalize status
             int matchedCount = 0;
             using var ctxMatch = DbContextFactory.CreateDbContext();
-            foreach (var row in _parsedRows.Where(r => r.MatchedInvoiceId.HasValue))
+            foreach (var row in _parsedRows.Where(r => r.MatchedInvoiceId.HasValue && r.Id > 0))
             {
                 await ctxMatch.Database.ExecuteSqlRawAsync(
                     "UPDATE bank_import_rows SET matched_invoice_id = {0}, match_status = 'matched' WHERE id = {1}",
@@ -504,13 +558,14 @@
 
             using var ctxUpdate = DbContextFactory.CreateDbContext();
             await ctxUpdate.Database.ExecuteSqlRawAsync(
-                "UPDATE bank_imports SET matched_rows={0}, unmatched_rows={1} WHERE id={2}",
+                "UPDATE bank_imports SET total_rows={0}, matched_rows={1}, unmatched_rows={2} WHERE id={3}",
+                insertedCount,
                 matchedCount,
-                _parsedRows.Count - matchedCount,
+                insertedCount - matchedCount,
                 _importId);
 
             // Create expense payments for matched expense rows
-            foreach (var row in _parsedRows.Where(r => r.MatchedExpenseInvoiceId.HasValue))
+            foreach (var row in _parsedRows.Where(r => r.MatchedExpenseInvoiceId.HasValue && r.Id > 0))
             {
                 var payment = new NordicBeesERP.Models.Expenses.ExpensePayment
                 {
@@ -526,7 +581,10 @@
 
             _matchedRowsCount = matchedCount;
             _wizardStep = 2;
-            Snackbar.Add($"Susiejimai išsaugoti ({matchedCount} eilutės)", Severity.Success);
+            var dedupMsg = skippedDuplicates > 0
+                ? $", {skippedDuplicates} dublikatai praleisti"
+                : "";
+            Snackbar.Add($"Susiejimai išsaugoti ({insertedCount} eilutės{dedupMsg})", Severity.Success);
         }
         catch (Exception ex)
         {

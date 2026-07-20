@@ -570,6 +570,7 @@ namespace NordicBeesERP.Data
                   entity.HasIndex(e => e.MatchStatus);
                   entity.HasIndex(e => e.RowDate);
                   entity.HasIndex(e => e.Amount);
+                  entity.HasIndex(e => e.BankRef);
 
                  // Decimal precision
                  entity.Property(e => e.Amount).HasPrecision(15, 2);

@@ -128,6 +128,7 @@ namespace NordicBeesERP.Models
         [Column("amount")] public decimal Amount { get; set; }
         [Column("currency")] public string Currency { get; set; } = PdfLocalization.CurrencyCode;
         [Column("reference")] public string? Reference { get; set; }
+        [Column("bank_ref")] public string? BankRef { get; set; }
         [Column("description")] public string? Description { get; set; }
         [Column("match_status")] public string MatchStatus { get; set; } = "unmatched";
         [Column("matched_invoice_id")] public int? MatchedInvoiceId { get; set; }
