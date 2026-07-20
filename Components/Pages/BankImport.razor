@@ -60,11 +60,11 @@
         }
         else if (_showWizard)
         {
-            <InputFile id="bankFileInput" OnChange="OnInputFileChange" accept=".xls,.xlsx" style="display:none" />
+            <InputFile id="bankFileInput" OnChange="OnInputFileChange" accept=".xml" style="display:none" />
             @if (_wizardStep == 0)
             {
                 <MudText Typo="Typo.h6" Class="mb-3">1 žingsnis: Failo įkėlimas</MudText>
-                <MudText Class="mb-3">Įkelkite Artea banko išrašų XLS failą</MudText>
+                <MudText Class="mb-3">Įkelkite banko išrašų CAMT053 XML failą</MudText>
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.AttachFile"
                            OnClick="@(() => JS.InvokeVoidAsync("triggerClick", "bankFileInput"))">
@@ -374,7 +374,7 @@
             }
 
             memStream.Position = 0;
-            _parsedRows = ArteaBankStatementParser.Parse(memStream, _selectedFile.Name);
+            _parsedRows = Camt053BankStatementParser.Parse(memStream, _selectedFile.Name);
 
             if (_parsedRows.Count == 0)
             {
