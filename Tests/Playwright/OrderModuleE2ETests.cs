@@ -262,7 +262,7 @@ public class OrderModuleE2ETests : IAsyncLifetime
             await TakeScreenshot("step4_no_courier_button.png");
 
             // Check what status is displayed
-            var statusText = await _page.Locator("span:has-text(\"Juodraštis\")").CountAsync();
+            var statusText = await _page.Locator("span:has-text(\"Nepakuotas\")").CountAsync();
             if (statusText > 0)
                 _output.WriteLine("Status is still 'draft' — packing may not have triggered auto-transition");
         }
