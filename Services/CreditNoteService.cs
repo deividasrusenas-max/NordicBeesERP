@@ -330,28 +330,6 @@ namespace NordicBeesERP.Services
         // =====================================================
         // SET DISPUTED STATUS
         // =====================================================
-
-        public async Task SetDisputedAsync(int creditNoteId, int userId)
-        {
-            using var context = _contextFactory.CreateDbContext();
-            
-            var creditNote = await context.CreditNotes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(cn => cn.Id == creditNoteId);
-            if (creditNote == null)
-                throw new InvalidOperationException($"Credit note with ID {creditNoteId} not found.");
-            
-            // Can dispute any non-Draft credit note
-            if (creditNote.Status == CreditNoteStatus.Draft)
-                throw new InvalidOperationException("Only printed or disputed credit notes can be marked as disputed.");
-            
-            var newUpdatedAt = DateTime.UtcNow;
-            await context.Database.ExecuteSqlRawAsync(
-                "UPDATE credit_notes SET status = {0}, updated_at = {1} WHERE id = {2}",
-                (int)CreditNoteStatus.Disputed, newUpdatedAt, creditNoteId);
-        }
-
-        // =====================================================
         // GET CREDIT NOTE NUMBER FOR DATE
         // =====================================================
 

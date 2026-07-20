@@ -83,7 +83,6 @@ namespace NordicBeesERP.Services
     // SET DISPUTED STATUS
     // =====================================================
 
-        Task SetDisputedAsync(int creditNoteId, int userId);
 
         // =====================================================
         // CREDIT NOTE UPDATE (EDIT) - Draft only
