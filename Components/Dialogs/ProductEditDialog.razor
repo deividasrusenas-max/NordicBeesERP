@@ -221,12 +221,10 @@
             if (_editProduct.Id > 0)
             {
                 savedProduct = await ProductService.UpdateProductAsync(_editProduct);
-                Snackbar.Add("Prekė atnaujinta sėkmingai", Severity.Success);
             }
             else
             {
                 savedProduct = await ProductService.CreateProductAsync(_editProduct);
-                Snackbar.Add("Prekė sukurta sėkmingai", Severity.Success);
             }
 
             MudDialog?.Close(DialogResult.Ok(savedProduct));
