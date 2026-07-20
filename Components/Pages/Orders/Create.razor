@@ -33,11 +33,6 @@
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
 
-    @if (!string.IsNullOrEmpty(_errorMessage))
-    {
-        <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
-    }
-
     <!-- PAGRINDINĖ INFORMACIJA -->
     <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
         <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
@@ -170,7 +165,6 @@
 @code {
     // --- State ---
     private bool _isSaving = false;
-    private string? _errorMessage;
 
     // Header fields
     private Customer? _selectedCustomer;
@@ -265,19 +259,17 @@
     // --- Actions ---
     private async Task SaveAsync()
     {
-        _errorMessage = null;
-
         // Validation
         if (_selectedCustomer == null)
         {
-            _errorMessage = "Pasirinkite klientą";
+            Snackbar.Add("Pasirinkite klientą", Severity.Error);
             return;
         }
 
         var validLines = _lines.Where(l => l.SelectedProduct != null && l.Quantity > 0).ToList();
         if (validLines.Count == 0)
         {
-            _errorMessage = "Pridėkite bent vieną produktą su kiekiu";
+            Snackbar.Add("Pridėkite bent vieną produktą su kiekiu", Severity.Error);
             return;
         }
 
@@ -285,7 +277,7 @@
         var invalidLines = _lines.Where(l => l.Quantity > 0 && l.SelectedProduct == null).ToList();
         if (invalidLines.Count > 0)
         {
-            _errorMessage = "Kiekvienai eilutei su kiekiu privalote pasirinkti produktą";
+            Snackbar.Add("Kiekvienai eilutei su kiekiu privalote pasirinkti produktą", Severity.Error);
             return;
         }
 
@@ -319,8 +311,7 @@
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Klaida kuriant užsakymą: {ex.Message}";
-            Snackbar.Add(_errorMessage, Severity.Error);
+            Snackbar.Add($"Klaida kuriant užsakymą: {ex.Message}", Severity.Error);
         }
         finally
         {
