@@ -1,0 +1,3576 @@
+<?xml version = "1.0"  encoding="utf-8"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+<BkToCstmrStmt>
+<GrpHdr>
+<MsgId>2026072018061003316</MsgId>
+<CreDtTm>2026-07-20T16:09:51+03:00</CreDtTm>
+<MsgPgntn><PgNb>1</PgNb>
+<LastPgInd>true</LastPgInd>
+</MsgPgntn></GrpHdr>
+<Stmt>
+<Id>2026072018061003316</Id>
+<ElctrncSeqNb>4383721</ElctrncSeqNb>
+<CreDtTm>2026-07-20T16:09:50+03:00</CreDtTm>
+<FrToDt>
+<FrDtTm>2026-04-01T00:00:00</FrDtTm>
+<ToDtTm>2026-04-30T23:59:59</ToDtTm>
+</FrToDt>
+<Acct>
+<Id>
+<IBAN>LT217189900060467854</IBAN>
+</Id>
+<Ccy>EUR</Ccy>
+<Ownr>
+<Nm>MB Lakštena</Nm>
+<PstlAdr>
+<StrtNm>Pauliaus Širvio g. 3</StrtNm>
+<TwnNm>Juodupės mstl., Juodupės sen.</TwnNm>
+<Ctry>LT</Ctry>
+</PstlAdr>
+<Id>
+<OrgId>
+<Othr>
+<Id>302905315</Id>
+</Othr>
+</OrgId>
+</Id>
+</Ownr>
+<Svcr>
+<FinInstnId>
+<BIC>CBSBLT26XXX</BIC>
+<Nm>AB Artea bankas</Nm>
+<PstlAdr>
+<StrtNm>Tilžės g. 149</StrtNm>
+<TwnNm>Šiauliai</TwnNm>
+<Ctry>LT</Ctry>
+</PstlAdr>
+<Othr>
+<Id>112025254</Id>
+</Othr>
+</FinInstnId>
+<BrnchId>
+<Nm>AB Artea bankas</Nm>
+</BrnchId>
+</Svcr>
+</Acct>
+<Bal>
+<Tp><CdOrPrtry><Cd>OPAV</Cd></CdOrPrtry></Tp>
+<Amt Ccy="EUR">6801.79</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<Dt><Dt>2026-04-01</Dt></Dt>
+</Bal>
+<Bal>
+<Tp><CdOrPrtry><Cd>CLAV</Cd></CdOrPrtry></Tp>
+<Amt Ccy="EUR">4640.43</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<Dt><Dt>2026-04-30</Dt></Dt>
+</Bal>
+<TxsSummry><TtlCdtNtries><NbOfNtries>12</NbOfNtries><Sum>28880.64</Sum></TtlCdtNtries><TtlDbtNtries><NbOfNtries>82</NbOfNtries><Sum>31042.00</Sum></TtlDbtNtries></TxsSummry>
+<Ntry><Amt Ccy="EUR">6.00</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-30</Dt></BookgDt>
+<ValDt><Dt>2026-04-30</Dt></ValDt>
+<AcctSvcrRef>10166571638</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10166571638</AcctSvcrRef>
+<InstrId>01003002</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10166571640</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">6.00</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT837189901944905817</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Mėnesinis fiksuotas mokestis už paslaugų planą  . Laikotarpis 2026.04.01 - 2026.04.30</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">100.00</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-29</Dt></BookgDt>
+<ValDt><Dt>2026-04-29</Dt></ValDt>
+<AcctSvcrRef>10164724702</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10164724702</AcctSvcrRef>
+<InstrId>0429143523694</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10164724699</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">100.00</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT377189900060467857</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Mokėjimas tarp savo sąskaitų</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">506.98</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-27</Dt></BookgDt>
+<ValDt><Dt>2026-04-27</Dt></ValDt>
+<AcctSvcrRef>10162046249</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10162046249</AcctSvcrRef>
+<InstrId>0427130221888</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10162046248</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">506.98</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB MPRINT</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT197300010200620546</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-04-27 PVM s/f MP26 Nr.000066</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-27</Dt></BookgDt>
+<ValDt><Dt>2026-04-27</Dt></ValDt>
+<AcctSvcrRef>10162046249</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10162046249</AcctSvcrRef>
+<InstrId>0427130221888</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10162046250</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-27 atliktą  operaciją Nr. 0427130221888 , operacijos suma 506.98 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-26</Dt></BookgDt>
+<ValDt><Dt>2026-04-26</Dt></ValDt>
+<AcctSvcrRef>10161132971</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10161132971</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10161132972</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-26 atliktą  operaciją Nr. 1 , operacijos suma 18.90 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">18.90</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-26</Dt></BookgDt>
+<ValDt><Dt>2026-04-26</Dt></ValDt>
+<AcctSvcrRef>10161132971</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10161132971</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>89718150</EndToEndId>
+<TxId>10161132970</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">18.90</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>ORDO UAB</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT317044060001950792</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>PSD2 - ORD 3080</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">54.38</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-26</Dt></BookgDt>
+<ValDt><Dt>2026-04-26</Dt></ValDt>
+<AcctSvcrRef>10161011649</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10161011649</AcctSvcrRef>
+<InstrId>0426120810089</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10161011648</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">54.38</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB INTERNETO VIZIJA</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT247300010080289725</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Nr. 47042856,</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-26</Dt></BookgDt>
+<ValDt><Dt>2026-04-26</Dt></ValDt>
+<AcctSvcrRef>10161011649</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10161011649</AcctSvcrRef>
+<InstrId>0426120810089</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10161011651</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-26 atliktą  operaciją Nr. 0426120810089 , operacijos suma 54.38 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">812.36</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><InstrId>0423214230260-1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10158576496</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">812.36</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Deividas Rušėnas</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT333250016078727235</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>REVOLT21XXX</BIC>
+      <Nm>REVOLUT BANK UAB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>DU 26-03</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">878.20</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><InstrId>0423214230260-2</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10158576497</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">878.20</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Diana Rušėnaitė</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT097044000996610725</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>DU 26-03</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">4588.68</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<AcctSvcrRef>10158575796</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10158575796</AcctSvcrRef>
+<InstrId>0423214012011</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10158575795</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">4588.68</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB Vilroka</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT227044060003069267</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2025-06-19 Debetinė PVM s/f DEB 2013/26</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<AcctSvcrRef>10158575796</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10158575796</AcctSvcrRef>
+<InstrId>0423214012011</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10158575797</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-23 atliktą  operaciją Nr. 0423214012011 , operacijos suma 4588.68 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">367.83</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<AcctSvcrRef>10158414853</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10158414853</AcctSvcrRef>
+<InstrId>0423130720996</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10158414852</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">367.83</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB MPRINT</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT197300010200620546</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-04-23 PVM s/f MP26 Nr.000061</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<AcctSvcrRef>10158414853</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10158414853</AcctSvcrRef>
+<InstrId>0423130720996</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10158414854</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-23 atliktą  operaciją Nr. 0423130720996 , operacijos suma 367.83 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">5429.76</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<AcctSvcrRef>6CP3726001021602</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>6CP3726001021602</AcctSvcrRef>
+<InstrId>O261131970705313</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>6CP3726001021602</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">5429.76</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>KONICK RETAIL HUB, S.R.O.</Nm>
+  <PstlAdr>
+    <Ctry>CZ</Ctry>
+    <AdrLine>Skolska 694/32Praha 1 - Nove Mesto 110 00</AdrLine>
+  </PstlAdr>
+</Dbtr>
+<DbtrAcct><Id><IBAN>CZ7101000001313670980267</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <PstlAdr>
+    <Ctry>LT</Ctry>
+    <AdrLine>P.SIRVIO G. 3JUODUPE, 42463</AdrLine>
+  </PstlAdr>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>KOMBCZPPXXX</BIC>
+      <Nm>KOMERCNI BANKA A.S.</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK26030</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1971.20</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<AcctSvcrRef>6CP3726000921602</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>6CP3726000921602</AcctSvcrRef>
+<InstrId>O261131970705336</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>6CP3726000921602</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1971.20</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>KONICK RETAIL HUB, S.R.O.</Nm>
+  <PstlAdr>
+    <Ctry>CZ</Ctry>
+    <AdrLine>Skolska 694/32Praha 1 - Nove Mesto 110 00</AdrLine>
+  </PstlAdr>
+</Dbtr>
+<DbtrAcct><Id><IBAN>CZ7101000001313670980267</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <PstlAdr>
+    <Ctry>LT</Ctry>
+    <AdrLine>P.SIRVIO G. 3JUODUPE, 42463</AdrLine>
+  </PstlAdr>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>KOMBCZPPXXX</BIC>
+      <Nm>KOMERCNI BANKA A.S.</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK26034</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1155.84</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-23</Dt></BookgDt>
+<ValDt><Dt>2026-04-23</Dt></ValDt>
+<AcctSvcrRef>6CP3726000521602</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>6CP3726000521602</AcctSvcrRef>
+<InstrId>O261131970705337</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>6CP3726000521602</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1155.84</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>KONICK RETAIL HUB, S.R.O.</Nm>
+  <PstlAdr>
+    <Ctry>CZ</Ctry>
+    <AdrLine>Skolska 694/32Praha 1 - Nove Mesto 110 00</AdrLine>
+  </PstlAdr>
+</Dbtr>
+<DbtrAcct><Id><IBAN>CZ7101000001313670980267</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <PstlAdr>
+    <Ctry>LT</Ctry>
+    <AdrLine>P.SIRVIO G. 3JUODUPE, 42463</AdrLine>
+  </PstlAdr>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>KOMBCZPPXXX</BIC>
+      <Nm>KOMERCNI BANKA A.S.</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK26031</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">2119.92</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-22</Dt></BookgDt>
+<ValDt><Dt>2026-04-22</Dt></ValDt>
+<AcctSvcrRef>2026042102831460</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>2026042102831460</AcctSvcrRef>
+<InstrId>O261121969913959</InstrId>
+<EndToEndId>0EV000034620</EndToEndId>
+<TxId>2026042102831460</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">2119.92</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>UAB LAŠŲ DUONA</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>173727496</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT117300010087450887</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <PstlAdr>
+    <AdrLine>LT</AdrLine>
+  </PstlAdr>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Dok.Nr.            Dok.data         Suma LAK26036             2026.03.24        2119.92</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">100.00</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-20</Dt></BookgDt>
+<ValDt><Dt>2026-04-20</Dt></ValDt>
+<AcctSvcrRef>10154499861</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10154499861</AcctSvcrRef>
+<InstrId>0420150728204</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10154499860</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">100.00</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT377189900060467857</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Mokėjimas tarp savo sąskaitų</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1722.91</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-16</Dt></BookgDt>
+<ValDt><Dt>2026-04-16</Dt></ValDt>
+<AcctSvcrRef>10150574774</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10150574774</AcctSvcrRef>
+<InstrId>0416164838292</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10150574773</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1722.91</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB Mitaras</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT477044060003309765</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-04 PVM s/f LT Nr. 16992</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-16</Dt></BookgDt>
+<ValDt><Dt>2026-04-16</Dt></ValDt>
+<AcctSvcrRef>10150574774</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10150574774</AcctSvcrRef>
+<InstrId>0416164838292</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10150574775</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-16 atliktą  operaciją Nr. 0416164838292 , operacijos suma 1722.91 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">130.44</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-15</Dt></BookgDt>
+<ValDt><Dt>2026-04-15</Dt></ValDt>
+<AcctSvcrRef>RD285606844</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RRCT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>RD285606844</AcctSvcrRef>
+<InstrId>SI26041515973560</InstrId>
+<EndToEndId>1567</EndToEndId>
+<TxId>RD285606844</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">130.44</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>RADVILIŠKIŲ KAIMO KEPYKLA UAB</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>168952477</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT987044060002754104</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK26043 2026-04-03 130,44</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">2119.92</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-15</Dt></BookgDt>
+<ValDt><Dt>2026-04-15</Dt></ValDt>
+<AcctSvcrRef>2026041403508785</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>2026041403508785</AcctSvcrRef>
+<InstrId>O261051966608942</InstrId>
+<EndToEndId>0EV000034485</EndToEndId>
+<TxId>2026041403508785</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">2119.92</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>UAB LAŠŲ DUONA</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>173727496</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT117300010087450887</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <PstlAdr>
+    <AdrLine>LT</AdrLine>
+  </PstlAdr>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Dok.Nr.            Dok.data         Suma LAK26033             2026.03.16        2119.92</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">842.16</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-14</Dt></BookgDt>
+<ValDt><Dt>2026-04-14</Dt></ValDt>
+<AcctSvcrRef>10147088526</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10147088526</AcctSvcrRef>
+<InstrId>0414103329103</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10147088525</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">842.16</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB Vilroka</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT227044060003069267</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2025-11-04 Debetinė PVM s/f DEB 2013/27</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-14</Dt></BookgDt>
+<ValDt><Dt>2026-04-14</Dt></ValDt>
+<AcctSvcrRef>10147088526</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10147088526</AcctSvcrRef>
+<InstrId>0414103329103</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10147088528</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-14 atliktą  operaciją Nr. 0414103329103 , operacijos suma 842.16 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">720.00</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-14</Dt></BookgDt>
+<ValDt><Dt>2026-04-14</Dt></ValDt>
+<AcctSvcrRef>10147073312</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10147073312</AcctSvcrRef>
+<InstrId>0414102906425</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10147073309</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">720.00</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB &quot;Snetlauža&quot;</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT397182800015467063</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-04-10 PVM s/f  SM 3787</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-14</Dt></BookgDt>
+<ValDt><Dt>2026-04-14</Dt></ValDt>
+<AcctSvcrRef>10147073312</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10147073312</AcctSvcrRef>
+<InstrId>0414102906425</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10147073314</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą banko viduje (internetu) Mokestis už 2026-04-14 atliktą  operaciją Nr. 0414102906425 , operacijos suma 720.00 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">14.52</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-13</Dt></BookgDt>
+<ValDt><Dt>2026-04-13</Dt></ValDt>
+<AcctSvcrRef>10146231593</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10146231593</AcctSvcrRef>
+<InstrId>0413205037665</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10146231592</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">14.52</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB XIRGO GLOBAL</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT937300010149744363</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-01-30 PVM s/f TVS000149162, 2026.02.27 s/f TVS000150112</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-13</Dt></BookgDt>
+<ValDt><Dt>2026-04-13</Dt></ValDt>
+<AcctSvcrRef>10146231593</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10146231593</AcctSvcrRef>
+<InstrId>0413205037665</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10146231594</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-13 atliktą  operaciją Nr. 0413205037665 , operacijos suma 14.52 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">333.96</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-13</Dt></BookgDt>
+<ValDt><Dt>2026-04-13</Dt></ValDt>
+<AcctSvcrRef>10146229542</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10146229542</AcctSvcrRef>
+<InstrId>0413204206522</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10146229541</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">333.96</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Ramundas GM, UAB</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT547182800005467451</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-04-13 PVM s/f ALM Nr.28101</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-13</Dt></BookgDt>
+<ValDt><Dt>2026-04-13</Dt></ValDt>
+<AcctSvcrRef>10146229542</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10146229542</AcctSvcrRef>
+<InstrId>0413204206522</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10146229543</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą banko viduje (internetu) Mokestis už 2026-04-13 atliktą  operaciją Nr. 0413204206522 , operacijos suma 333.96 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">2232.79</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-12</Dt></BookgDt>
+<ValDt><Dt>2026-04-12</Dt></ValDt>
+<AcctSvcrRef>10144731907</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10144731907</AcctSvcrRef>
+<InstrId>0412200904328</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10144731906</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">2232.79</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB Mitaras</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT477044060003309765</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-16 PVM s/f LT Nr. 17044</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-12</Dt></BookgDt>
+<ValDt><Dt>2026-04-12</Dt></ValDt>
+<AcctSvcrRef>10144731907</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10144731907</AcctSvcrRef>
+<InstrId>0412200904328</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10144731908</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-12 atliktą  operaciją Nr. 0412200904328 , operacijos suma 2232.79 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">839.79</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-12</Dt></BookgDt>
+<ValDt><Dt>2026-04-12</Dt></ValDt>
+<AcctSvcrRef>10144731310</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10144731310</AcctSvcrRef>
+<InstrId>0412200132638</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10144731309</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">839.79</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Commerzbank AG (LT Branch), Aschaffenburg</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>DE68795800990158788211</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>DRESDEFF795</BIC>
+      <Nm>COMMERZBANK AG (FORMERLY DRESDNER BANK AG)</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Dok. Nr. 57481608, 2026-03-31, Kliento nr. 47 83 17</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-12</Dt></BookgDt>
+<ValDt><Dt>2026-04-12</Dt></ValDt>
+<AcctSvcrRef>10144731310</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10144731310</AcctSvcrRef>
+<InstrId>0412200132638</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10144731311</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-12 atliktą  operaciją Nr. 0412200132638 , operacijos suma 839.79 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">266.20</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-12</Dt></BookgDt>
+<ValDt><Dt>2026-04-12</Dt></ValDt>
+<AcctSvcrRef>10144731167</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10144731167</AcctSvcrRef>
+<InstrId>0412195849995</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10144731166</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">266.20</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB LINĖJA transport</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT937300010126909011</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-30 PVM s/f LIN2026/034866</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-12</Dt></BookgDt>
+<ValDt><Dt>2026-04-12</Dt></ValDt>
+<AcctSvcrRef>10144731167</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10144731167</AcctSvcrRef>
+<InstrId>0412195849995</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10144731168</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-12 atliktą  operaciją Nr. 0412195849995 , operacijos suma 266.20 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">241.40</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-10</Dt></BookgDt>
+<ValDt><Dt>2026-04-10</Dt></ValDt>
+<AcctSvcrRef>RD284880981</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RRCT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>RD284880981</AcctSvcrRef>
+<InstrId>SI26041004754902</InstrId>
+<EndToEndId>027134</EndToEndId>
+<TxId>RD284880981</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">241.40</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>UAB &quot;ASSORTI&quot;</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>304866761</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT897044090101851647</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK26023</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">66.00</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-09</Dt></BookgDt>
+<ValDt><Dt>2026-04-09</Dt></ValDt>
+<AcctSvcrRef>3076561092</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RRCT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>3076561092</AcctSvcrRef>
+<InstrId>3076561092</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>3076561092</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">66.00</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>UAB ROKMETA</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>300068666</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT417300010118919572</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK26042</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">2.76</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-09</Dt></BookgDt>
+<ValDt><Dt>2026-04-09</Dt></ValDt>
+<AcctSvcrRef>10141177156</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10141177156</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10141177155</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">2.76</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Paysera LT</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT427180300004467237</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>R675204539 Užsakymo nr: ORD 98743 https://www.agropartsbaltija.manoverskis.lt projekte. (Pardavėjas: Agro Parts Baltija)</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-09</Dt></BookgDt>
+<ValDt><Dt>2026-04-09</Dt></ValDt>
+<AcctSvcrRef>10141177156</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10141177156</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10141177158</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą banko viduje (internetu) Mokestis už 2026-04-09 atliktą  operaciją Nr. 1 , operacijos suma 2.76 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-08</Dt></BookgDt>
+<ValDt><Dt>2026-04-08</Dt></ValDt>
+<AcctSvcrRef>10140089626</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10140089626</AcctSvcrRef>
+<InstrId>0408212534996</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10140089627</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-08 atliktą  operaciją Nr. 0408212534996 , operacijos suma 113.90 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">113.90</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-08</Dt></BookgDt>
+<ValDt><Dt>2026-04-08</Dt></ValDt>
+<AcctSvcrRef>10140089626</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10140089626</AcctSvcrRef>
+<InstrId>0408212534996</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10140089625</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">113.90</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB BIKUVOS PREKYBA</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT037300010129389078</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-31 PVM s/f BIK1895056</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1999.40</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-08</Dt></BookgDt>
+<ValDt><Dt>2026-04-08</Dt></ValDt>
+<AcctSvcrRef>10140089807</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10140089807</AcctSvcrRef>
+<InstrId>0408212254252</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10140089806</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1999.40</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Ūkininkės Aistės Karaliūnienės ūkis</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT107182500005643731</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-02-05 PVM s/f PARD 000014</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-08</Dt></BookgDt>
+<ValDt><Dt>2026-04-08</Dt></ValDt>
+<AcctSvcrRef>10140089807</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10140089807</AcctSvcrRef>
+<InstrId>0408212254252</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10140089808</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą banko viduje (internetu) Mokestis už 2026-04-08 atliktą  operaciją Nr. 0408212254252 , operacijos suma 1999.40 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">4239.84</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-08</Dt></BookgDt>
+<ValDt><Dt>2026-04-08</Dt></ValDt>
+<AcctSvcrRef>2026040702728336</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>2026040702728336</AcctSvcrRef>
+<InstrId>O260981962940271</InstrId>
+<EndToEndId>0EV000034363</EndToEndId>
+<TxId>2026040702728336</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">4239.84</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>UAB LAŠŲ DUONA</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>173727496</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT117300010087450887</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <PstlAdr>
+    <AdrLine>LT</AdrLine>
+  </PstlAdr>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Dok.Nr.            Dok.data         Suma LAK26026             2026.03.09        4239.84</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">77.44</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138731958</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138731958</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>907769</EndToEndId>
+<TxId>10138731957</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">77.44</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB TELE2</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT647044060001223571</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>mano.tele2.lt/LT, st907769, Tele2 saskaita .865058747.</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138731958</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138731958</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138731959</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 1 , operacijos suma 77.44 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">63.20</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138731692</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138731692</AcctSvcrRef>
+<InstrId>0407194411393</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138731691</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">63.20</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB &quot;WURTH LIETUVA&quot;</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT677044060000471476</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-04-07 PVM s/f AAA2977836</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138731692</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138731692</AcctSvcrRef>
+<InstrId>0407194411393</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138731693</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407194411393 , operacijos suma 63.20 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">7.26</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138715778</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138715778</AcctSvcrRef>
+<InstrId>0407183436691</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138715777</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">7.26</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB XIRGO GLOBAL</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT937300010149744363</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-31 PVM s/f TVS000151059</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138715778</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138715778</AcctSvcrRef>
+<InstrId>0407183436691</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138715779</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407183436691 , operacijos suma 7.26 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138715616</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138715616</AcctSvcrRef>
+<InstrId>0407183146544</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138715617</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą banko viduje (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407183146544 , operacijos suma 48.46 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">48.46</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138715616</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138715616</AcctSvcrRef>
+<InstrId>0407183146544</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138715613</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">48.46</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB Rokiškio vandenys</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT557182800008467546</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-31 PVM s/f RVJ Nr. 0026280</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">217.10</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138715415</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138715415</AcctSvcrRef>
+<InstrId>0407182943668</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138715414</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">217.10</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>VENIPAK LIETUVA, UAB</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT442140030003853247</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>AGBLLT2XXXX</BIC>
+      <Nm>LUMINOR BANK AS LITHUANIAN BRANCH</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-31 PVM s/f VLT0565848</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138715415</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138715415</AcctSvcrRef>
+<InstrId>0407182943668</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138715416</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407182943668 , operacijos suma 217.10 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1403.60</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138714312</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138714312</AcctSvcrRef>
+<InstrId>0407182624597</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138714311</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1403.60</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB ROTOMA</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT607300010071091731</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-25 PVM s/f RTM26 Nr. 000834</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138714312</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138714312</AcctSvcrRef>
+<InstrId>0407182624597</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138714313</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407182624597 , operacijos suma 1403.60 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">80.48</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138713956</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138713956</AcctSvcrRef>
+<InstrId>0407182225457</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138713955</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">80.48</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Valstybinio socialinio draudimo fondo valdyba</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT337044060007740589</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Strd><CdtrRefInf><Tp><CdOrPrtry><Cd>SCOR</Cd></CdOrPrtry></Tp><Ref>322</Ref></CdtrRefInf></Strd></RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.30</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138713956</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138713956</AcctSvcrRef>
+<InstrId>0407182225457</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138713957</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.30</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407182225457 , operacijos suma 80.48 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">97.02</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138712951</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138712951</AcctSvcrRef>
+<InstrId>0407182054540</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138712950</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">97.02</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Valstybinio socialinio draudimo fondo valdyba</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT337044060007740589</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Strd><CdtrRefInf><Tp><CdOrPrtry><Cd>SCOR</Cd></CdOrPrtry></Tp><Ref>310</Ref></CdtrRefInf></Strd></RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138712951</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138712951</AcctSvcrRef>
+<InstrId>0407182054540</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138712953</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407182054540 , operacijos suma 97.02 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1275.05</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138712855</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138712855</AcctSvcrRef>
+<InstrId>0407181913188</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138712854</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1275.05</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Valstybinio socialinio draudimo fondo valdyba</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT337044060007740589</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Strd><CdtrRefInf><Tp><CdOrPrtry><Cd>SCOR</Cd></CdOrPrtry></Tp><Ref>252</Ref></CdtrRefInf></Strd></RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138712855</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138712855</AcctSvcrRef>
+<InstrId>0407181913188</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138712856</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407181913188 , operacijos suma 1275.05 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">688.36</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138712695</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138712695</AcctSvcrRef>
+<InstrId>0407181651599</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138712694</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">688.36</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Valstybinė mokesčių inspekcija prie LR FM</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT744010051001324763</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>AGBLLT2XXXX</BIC>
+      <Nm>LUMINOR BANK AS LITHUANIAN BRANCH</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Strd><CdtrRefInf><Tp><CdOrPrtry><Cd>SCOR</Cd></CdOrPrtry></Tp><Ref>1311</Ref></CdtrRefInf></Strd></RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138712695</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138712695</AcctSvcrRef>
+<InstrId>0407181651599</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138712696</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407181651599 , operacijos suma 688.36 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">5676.76</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138711995</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138711995</AcctSvcrRef>
+<InstrId>0407181250576</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138711994</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">5676.76</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>RABEN LIETUVA UAB</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT587044060004215159</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-31 PVM s/f RBS1862342282</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>10138711995</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10138711995</AcctSvcrRef>
+<InstrId>0407181250576</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10138711996</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-07 atliktą  operaciją Nr. 0407181250576 , operacijos suma 5676.76 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">58.81</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>50684045</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RRCT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>50684045</AcctSvcrRef>
+<InstrId>SI26040797482570</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>50684045</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">58.81</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>Raido grupė</Nm>
+  <PstlAdr>
+    <Ctry>LT</Ctry>
+    <AdrLine>Iciūnų g. 6, Iciūnai, 42103</AdrLine>
+  </PstlAdr>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>305687487</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT913500010011094031</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>EVIULT2VXXX</BIC>
+      <Nm>PAYSERA LT UAB</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK 26041</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">7050.19</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-07</Dt></BookgDt>
+<ValDt><Dt>2026-04-07</Dt></ValDt>
+<AcctSvcrRef>3072318467</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RRCT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>3072318467</AcctSvcrRef>
+<InstrId>3072318467</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>3072318467</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">7050.19</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>IGNAS JACKEVIČIUS</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT627300010108122609</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>LAK26040</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">73.21</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<AcctSvcrRef>10135896680</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10135896680</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>de9f1d9d752240fda0f3e774d3029efe</EndToEndId>
+<TxId>10135896679</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">73.21</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Sodininko dalys</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT133500010004510396</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>EVIULT2VXXX</BIC>
+      <Nm>PAYSERA LT UAB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>183846</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<AcctSvcrRef>10135896680</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10135896680</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135896681</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-04 atliktą  operaciją Nr. 1 , operacijos suma 73.21 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">132.45</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<AcctSvcrRef>10135895458</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>BOOK</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10135895458</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135895457</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">132.45</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Paysera LT</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT427180300004467237</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>R674720620 Užsakymo nr: ORD 98502 https://www.agropartsbaltija.manoverskis.lt projekte. (Pardavėjas: Agro Parts Baltija)</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<AcctSvcrRef>10135895458</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10135895458</AcctSvcrRef>
+<InstrId>1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135895459</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą banko viduje (internetu) Mokestis už 2026-04-04 atliktą  operaciją Nr. 1 , operacijos suma 132.45 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">56.70</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<AcctSvcrRef>10135895088</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10135895088</AcctSvcrRef>
+<InstrId>0404131426731</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135895087</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">56.70</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB Donėjus</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT827300010133582421</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-04-02 PVM s/f DJ0000006665</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<AcctSvcrRef>10135895088</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10135895088</AcctSvcrRef>
+<InstrId>0404131426731</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135895089</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-04 atliktą  operaciją Nr. 0404131426731 , operacijos suma 56.70 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1000.08</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><InstrId>0404131047879-2</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135894066</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1000.08</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Arvydas Šileikis</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT717300010028567218</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>DU-03</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">846.97</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><InstrId>0404131047879-3</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135894067</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">846.97</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Gražvydas Monkus</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT447300010028361773</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>DU-03</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">1312.39</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-04</Dt></BookgDt>
+<ValDt><Dt>2026-04-04</Dt></ValDt>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><InstrId>0404131047879-1</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10135894065</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">1312.39</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Mantas Raišys</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT547300010082223268</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>DU-03</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">12.34</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132406103</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132406103</AcctSvcrRef>
+<InstrId>0401133007799</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132406102</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">12.34</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB LOKTA</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT387300010122410656</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-20 PVM s/f LKT Nr. 0032834</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132406103</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132406103</AcctSvcrRef>
+<InstrId>0401133007799</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132406104</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-01 atliktą  operaciją Nr. 0401133007799 , operacijos suma 12.34 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">138.20</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132403197</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132403197</AcctSvcrRef>
+<InstrId>0401131934708</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132403196</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">138.20</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Lytagra</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT487044060003091303</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-04-01 Išankstinė PARDUZS Nr. SU723051</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132403197</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132403197</AcctSvcrRef>
+<InstrId>0401131934708</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132403199</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-01 atliktą  operaciją Nr. 0401131934708 , operacijos suma 138.20 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">4297.32</Amt>
+<CdtDbtInd>CRDT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>2026040101685484</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>RCDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>2026040101685484</AcctSvcrRef>
+<InstrId>O260911960031783</InstrId>
+<EndToEndId>0EV000034240</EndToEndId>
+<TxId>2026040101685484</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">4297.32</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>UAB LAŠŲ DUONA</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>173727496</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT117300010087450887</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>MB Lakštena</Nm>
+  <PstlAdr>
+    <AdrLine>LT</AdrLine>
+  </PstlAdr>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <DbtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </DbtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Dok.Nr.            Dok.data         Suma LAK26024             2026.03.03        4239.84 LAK26027             2026.03.06          57.48</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">50.00</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132313787</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132313787</AcctSvcrRef>
+<InstrId>0401120539860</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132313786</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">50.00</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB &quot;Dezekspresas&quot;</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT787044060008082868</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBVILT2XXXX</BIC>
+      <Nm>AB SEB BANKAS</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-25 PVM s/f DEZ Nr. 26 0232</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132313787</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132313787</AcctSvcrRef>
+<InstrId>0401120539860</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132313788</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-01 atliktą  operaciją Nr. 0401120539860 , operacijos suma 50.00 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">592.45</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132313348</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132313348</AcctSvcrRef>
+<InstrId>0401120148693</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132313345</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">592.45</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Commerzbank AG (LT Branch), Aschaffenburg</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>DE68795800990158788211</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>DRESDEFF795</BIC>
+      <Nm>COMMERZBANK AG (FORMERLY DRESDNER BANK AG)</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Klientas 47 83 17, 2026-03-15, Nr.57374851</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132313348</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132313348</AcctSvcrRef>
+<InstrId>0401120148693</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132313350</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-01 atliktą  operaciją Nr. 0401120148693 , operacijos suma 592.45 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">35.46</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132311886</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132311886</AcctSvcrRef>
+<InstrId>0401115944641</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132311885</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">35.46</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>J. Pavilonienės individuali įmonė</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT307300010073188150</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-31 PVM s/f NR. APJ010940</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132311886</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132311886</AcctSvcrRef>
+<InstrId>0401115944641</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132311888</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-01 atliktą  operaciją Nr. 0401115944641 , operacijos suma 35.46 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132215691</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132215691</AcctSvcrRef>
+<InstrId>0401094143731</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132215693</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-01 atliktą  operaciją Nr. 0401094143731 , operacijos suma 400.00 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">400.00</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132215691</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132215691</AcctSvcrRef>
+<InstrId>0401094143731</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132215690</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">400.00</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>UAB Termo langai</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT303500010001212187</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>EVIULT2VXXX</BIC>
+      <Nm>PAYSERA LT UAB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-30 PVM s/f DK Nr. 448384</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">223.50</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132213001</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>ICDT</Cd>
+<SubFmlyCd>ESCT</SubFmlyCd>
+</Fmly></Domn></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132213001</AcctSvcrRef>
+<InstrId>0401093945968</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132213000</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">223.50</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+  <Id>
+    <OrgId>
+      <Othr>
+        <Id>302905315</Id>
+        <SchmeNm>
+          <Cd>COID</Cd>
+        </SchmeNm>
+      </Othr>
+    </OrgId>
+  </Id>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>Gintaras Dagys</Nm>
+</Cdtr>
+<CdtrAcct><Id><IBAN>LT887300010157598446</IBAN>
+</Id></CdtrAcct></RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>HABALT22XXX</BIC>
+      <Nm>SWEDBANK AB</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>2026-03-31 s/f GD Nr.1</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry><Ntry><Amt Ccy="EUR">0.35</Amt>
+<CdtDbtInd>DBIT</CdtDbtInd>
+<RvslInd>false</RvslInd>
+<Sts>BOOK</Sts>
+<BookgDt><Dt>2026-04-01</Dt></BookgDt>
+<ValDt><Dt>2026-04-01</Dt></ValDt>
+<AcctSvcrRef>10132213001</AcctSvcrRef>
+<BkTxCd><Domn><Cd>PMNT</Cd>
+<Fmly><Cd>MDOP</Cd>
+<SubFmlyCd>FEES</SubFmlyCd>
+</Fmly></Domn><Prtry><Cd>KMSN</Cd></Prtry></BkTxCd><NtryDtls><TxDtls><Refs><AcctSvcrRef>10132213001</AcctSvcrRef>
+<InstrId>0401093945968</InstrId>
+<EndToEndId>NOTPROVIDED</EndToEndId>
+<TxId>10132213002</TxId>
+</Refs><AmtDtls><TxAmt><Amt Ccy="EUR">0.35</Amt></TxAmt></AmtDtls><RltdPties><Dbtr>
+  <Nm>MB Lakštena</Nm>
+</Dbtr>
+<DbtrAcct><Id><IBAN>LT217189900060467854</IBAN>
+</Id></DbtrAcct><Cdtr>
+  <Nm>AB Artea bankas</Nm>
+</Cdtr>
+</RltdPties><RltdAgts>
+  <CdtrAgt>
+    <FinInstnId>
+      <BIC>CBSBLT26XXX</BIC>
+      <Nm>AB Artea bankas</Nm>
+    </FinInstnId>
+  </CdtrAgt>
+</RltdAgts>
+<RmtInf>
+<Ustrd>Už kredito pervedimą SEPA (internetu) Mokestis už 2026-04-01 atliktą  operaciją Nr. 0401093945968 , operacijos suma 223.50 EUR</Ustrd>
+</RmtInf></TxDtls></NtryDtls></Ntry></Stmt>
+</BkToCstmrStmt></Document>

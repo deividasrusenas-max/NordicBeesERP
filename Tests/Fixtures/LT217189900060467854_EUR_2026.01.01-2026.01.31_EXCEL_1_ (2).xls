@@ -1,0 +1,2707 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:lt.forbis="http://www.forbis.lt/IFX" xmlns:fn="http://www.w3.org/2005/xpath-functions" xmlns:html="http://www.w3.org/TR/REC-html40" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:o="urn:schemas-microsoft-com:office:office">
+<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+<LastAuthor>FORPOST</LastAuthor>
+<Version>12.00</Version>
+</DocumentProperties>
+<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
+<WindowHeight>10005</WindowHeight>
+<WindowWidth>10005</WindowWidth>
+<WindowTopX>120</WindowTopX>
+<WindowTopY>135</WindowTopY>
+<ActiveSheet>1</ActiveSheet>
+<ProtectStructure>False</ProtectStructure>
+<ProtectWindows>False</ProtectWindows>
+</ExcelWorkbook>
+<Styles>
+<Style ss:Name="Normal" ss:ID="Default">
+<Alignment ss:Vertical="Top"/>
+<Borders/>
+<Font ss:Size="8" x:CharSet="186" ss:FontName="Arial"/>
+<Interior/>
+<NumberFormat/>
+<Protection/>
+</Style>
+<Style ss:ID="s57">
+<Font ss:Bold="1" ss:Size="9" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s58">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+</Style>
+<Style ss:ID="s59">
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s60">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s61">
+<Alignment ss:Vertical="Top"/>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s62">
+<Alignment ss:Vertical="Top"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s62b">
+<Alignment ss:Vertical="Top"/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s63">
+<Alignment ss:Vertical="Top"/>
+</Style>
+<Style ss:ID="s64">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s65">
+<Alignment ss:Vertical="Top"/>
+<NumberFormat ss:Format="Fixed"/>
+</Style>
+<Style ss:ID="s66">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s67">
+<Alignment ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s68">
+<Alignment ss:Vertical="Top"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s68b">
+<Alignment ss:Vertical="Top"/>
+<Font ss:Bold="1" ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s68br">
+<Alignment ss:Vertical="Top"/>
+<Font ss:Bold="1" ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+</Style>
+<Style ss:ID="s69">
+<Alignment ss:Vertical="Top" ss:Horizontal="Right"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s69b">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Bold="1" ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s69br">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Bold="1" ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+</Style>
+<Style ss:ID="s70r">
+<Alignment ss:Vertical="Top"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Top"/>
+</Borders>
+</Style>
+<Style ss:ID="s71">
+<Alignment ss:Vertical="Top" ss:Horizontal="Left"/>
+<NumberFormat ss:Format="Short Date"/>
+</Style>
+<Style ss:ID="s72">
+<Alignment ss:Vertical="Top" ss:Horizontal="Left"/>
+</Style>
+<Style ss:ID="s73">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s73b">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Font ss:Bold="1" ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s73br">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Font ss:Bold="1" ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+</Style>
+<Style ss:ID="s75">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s76">
+<Alignment ss:Vertical="Top"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Fixed"/>
+</Style>
+<Style ss:ID="s76w">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Fixed"/>
+</Style>
+<Style ss:ID="s77">
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Fixed"/>
+</Style>
+<Style ss:ID="s78">
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Standard"/>
+</Style>
+<Style ss:ID="s79">
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Short Date"/>
+</Style>
+<Style ss:ID="s80">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Standard"/>
+</Style>
+<Style ss:ID="s81">
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="@"/>
+</Style>
+<Style ss:ID="s82">
+<Borders/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s83">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Borders/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s84">
+<Borders/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Short Date"/>
+</Style>
+<Style ss:ID="s85">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Borders/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Standard"/>
+</Style>
+<Style ss:ID="s86">
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s86r">
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+</Style>
+<Style ss:ID="s87">
+<Borders/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s87a">
+<Alignment ss:Horizontal="Right"/>
+<Borders/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s88">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Borders/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s89">
+<Alignment ss:Vertical="Top"/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s90">
+<Alignment ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s90w">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s90wnum">
+<Alignment ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="###,##0.00"/>
+</Style>
+<Style ss:ID="s91">
+<Alignment ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s92">
+<Alignment ss:Vertical="Top" ss:Horizontal="Left"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+<NumberFormat ss:Format="Short Date"/>
+</Style>
+<Style ss:ID="s93">
+<Alignment ss:Vertical="Top" ss:Horizontal="Left"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s94">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s94r">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Right"/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+</Style>
+<Style ss:ID="s110">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Center"/>
+<Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="9" ss:FontName="Times New Roman"/>
+<Interior ss:Pattern="Solid" ss:Color="#0a5a8f"/>
+<NumberFormat ss:Format="Standard"/>
+</Style>
+<Style ss:ID="s112">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Center"/>
+<Font ss:Bold="1" ss:Color="#000000" ss:Size="9" ss:FontName="Times New Roman"/>
+<Interior ss:Pattern="Solid" ss:Color="#dbdbdb"/>
+<NumberFormat ss:Format="Standard"/>
+</Style>
+<Style ss:ID="s114">
+<Alignment ss:WrapText="1" ss:Vertical="Top"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Top"/>
+</Borders>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s118">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Left"/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s119">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Left"/>
+<Font ss:Size="8" x:Family="Swiss" ss:FontName="Arial"/>
+</Style>
+<Style ss:ID="s121">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Left"/>
+<Borders/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s122">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Center"/>
+<Borders/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s122r">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Center"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s123">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Left"/>
+<Borders/>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s123r">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Left"/>
+<Borders>
+<Border ss:Weight="1" ss:LineStyle="Continuous" ss:Position="Bottom"/>
+</Borders>
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s124">
+<Alignment ss:WrapText="1" ss:Vertical="Top" ss:Horizontal="Center"/>
+<Borders/>
+<Font ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+<Style ss:ID="s125">
+<Font ss:Bold="1" ss:Size="8" ss:FontName="Times New Roman"/>
+</Style>
+</Styles>
+<Worksheet ss:Name="Sąskaitos išrašas">
+<Table ss:DefaultColumnWidth="42" ss:StyleID="s58" x:FullRows="1" x:FullColumns="1">
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Width="51" ss:AutoFitWidth="0" ss:StyleID="s59"/>
+<Column ss:Hidden="1" ss:Width="204" ss:AutoFitWidth="0" ss:StyleID="s59" ss:Index="18"/>
+<Row ss:Index="2">
+<Cell ss:StyleID="s59">
+<Data ss:Type="String">AB Artea bankas</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s59">
+<Data ss:Type="String">Tilžės g. 149, LT-76348 Šiauliai, LT</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s59">
+<Data ss:Type="String">Įmonės kodas: 112025254</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s62">
+<Data ss:Type="String">PVM mokėtojo kodas: LT120252515</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s62">
+<Data ss:Type="String">SWIFT kodas: CBSBLT26XXX</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s86" ss:Index="7"/>
+</Row>
+<Row ss:Height="12">
+<Cell ss:StyleID="s110" ss:MergeAcross="10">
+<Data ss:Type="String">Sąskaitos išrašas</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s86" ss:Index="7"/>
+</Row>
+<Row ss:Height="12">
+<Cell ss:StyleID="s57" ss:Formula="=UPPER(&quot;MB Lakštena&quot;)">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+</Row>
+<Row>
+<Cell ss:StyleID="s62">
+<Data ss:Type="String">Pauliaus Širvio g. 3, 42457, Juodupės mstl., Juodupės sen., LT</Data>
+</Cell>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+</Row>
+<Row>
+<Cell ss:StyleID="s62">
+<Data ss:Type="String">Įmonės/Asmens kodas: 302905315</Data>
+</Cell>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+</Row>
+<Row>
+<Cell ss:StyleID="s62">
+<Data ss:Type="String">Sąskaita: LT217189900060467854 EUR</Data>
+</Cell>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+<Cell ss:StyleID="s64"/>
+</Row>
+<Row>
+<Cell ss:StyleID="s86" ss:Index="7"/>
+</Row>
+<Row ss:Height="12">
+<Cell ss:StyleID="s112" ss:MergeAcross="10">
+<Data ss:Type="String">Detali informacija</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s86" ss:Index="7"/>
+</Row>
+<Row>
+<Cell ss:StyleID="s89">
+<Data ss:Type="String">Laikotarpis 2026.01.01 - 2026.01.31</Data>
+</Cell>
+<Cell ss:Index="9" ss:StyleID="s67">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s67">
+<Data ss:Type="String">EUR</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:Index="6" ss:StyleID="s89">
+<Data ss:Type="String">Likutis laikotarpio pradžioje: </Data>
+</Cell>
+<Cell ss:Index="9" ss:StyleID="s90wnum"/>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">10891.83</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:Index="6" ss:StyleID="s89">
+<Data ss:Type="String">Likutis laikotarpio pabaigoje: </Data>
+</Cell>
+<Cell ss:Index="9" ss:StyleID="s90wnum"/>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">4701.19</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:Index="6" ss:StyleID="s89">
+<Data ss:Type="String">Išlaidos: </Data>
+</Cell>
+<Cell ss:Index="9" ss:StyleID="s90wnum"/>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-37904.72</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:Index="6" ss:StyleID="s89">
+<Data ss:Type="String">Įplaukos: </Data>
+</Cell>
+<Cell ss:Index="9" ss:StyleID="s90wnum"/>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">31714.08</Data>
+</Cell>
+</Row>
+<Row>
+<Cell ss:StyleID="s86" ss:Index="7"/>
+</Row>
+<Row>
+<Cell ss:StyleID="s86" ss:Index="7"/>
+</Row>
+<Row ss:Height="12">
+<Cell ss:StyleID="s112" ss:MergeAcross="10">
+<Data ss:Type="String">Detali informacija</Data>
+</Cell>
+</Row>
+<Row ss:Height="23.25" ss:AutoFitHeight="1">
+<Cell ss:StyleID="s68br">
+<Data ss:Type="String">Data</Data>
+</Cell>
+<Cell ss:StyleID="s73br">
+<Data ss:Type="String">Dok. Nr. (Įm. kodas)</Data>
+</Cell>
+<Cell ss:StyleID="s73br">
+<Data ss:Type="String">Operacijos aprašymas</Data>
+</Cell>
+<Cell ss:StyleID="s73br">
+<Data ss:Type="String">Paskirtis</Data>
+</Cell>
+<Cell ss:StyleID="s73br">
+<Data ss:Type="String">Gavėjas/ Mokėtojas</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s73br">
+<Data ss:Type="String">Rekvizitai</Data>
+</Cell>
+<Cell ss:StyleID="s68br">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s68br">
+<Data ss:Type="String">Suma EUR</Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.31</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">01002358</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Mėnesinis fiksuotas mokestis už paslaugų planą  . Laikotarpis 2026.01.01 - 2026.01.31&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB Lakštena</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Mėnesinis fiksuotas mokestis už paslaugų planą  . Laikotarpis 2026.01.01 - 2026.01.31&#10;<B>GAVĖJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT837189901944905817&#10;Kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-6</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Mėnesinis fiksuotas mokestis už paslaugų planą  . Laikotarpis 2026.01.01 - 2026.01.31&#10;<B>GAVĖJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT837189901944905817&#10;Kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.31</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0131193304262</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas į savo sąskaitą banko viduje</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Mokėjimas tarp savo sąskaitų&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB Lakštena</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas į savo sąskaitą banko viduje&#10;Mokėjimas tarp savo sąskaitų&#10;<B>MOKĖTOJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT377189900060467857&#10;Mokėtojo kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">1000</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas į savo sąskaitą banko viduje&#10;Mokėjimas tarp savo sąskaitų&#10;<B>MOKĖTOJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT377189900060467857&#10;Mokėtojo kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.31</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">SI26013151056323</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Pavedimas&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Lakštena, MB</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Pavedimas&#10;<B>MOKĖTOJAS:</B>&#10;Lakštena, MB&#10;Įmonės registracijos kodas:302905315&#10;Sąskaita: LT173500010001653577&#10;Mokėtojo kredito įstaiga: PAYSERA LT UAB&#10;EVIULT2VXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">586.42</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Pavedimas&#10;<B>MOKĖTOJAS:</B>&#10;Lakštena, MB&#10;Įmonės registracijos kodas:302905315&#10;Sąskaita: LT173500010001653577&#10;Mokėtojo kredito įstaiga: PAYSERA LT UAB&#10;EVIULT2VXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.31</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą banko viduje (internetu)&#10;Mokestis už 2026-01-31 atliktą  operaciją Nr. 1 , operacijos suma 169.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą banko viduje (internetu)&#10;Mokestis už 2026-01-31 atliktą  operaciją Nr. 1 , operacijos suma 169.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą banko viduje (internetu)&#10;Mokestis už 2026-01-31 atliktą  operaciją Nr. 1 , operacijos suma 169.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.31</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas banko viduje</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">R667816146 Privačių DI sistemų projektavimas, diegimas ir įdarbinimas:... - Nuotolinė edukacija LT. Užsakymo nr: 36999536. Paysera Tickets.&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Paysera LT</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas banko viduje&#10;R667816146 Privačių DI sistemų projektavimas, diegimas ir įdarbinimas:... - Nuotolinė edukacija LT. Užsakymo nr: 36999536. Paysera Tickets.&#10;<B>GAVĖJAS:</B>&#10;Paysera LT&#10;Sąskaita: LT427180300004467237&#10;Kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-169</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas banko viduje&#10;R667816146 Privačių DI sistemų projektavimas, diegimas ir įdarbinimas:... - Nuotolinė edukacija LT. Užsakymo nr: 36999536. Paysera Tickets.&#10;<B>GAVĖJAS:</B>&#10;Paysera LT&#10;Sąskaita: LT427180300004467237&#10;Kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.31</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0131185247492</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-31 atliktą  operaciją Nr. 0131185247492 , operacijos suma 1314.06 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-31 atliktą  operaciją Nr. 0131185247492 , operacijos suma 1314.06 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-31 atliktą  operaciją Nr. 0131185247492 , operacijos suma 1314.06 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.31</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0131185247492</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-27 PVM s/f PRD 0015764 ir SĄSKAITA IŠANKSTINIAM APMOKĖJIMUI Nr. 701&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB Prodevia</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-27 PVM s/f PRD 0015764 ir SĄSKAITA IŠANKSTINIAM APMOKĖJIMUI Nr. 701&#10;<B>GAVĖJAS:</B>&#10;UAB Prodevia&#10;Sąskaita: LT737044060004004399&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-1314.06</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-27 PVM s/f PRD 0015764 ir SĄSKAITA IŠANKSTINIAM APMOKĖJIMUI Nr. 701&#10;<B>GAVĖJAS:</B>&#10;UAB Prodevia&#10;Sąskaita: LT737044060004004399&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.30</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260301929489130</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">LAK25156&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">KONICK RETAIL HUB, S.R.O.</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK25156&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">2665.6</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK25156&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.28</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">SI26012842837647</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">LAK26006&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Raido grupė</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK26006&#10;<B>MOKĖTOJAS:</B>&#10;Raido grupė&#10;Įmonės registracijos kodas:305687487&#10;Sąskaita: LT913500010011094031&#10;Mokėtojo kredito įstaiga: PAYSERA LT UAB&#10;EVIULT2VXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">53.91</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK26006&#10;<B>MOKĖTOJAS:</B>&#10;Raido grupė&#10;Įmonės registracijos kodas:305687487&#10;Sąskaita: LT913500010011094031&#10;Mokėtojo kredito įstaiga: PAYSERA LT UAB&#10;EVIULT2VXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.28</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0128104844740</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-28 atliktą  operaciją Nr. 0128104844740 , operacijos suma 3178.80 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-28 atliktą  operaciją Nr. 0128104844740 , operacijos suma 3178.80 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-28 atliktą  operaciją Nr. 0128104844740 , operacijos suma 3178.80 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.28</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0128104844740</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-28  Nr.EG1&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Eglė Beinoravičienė</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-28  Nr.EG1&#10;<B>GAVĖJAS:</B>&#10;Eglė Beinoravičienė&#10;Sąskaita: LT124010042600176249&#10;Kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-3178.8</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-28  Nr.EG1&#10;<B>GAVĖJAS:</B>&#10;Eglė Beinoravičienė&#10;Sąskaita: LT124010042600176249&#10;Kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.27</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0127205947487</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-27 atliktą  operaciją Nr. 0127205947487 , operacijos suma 2150.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-27 atliktą  operaciją Nr. 0127205947487 , operacijos suma 2150.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-27 atliktą  operaciją Nr. 0127205947487 , operacijos suma 2150.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.27</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0127205947487</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-22  SĄSKAITA RJ Nr.1&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Rokas Jurkšaitis</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-22  SĄSKAITA RJ Nr.1&#10;<B>GAVĖJAS:</B>&#10;Rokas Jurkšaitis&#10;Sąskaita: BE12974144382792&#10;Kredito įstaiga: PPS EU&#10;PESOBEB1XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-2150</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-22  SĄSKAITA RJ Nr.1&#10;<B>GAVĖJAS:</B>&#10;Rokas Jurkšaitis&#10;Sąskaita: BE12974144382792&#10;Kredito įstaiga: PPS EU&#10;PESOBEB1XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.27</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0127205627604</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-27 atliktą  operaciją Nr. 0127205627604 , operacijos suma 38.87 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-27 atliktą  operaciją Nr. 0127205627604 , operacijos suma 38.87 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-27 atliktą  operaciją Nr. 0127205627604 , operacijos suma 38.87 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.27</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0127205627604</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-27 Sąskaita išankstiniam apmokėjimui Nr. 45189&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kronšteinų ratukų centras, UAB</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-27 Sąskaita išankstiniam apmokėjimui Nr. 45189&#10;<B>GAVĖJAS:</B>&#10;Kronšteinų ratukų centras, UAB&#10;Sąskaita: LT607300010071030718&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-38.87</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-27 Sąskaita išankstiniam apmokėjimui Nr. 45189&#10;<B>GAVĖJAS:</B>&#10;Kronšteinų ratukų centras, UAB&#10;Sąskaita: LT607300010071030718&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.27</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260271927635320</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Dok.Nr.            Dok.data         Suma LAK25157             2025.12.29        2001.34&#10;Mokėjimo identifikavimo numeris: 0EV000033180&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB LAŠŲ DUONA</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Dok.Nr.            Dok.data         Suma LAK25157             2025.12.29        2001.34&#10;Mokėjimo identifikavimo numeris: 0EV000033180&#10;<B>MOKĖTOJAS:</B>&#10;UAB LAŠŲ DUONA&#10;Įmonės registracijos kodas:173727496&#10;Sąskaita: LT117300010087450887&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">2001.34</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Dok.Nr.            Dok.data         Suma LAK25157             2025.12.29        2001.34&#10;Mokėjimo identifikavimo numeris: 0EV000033180&#10;<B>MOKĖTOJAS:</B>&#10;UAB LAŠŲ DUONA&#10;Įmonės registracijos kodas:173727496&#10;Sąskaita: LT117300010087450887&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.26</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0126173056494</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-26 atliktą  operaciją Nr. 0126173056494 , operacijos suma 661.22 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-26 atliktą  operaciją Nr. 0126173056494 , operacijos suma 661.22 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-26 atliktą  operaciją Nr. 0126173056494 , operacijos suma 661.22 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.26</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0126173056494</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-26 PVM s/f TRB26-030&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB "TAUROBILIS"</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-26 PVM s/f TRB26-030&#10;<B>GAVĖJAS:</B>&#10;MB "TAUROBILIS"&#10;Sąskaita: LT757300010153055297&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-661.22</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-26 PVM s/f TRB26-030&#10;<B>GAVĖJAS:</B>&#10;MB "TAUROBILIS"&#10;Sąskaita: LT757300010153055297&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.25</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0125191243278</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-25 atliktą  operaciją Nr. 0125191243278 , operacijos suma 2150.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-25 atliktą  operaciją Nr. 0125191243278 , operacijos suma 2150.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-25 atliktą  operaciją Nr. 0125191243278 , operacijos suma 2150.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.25</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0125191243278</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-22 Nr. KK 1&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kamilė Klepeckienė</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-22 Nr. KK 1&#10;<B>GAVĖJAS:</B>&#10;Kamilė Klepeckienė&#10;Sąskaita: LT587300010116804375&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-2150</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-22 Nr. KK 1&#10;<B>GAVĖJAS:</B>&#10;Kamilė Klepeckienė&#10;Sąskaita: LT587300010116804375&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.25</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0125190542799</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-25 atliktą  operaciją Nr. 0125190542799 , operacijos suma 712.39 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-25 atliktą  operaciją Nr. 0125190542799 , operacijos suma 712.39 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-25 atliktą  operaciją Nr. 0125190542799 , operacijos suma 712.39 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.25</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0125190542799</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Užsakymo Nr. 1750679 apmokėjimas&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB SKYTECH.LT</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Užsakymo Nr. 1750679 apmokėjimas&#10;<B>GAVĖJAS:</B>&#10;UAB SKYTECH.LT&#10;Sąskaita: LT537300010119223160&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-712.39</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Užsakymo Nr. 1750679 apmokėjimas&#10;<B>GAVĖJAS:</B>&#10;UAB SKYTECH.LT&#10;Sąskaita: LT537300010119223160&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.24</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-24 atliktą  operaciją Nr. 1 , operacijos suma 158.49 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-24 atliktą  operaciją Nr. 1 , operacijos suma 158.49 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-24 atliktą  operaciją Nr. 1 , operacijos suma 158.49 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.24</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">SLF/RF6259470/P1380785400&#10;Mokėjimo identifikavimo numeris: 949151&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">AB LIETUVOS DRAUDIMAS</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;SLF/RF6259470/P1380785400&#10;Mokėjimo identifikavimo numeris: 949151&#10;<B>GAVĖJAS:</B>&#10;AB LIETUVOS DRAUDIMAS&#10;Sąskaita: LT637044060000364363&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-158.49</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;SLF/RF6259470/P1380785400&#10;Mokėjimo identifikavimo numeris: 949151&#10;<B>GAVĖJAS:</B>&#10;AB LIETUVOS DRAUDIMAS&#10;Sąskaita: LT637044060000364363&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.21</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">SI26012130363816</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Užsakymas Nr. LAK26007&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Daiva Čmukaitė</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Užsakymas Nr. LAK26007&#10;<B>MOKĖTOJAS:</B>&#10;Daiva Čmukaitė&#10;Sąskaita: LT434010042403257349&#10;Mokėtojo kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">32.5</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Užsakymas Nr. LAK26007&#10;<B>MOKĖTOJAS:</B>&#10;Daiva Čmukaitė&#10;Sąskaita: LT434010042403257349&#10;Mokėtojo kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.21</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0121175835638</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-21 atliktą  operaciją Nr. 0121175835638 , operacijos suma 32.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-21 atliktą  operaciją Nr. 0121175835638 , operacijos suma 32.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-21 atliktą  operaciją Nr. 0121175835638 , operacijos suma 32.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.21</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0121175835638</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2025-02-07 PVM s/f 25012&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">O Muhe Mesi</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-02-07 PVM s/f 25012&#10;<B>GAVĖJAS:</B>&#10;O Muhe Mesi&#10;Sąskaita: EE837700771003596303&#10;Kredito įstaiga: AS LHV PANK&#10;LHVBEE22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-32</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-02-07 PVM s/f 25012&#10;<B>GAVĖJAS:</B>&#10;O Muhe Mesi&#10;Sąskaita: EE837700771003596303&#10;Kredito įstaiga: AS LHV PANK&#10;LHVBEE22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.19</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0119115657184</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-19 atliktą  operaciją Nr. 0119115657184 , operacijos suma 130.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-19 atliktą  operaciją Nr. 0119115657184 , operacijos suma 130.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-19 atliktą  operaciją Nr. 0119115657184 , operacijos suma 130.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.19</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0119115657184</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Pavedimas&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB Lakštena</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Pavedimas&#10;<B>GAVĖJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT173500010001653577&#10;Kredito įstaiga: PAYSERA LT UAB&#10;EVIULT2VXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-130</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Pavedimas&#10;<B>GAVĖJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT173500010001653577&#10;Kredito įstaiga: PAYSERA LT UAB&#10;EVIULT2VXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.19</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0119113754635</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas į savo sąskaitą banko viduje</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Mokėjimas tarp savo sąskaitų&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB Lakštena</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas į savo sąskaitą banko viduje&#10;Mokėjimas tarp savo sąskaitų&#10;<B>GAVĖJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT377189900060467857&#10;Kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-300</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas į savo sąskaitą banko viduje&#10;Mokėjimas tarp savo sąskaitų&#10;<B>GAVĖJAS:</B>&#10;MB Lakštena&#10;Sąskaita: LT377189900060467857&#10;Kredito įstaiga: AB Artea bankas&#10;CBSBLT26XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.16</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0116122410899</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-16 atliktą  operaciją Nr. 0116122410899 , operacijos suma 440.72 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-16 atliktą  operaciją Nr. 0116122410899 , operacijos suma 440.72 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-16 atliktą  operaciją Nr. 0116122410899 , operacijos suma 440.72 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.16</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0116122410899</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2025-10-21 PVM s/f LIP Nr. 2405897&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB LIPIKA</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-10-21 PVM s/f LIP Nr. 2405897&#10;<B>GAVĖJAS:</B>&#10;UAB LIPIKA&#10;Sąskaita: LT857300010090288842&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-440.72</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-10-21 PVM s/f LIP Nr. 2405897&#10;<B>GAVĖJAS:</B>&#10;UAB LIPIKA&#10;Sąskaita: LT857300010090288842&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.15</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0115091954010</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-15 atliktą  operaciją Nr. 0115091954010 , operacijos suma 573.35 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-15 atliktą  operaciją Nr. 0115091954010 , operacijos suma 573.35 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-15 atliktą  operaciją Nr. 0115091954010 , operacijos suma 573.35 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.15</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0115091954010</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-07 PVM sąskaita faktūra EVR26 Nr.004321&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB EUROVERTIS</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-07 PVM sąskaita faktūra EVR26 Nr.004321&#10;<B>GAVĖJAS:</B>&#10;MB EUROVERTIS&#10;Sąskaita: LT387300010155947727&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-573.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-07 PVM sąskaita faktūra EVR26 Nr.004321&#10;<B>GAVĖJAS:</B>&#10;MB EUROVERTIS&#10;Sąskaita: LT387300010155947727&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.14</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0114151809641</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-14 atliktą  operaciją Nr. 0114151809641 , operacijos suma 2199.50 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-14 atliktą  operaciją Nr. 0114151809641 , operacijos suma 2199.50 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-14 atliktą  operaciją Nr. 0114151809641 , operacijos suma 2199.50 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.14</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0114151809641</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-13 PVM s/f No. ULAK 26/01&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Genadij Sidorovič</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-13 PVM s/f No. ULAK 26/01&#10;<B>GAVĖJAS:</B>&#10;Genadij Sidorovič&#10;Sąskaita: LT767044060007098548&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-2199.5</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-13 PVM s/f No. ULAK 26/01&#10;<B>GAVĖJAS:</B>&#10;Genadij Sidorovič&#10;Sąskaita: LT767044060007098548&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.14</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260141921206262</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Dok.Nr.            Dok.data         Suma LAK25151             2025.12.10        8005.36&#10;Mokėjimo identifikavimo numeris: 0EV000032893&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB LAŠŲ DUONA</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Dok.Nr.            Dok.data         Suma LAK25151             2025.12.10        8005.36&#10;Mokėjimo identifikavimo numeris: 0EV000032893&#10;<B>MOKĖTOJAS:</B>&#10;UAB LAŠŲ DUONA&#10;Įmonės registracijos kodas:173727496&#10;Sąskaita: LT117300010087450887&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">8005.36</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Dok.Nr.            Dok.data         Suma LAK25151             2025.12.10        8005.36&#10;Mokėjimo identifikavimo numeris: 0EV000032893&#10;<B>MOKĖTOJAS:</B>&#10;UAB LAŠŲ DUONA&#10;Įmonės registracijos kodas:173727496&#10;Sąskaita: LT117300010087450887&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.12</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0112173401918</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112173401918 , operacijos suma 3291.30 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112173401918 , operacijos suma 3291.30 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112173401918 , operacijos suma 3291.30 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.12</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0112173401918</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-12 S/f GG Nr.1&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">GINTARAS GIMŽIŪNAS</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-12 S/f GG Nr.1&#10;<B>GAVĖJAS:</B>&#10;GINTARAS GIMŽIŪNAS&#10;Sąskaita: LT937300010079977501&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-3291.3</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-12 S/f GG Nr.1&#10;<B>GAVĖJAS:</B>&#10;GINTARAS GIMŽIŪNAS&#10;Sąskaita: LT937300010079977501&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.12</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0112121608015</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112121608015 , operacijos suma 2929.46 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112121608015 , operacijos suma 2929.46 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112121608015 , operacijos suma 2929.46 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.12</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0112121608015</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2025-12-17 PVM s/f Nr. 16591&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB Mitaras</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-17 PVM s/f Nr. 16591&#10;<B>GAVĖJAS:</B>&#10;UAB Mitaras&#10;Sąskaita: LT477044060003309765&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-2929.46</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-17 PVM s/f Nr. 16591&#10;<B>GAVĖJAS:</B>&#10;UAB Mitaras&#10;Sąskaita: LT477044060003309765&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.12</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0112110457705</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112110457705 , operacijos suma 212.77 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112110457705 , operacijos suma 212.77 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-12 atliktą  operaciją Nr. 0112110457705 , operacijos suma 212.77 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.12</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0112110457705</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Atostoginiai&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Tomas Kundelis</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Atostoginiai&#10;<B>GAVĖJAS:</B>&#10;Tomas Kundelis&#10;Sąskaita: LT517300010074193759&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-212.77</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Atostoginiai&#10;<B>GAVĖJAS:</B>&#10;Tomas Kundelis&#10;Sąskaita: LT517300010074193759&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.12</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2978073221</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">LAK26003&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB ROKMETA</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK26003&#10;<B>MOKĖTOJAS:</B>&#10;UAB ROKMETA&#10;Įmonės registracijos kodas:300068666&#10;Sąskaita: LT417300010118919572&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">58</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK26003&#10;<B>MOKĖTOJAS:</B>&#10;UAB ROKMETA&#10;Įmonės registracijos kodas:300068666&#10;Sąskaita: LT417300010118919572&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.09</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0109122855245-1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Darbo užmokesčio SEPA kredito pervedimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">DU 26-1&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Tomas Kundelis</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Darbo užmokesčio SEPA kredito pervedimas&#10;DU 26-1&#10;<B>GAVĖJAS:</B>&#10;Tomas Kundelis&#10;Sąskaita: LT517300010074193759&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-255.29</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Darbo užmokesčio SEPA kredito pervedimas&#10;DU 26-1&#10;<B>GAVĖJAS:</B>&#10;Tomas Kundelis&#10;Sąskaita: LT517300010074193759&#10;Kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.09</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260091919143244</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">INVOICE: LAK251417&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">KONICK EXIM TRADING, S.R.O.</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;INVOICE: LAK251417&#10;<B>MOKĖTOJAS:</B>&#10;KONICK EXIM TRADING, S.R.O.&#10;LEI kodas:315700N4V4J9VUBTWN29&#10;Sąskaita: CZ9003000000000362616478&#10;Mokėtojo kredito įstaiga: CESKOSLOVENSKA OBCHODNI BANKA, A.S.&#10;CEKOCZPPXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">6890.8</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;INVOICE: LAK251417&#10;<B>MOKĖTOJAS:</B>&#10;KONICK EXIM TRADING, S.R.O.&#10;LEI kodas:315700N4V4J9VUBTWN29&#10;Sąskaita: CZ9003000000000362616478&#10;Mokėtojo kredito įstaiga: CESKOSLOVENSKA OBCHODNI BANKA, A.S.&#10;CEKOCZPPXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.09</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260091918927571</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Dok.Nr.            Dok.data         Suma LAK25148             2025.12.03        2001.34&#10;Mokėjimo identifikavimo numeris: 0EV000032773&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB LAŠŲ DUONA</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Dok.Nr.            Dok.data         Suma LAK25148             2025.12.03        2001.34&#10;Mokėjimo identifikavimo numeris: 0EV000032773&#10;<B>MOKĖTOJAS:</B>&#10;UAB LAŠŲ DUONA&#10;Įmonės registracijos kodas:173727496&#10;Sąskaita: LT117300010087450887&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">2001.34</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Dok.Nr.            Dok.data         Suma LAK25148             2025.12.03        2001.34&#10;Mokėjimo identifikavimo numeris: 0EV000032773&#10;<B>MOKĖTOJAS:</B>&#10;UAB LAŠŲ DUONA&#10;Įmonės registracijos kodas:173727496&#10;Sąskaita: LT117300010087450887&#10;Mokėtojo kredito įstaiga: SWEDBANK AB&#10;HABALT22XXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108210129657</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108210129657 , operacijos suma 347.77 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108210129657 , operacijos suma 347.77 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108210129657 , operacijos suma 347.77 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108210129657</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">47 83 17 Nr. 56807314, 31.12.2025&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Commerzbank AG (LT Branch), Aschaffenburg</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;47 83 17 Nr. 56807314, 31.12.2025&#10;<B>GAVĖJAS:</B>&#10;Commerzbank AG (LT Branch), Aschaffenburg&#10;Sąskaita: DE68795800990158788211&#10;Kredito įstaiga: COMMERZBANK AG (FORMERLY DRESDNER BANK AG)&#10;DRESDEFF795</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-347.77</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;47 83 17 Nr. 56807314, 31.12.2025&#10;<B>GAVĖJAS:</B>&#10;Commerzbank AG (LT Branch), Aschaffenburg&#10;Sąskaita: DE68795800990158788211&#10;Kredito įstaiga: COMMERZBANK AG (FORMERLY DRESDNER BANK AG)&#10;DRESDEFF795</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108123228506</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108123228506 , operacijos suma 682.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108123228506 , operacijos suma 682.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108123228506 , operacijos suma 682.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108123228506</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2025-12-01 PVM s/f DEV25142, 2026-01-06 PVM s/f  DEV26001&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB "DEVINCO"</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-01 PVM s/f DEV25142, 2026-01-06 PVM s/f  DEV26001&#10;<B>GAVĖJAS:</B>&#10;UAB "DEVINCO"&#10;Sąskaita: LT794010051001814814&#10;Kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-682</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-01 PVM s/f DEV25142, 2026-01-06 PVM s/f  DEV26001&#10;<B>GAVĖJAS:</B>&#10;UAB "DEVINCO"&#10;Sąskaita: LT794010051001814814&#10;Kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108122834250</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108122834250 , operacijos suma 14000.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108122834250 , operacijos suma 14000.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108122834250 , operacijos suma 14000.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108122834250</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2025-12-04 PVM s/f No. ULAK 25/40&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Dainius Neniškis</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-04 PVM s/f No. ULAK 25/40&#10;<B>GAVĖJAS:</B>&#10;Dainius Neniškis&#10;Sąskaita: LT257044060001738082&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-14000</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-04 PVM s/f No. ULAK 25/40&#10;<B>GAVĖJAS:</B>&#10;Dainius Neniškis&#10;Sąskaita: LT257044060001738082&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108121751057</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121751057 , operacijos suma 200.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121751057 , operacijos suma 200.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121751057 , operacijos suma 200.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108121751057</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2025-12-31 PVM s/f Serija RS Nr. 00510&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB "Bona Luna"</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-31 PVM s/f Serija RS Nr. 00510&#10;<B>GAVĖJAS:</B>&#10;MB "Bona Luna"&#10;Sąskaita: LT167044060008203488&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-200</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-31 PVM s/f Serija RS Nr. 00510&#10;<B>GAVĖJAS:</B>&#10;MB "Bona Luna"&#10;Sąskaita: LT167044060008203488&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108121454743</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121454743 , operacijos suma 168.07 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121454743 , operacijos suma 168.07 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121454743 , operacijos suma 168.07 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108121454743</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2025-12-31 PVM SĄSKAITA FAKTŪRA NR. VLT0552380&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">VENIPAK LIETUVA, UAB</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-31 PVM SĄSKAITA FAKTŪRA NR. VLT0552380&#10;<B>GAVĖJAS:</B>&#10;VENIPAK LIETUVA, UAB&#10;Sąskaita: LT442140030003853247&#10;Kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-168.07</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2025-12-31 PVM SĄSKAITA FAKTŪRA NR. VLT0552380&#10;<B>GAVĖJAS:</B>&#10;VENIPAK LIETUVA, UAB&#10;Sąskaita: LT442140030003853247&#10;Kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108121231239</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121231239 , operacijos suma 225.35 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121231239 , operacijos suma 225.35 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108121231239 , operacijos suma 225.35 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108121231239</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">RBS1853230225, RBS1853230208&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">RABEN LIETUVA UAB</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;RBS1853230225, RBS1853230208&#10;<B>GAVĖJAS:</B>&#10;RABEN LIETUVA UAB&#10;Sąskaita: LT587044060004215159&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-225.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;RBS1853230225, RBS1853230208&#10;<B>GAVĖJAS:</B>&#10;RABEN LIETUVA UAB&#10;Sąskaita: LT587044060004215159&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108105837205</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108105837205 , operacijos suma 58.90 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108105837205 , operacijos suma 58.90 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-08 atliktą  operaciją Nr. 0108105837205 , operacijos suma 58.90 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0108105837205</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">2026-01-07 PVM s/f EKAL Nr. 0000058&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB "Gerunda"</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-07 PVM s/f EKAL Nr. 0000058&#10;<B>GAVĖJAS:</B>&#10;UAB "Gerunda"&#10;Sąskaita: LT277044060003097307&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-58.9</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;2026-01-07 PVM s/f EKAL Nr. 0000058&#10;<B>GAVĖJAS:</B>&#10;UAB "Gerunda"&#10;Sąskaita: LT277044060003097307&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260081918356987</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Invoice no.: LAK25139&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">KONICK RETAIL HUB, S.R.O.</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Invoice no.: LAK25139&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">1066.24</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Invoice no.: LAK25139&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260081918356985</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Invoice no.: LAK25141&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">KONICK RETAIL HUB, S.R.O.</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Invoice no.: LAK25141&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">1191.68</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Invoice no.: LAK25141&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.08</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">O260081918357384</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Invoice no.: LAK25140&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">KONICK RETAIL HUB, S.R.O.</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Invoice no.: LAK25140&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">2974.72</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;Invoice no.: LAK25140&#10;<B>MOKĖTOJAS:</B>&#10;KONICK RETAIL HUB, S.R.O.&#10;Sąskaita: CZ7101000001313670980267&#10;Mokėtojo kredito įstaiga: KOMERCNI BANKA A.S.&#10;KOMBCZPPXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.06</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">SI26010698132013</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">prekės pagal s-tą LAK26001,2026-01-05.&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Rokiškio krašto muziejus</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;prekės pagal s-tą LAK26001,2026-01-05.&#10;<B>MOKĖTOJAS:</B>&#10;Rokiškio krašto muziejus&#10;Įmonės registracijos kodas:190263920&#10;Sąskaita: LT464010041500237250&#10;Mokėtojo kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">70.18</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;prekės pagal s-tą LAK26001,2026-01-05.&#10;<B>MOKĖTOJAS:</B>&#10;Rokiškio krašto muziejus&#10;Įmonės registracijos kodas:190263920&#10;Sąskaita: LT464010041500237250&#10;Mokėtojo kredito įstaiga: LUMINOR BANK AS LITHUANIAN BRANCH&#10;AGBLLT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.06</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">SI26010697985717</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">LAK25153&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB PAKRUOJO DVARO SPIRITO VARYKLA IR ALAUS DARYKLA</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK25153&#10;<B>MOKĖTOJAS:</B>&#10;UAB PAKRUOJO DVARO SPIRITO VARYKLA IR ALAUS DARYKLA&#10;Įmonės registracijos kodas:304521060&#10;Sąskaita: LT627044090115206123&#10;Mokėtojo kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">3115.99</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Gautų mokėjimų eurais įskaitymas (SEPA)&#10;LAK25153&#10;<B>MOKĖTOJAS:</B>&#10;UAB PAKRUOJO DVARO SPIRITO VARYKLA IR ALAUS DARYKLA&#10;Įmonės registracijos kodas:304521060&#10;Sąskaita: LT627044090115206123&#10;Mokėtojo kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 1 , operacijos suma 81.40 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 1 , operacijos suma 81.40 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 1 , operacijos suma 81.40 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">mano.tele2.lt/LT, st119784, Tele2 saskaita .865058747.&#10;Mokėjimo identifikavimo numeris: 119784&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">UAB TELE2</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;mano.tele2.lt/LT, st119784, Tele2 saskaita .865058747.&#10;Mokėjimo identifikavimo numeris: 119784&#10;<B>GAVĖJAS:</B>&#10;UAB TELE2&#10;Sąskaita: LT647044060001223571&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-81.4</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;mano.tele2.lt/LT, st119784, Tele2 saskaita .865058747.&#10;Mokėjimo identifikavimo numeris: 119784&#10;<B>GAVĖJAS:</B>&#10;UAB TELE2&#10;Sąskaita: LT647044060001223571&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 1 , operacijos suma 25.00 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 1 , operacijos suma 25.00 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 1 , operacijos suma 25.00 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">1</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Exway/LT, st119224, IMYWZVKGK&#10;Mokėjimo identifikavimo numeris: 119224&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">MB DUOMENU EFEKTAS</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Exway/LT, st119224, IMYWZVKGK&#10;Mokėjimo identifikavimo numeris: 119224&#10;<B>GAVĖJAS:</B>&#10;MB DUOMENU EFEKTAS&#10;Sąskaita: LT367044060008194204&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-25</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;Exway/LT, st119224, IMYWZVKGK&#10;Mokėjimo identifikavimo numeris: 119224&#10;<B>GAVĖJAS:</B>&#10;MB DUOMENU EFEKTAS&#10;Sąskaita: LT367044060008194204&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0105210229249</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 0105210229249 , operacijos suma 72.45 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 0105210229249 , operacijos suma 72.45 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 0105210229249 , operacijos suma 72.45 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0105210229249</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Valstybinio socialinio draudimo fondo valdyba</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;<B>GAVĖJAS:</B>&#10;Valstybinio socialinio draudimo fondo valdyba&#10;Nuorodos numeris: 322&#10;Sąskaita: LT337044060007740589&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-72.45</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;<B>GAVĖJAS:</B>&#10;Valstybinio socialinio draudimo fondo valdyba&#10;Nuorodos numeris: 322&#10;Sąskaita: LT337044060007740589&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0105205016862</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Komisinis atlyginimas</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 0105205016862 , operacijos suma 1131.41 EUR&#10;</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 0105205016862 , operacijos suma 1131.41 EUR</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-.35</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Komisinis atlyginimas&#10;Už kredito pervedimą SEPA (internetu)&#10;Mokestis už 2026-01-05 atliktą  operaciją Nr. 0105205016862 , operacijos suma 1131.41 EUR</ss:Data>
+</Cell>
+</Row>
+<Row ss:AutoFitHeight="1">
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">2026.01.05</Data>
+</Cell>
+<Cell ss:StyleID="s72">
+<Data ss:Type="String">0105205016862</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Kredito pervedimas SEPA</Data>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s60">
+<Data ss:Type="String">Valstybinio socialinio draudimo fondo valdyba</Data>
+</Cell>
+<Cell ss:MergeAcross="3" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;<B>GAVĖJAS:</B>&#10;Valstybinio socialinio draudimo fondo valdyba&#10;Nuorodos numeris: 252&#10;Sąskaita: LT337044060007740589&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+<Cell ss:StyleID="s90w">
+<Data ss:Type="String"/>
+</Cell>
+<Cell ss:StyleID="s90wnum">
+<Data ss:Type="Number">-1131.41</Data>
+</Cell>
+<Cell ss:Index="18" ss:StyleID="s60">
+<ss:Data xmlns="http://www.w3.org/TR/REC-html40" ss:Type="String">Kredito pervedimas SEPA&#10;<B>GAVĖJAS:</B>&#10;Valstybinio socialinio draudimo fondo valdyba&#10;Nuorodos numeris: 252&#10;Sąskaita: LT337044060007740589&#10;Kredito įstaiga: AB SEB BANKAS&#10;CBVILT2XXXX</ss:Data>
+</Cell>
+</Row>
+<Row ss:Height="11.25" ss:AutoFitHeight="0">
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+<Cell ss:StyleID="s70r"/>
+</Row>
+</Table>
+<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+<PageSetup>
+<Header x:Margin="0.3"/>
+<Footer x:Margin="0.3"/>
+<PageMargins x:Top="0.75" x:Right="0.7" x:Left="0.7" x:Bottom="0.75"/>
+</PageSetup>
+<Print>
+<ValidPrinterInfo/>
+<PaperSizeIndex>9</PaperSizeIndex>
+<Scale>89</Scale>
+<HorizontalResolution>600</HorizontalResolution>
+<VerticalResolution>600</VerticalResolution>
+</Print>
+<Selected/>
+<Panes>
+<Pane>
+<Number>3</Number>
+<ActiveRow>74</ActiveRow>
+<ActiveCol>11</ActiveCol>
+</Pane>
+</Panes>
+<ProtectObjects>False</ProtectObjects>
+<ProtectScenarios>False</ProtectScenarios>
+</WorksheetOptions>
+<PageBreaks xmlns="urn:schemas-microsoft-com:office:excel">
+<ColBreaks>
+<ColBreak>
+<Column>11</Column>
+</ColBreak>
+</ColBreaks>
+</PageBreaks>
+</Worksheet>
+</Workbook>
