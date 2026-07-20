@@ -348,7 +348,8 @@ public class OrderService : IOrderService
         p.Value = prefix + "%";
         cmd.Parameters.Add(p);
 
-        var lastNumber = (string?)(await cmd.ExecuteScalarAsync());
+        var result = await cmd.ExecuteScalarAsync();
+        var lastNumber = result == null || result == DBNull.Value ? null : result.ToString();
 
         int nextNumber = 1;
         if (!string.IsNullOrEmpty(lastNumber))
