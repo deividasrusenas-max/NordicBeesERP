@@ -328,6 +328,7 @@
         ["completed"] = ("Atlikta", Color.Success),
         ["failed"] = ("Klaida", Color.Error),
         ["processing"] = ("Vykdoma", Color.Warning),
+        ["needs_review"] = ("Reikia peržiūrėti", Color.Warning),
     };
     
     private string FormatFileSize(long bytes)
@@ -550,8 +551,9 @@
             using var ctxMatch = DbContextFactory.CreateDbContext();
             foreach (var row in _parsedRows.Where(r => r.MatchedInvoiceId.HasValue && r.Id > 0))
             {
+                // Don't overwrite needs_review status set by cross-check logic
                 await ctxMatch.Database.ExecuteSqlRawAsync(
-                    "UPDATE bank_import_rows SET matched_invoice_id = {0}, match_status = 'matched' WHERE id = {1}",
+                    "UPDATE bank_import_rows SET matched_invoice_id = {0} WHERE id = {1} AND match_status != 'needs_review'",
                     row.MatchedInvoiceId!.Value, row.Id);
                 matchedCount++;
             }
@@ -564,15 +566,57 @@
                 insertedCount - matchedCount,
                 _importId);
 
-            // Create expense payments for matched expense rows
+            // Create expense payments for matched expense rows (with cross-check for existing manual payments)
             foreach (var row in _parsedRows.Where(r => r.MatchedExpenseInvoiceId.HasValue && r.Id > 0))
             {
+                using var ctxExpDedup = DbContextFactory.CreateDbContext();
+                var existingManualExpensePayments = await ctxExpDedup.ExpensePayments
+                    .Where(p => p.InvoiceId == row.MatchedExpenseInvoiceId!.Value
+                             && p.Source == "manual"
+                             && p.BankConfirmed == false)
+                    .ToListAsync();
+
+                if (existingManualExpensePayments.Count == 1)
+                {
+                    var existing = existingManualExpensePayments[0];
+                    if (existing.Amount == Math.Abs(row.Amount))
+                    {
+                        // CASE 1: Link to existing manual payment
+                        await ctxExpDedup.Database.ExecuteSqlRawAsync(
+                            "UPDATE expense_payments SET bank_confirmed = 1, bank_import_row_id = {0}, bank_import_id = {1} WHERE id = {2}",
+                            row.Id, _importId, existing.Id);
+
+                        // Recalculate expense invoice status (confirmed in ExpenseService: RecalculateInvoiceStatusAsync)
+                        await ExpenseService.RecalculateInvoiceStatusAsync(existing.InvoiceId);
+                        continue;
+                    }
+                    else
+                    {
+                        // CASE 2: Amount mismatch → needs_review
+                        await ctxExpDedup.Database.ExecuteSqlRawAsync(
+                            "UPDATE bank_import_rows SET match_status = {0}, updated_at = CURRENT_TIMESTAMP WHERE id = {1}",
+                            "needs_review", row.Id);
+                        continue;
+                    }
+                }
+                else if (existingManualExpensePayments.Count > 1)
+                {
+                    // CASE 4: Ambiguous → needs_review
+                    await ctxExpDedup.Database.ExecuteSqlRawAsync(
+                        "UPDATE bank_import_rows SET match_status = {0}, updated_at = CURRENT_TIMESTAMP WHERE id = {1}",
+                        "needs_review", row.Id);
+                    continue;
+                }
+
+                // CASE 3: No matching manual payments → create new bank_import payment (existing behavior)
                 var payment = new NordicBeesERP.Models.Expenses.ExpensePayment
                 {
                     InvoiceId = row.MatchedExpenseInvoiceId!.Value,
                     PaymentDate = row.RowDate,
                     Amount = Math.Abs(row.Amount),
                     PaymentMethod = "BANK",
+                    Source = "bank_import",
+                    BankImportRowId = row.Id,
                     Reference = row.Reference ?? "",
                     Notes = $"Banko importas: {row.Description}"
                 };
@@ -632,6 +676,12 @@
                 {
                     // Invoice already paid - skip without counting as error
                     Snackbar.Add($"Sąskaita jau apmokėta - praleidžiama", Severity.Info);
+                    continue;
+                }
+                catch (NeedsReviewException ex)
+                {
+                    // needs_review — flagged by cross-check, needs manual review
+                    Snackbar.Add($"Sąskaitai {ex.InvoiceId} reikia rankinio patikrinimo ({ex.ManualPaymentCount} mokėjimas(-ai))", Severity.Warning);
                     continue;
                 }
                 catch (Exception ex)

@@ -141,6 +141,19 @@ namespace NordicBeesERP.Models.Expenses
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
+        [MaxLength(20)]
+        [Column("source")]
+        public string Source { get; set; } = "manual";
+
+        [Column("bank_confirmed")]
+        public bool BankConfirmed { get; set; } = false;
+
+        [Column("bank_import_row_id")]
+        public int? BankImportRowId { get; set; }
+
+        [Column("bank_import_id")]
+        public int? BankImportId { get; set; }
+
         // Navigation
         [NotMapped]
         public virtual ExpenseInvoice? Invoice { get; set; }

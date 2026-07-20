@@ -76,6 +76,7 @@ namespace NordicBeesERP.Services
                     "other" => PaymentMethod.Other,
                     _ => PaymentMethod.BankTransfer
                 },
+                Source = "manual",
                 ReferenceNumber = reference,
                 Notes = notes,
                 CreatedBy = userId,
@@ -865,6 +866,66 @@ namespace NordicBeesERP.Services
                 throw new InvalidOperationException($"Sąskaita {row.MatchedInvoiceId} jau apmokėta iš banko importo");
             }
 
+             // === Cross-check: detect duplicate manual payments before creating bank-import payment ===
+            var manualPayments = await context.Payments
+                .Where(p => p.InvoiceId == row.MatchedInvoiceId
+                         && p.Source == "manual"
+                         && p.BankConfirmed == false)
+                .ToListAsync();
+
+            if (manualPayments.Count == 1)
+            {
+                var existing = manualPayments[0];
+                if (existing.Amount == row.Amount)
+                {
+                    // CASE 1: Same amount → link existing manual payment to this bank import row
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE payments SET bank_confirmed = 1, bank_import_row_id = {0}, bank_import_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                        bankImportRowId, row.ImportId, existing.Id);
+
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE bank_import_rows SET match_status = {0}, payment_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                        "matched", existing.Id, bankImportRowId);
+
+                    await RecalculateInvoiceStatusInternalAsync(context, row.MatchedInvoiceId.Value);
+
+                    await LogAuditEntryAsync(context, existing.Id, null, "bank_confirmed", null, null, userId,
+                        JsonSerializer.Serialize(new { BankImportRowId = bankImportRowId, OriginalAmount = existing.Amount }));
+
+                    return existing.Id;
+                }
+                else
+                {
+                    // CASE 2: Amount mismatch → needs_review
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                        "needs_review", row.MatchedInvoiceId, bankImportRowId);
+
+                    throw new NeedsReviewException(
+                        bankImportRowId: bankImportRowId,
+                        invoiceId: row.MatchedInvoiceId!.Value,
+                        manualPaymentCount: 1,
+                        bankAmount: row.Amount,
+                        manualAmount: existing.Amount,
+                        message: $"Sumos nesutampa: mokėjimas {existing.Amount:N2} €, bankas {row.Amount:N2} €. Reikia rankinio patikrinimo.");
+                }
+            }
+            else if (manualPayments.Count > 1)
+            {
+                // CASE 4: Multiple manual payments (ambiguous) → needs_review
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                    "needs_review", row.MatchedInvoiceId, bankImportRowId);
+
+                throw new NeedsReviewException(
+                    bankImportRowId: bankImportRowId,
+                    invoiceId: row.MatchedInvoiceId!.Value,
+                    manualPaymentCount: manualPayments.Count,
+                    bankAmount: row.Amount,
+                    message: $"Rasti keli neatidėti mokėjimai ({manualPayments.Count}) tai pačiai sąskaitai. Reikia rankinio patikrinimo.");
+            }
+            // CASE 3: No matching manual payments → proceed with normal behavior (create new payment)
+
              // Create payment with invoice_id set
              var payment = new Payment
              {
@@ -873,6 +934,7 @@ namespace NordicBeesERP.Services
                  CustomerId = invoice.CustomerId,
                 Amount = row.Amount,
                 PaymentMethod = PaymentMethod.BankTransfer,
+                Source = "bank_import",
                 ReferenceNumber = row.Reference,
                 Notes = $"Bank import: {row.BankImport.FileName}",
                 BankImportRowId = bankImportRowId,

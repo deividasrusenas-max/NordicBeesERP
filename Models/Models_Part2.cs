@@ -475,6 +475,9 @@ public class Invoice
         [Column("bank_import_id")]
         public int? BankImportId { get; set; }
 
+        [Column("bank_confirmed")]
+        public bool BankConfirmed { get; set; } = false;
+
         [Column("created_by")]
         public int? CreatedBy { get; set; }
 
