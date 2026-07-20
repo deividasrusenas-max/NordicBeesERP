@@ -79,13 +79,13 @@
             <MudItem xs="12" md="6">
                 <MudPaper Elevation="0" Class="pa-4" 
                           Style="background:#eff6ff; border-radius:8px; border-left:4px solid #2563eb; padding:16px; height:100%;">
-                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-3">Kliento informacija</MudText>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3" Style="font-weight:600">Kliento informacija</MudText>
                     <MudGrid Spacing="2">
                         <MudItem xs="5">
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Vardas</MudText>
                         </MudItem>
                         <MudItem xs="7">
-                            <MudText Typo="Typo.body2">@_invoice.Customer?.Name</MudText>
+                            <MudText Typo="Typo.body1">@_invoice.Customer?.Name</MudText>
                         </MudItem>
                         @if (!string.IsNullOrEmpty(_invoice.Customer?.VatCode))
                         {
@@ -93,7 +93,7 @@
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas</MudText>
                             </MudItem>
                             <MudItem xs="7">
-                                <MudText Typo="Typo.body2">@_invoice.Customer.VatCode</MudText>
+                                <MudText Typo="Typo.body1">@_invoice.Customer.VatCode</MudText>
                             </MudItem>
                         }
                         @if (!string.IsNullOrEmpty(_invoice.Customer?.CompanyCode))
@@ -102,7 +102,7 @@
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">Įmonės kodas</MudText>
                             </MudItem>
                             <MudItem xs="7">
-                                <MudText Typo="Typo.body2">@_invoice.Customer.CompanyCode</MudText>
+                                <MudText Typo="Typo.body1">@_invoice.Customer.CompanyCode</MudText>
                             </MudItem>
                         }
                         @if (!string.IsNullOrEmpty(_invoice.Customer?.Address))
@@ -111,7 +111,7 @@
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">Adresas</MudText>
                             </MudItem>
                             <MudItem xs="7">
-                                <MudText Typo="Typo.body2">@_invoice.Customer.Address</MudText>
+                                <MudText Typo="Typo.body1">@_invoice.Customer.Address</MudText>
                             </MudItem>
                         }
                         @if (!string.IsNullOrEmpty(_invoice.Customer?.Email))
@@ -120,7 +120,7 @@
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">El. paštas</MudText>
                             </MudItem>
                             <MudItem xs="7">
-                                <MudText Typo="Typo.body2">@_invoice.Customer?.Email</MudText>
+                                <MudText Typo="Typo.body1">@_invoice.Customer?.Email</MudText>
                             </MudItem>
                         }
                     </MudGrid>
@@ -131,37 +131,37 @@
              <MudItem xs="12" md="6">
                  <MudPaper Elevation="0" Class="pa-4" 
                            Style="background:#f5f3ff; border-radius:8px; border-left:4px solid #7c3aed; padding:16px; height:100%;">
-                     <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-3">Sąskaitos duomenys</MudText>
+                      <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3" Style="font-weight:600">Sąskaitos duomenys</MudText>
                      <MudGrid Spacing="2">
                          <MudItem xs="5">
                              <MudText Typo="Typo.caption" Color="Color.Secondary">Tipas</MudText>
                          </MudItem>
                          <MudItem xs="7">
-                             <MudText Typo="Typo.body2">@GetInvoiceTypeLabel(_invoice.InvoiceType)</MudText>
+                              <MudText Typo="Typo.body1">@GetInvoiceTypeLabel(_invoice.InvoiceType)</MudText>
                          </MudItem>
                          <MudItem xs="5">
                              <MudText Typo="Typo.caption" Color="Color.Secondary">Data</MudText>
                          </MudItem>
                          <MudItem xs="7">
-                             <MudText Typo="Typo.body2">@_invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudText>
+                              <MudText Typo="Typo.body1">@_invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudText>
                          </MudItem>
                          <MudItem xs="5">
                              <MudText Typo="Typo.caption" Color="Color.Secondary">Terminas</MudText>
                          </MudItem>
                          <MudItem xs="7">
-                             <MudText Typo="Typo.body2">@(_invoice.PaymentTermDays > 0 ? $"{_invoice.PaymentTermDays} d." : "-")</MudText>
+                              <MudText Typo="Typo.body1">@(_invoice.PaymentTermDays > 0 ? $"{_invoice.PaymentTermDays} d." : "-")</MudText>
                          </MudItem>
                          <MudItem xs="5">
                              <MudText Typo="Typo.caption" Color="Color.Secondary">Valiuta</MudText>
                          </MudItem>
                          <MudItem xs="7">
-                             <MudText Typo="Typo.body2">EUR</MudText>
+                              <MudText Typo="Typo.body1">EUR</MudText>
                          </MudItem>
                          <MudItem xs="5">
                              <MudText Typo="Typo.caption" Color="Color.Secondary">Kalba</MudText>
                          </MudItem>
                          <MudItem xs="7">
-                             <MudText Typo="Typo.body2">@(_invoice.Language == "lt" || _invoice.Language == "LT" ? "Lietuvių" : _invoice.Language)</MudText>
+                              <MudText Typo="Typo.body1">@(_invoice.Language == "lt" || _invoice.Language == "LT" ? "Lietuvių" : _invoice.Language)</MudText>
                          </MudItem>
                      </MudGrid>
                  </MudPaper>
@@ -171,7 +171,7 @@
         <!-- INVOICE LINES TABLE -->
         <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-3 pa-3" 
                   Style="background:#f8fafc; border-radius:8px;">
-            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Prekių sąrašas</MudText>
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Prekių sąrašas</MudText>
             
             @if (_invoiceLines is not null && _invoiceLines.Any())
             {
@@ -233,10 +233,20 @@
             }
         </MudPaper>
 
+        <!-- Comment Section -->
+        @if (!string.IsNullOrEmpty(_invoice.Notes))
+        {
+            <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-3"
+                      Style="background:#f8fafc; border-radius:8px;">
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Komentaras</MudText>
+                <MudText Typo="Typo.body1">@_invoice.Notes</MudText>
+            </MudPaper>
+        }
+
         <!-- Payment Information Section -->
         <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-3" 
                   Style="background:#f8fafc; border-radius:8px;">
-            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-1">Mokėjimo informacija</MudText>
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Mokėjimo informacija</MudText>
             
             <!-- Payment Status Cards -->
             <MudGrid>
