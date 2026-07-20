@@ -35,6 +35,8 @@ jobs:
               --add-host host.docker.internal:host-gateway \
               -e ASPNETCORE_ENVIRONMENT=Production \
               -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
+              -v /var/lib/nordicbees/artwork:/var/lib/nordicbees/artwork \
+              -v /var/lib/nordicbees/delivery-receipts:/var/lib/nordicbees/delivery-receipts \
               -p 8080:8080 \
               nordicbees-erp:latest
           else
@@ -46,6 +48,8 @@ jobs:
               --add-host host.docker.internal:host-gateway \
               -e ASPNETCORE_ENVIRONMENT=Staging \
               -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp_staging;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
+              -v /var/lib/nordicbees/artwork-staging:/var/lib/nordicbees/artwork \
+              -v /var/lib/nordicbees/delivery-receipts-staging:/var/lib/nordicbees/delivery-receipts \
               -p 8081:8080 \
               nordicbees-erp:staging
           fi
