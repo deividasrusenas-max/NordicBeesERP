@@ -109,12 +109,14 @@
                         <MudTd DataLabel="Referencė">@row.Reference</MudTd>
                         <MudTd DataLabel="Klientas">@row.PayerName</MudTd>
                         <MudTd DataLabel="Susieti">
-                            <MudSelect T="int?" Label="Sąskaita" Value="@row.MatchedInvoiceId" ValueChanged="@(async (int? id) => await OnRowMatchChanged(row, id))" Clearable="true" Variant="Variant.Outlined" Dense="true">
-                                @foreach (var invoice in _unmatchedInvoices)
-                                {
-                                    <MudSelectItem T="int?" Value="@invoice.Id">@invoice.InvoiceNumber - @invoice.CustomerName (@invoice.RemainingAmount.ToString("N2") €)</MudSelectItem>
-                                }
-                            </MudSelect>
+                            <MudAutocomplete T="InvoiceWithPaymentInfo" Label="Sąskaita"
+                                Value="@(FindInvoiceById(row.MatchedInvoiceId))"
+                                SearchFunc="@SearchUnmatchedInvoices"
+                                ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} - {i.CustomerName} ({i.RemainingAmount:N2} €)")"
+                                ValueChanged="@(async (InvoiceWithPaymentInfo? inv) => await OnRowMatchChanged(row, inv?.Id))"
+                                Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="false"
+                                MinCharacters="1" DebounceInterval="300" Clearable="true" />
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -138,12 +140,14 @@
                             <MudTd DataLabel="Referencė">@expRow.Reference</MudTd>
                             <MudTd DataLabel="Gavėjas">@expRow.PayerName</MudTd>
                             <MudTd DataLabel="Susieti su išlaidų sąskaita">
-                                <MudSelect T="int?" Label="Išlaidų sąskaita" Value="@expRow.MatchedExpenseInvoiceId" ValueChanged="@(async (int? id) => await OnExpenseRowMatchChanged(expRow, id))" Clearable="true" Dense="true">
-                                    @foreach (var inv in _unmatchedExpenseInvoices)
-                                    {
-                                        <MudSelectItem T="int?" Value="@((int?)inv.Id)">@inv.InvoiceNumber — @(inv.PendingSupplierName ?? "Tiekėjas") (@inv.AmountInclVat.ToString("N2") €)</MudSelectItem>
-                                    }
-                                </MudSelect>
+                                <MudAutocomplete T="NordicBeesERP.Models.Expenses.ExpenseInvoice" Label="Išlaidų sąskaita"
+                                    Value="@(FindExpenseInvoiceById(expRow.MatchedExpenseInvoiceId))"
+                                    SearchFunc="@SearchUnmatchedExpenseInvoices"
+                                    ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} — {(i.PendingSupplierName ?? "Tiekėjas")} ({i.AmountInclVat:N2} €)")"
+                                    ValueChanged="@(async (NordicBeesERP.Models.Expenses.ExpenseInvoice? inv) => await OnExpenseRowMatchChanged(expRow, inv?.Id))"
+                                    Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                    ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="false"
+                                    MinCharacters="1" DebounceInterval="300" Clearable="true" />
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
@@ -393,10 +397,12 @@
 
             int matchedCount = 0;
             foreach (var row in _parsedRows.Where(r => r.Reference != null &&
-                r.Reference.StartsWith("LAK", StringComparison.OrdinalIgnoreCase)))
+                (r.Reference.StartsWith("LAK", StringComparison.OrdinalIgnoreCase) ||
+                 r.Reference.StartsWith("ULAK", StringComparison.OrdinalIgnoreCase))))
             {
+                var refNormalized = row.Reference.Trim();
                 var matchedInvoice = _unmatchedInvoices
-                    .FirstOrDefault(i => i.InvoiceNumber.Equals(row.Reference, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(i => i.InvoiceNumber.Trim().Equals(refNormalized, StringComparison.OrdinalIgnoreCase));
                 if (matchedInvoice != null)
                 {
                     row.MatchedInvoiceId = matchedInvoice.Id;
@@ -473,6 +479,44 @@
         row.MatchedExpenseInvoiceId = invoiceId;
         row.MatchStatus = invoiceId.HasValue ? "manual_match_expense" : "unmatched";
         await InvokeAsync(StateHasChanged);
+    }
+
+    private InvoiceWithPaymentInfo? FindInvoiceById(int? id)
+    {
+        if (!id.HasValue) return null;
+        return _unmatchedInvoices.FirstOrDefault(i => i.Id == id.Value);
+    }
+
+    private Task<IEnumerable<InvoiceWithPaymentInfo>> SearchUnmatchedInvoices(string term, CancellationToken ct)
+    {
+        IEnumerable<InvoiceWithPaymentInfo> result;
+        if (string.IsNullOrWhiteSpace(term))
+            result = _unmatchedInvoices.Take(20);
+        else
+            result = _unmatchedInvoices
+                .Where(i => i.InvoiceNumber.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                             (i.CustomerName != null && i.CustomerName.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .Take(20);
+        return Task.FromResult(result);
+    }
+
+    private NordicBeesERP.Models.Expenses.ExpenseInvoice? FindExpenseInvoiceById(int? id)
+    {
+        if (!id.HasValue) return null;
+        return _unmatchedExpenseInvoices.FirstOrDefault(i => i.Id == id.Value);
+    }
+
+    private Task<IEnumerable<NordicBeesERP.Models.Expenses.ExpenseInvoice>> SearchUnmatchedExpenseInvoices(string term, CancellationToken ct)
+    {
+        IEnumerable<NordicBeesERP.Models.Expenses.ExpenseInvoice> result;
+        if (string.IsNullOrWhiteSpace(term))
+            result = _unmatchedExpenseInvoices.Take(20);
+        else
+            result = _unmatchedExpenseInvoices
+                .Where(i => i.InvoiceNumber.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                             (i.PendingSupplierName != null && i.PendingSupplierName.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .Take(20);
+        return Task.FromResult(result);
     }
     
     private async Task SaveMatches()
