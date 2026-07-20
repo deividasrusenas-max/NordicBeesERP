@@ -173,45 +173,60 @@ public class OrderService : IOrderService
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
-        // Generate order number if not provided
+        // Generate order number if not provided (read-only, can stay outside transaction)
         if (string.IsNullOrWhiteSpace(order.OrderNumber))
             order.OrderNumber = await GenerateNextOrderNumberAsync();
 
         var status = string.IsNullOrEmpty(order.Status) ? "draft" : order.Status;
 
-        await context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO orders (order_number, order_date, customer_id, delivery_date, status, notes, created_at, updated_at) " +
-            "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, NOW(), NOW())",
-            order.OrderNumber,
-            order.OrderDate,
-            order.CustomerId,
-            order.DeliveryDate,
-            status,
-            order.Notes
-        );
-
-        var newOrderId = await context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
-
-        // Insert lines
-        foreach (var line in lines)
+        // Wrap INSERT order + LAST_INSERT_ID() + INSERT order_lines in a single transaction.
+        // This guarantees the same underlying connection is used for all three operations,
+        // so LAST_INSERT_ID() returns the correct auto-increment ID from the order INSERT.
+        // Without this, EF Core may return the connection to the pool after the INSERT,
+        // and LAST_INSERT_ID() on a new connection returns 0 → FK violation on order_lines.
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
         {
             await context.Database.ExecuteSqlRawAsync(
-                "INSERT INTO order_lines (order_id, line_number, product_id, quantity, price, notes, lot_number, expiry_date, packed_at, packed_by_user_id) " +
-                "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
-                newOrderId,
-                line.LineNumber,
-                line.ProductId,
-                line.Quantity,
-                line.Price,
-                line.Notes,
-                line.LotNumber,
-                line.ExpiryDate,
-                line.PackedAt,
-                line.PackedByUserId
+                "INSERT INTO orders (order_number, order_date, customer_id, delivery_date, status, notes, created_at, updated_at) " +
+                "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, NOW(), NOW())",
+                order.OrderNumber,
+                order.OrderDate,
+                order.CustomerId,
+                order.DeliveryDate,
+                status,
+                order.Notes
             );
-        }
 
-        return newOrderId;
+            var newOrderId = await context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
+
+            // Insert lines
+            foreach (var line in lines)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO order_lines (order_id, line_number, product_id, quantity, price, notes, lot_number, expiry_date, packed_at, packed_by_user_id) " +
+                    "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
+                    newOrderId,
+                    line.LineNumber,
+                    line.ProductId,
+                    line.Quantity,
+                    line.Price,
+                    line.Notes,
+                    line.LotNumber,
+                    line.ExpiryDate,
+                    line.PackedAt,
+                    line.PackedByUserId
+                );
+            }
+
+            await transaction.CommitAsync();
+            return newOrderId;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task PackLineAsync(int orderLineId, string lotNumber, DateTime? expiryDate, int userId)
