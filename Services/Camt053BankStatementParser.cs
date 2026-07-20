@@ -8,7 +8,7 @@ namespace NordicBeesERP.Services;
 public static class Camt053BankStatementParser
 {
     private static readonly XNamespace CamtNs = "urn:iso:std:iso:20022:tech:xsd:camt.053.001.02";
-    private static readonly Regex LakPattern = new(@"LAK\d+|ULAK\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex LakPattern = new(@"LAK\s*\d+|ULAK\s*\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public static List<BankImportRowViewModel> Parse(Stream fileStream, string fileName)
     {
@@ -130,7 +130,7 @@ public static class Camt053BankStatementParser
             var lakMatch = LakPattern.Match(description);
             if (lakMatch.Success)
             {
-                reference = lakMatch.Value.ToUpperInvariant();
+                reference = Regex.Replace(lakMatch.Value, @"\s+", "").ToUpperInvariant();
                 matchStatus = "auto_match_pending";
             }
         }
