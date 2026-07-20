@@ -79,7 +79,7 @@
             </MudNavGroup>
         }
 
-        @if (_isAdmin || _isDesigner)
+        @if (_isAdmin || _isDesigner || _isManager)
         {
             <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
                 <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
@@ -104,7 +104,7 @@
             {
                 <MudNavLink Href="/settings/expense-categories" Icon="@Icons.Material.Filled.Category">Išlaidų kategorijos</MudNavLink>
             }
-            @if (_isAdmin || _isDesigner)
+            @if (_isAdmin || _isDesigner || _isManager)
             {
                 <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
             }

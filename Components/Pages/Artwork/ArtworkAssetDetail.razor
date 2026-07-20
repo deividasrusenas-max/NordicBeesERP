@@ -1,5 +1,7 @@
 @page "/artwork/asset/{Id:int}"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = "ArtworkAccess")]
+@using Microsoft.AspNetCore.Authorization
 @using NordicBeesERP.Models.Artwork
 @using NordicBeesERP.Services.Artwork
 @using NordicBeesERP.Helpers

@@ -1,5 +1,7 @@
 @page "/artwork/upload"
 @page "/artwork/upload/{AssetId:int}"
+@attribute [Authorize(Policy = "ArtworkAccess")]
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
 @using MudBlazor
 @using NordicBeesERP.Services.Artwork
