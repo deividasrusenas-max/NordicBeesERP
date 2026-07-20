@@ -60,7 +60,8 @@ else
 fi
 
 # GATE 2: refuse to release if any staged/modified .cs file matches the
-# #1 recurring FROZEN.md anti-pattern: FindAsync() + SaveChangesAsync()
+# #1 recurring anti-pattern (see .clinerules/nordicbees-standards.md,
+# "EF CORE UPDATE PATTERN" section): FindAsync() + SaveChangesAsync()
 # in the same file (detached-entity write that silently persists 0 rows
 # under global NoTracking). This is a known, previously-shipped bug
 # class -- mechanical check instead of trusting any agent to remember.
@@ -81,9 +82,9 @@ for f in $CHANGED_CS; do
 done
 if [ -n "$BAD_FILES" ]; then
   echo "ERROR: bump-version.sh refused to run." >&2
-  echo "The following changed file(s) contain both FindAsync( and SaveChangesAsync() -- this is the known FROZEN.md anti-pattern (detached entity, silent 0-row write under global NoTracking):" >&2
+  echo "The following changed file(s) contain both FindAsync( and SaveChangesAsync() -- this is the known anti-pattern from .clinerules/nordicbees-standards.md (detached entity, silent 0-row write under global NoTracking):" >&2
   echo -e "$BAD_FILES" >&2
-  echo "Fix with ExecuteSqlRawAsync per FROZEN.md, or if this is a false positive (e.g. genuine tracked-entity flow), review manually before bumping version." >&2
+  echo "Fix with ExecuteSqlRawAsync per .clinerules/nordicbees-standards.md, or if this is a false positive (e.g. genuine tracked-entity flow), review manually before bumping version." >&2
   exit 1
 fi
 
