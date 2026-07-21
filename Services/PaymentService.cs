@@ -240,8 +240,8 @@ namespace NordicBeesERP.Services
             // Step 1: Load invoices matching all criteria (no BusinessPartners join)
             var invoiceQuery = context.Invoices
                 .Where(i => i.Status != InvoiceStatus.Disputed
-                    && EF.Functions.Like(i.InvoiceNumber, "LAK%")
-                    && !EF.Functions.Like(i.InvoiceNumber, "ULAK%")
+                    && EF.Functions.Like(i.InvoiceNumber.ToUpper(), "LAK%")
+                    && !EF.Functions.Like(i.InvoiceNumber.ToUpper(), "ULAK%")
                     && i.PaymentStatus != "paid"
                     && (i.TotalInclVat - i.PaidAmount) > 0);
 
