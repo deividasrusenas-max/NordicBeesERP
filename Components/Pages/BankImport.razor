@@ -162,6 +162,12 @@
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Nėra debetinių operacijų šiame faile</MudText>
                     }
                 }
+                <MudStack Row="true" Class="mt-3">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="async () => await SaveMatches()"
+                               Disabled="@_savingMatches">Išsaugoti sutapimus →</MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="CancelWizard">Atšaukti</MudButton>
+                </MudStack>
             }
             else if (_wizardStep == 2)
             {
