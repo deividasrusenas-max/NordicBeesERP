@@ -89,62 +89,33 @@
             {
                 <MudText Typo="Typo.h6" Class="mb-3">2 žingsnis: Susiejimas</MudText>
                 <MudText Class="mb-3">Susiekite banko išrašus su sąskaitomis</MudText>
-                <MudTable T="BankImportRowViewModel" Items="@(_importRows.Where(r => r.Amount > 0).ToList())" Hover="true" Dense="true" Loading="@_rowsLoading">
-                    <HeaderContent>
-                        <MudTh>Sąskaita</MudTh>
-                        <MudTh>Data</MudTh>
-                        <MudTh>Tipas</MudTh>
-                        <MudTh>Suma</MudTh>
-                        <MudTh>Aprašymas</MudTh>
-                        <MudTh>Referencė</MudTh>
-                        <MudTh>Klientas</MudTh>
-                        <MudTh>Susieti</MudTh>
-                    </HeaderContent>
-                    <RowTemplate Context="row">
-                        <MudTd DataLabel="Sąskaita">@row.Id</MudTd>
-                        <MudTd DataLabel="Data">@row.RowDate.ToString("yyyy-MM-dd")</MudTd>
-                        <MudTd DataLabel="Tipas">@row.Description</MudTd>
-                        <MudTd DataLabel="Suma" Style="@(row.Amount > 0 ? "color:green;font-weight:bold" : "color:red;font-weight:bold")">@row.Amount.ToString("N2") €</MudTd>
-                        <MudTd DataLabel="Aprašymas">@row.Description</MudTd>
-                        <MudTd DataLabel="Referencė">@row.Reference</MudTd>
-                        <MudTd DataLabel="Klientas">@row.PayerName</MudTd>
-                        <MudTd DataLabel="Susieti">
-                            <MudAutocomplete T="InvoiceWithPaymentInfo" Label="Sąskaita"
-                                Value="@(FindInvoiceById(row.MatchedInvoiceId))"
-                                SearchFunc="@SearchUnmatchedInvoices"
-                                ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} - {i.CustomerName} ({i.RemainingAmount:N2} €)")"
-                                ValueChanged="@(async (InvoiceWithPaymentInfo? inv) => await OnRowMatchChanged(row, inv))"
-                                Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
-                                ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="false"
-                                MinCharacters="1" DebounceInterval="300" Clearable="true" />
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-
-                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Išlaidos (debetinės operacijos)</MudText>
-                @if (_importRows.Any(r => r.Amount < 0))
+                @if (_bankImportType != "expense")
                 {
-                    <MudTable T="BankImportRowViewModel" Items="@(_importRows.Where(r => r.Amount < 0).ToList())" Hover="true" Dense="true">
+                    <MudTable T="BankImportRowViewModel" Items="@(_importRows.Where(r => r.Amount > 0).ToList())" Hover="true" Dense="true" Loading="@_rowsLoading">
                         <HeaderContent>
+                            <MudTh>Sąskaita</MudTh>
                             <MudTh>Data</MudTh>
+                            <MudTh>Tipas</MudTh>
                             <MudTh>Suma</MudTh>
                             <MudTh>Aprašymas</MudTh>
                             <MudTh>Referencė</MudTh>
-                            <MudTh>Gavėjas</MudTh>
-                            <MudTh>Susieti su išlaidų sąskaita</MudTh>
+                            <MudTh>Klientas</MudTh>
+                            <MudTh>Susieti</MudTh>
                         </HeaderContent>
-                        <RowTemplate Context="expRow">
-                            <MudTd DataLabel="Data">@expRow.RowDate.ToString("yyyy-MM-dd")</MudTd>
-                            <MudTd DataLabel="Suma" Style="color:red;font-weight:bold">@expRow.Amount.ToString("N2") €</MudTd>
-                            <MudTd DataLabel="Aprašymas">@expRow.Description</MudTd>
-                            <MudTd DataLabel="Referencė">@expRow.Reference</MudTd>
-                            <MudTd DataLabel="Gavėjas">@expRow.PayerName</MudTd>
-                            <MudTd DataLabel="Susieti su išlaidų sąskaita">
-                                <MudAutocomplete T="NordicBeesERP.Models.Expenses.ExpenseInvoice" Label="Išlaidų sąskaita"
-                                    Value="@(FindExpenseInvoiceById(expRow.MatchedExpenseInvoiceId))"
-                                    SearchFunc="@SearchUnmatchedExpenseInvoices"
-                                    ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} — {(i.PendingSupplierName ?? "Tiekėjas")} ({i.AmountInclVat:N2} €)")"
-                                    ValueChanged="@(async (NordicBeesERP.Models.Expenses.ExpenseInvoice? inv) => await OnExpenseRowMatchChanged(expRow, inv?.Id))"
+                        <RowTemplate Context="row">
+                            <MudTd DataLabel="Sąskaita">@row.Id</MudTd>
+                            <MudTd DataLabel="Data">@row.RowDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd DataLabel="Tipas">@row.Description</MudTd>
+                            <MudTd DataLabel="Suma" Style="@(row.Amount > 0 ? "color:green;font-weight:bold" : "color:red;font-weight:bold")">@row.Amount.ToString("N2") €</MudTd>
+                            <MudTd DataLabel="Aprašymas">@row.Description</MudTd>
+                            <MudTd DataLabel="Referencė">@row.Reference</MudTd>
+                            <MudTd DataLabel="Klientas">@row.PayerName</MudTd>
+                            <MudTd DataLabel="Susieti">
+                                <MudAutocomplete T="InvoiceWithPaymentInfo" Label="Sąskaita"
+                                    Value="@(FindInvoiceById(row.MatchedInvoiceId))"
+                                    SearchFunc="@SearchUnmatchedInvoices"
+                                    ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} - {i.CustomerName} ({i.RemainingAmount:N2} €)")"
+                                    ValueChanged="@(async (InvoiceWithPaymentInfo? inv) => await OnRowMatchChanged(row, inv))"
                                     Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
                                     ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="false"
                                     MinCharacters="1" DebounceInterval="300" Clearable="true" />
@@ -152,9 +123,44 @@
                         </RowTemplate>
                     </MudTable>
                 }
-                else
+
+                @if (_bankImportType != "income")
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Nėra debetinių operacijų šiame faile</MudText>
+                    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Išlaidos (debetinės operacijos)</MudText>
+                    @if (_importRows.Any(r => r.Amount < 0))
+                    {
+                        <MudTable T="BankImportRowViewModel" Items="@(_importRows.Where(r => r.Amount < 0).ToList())" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Data</MudTh>
+                                <MudTh>Suma</MudTh>
+                                <MudTh>Aprašymas</MudTh>
+                                <MudTh>Referencė</MudTh>
+                                <MudTh>Gavėjas</MudTh>
+                                <MudTh>Susieti su išlaidų sąskaita</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="expRow">
+                                <MudTd DataLabel="Data">@expRow.RowDate.ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd DataLabel="Suma" Style="color:red;font-weight:bold">@expRow.Amount.ToString("N2") €</MudTd>
+                                <MudTd DataLabel="Aprašymas">@expRow.Description</MudTd>
+                                <MudTd DataLabel="Referencė">@expRow.Reference</MudTd>
+                                <MudTd DataLabel="Gavėjas">@expRow.PayerName</MudTd>
+                                <MudTd DataLabel="Susieti su išlaidų sąskaita">
+                                    <MudAutocomplete T="NordicBeesERP.Models.Expenses.ExpenseInvoice" Label="Išlaidų sąskaita"
+                                        Value="@(FindExpenseInvoiceById(expRow.MatchedExpenseInvoiceId))"
+                                        SearchFunc="@SearchUnmatchedExpenseInvoices"
+                                        ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} — {(i.PendingSupplierName ?? "Tiekėjas")} ({i.AmountInclVat:N2} €)")"
+                                        ValueChanged="@(async (NordicBeesERP.Models.Expenses.ExpenseInvoice? inv) => await OnExpenseRowMatchChanged(expRow, inv?.Id))"
+                                        Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                        ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="false"
+                                        MinCharacters="1" DebounceInterval="300" Clearable="true" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Nėra debetinių operacijų šiame faile</MudText>
+                    }
                 }
             }
             else if (_wizardStep == 2)
@@ -170,13 +176,13 @@
                             <MudText Typo="Typo.body2">Sutapdyta eilučių:</MudText>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_matchedRowsCount</MudText>
+                            <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_visibleMatchedRowsCount</MudText>
                         </MudItem>
                         <MudItem xs="6">
                             <MudText Typo="Typo.body2">Bus sukurtų mokėjimų:</MudText>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_matchedRowsCount</MudText>
+                            <MudText Typo="Typo.body2" TextAlignment="TextAlignment.Right">@_visibleMatchedRowsCount</MudText>
                         </MudItem>
                     </MudGrid>
                 </MudPaper>
@@ -281,6 +287,19 @@
     
     private int _matchedRowsCount = 0;
     
+    // URL query-string parameter for entry-point filtering
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? BankImportType { get; set; }
+    
+    private string? _bankImportType;
+    
+    private int _visibleMatchedRowsCount => _bankImportType switch
+    {
+        "income" => _importRows.Count(r => r.Amount > 0 && r.MatchedInvoiceId.HasValue),
+        "expense" => _importRows.Count(r => r.Amount < 0 && r.MatchedExpenseInvoiceId.HasValue),
+        _ => _matchedRowsCount
+    };
+    
     protected override async Task OnInitializedAsync()
     {
         await LoadImportsAsync();
@@ -289,6 +308,7 @@
     protected override void OnParametersSet()
     {
         _disposed = false;
+        _bankImportType = BankImportType;
     }
     
     public void Dispose()
