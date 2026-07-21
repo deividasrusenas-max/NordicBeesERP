@@ -515,7 +515,11 @@
             return _unmatchedInvoices.Take(20);
 
         var results = await PaymentService.SearchAllInvoicesAsync(term, 20);
-        _searchableInvoices = results;
+        foreach (var inv in results)
+        {
+            if (!_searchableInvoices.Any(x => x.Id == inv.Id))
+                _searchableInvoices.Add(inv);
+        }
         return results;
     }
 
