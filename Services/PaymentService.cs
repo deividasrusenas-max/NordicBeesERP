@@ -302,6 +302,79 @@ namespace NordicBeesERP.Services
         }
 
         // =====================================================
+        // ALL-INVOICE SEARCH (for autocomplete)
+        // =====================================================
+
+        public async Task<List<InvoiceWithPaymentInfo>> SearchAllInvoicesAsync(string searchTerm, int limit = 20)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var query = from i in context.Invoices
+                        join bp in context.BusinessPartners on i.CustomerId equals bp.Id into bpGroup
+                        from bp in bpGroup.DefaultIfEmpty()
+                        where (EF.Functions.Like(i.InvoiceNumber, "LAK%") || EF.Functions.Like(i.InvoiceNumber, "ULAK%"))
+                        select new InvoiceWithPaymentInfo
+                        {
+                            Id = i.Id,
+                            InvoiceNumber = i.InvoiceNumber,
+                            InvoiceDate = i.InvoiceDate,
+                            DueDate = i.DueDate,
+                            CustomerId = i.CustomerId,
+                            CustomerName = bp.Name,
+                            TotalInclVat = i.TotalInclVat,
+                            SubtotalExclVat = i.SubtotalExclVat,
+                            TotalVat = i.TotalVat,
+                            PaidAmount = i.PaidAmount,
+                            RemainingAmount = i.TotalInclVat - i.PaidAmount,
+                            PaymentStatus = i.PaymentStatus,
+                            LastPaymentDate = i.LastPaymentDate,
+                            Status = i.Status.ToString()
+                        };
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.ToLower();
+                query = query.Where(i => i.InvoiceNumber.ToLower().Contains(term) ||
+                                          i.CustomerName.ToLower().Contains(term));
+            }
+
+            return await query
+                .OrderByDescending(i => i.InvoiceDate)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        public async Task<InvoiceWithPaymentInfo?> GetInvoiceByIdAsync(int id)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var result = await (from i in context.Invoices
+                                join bp in context.BusinessPartners on i.CustomerId equals bp.Id into bpGroup
+                                from bp in bpGroup.DefaultIfEmpty()
+                                where i.Id == id
+                                select new InvoiceWithPaymentInfo
+                                {
+                                    Id = i.Id,
+                                    InvoiceNumber = i.InvoiceNumber,
+                                    InvoiceDate = i.InvoiceDate,
+                                    DueDate = i.DueDate,
+                                    CustomerId = i.CustomerId,
+                                    CustomerName = bp.Name,
+                                    TotalInclVat = i.TotalInclVat,
+                                    SubtotalExclVat = i.SubtotalExclVat,
+                                    TotalVat = i.TotalVat,
+                                    PaidAmount = i.PaidAmount,
+                                    RemainingAmount = i.TotalInclVat - i.PaidAmount,
+                                    PaymentStatus = i.PaymentStatus,
+                                    LastPaymentDate = i.LastPaymentDate,
+                                    Status = i.Status.ToString()
+                                })
+                                .FirstOrDefaultAsync();
+
+            return result;
+        }
+
+        // =====================================================
         // CASH FLOW FORECAST
         // =====================================================
 

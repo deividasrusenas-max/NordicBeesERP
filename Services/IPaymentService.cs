@@ -56,7 +56,20 @@ namespace NordicBeesERP.Services
             string? searchTerm = null,
             InvoiceStatus? status = null);
         Task<List<PaymentHistoryItem>> GetPaymentsByInvoiceAsync(int invoiceId);
-        
+
+        /// <summary>
+        /// Search across ALL LAK/ULAK invoices (any balance status) by invoice number or customer name.
+        /// Used by BankImport autocomplete so users can manually find and link zero-balance or fully-paid invoices.
+        /// Returns up to <paramref name="limit"/> results.
+        /// </summary>
+        Task<List<InvoiceWithPaymentInfo>> SearchAllInvoicesAsync(string searchTerm, int limit = 20);
+
+        /// <summary>
+        /// Fetch a single invoice by ID with customer name, for any balance status.
+        /// Returns null if not found (not a 404-style throw).
+        /// </summary>
+        Task<InvoiceWithPaymentInfo?> GetInvoiceByIdAsync(int id);
+
         // Payments Dashboard KPI
         Task<PaymentsDashboardKpi> GetPaymentsDashboardKpiAsync();
     }

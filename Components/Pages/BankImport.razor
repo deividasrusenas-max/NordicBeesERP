@@ -113,7 +113,7 @@
                                 Value="@(FindInvoiceById(row.MatchedInvoiceId))"
                                 SearchFunc="@SearchUnmatchedInvoices"
                                 ToStringFunc="@(i => i == null ? "" : $"{i.InvoiceNumber} - {i.CustomerName} ({i.RemainingAmount:N2} €)")"
-                                ValueChanged="@(async (InvoiceWithPaymentInfo? inv) => await OnRowMatchChanged(row, inv?.Id))"
+                                ValueChanged="@(async (InvoiceWithPaymentInfo? inv) => await OnRowMatchChanged(row, inv))"
                                 Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
                                 ResetValueOnEmptyText="true" CoerceText="true" CoerceValue="false"
                                 MinCharacters="1" DebounceInterval="300" Clearable="true" />
@@ -264,6 +264,7 @@
     private List<BankImportRowViewModel> _importRows = new();
     private List<BankImportRowViewModel> _parsedRows = new();
     private List<InvoiceWithPaymentInfo> _unmatchedInvoices = new();
+    private List<InvoiceWithPaymentInfo> _searchableInvoices = new();
     private List<NordicBeesERP.Models.Expenses.ExpenseInvoice> _unmatchedExpenseInvoices = new();
     private string? _pendingHash;
     
@@ -456,12 +457,12 @@
         rowViewModel.Id = row.Id;
     }
     
-    private async Task OnRowMatchChanged(BankImportRowViewModel row, int? invoiceId)
+    private async Task OnRowMatchChanged(BankImportRowViewModel row, InvoiceWithPaymentInfo? inv)
     {
-        if (invoiceId.HasValue)
+        if (inv != null)
         {
-            row.MatchedInvoiceId = invoiceId;
-            row.MatchedInvoiceNumber = _unmatchedInvoices.FirstOrDefault(i => i.Id == invoiceId.Value)?.InvoiceNumber;
+            row.MatchedInvoiceId = inv.Id;
+            row.MatchedInvoiceNumber = inv.InvoiceNumber;
             row.MatchStatus = "manual_match";
             _matchedRowsCount++;
         }
@@ -484,20 +485,18 @@
     private InvoiceWithPaymentInfo? FindInvoiceById(int? id)
     {
         if (!id.HasValue) return null;
-        return _unmatchedInvoices.FirstOrDefault(i => i.Id == id.Value);
+        return _unmatchedInvoices.FirstOrDefault(i => i.Id == id.Value)
+            ?? _searchableInvoices.FirstOrDefault(i => i.Id == id.Value);
     }
 
-    private Task<IEnumerable<InvoiceWithPaymentInfo>> SearchUnmatchedInvoices(string term, CancellationToken ct)
+    private async Task<IEnumerable<InvoiceWithPaymentInfo>> SearchUnmatchedInvoices(string term, CancellationToken ct)
     {
-        IEnumerable<InvoiceWithPaymentInfo> result;
         if (string.IsNullOrWhiteSpace(term))
-            result = _unmatchedInvoices.Take(20);
-        else
-            result = _unmatchedInvoices
-                .Where(i => i.InvoiceNumber.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                             (i.CustomerName != null && i.CustomerName.Contains(term, StringComparison.OrdinalIgnoreCase)))
-                .Take(20);
-        return Task.FromResult(result);
+            return _unmatchedInvoices.Take(20);
+
+        var results = await PaymentService.SearchAllInvoicesAsync(term, 20);
+        _searchableInvoices = results;
+        return results;
     }
 
     private NordicBeesERP.Models.Expenses.ExpenseInvoice? FindExpenseInvoiceById(int? id)
@@ -842,6 +841,7 @@
             
             // Load unmatched invoices for matching
             _unmatchedInvoices = await PaymentService.GetUnpaidInvoicesAsync();
+            _searchableInvoices = new List<InvoiceWithPaymentInfo>();
             
             _wizardStep = 1;
             _showWizard = true;
@@ -881,6 +881,7 @@
         _importRows = new List<BankImportRowViewModel>();
         _parsedRows = new List<BankImportRowViewModel>();
         _unmatchedInvoices = new List<InvoiceWithPaymentInfo>();
+        _searchableInvoices = new List<InvoiceWithPaymentInfo>();
         _matchedRowsCount = 0;
         _importId = 0;
         _pendingHash = null;
