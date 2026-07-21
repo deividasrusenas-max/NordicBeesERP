@@ -242,7 +242,6 @@ namespace NordicBeesERP.Services
                 .Where(i => i.Status != InvoiceStatus.Disputed
                     && EF.Functions.Like(i.InvoiceNumber.ToUpper(), "LAK%")
                     && !EF.Functions.Like(i.InvoiceNumber.ToUpper(), "ULAK%")
-                    && i.PaymentStatus != "paid"
                     && (i.TotalInclVat - i.PaidAmount) > 0);
 
             if (customerId.HasValue)
