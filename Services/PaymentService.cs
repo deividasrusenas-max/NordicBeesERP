@@ -237,52 +237,69 @@ namespace NordicBeesERP.Services
         {
             using var context = await _contextFactory.CreateDbContextAsync();
 
-            var query = from i in context.Invoices
-                        join bpRaw in context.BusinessPartners on i.CustomerId equals bpRaw.Id into bpGroup
-                        from bp in bpGroup.DefaultIfEmpty()
-                        where i.Status != InvoiceStatus.Disputed
-                            && EF.Functions.Like(i.InvoiceNumber, "LAK%")
-                            && !EF.Functions.Like(i.InvoiceNumber, "ULAK%")
-                            && i.PaymentStatus != "paid"
-                            && (i.TotalInclVat - i.PaidAmount) > 0
-                        select new InvoiceWithPaymentInfo
-                        {
-                            Id = i.Id,
-                            InvoiceNumber = i.InvoiceNumber,
-                            InvoiceDate = i.InvoiceDate,
-                            DueDate = i.DueDate,
-                            CustomerId = i.CustomerId,
-                            CustomerName = bp.Name,
-                            TotalInclVat = i.TotalInclVat,
-                            SubtotalExclVat = i.SubtotalExclVat,
-                            TotalVat = i.TotalVat,
-                            PaidAmount = i.PaidAmount,
-                            RemainingAmount = i.TotalInclVat - i.PaidAmount,
-                            PaymentStatus = i.PaymentStatus,
-                            LastPaymentDate = i.LastPaymentDate
-                        };
+            // Step 1: Load invoices matching all criteria (no BusinessPartners join)
+            var invoiceQuery = context.Invoices
+                .Where(i => i.Status != InvoiceStatus.Disputed
+                    && EF.Functions.Like(i.InvoiceNumber, "LAK%")
+                    && !EF.Functions.Like(i.InvoiceNumber, "ULAK%")
+                    && i.PaymentStatus != "paid"
+                    && (i.TotalInclVat - i.PaidAmount) > 0);
 
             if (customerId.HasValue)
             {
-                query = query.Where(i => i.CustomerId == customerId.Value);
+                invoiceQuery = invoiceQuery.Where(i => i.CustomerId == customerId.Value);
             }
 
             if (!string.IsNullOrEmpty(status))
             {
-                query = query.Where(i => i.PaymentStatus == status);
+                invoiceQuery = invoiceQuery.Where(i => i.PaymentStatus == status);
             }
 
             if (fromDate.HasValue)
             {
-                query = query.Where(i => i.InvoiceDate >= fromDate.Value);
+                invoiceQuery = invoiceQuery.Where(i => i.InvoiceDate >= fromDate.Value);
             }
 
             if (toDate.HasValue)
             {
-                query = query.Where(i => i.InvoiceDate <= toDate.Value);
+                invoiceQuery = invoiceQuery.Where(i => i.InvoiceDate <= toDate.Value);
             }
 
-            return await query.OrderBy(i => i.DueDate).ToListAsync();
+            var invoices = await invoiceQuery
+                .OrderBy(i => i.DueDate)
+                .ToListAsync();
+
+            if (invoices.Count == 0)
+            {
+                return new List<InvoiceWithPaymentInfo>();
+            }
+
+            // Step 2: Load customer names for the matched invoices
+            var customerIds = invoices.Select(i => i.CustomerId).Distinct().ToList();
+            var customers = await context.BusinessPartners
+                .Where(bp => customerIds.Contains(bp.Id))
+                .Select(bp => new { bp.Id, bp.Name })
+                .ToListAsync();
+
+            var customerNameLookup = customers.ToDictionary(c => c.Id, c => c.Name);
+
+            // Step 3: Combine in memory
+            return invoices.Select(i => new InvoiceWithPaymentInfo
+            {
+                Id = i.Id,
+                InvoiceNumber = i.InvoiceNumber,
+                InvoiceDate = i.InvoiceDate,
+                DueDate = i.DueDate,
+                CustomerId = i.CustomerId,
+                CustomerName = customerNameLookup.TryGetValue(i.CustomerId, out var name) ? name : string.Empty,
+                TotalInclVat = i.TotalInclVat,
+                SubtotalExclVat = i.SubtotalExclVat,
+                TotalVat = i.TotalVat,
+                PaidAmount = i.PaidAmount,
+                RemainingAmount = i.TotalInclVat - i.PaidAmount,
+                PaymentStatus = i.PaymentStatus,
+                LastPaymentDate = i.LastPaymentDate
+            }).ToList();
         }
 
         // =====================================================
