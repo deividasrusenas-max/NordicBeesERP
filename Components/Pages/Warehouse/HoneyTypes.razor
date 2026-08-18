@@ -1,9 +1,11 @@
 @page "/settings/honey-types"
 @rendermode InteractiveServer
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 @inject IHoneyTypeService HoneyTypeService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Navigation
 
 <PageTitle>Honey Types</PageTitle>
 
@@ -13,8 +15,30 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti naują</MudButton>
     </div>
 
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+            <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būsena:</MudText>
+            <MudChip T="string"
+                     Color="@(_filterActive == true ? Color.Success : Color.Default)"
+                     Variant="@(_filterActive == true ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleActiveFilter(true))"
+                     Size="Size.Small"
+                     Style="@(_filterActive == true ? "" : "opacity:0.7")">
+                Aktyvus
+            </MudChip>
+            <MudChip T="string"
+                     Color="@(_filterActive == false ? Color.Error : Color.Default)"
+                     Variant="@(_filterActive == false ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleActiveFilter(false))"
+                     Size="Size.Small"
+                     Style="@(_filterActive == false ? "" : "opacity:0.7")">
+                Neakyvus
+            </MudChip>
+        </div>
+    </MudPaper>
+
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-        <MudTable T="HoneyType" Items="_honeyTypes" Dense="true" Hover="true" Striped="true" Loading="_loading">
+        <MudTable T="HoneyType" Items="@FilteredHoneyTypes" Dense="true" Hover="true" Striped="true" Loading="_loading">
             <HeaderContent>
                 <MudTh>Kodas</MudTh>
                 <MudTh>Pavadinimas</MudTh>
@@ -62,15 +86,40 @@
 </MudDialog>
 
 @code {
+    [SupplyParameterFromQuery(Name = "active")]
+    public string? ActiveFilter { get; set; }
+
     private List<HoneyType> _honeyTypes = new();
     private HoneyType _editingItem = new();
     private bool _loading = true;
     private bool _dialogVisible = false;
+    private bool? _filterActive;
+
+    protected override void OnParametersSet()
+    {
+        _filterActive = ActiveFilter switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => null
+        };
+        StateHasChanged();
+    }
 
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
     }
+
+    private void ToggleActiveFilter(bool value)
+    {
+        _filterActive = _filterActive == value ? null : value;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("active", FilterUrlBuilder.ToQueryValue(_filterActive))), replace: false);
+    }
+
+    private IEnumerable<HoneyType> FilteredHoneyTypes =>
+        _honeyTypes.Where(h => !_filterActive.HasValue || h.IsActive == _filterActive.Value);
 
     private async Task LoadData()
     {
