@@ -16,13 +16,21 @@
         <MudItem xs="12" sm="6" md="4">
             <MudTextField @bind-Value="_searchTerm" Label="Paieška (numeris/arba klientas)" Variant="Variant.Outlined" Immediate="true" />
         </MudItem>
-        <MudItem xs="12" sm="6" md="4">
-            <MudSelect T="string?" Label="Mokėjimo būsena" Value="_selectedStatus" ValueChanged="OnStatusChanged" Clearable="true">
-                <MudSelectItem T="string?" Value="@((string?)null)">Visos</MudSelectItem>
-                <MudSelectItem T="string?" Value="@("unpaid")">Neapmokėtos</MudSelectItem>
-                <MudSelectItem T="string?" Value="@("partial")">Dalinai apmokėtos</MudSelectItem>
-                <MudSelectItem T="string?" Value="@("paid")">Apmokėtos</MudSelectItem>
-            </MudSelect>
+        <MudItem xs="12">
+            <div class="d-flex flex-wrap gap-2 align-center">
+                <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būsena:</MudText>
+                @foreach (var kv in _statusDisplay)
+                {
+                    <MudChip T="string"
+                             Color="@(_selectedStatus == kv.Key ? kv.Value.Color : Color.Default)"
+                             Variant="@(_selectedStatus == kv.Key ? Variant.Filled : Variant.Outlined)"
+                             OnClick="@(() => ToggleStatus(kv.Key))"
+                             Size="Size.Small"
+                             Style="@(_selectedStatus == kv.Key ? "" : "opacity:0.7")">
+                        @kv.Value.Label
+                    </MudChip>
+                }
+            </div>
         </MudItem>
         <MudItem xs="12" sm="6" md="4">
             <MudDatePicker @bind-Date="_fromDate" Label="Nuo" Variant="Variant.Outlined" />
@@ -142,9 +150,9 @@
             }
         }
 
-    private void OnStatusChanged(string? status)
+    private void ToggleStatus(string status)
     {
-        _selectedStatus = status;
+        _selectedStatus = _selectedStatus == status ? null : status;
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", FilterUrlBuilder.ToQueryValue(_searchTerm)),
             ("status", FilterUrlBuilder.ToQueryValue(_selectedStatus)),
