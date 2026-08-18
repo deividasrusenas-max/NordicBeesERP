@@ -1,14 +1,40 @@
 @page "/warehouse/transfers"
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
+@using NordicBeesERP.Helpers
 @inject ITransferService TransferService
 @inject IWarehouseService WarehouseService
 @inject IContainerService ContainerService
+@inject NavigationManager Navigation
 
 <PageTitle>Perkėlimų istorija</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h5" Class="mb-4">Perkėlimų istorija</MudText>
+
+    <MudPaper Class="pa-3 mb-4" Elevation="2">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudTextField T="string" Label="Paieška (nr. / sandėlis)" @bind-Value="_searchText"
+                    Immediate="true" OnValueChange="UpdateFilterSearchAsync" Clearable="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDateRangePicker T="DateTime?" Label="Perkėlimo data" @bind-DateRange="_dateRange"
+                    OnRangeSelected="UpdateDateRangeAsync" />
+            </MudItem>
+            @if (!string.IsNullOrWhiteSpace(_searchText) || _dateRange?.Start != null || _dateRange?.End != null)
+            {
+                <MudItem xs="12" Class="d-flex align-center">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                        Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                        OnClick="ClearFiltersAsync">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
 
     @if (_loading)
     {
@@ -20,7 +46,7 @@
     }
     else
     {
-        <MudTable T="TransferGroup" Items="_transfers" Dense="true" Hover="true" Striped="true"
+        <MudTable T="TransferGroup" Items="FilteredTransfers" Dense="true" Hover="true" Striped="true"
             OnRowClick="@((TableRowClickEventArgs<TransferGroup> args) => ToggleDetail(args.Item))"
             Style="cursor:pointer">
             <HeaderContent>
@@ -74,45 +100,73 @@
     private List<NordicBeesERP.Models.Warehouse> _warehouses = new();
     private bool _loading = true;
 
-    protected override async Task OnInitializedAsync()
+    [SupplyParameterFromQuery]
+    private string? Q { get; set; }
+    [SupplyParameterFromQuery(Name = "from")]
+    private string? DateFrom { get; set; }
+    [SupplyParameterFromQuery(Name = "to")]
+    private string? DateTo { get; set; }
+
+    private string _searchText = string.Empty;
+    private DateRange? _dateRange;
+
+    protected override async Task OnParametersSetAsync()
     {
-        _warehouses = (await WarehouseService.GetAllAsync()).ToList();
-        var movements = await TransferService.GetTransferHistoryAsync();
+        await LoadDataAsync();
+        _searchText = Q ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(DateFrom) && DateTime.TryParse(DateFrom, out var from))
+            _dateRange = new DateRange(from, _dateRange?.End);
+        if (!string.IsNullOrWhiteSpace(DateTo) && DateTime.TryParse(DateTo, out var to))
+            _dateRange = new DateRange(_dateRange?.Start, to);
+    }
 
-        _transfers = movements
-            .GroupBy(m => m.Notes ?? "")
-            .Where(g => !string.IsNullOrEmpty(g.Key))
-            .Select(g => new TransferGroup
-            {
-                TransferNumber = g.Key,
-                Date = g.Min(m => m.CreatedAt),
-                FromWarehouseId = g.First().FromWarehouseId,
-                ToWarehouseId = g.First().ToWarehouseId,
-                ContainerCount = g.Count(),
-                TotalQuantity = g.Sum(m => m.Quantity),
-                Containers = g.Select(m => new TransferContainerInfo
-                {
-                    Code = m.ContainerId.ToString(),
-                    Quantity = m.Quantity
-                }).ToList()
-            })
-            .OrderByDescending(t => t.Date)
-            .ToList();
-
-        // Pakeisti container ID į kodus
-        var allContainerIds = movements.Select(m => m.ContainerId).Distinct().ToList();
-        var containers = await ContainerService.GetByIdsAsync(allContainerIds);
-        foreach (var transfer in _transfers)
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
         {
-            foreach (var c in transfer.Containers)
+            _warehouses = (await WarehouseService.GetAllAsync()).ToList();
+            var movements = await TransferService.GetTransferHistoryAsync();
+
+            _transfers = movements
+                .GroupBy(m => m.Notes ?? "")
+                .Where(g => !string.IsNullOrEmpty(g.Key))
+                .Select(g => new TransferGroup
+                {
+                    TransferNumber = g.Key,
+                    Date = g.Min(m => m.CreatedAt),
+                    FromWarehouseId = g.First().FromWarehouseId,
+                    ToWarehouseId = g.First().ToWarehouseId,
+                    ContainerCount = g.Count(),
+                    TotalQuantity = g.Sum(m => m.Quantity),
+                    Containers = g.Select(m => new TransferContainerInfo
+                    {
+                        Code = m.ContainerId.ToString(),
+                        Quantity = m.Quantity
+                    }).ToList()
+                })
+                .OrderByDescending(t => t.Date)
+                .ToList();
+
+            // Pakeisti container ID į kodus
+            var allContainerIds = movements.Select(m => m.ContainerId).Distinct().ToList();
+            var containers = await ContainerService.GetByIdsAsync(allContainerIds);
+            foreach (var transfer in _transfers)
             {
-                var container = containers.FirstOrDefault(x => x.Id.ToString() == c.Code);
-                if (container != null)
-                    c.Code = container.ContainerCode;
+                foreach (var c in transfer.Containers)
+                {
+                    var container = containers.FirstOrDefault(x => x.Id.ToString() == c.Code);
+                    if (container != null)
+                        c.Code = container.ContainerCode;
+                }
             }
         }
-
-        _loading = false;
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
     }
 
     private void ToggleDetail(TransferGroup t)
@@ -123,6 +177,49 @@
     private string GetWarehouseName(int? id) => id.HasValue
         ? _warehouses.FirstOrDefault(w => w.Id == id.Value)?.Name ?? $"#{id}"
         : "-";
+
+    private IEnumerable<TransferGroup> GetFilteredTransfers()
+    {
+        if (_transfers == null) return Enumerable.Empty<TransferGroup>();
+        var q = _searchText?.Trim().ToLowerInvariant() ?? string.Empty;
+        return _transfers.Where(t =>
+        {
+            if (!string.IsNullOrWhiteSpace(q) &&
+                !t.TransferNumber.ToLowerInvariant().Contains(q) &&
+                !GetWarehouseName(t.FromWarehouseId).ToLowerInvariant().Contains(q) &&
+                !GetWarehouseName(t.ToWarehouseId).ToLowerInvariant().Contains(q))
+                return false;
+            if (_dateRange?.Start != null && t.Date.Date < _dateRange.Start.Value.Date) return false;
+            if (_dateRange?.End != null && t.Date.Date > _dateRange.End.Value.Date) return false;
+            return true;
+        });
+    }
+
+    private IEnumerable<TransferGroup> FilteredTransfers => GetFilteredTransfers();
+
+    private Task UpdateFilterSearchAsync(string value)
+    {
+        _searchText = value ?? string.Empty;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0], ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText)));
+        return Task.CompletedTask;
+    }
+
+    private Task UpdateDateRangeAsync(DateRange? range)
+    {
+        _dateRange = range;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("from", range?.Start?.ToString("yyyy-MM-dd")),
+            ("to", range?.End?.ToString("yyyy-MM-dd"))));
+        return Task.CompletedTask;
+    }
+
+    private Task ClearFiltersAsync()
+    {
+        _searchText = string.Empty;
+        _dateRange = null;
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0]);
+        return Task.CompletedTask;
+    }
 
     private class TransferGroup
     {
