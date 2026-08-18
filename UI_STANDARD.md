@@ -1,7 +1,9 @@
 # NordicBees ERP — UI Standartas: Sąrašo puslapiai
 
-> Referensas: `ExpenseInvoices.razor` + `Suppliers.razor`  
+> Referensas: `ExpenseInvoices.razor` + `Suppliers.razor` + **`/invoices/sales` (Sales Invoices)**
 > Visi sąrašo puslapiai TURI atitikti šį standartą.
+>
+> **PRIVALOMA VISIEMS NAUJIEMS PUSLAPIAMS** (2026-08-18): Kuriant BET KOKĮ naują sąrašo/index tipo puslapį, filtrų juosta TURI atitikti `/invoices/sales` puslapio pattern'ą iš karto — search laukas, data range (jei aktualu), status chip filtrai (jei 3+ statusai), quick-filter tabs (jei loginiai pogrupiai), "Išvalyti filtrus" veiksmas. Neišradinėti naujo filtrų UI stiliaus. Žr. `Docs/FILTER_STANDARDIZATION_PLAN.md` — esamų puslapių audito rezultatai pagal šį standartą.
 
 ---
 
