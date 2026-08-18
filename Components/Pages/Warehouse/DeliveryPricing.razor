@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 @inject IDeliveryService DeliveryService
 @inject ISupplierPaymentService PaymentService
 @inject ICustomerService CustomerService
@@ -11,12 +12,38 @@
 @inject IDialogService DialogService
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject NavigationManager Navigation
-@implements IDisposable
 
 <PageTitle>Pristatymų kainos ir mokėjimai</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h5" Class="mb-4">Pristatymų kainos ir mokėjimai</MudText>
+
+    <MudPaper Class="pa-3 mb-4" Elevation="2">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudTextField T="string" Label="Paieška (nr. / tiekėjas)" @bind-Value="_searchText"
+                    Immediate="true" OnValueChange="UpdateFilterSearchAsync" Clearable="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDateRangePicker T="DateTime?" Label="Pristatymo data" @bind-DateRange="_dateRange"
+                    OnRangeSelected="UpdateDateRangeAsync" />
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex align-center">
+                <MudStack Row="true" Spacing="2">
+                    @foreach (var status in _availableStatuses)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                            Color="@(_statusChipColor[status])"
+                            OnClick="@(() => ToggleStatusAsync(status))"
+                            Checked="@_selectedStatuses.Contains(status)">@status</MudChip>
+                    }
+                    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Clear"
+                        OnClick="ClearFiltersAsync">Išvalyti filtrus</MudButton>
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
 
     @if (_loading)
     {
@@ -24,7 +51,7 @@
     }
     else
     {
-        <MudTable T="Delivery" Items="_deliveries" Dense="true" Hover="true" Striped="true"
+        <MudTable T="Delivery" Items="FilteredDeliveries" Dense="true" Hover="true" Striped="true"
             OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) OpenPricingDetail(args.Item.Id); })"
             Style="cursor:pointer">
             <HeaderContent>
@@ -67,6 +94,27 @@
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
 
+    [SupplyParameterFromQuery]
+    private string? Q { get; set; }
+    [SupplyParameterFromQuery(Name = "from")]
+    private string? DateFrom { get; set; }
+    [SupplyParameterFromQuery(Name = "to")]
+    private string? DateTo { get; set; }
+    [SupplyParameterFromQuery(Name = "status")]
+    private string? StatusCsv { get; set; }
+
+    private string _searchText = string.Empty;
+    private DateRange? _dateRange;
+    private HashSet<string> _selectedStatuses = new();
+    private readonly List<string> _availableStatuses = new() { "Priimtas", "Neapmokėtas", "Apmokėtas", "Dalinai" };
+    private readonly Dictionary<string, Color> _statusChipColor = new()
+    {
+        { "Priimtas", Color.Default },
+        { "Neapmokėtas", Color.Error },
+        { "Apmokėtas", Color.Success },
+        { "Dalinai", Color.Warning }
+    };
+
     private bool IsDoubleClick(object item)
     {
         var now = DateTime.Now;
@@ -80,23 +128,31 @@
         return false;
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        Navigation.LocationChanged += OnLocationChanged;
-        await LoadData();
-    }
-
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    protected override async Task OnParametersSetAsync()
     {
         await LoadData();
-        await InvokeAsync(StateHasChanged);
+        _searchText = Q ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(DateFrom) && DateTime.TryParse(DateFrom, out var from))
+            _dateRange = new DateRange(from, _dateRange?.End);
+        if (!string.IsNullOrWhiteSpace(DateTo) && DateTime.TryParse(DateTo, out var to))
+            _dateRange = new DateRange(_dateRange?.Start, to);
+        _selectedStatuses = FilterUrlBuilder.ParseStatusCsv(StatusCsv);
     }
 
     private async Task LoadData()
     {
-        _suppliers = await CustomerService.GetSuppliersAsync();
-        _deliveries = await DeliveryService.GetAllAsync();
-        _loading = false;
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _suppliers = await CustomerService.GetSuppliersAsync();
+            _deliveries = await DeliveryService.GetAllAsync();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
     }
 
     private void OpenPricingDetail(int deliveryId)
@@ -116,8 +172,56 @@
 
     private string GetDebtStyle(decimal debt) => debt > 0 ? "color:red;font-weight:bold" : "";
 
-    public void Dispose()
+    private IEnumerable<Delivery> GetFilteredDeliveries()
     {
-        Navigation.LocationChanged -= OnLocationChanged;
+        if (_deliveries == null) return Enumerable.Empty<Delivery>();
+        var q = _searchText?.Trim().ToLowerInvariant() ?? string.Empty;
+        return _deliveries.Where(d =>
+        {
+            if (!string.IsNullOrWhiteSpace(q) &&
+                !d.DeliveryNumber.ToLowerInvariant().Contains(q) &&
+                !GetSupplierName(d.SupplierId).ToLowerInvariant().Contains(q))
+                return false;
+            if (_dateRange?.Start != null && d.DeliveryDate.Date < _dateRange.Start.Value.Date) return false;
+            if (_dateRange?.End != null && d.DeliveryDate.Date > _dateRange.End.Value.Date) return false;
+            if (_selectedStatuses.Count > 0 && !_selectedStatuses.Contains(GetStatusBadge(d).Label)) return false;
+            return true;
+        });
+    }
+
+    private IEnumerable<Delivery> FilteredDeliveries => GetFilteredDeliveries();
+
+    private Task UpdateFilterSearchAsync(string value)
+    {
+        _searchText = value ?? string.Empty;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0], ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText)));
+        return Task.CompletedTask;
+    }
+
+    private Task UpdateDateRangeAsync(DateRange? range)
+    {
+        _dateRange = range;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("from", range?.Start?.ToString("yyyy-MM-dd")),
+            ("to", range?.End?.ToString("yyyy-MM-dd"))));
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleStatusAsync(string status)
+    {
+        if (_selectedStatuses.Contains(status)) _selectedStatuses.Remove(status);
+        else _selectedStatuses.Add(status);
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses))));
+        return Task.CompletedTask;
+    }
+
+    private Task ClearFiltersAsync()
+    {
+        _searchText = string.Empty;
+        _dateRange = null;
+        _selectedStatuses.Clear();
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0]);
+        return Task.CompletedTask;
     }
 }
