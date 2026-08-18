@@ -1,34 +1,192 @@
 @page "/inventory"
+@rendermode InteractiveServer
+@using NordicBeesERP.Helpers
 @inject IWarehouseService WarehouseService
+@inject NavigationManager Navigation
 
-<MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">Sandėlio inventorius</MudText>
+<PageTitle>Sandėlio inventorius</PageTitle>
 
-<MudTable T="WarehouseStock" Items="@stocks" Hover="true" Dense="true">
-    <HeaderContent>
-        <MudTh>Kodas</MudTh>
-        <MudTh>Pavadinimas</MudTh>
-        <MudTh>Kiekis</MudTh>
-        <MudTh>Likutis</MudTh>
-        <MudTh>Atnaujinta</MudTh>
-        <MudTh>HoneyBatch ID (LOT Numeris)</MudTh>
-        <MudTh>Galioti iki</MudTh>
-    </HeaderContent>
-    <RowTemplate Context="stock">
-        <MudTd>@stock.Warehouse.Code</MudTd>
-        <MudTd>@stock.Product.Name</MudTd>
-        <MudTd>@stock.Quantity</MudTd>
-        <MudTd>@stock.AvailableQuantity</MudTd>
-        <MudTd>@stock.LastMovementDate?.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
-        <MudTd>@stock.HoneyBatchId</MudTd>
-        <MudTd>@stock.ExpirationDate?.ToString("yyyy-MM-dd")</MudTd>
-    </RowTemplate>
-</MudTable>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Sandėlio inventorius</MudText>
+
+    <MudPaper Class="pa-3 mb-4" Elevation="2">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudTextField T="string" Label="Paieška (kodas / pavadinimas)" @bind-Value="_searchText"
+                    Immediate="true" OnValueChange="UpdateFilterSearchAsync" Clearable="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDateRangePicker T="DateTime?" Label="Galioti iki" @bind-DateRange="_expirationRange"
+                    OnRangeSelected="UpdateExpirationRangeAsync" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField T="string" Label="Partija / LOT nr." @bind-Value="_lotFilter"
+                    Immediate="true" OnValueChange="UpdateLotFilterAsync" Clearable="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.FilterAltOff" />
+            </MudItem>
+            @if (!string.IsNullOrWhiteSpace(_searchText) || _expirationRange?.Start != null || _expirationRange?.End != null || !string.IsNullOrWhiteSpace(_lotFilter))
+            {
+                <MudItem xs="12" Class="d-flex align-center">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                        Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                        OnClick="ClearFiltersAsync">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (!FilteredStocks.Any())
+    {
+        <MudAlert Severity="Severity.Info">Sandėlio likučių nėra</MudAlert>
+    }
+    else
+    {
+        <MudTable T="WarehouseStock" Items="FilteredStocks" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>Kodas</MudTh>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh Style="text-align:right">Kiekis</MudTh>
+                <MudTh Style="text-align:right">Likutis</MudTh>
+                <MudTh>Atnaujinta</MudTh>
+                <MudTh>HoneyBatch ID (LOT Numeris)</MudTh>
+                <MudTh>Galioti iki</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="stock">
+                <MudTd>@stock.Warehouse.Code</MudTd>
+                <MudTd>@stock.Product.Name</MudTd>
+                <MudTd Style="text-align:right">@stock.Quantity.ToString("N1")</MudTd>
+                <MudTd Style="text-align:right">@stock.AvailableQuantity.ToString("N1")</MudTd>
+                <MudTd>@stock.LastMovementDate?.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+                <MudTd>@stock.HoneyBatchId</MudTd>
+                <MudTd>@stock.ExpirationDate?.ToString("yyyy-MM-dd")</MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
+            </PagerContent>
+        </MudTable>
+    }
+</MudContainer>
 
 @code {
-    private List<WarehouseStock> stocks = new List<WarehouseStock>();
+    private List<WarehouseStock> _stocks = new();
+    private bool _loading = true;
 
-    protected override async Task OnInitializedAsync()
+    [SupplyParameterFromQuery]
+    private string? Q { get; set; }
+    [SupplyParameterFromQuery(Name = "from")]
+    private string? DateFrom { get; set; }
+    [SupplyParameterFromQuery(Name = "to")]
+    private string? DateTo { get; set; }
+    [SupplyParameterFromQuery(Name = "lot")]
+    private string? LotFilterQuery { get; set; }
+
+    private string _searchText = string.Empty;
+    private DateRange? _expirationRange;
+    private string _lotFilter = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
     {
-        stocks = (await WarehouseService.GetAllStocksAsync()).ToList();
+        await LoadDataAsync();
+        _searchText = Q ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(DateFrom) && DateTime.TryParse(DateFrom, out var from))
+            _expirationRange = new DateRange(from, _expirationRange?.End);
+        if (!string.IsNullOrWhiteSpace(DateTo) && DateTime.TryParse(DateTo, out var to))
+            _expirationRange = new DateRange(_expirationRange?.Start, to);
+        _lotFilter = LotFilterQuery ?? string.Empty;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _stocks = (await WarehouseService.GetAllStocksAsync()).ToList();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private IEnumerable<WarehouseStock> GetFilteredStocks()
+    {
+        if (_stocks == null) return Enumerable.Empty<WarehouseStock>();
+        var q = _searchText?.Trim().ToLowerInvariant() ?? string.Empty;
+        var lot = _lotFilter?.Trim().ToLowerInvariant() ?? string.Empty;
+        return _stocks.Where(s =>
+        {
+            if (!string.IsNullOrWhiteSpace(q) &&
+                !s.Warehouse.Code.ToLowerInvariant().Contains(q) &&
+                !s.Product.Name.ToLowerInvariant().Contains(q))
+                return false;
+
+            if (lot.Length > 0)
+            {
+                var lotNumber = s.LotNumber?.ToLowerInvariant() ?? string.Empty;
+                var batchIdStr = s.HoneyBatchId.ToString();
+                if (!lotNumber.Contains(lot) && !batchIdStr.Contains(lot))
+                    return false;
+            }
+
+            if (_expirationRange?.Start != null && (s.ExpirationDate == null || s.ExpirationDate.Value.Date < _expirationRange.Start.Value.Date))
+                return false;
+            if (_expirationRange?.End != null && (s.ExpirationDate == null || s.ExpirationDate.Value.Date > _expirationRange.End.Value.Date))
+                return false;
+
+            return true;
+        });
+    }
+
+    private IEnumerable<WarehouseStock> FilteredStocks => GetFilteredStocks();
+
+    private Task UpdateFilterSearchAsync(string value)
+    {
+        _searchText = value ?? string.Empty;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("from", _expirationRange?.Start?.ToString("yyyy-MM-dd")),
+            ("to", _expirationRange?.End?.ToString("yyyy-MM-dd")),
+            ("lot", string.IsNullOrWhiteSpace(_lotFilter) ? null : _lotFilter)));
+        return Task.CompletedTask;
+    }
+
+    private Task UpdateExpirationRangeAsync(DateRange? range)
+    {
+        _expirationRange = range;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("from", range?.Start?.ToString("yyyy-MM-dd")),
+            ("to", range?.End?.ToString("yyyy-MM-dd")),
+            ("lot", string.IsNullOrWhiteSpace(_lotFilter) ? null : _lotFilter)));
+        return Task.CompletedTask;
+    }
+
+    private Task UpdateLotFilterAsync(string value)
+    {
+        _lotFilter = value ?? string.Empty;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("from", _expirationRange?.Start?.ToString("yyyy-MM-dd")),
+            ("to", _expirationRange?.End?.ToString("yyyy-MM-dd")),
+            ("lot", string.IsNullOrWhiteSpace(_lotFilter) ? null : _lotFilter)));
+        return Task.CompletedTask;
+    }
+
+    private Task ClearFiltersAsync()
+    {
+        _searchText = string.Empty;
+        _expirationRange = null;
+        _lotFilter = string.Empty;
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0]);
+        return Task.CompletedTask;
     }
 }
