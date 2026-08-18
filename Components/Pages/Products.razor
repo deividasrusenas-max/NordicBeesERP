@@ -53,6 +53,23 @@
                 @label
             </MudChip>
         }
+        <MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
+        <MudChip T="string"
+                 Color="@(_filterActive == true ? Color.Success : Color.Default)"
+                 Variant="@(_filterActive == true ? Variant.Filled : Variant.Outlined)"
+                 OnClick="@(() => ToggleActiveFilter(true))"
+                 Size="Size.Small"
+                 Style="@(_filterActive == true ? "" : "opacity:0.7")">
+            Aktyvus
+        </MudChip>
+        <MudChip T="string"
+                 Color="@(_filterActive == false ? Color.Error : Color.Default)"
+                 Variant="@(_filterActive == false ? Variant.Filled : Variant.Outlined)"
+                 OnClick="@(() => ToggleActiveFilter(false))"
+                 Size="Size.Small"
+                 Style="@(_filterActive == false ? "" : "opacity:0.7")">
+            Neaktyvus
+        </MudChip>
     </div>
 
     <MudPaper Elevation="0" Class="mt-2 pa-3">
@@ -125,12 +142,19 @@
     private List<Product>? products;
     private string? _searchText;
     private HashSet<ProductType> _selectedTypes = new();
+    private bool? _filterActive;
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
 
-    // URL query-string parameter (synchronized with _searchText)
+    // URL query-string parameters (synchronized with filter state)
     [SupplyParameterFromQuery(Name = "q")]
     public string? FilterSearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "active")]
+    public string? ActiveFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? TypeCsv { get; set; }
 
     private bool IsDoubleClick(object item)
     {
@@ -162,6 +186,9 @@
             if (_selectedTypes.Any())
                 list = list.Where(p => _selectedTypes.Contains(p.ProductType));
 
+            if (_filterActive.HasValue)
+                list = list.Where(p => p.IsActive == _filterActive.Value);
+
             return list;
         }
     }
@@ -169,6 +196,28 @@
     protected override async Task OnParametersSetAsync()
     {
         _searchText = FilterSearch;
+
+        _filterActive = ActiveFilter switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => null
+        };
+
+        if (!string.IsNullOrWhiteSpace(TypeCsv))
+        {
+            _selectedTypes = new HashSet<ProductType>();
+            foreach (var part in TypeCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (Enum.TryParse<ProductType>(part, out var t))
+                    _selectedTypes.Add(t);
+            }
+        }
+        else
+        {
+            _selectedTypes = new HashSet<ProductType>();
+        }
+
         await LoadProducts();
     }
 
@@ -180,13 +229,29 @@
     private void UpdateSearchAsync(string val)
     {
         _searchText = val;
-        Navigation.NavigateTo(FilterUrlBuilder.Build("/products", ("q", _searchText)), replace: true);
+        NavigateWithFilters();
     }
 
     private void ToggleTypeFilter(ProductType type)
     {
         if (!_selectedTypes.Remove(type))
             _selectedTypes.Add(type);
+        NavigateWithFilters();
+    }
+
+    private void ToggleActiveFilter(bool value)
+    {
+        _filterActive = _filterActive == value ? null : value;
+        NavigateWithFilters();
+    }
+
+    // Single navigation site persisting the full filter state (q, type, active)
+    private void NavigateWithFilters()
+    {
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _searchText),
+            ("type", FilterUrlBuilder.ToQueryValue(_selectedTypes.Select(t => t.ToString()))),
+            ("active", FilterUrlBuilder.ToQueryValue(_filterActive))), replace: true);
     }
 
     private static string GetProductTypeLabel(ProductType type) => type switch
