@@ -29,21 +29,37 @@
                 <MudDateRangePicker T="DateTime?" Label="Pristatymo data" @bind-DateRange="_dateRange"
                     OnRangeSelected="UpdateDateRangeAsync" />
             </MudItem>
-            <MudItem xs="12" md="4" Class="d-flex align-center">
-                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
-                    @foreach (var status in _availableStatuses)
-                    {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                            Color="@(_statusChipColor[status])"
-                            OnClick="@(() => ToggleStatusAsync(status))"
-                            Checked="@_selectedStatuses.Contains(status)">@status</MudChip>
-                    }
-                    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Clear"
-                        OnClick="ClearFiltersAsync">Išvalyti filtrus</MudButton>
-                </MudStack>
-            </MudItem>
+            @if (!string.IsNullOrWhiteSpace(_searchText) || _dateRange?.Start != null || _selectedStatuses.Any())
+            {
+                <MudItem xs="12" Class="d-flex align-center">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                        Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                        OnClick="ClearFiltersAsync">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
         </MudGrid>
     </MudPaper>
+
+    <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
+        @if (_selectedStatuses.Any())
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                StartIcon="@Icons.Material.Filled.FilterAltOff"
+                OnClick="ClearFiltersAsync">
+                Rodyti visas
+            </MudButton>
+        }
+        @foreach (var status in _availableStatuses)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                Color="@(_statusChipColor[status])"
+                OnClick="@(() => ToggleStatusAsync(status))"
+                Checked="@_selectedStatuses.Contains(status)">@status</MudChip>
+        }
+    </div>
 
     @if (_loading)
     {
