@@ -30,7 +30,7 @@
                     OnRangeSelected="UpdateDateRangeAsync" />
             </MudItem>
             <MudItem xs="12" md="4" Class="d-flex align-center">
-                <MudStack Row="true" Spacing="2">
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
                     @foreach (var status in _availableStatuses)
                     {
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
