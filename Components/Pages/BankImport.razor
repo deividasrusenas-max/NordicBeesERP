@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject IDbContextFactory<NordicBeesERPContext> DbContextFactory
+@inject NavigationManager Navigation
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Models
@@ -21,7 +22,38 @@
         
         @if (_showList)
         {
-            <MudTable T="BankImportViewModel" Items="@_bankImports" Hover="true" Dense="true" Loading="@_loading" LoadingProgressColor="Color.Info">
+            <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudDateRangePicker T="DateTime?" Label="Importo data" @bind-DateRange="_dateRange"
+                            OnRangeSelected="UpdateDateRangeAsync" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudStack Row="true" Wrap="Wrap.Wrap">
+                            @foreach (var kv in _statusDisplay)
+                            {
+                                <MudChip T="string" Color="@(_selectedStatuses.Contains(kv.Key) ? kv.Value.Color : Color.Default)"
+                                    Variant="@(_selectedStatuses.Contains(kv.Key) ? Variant.Filled : Variant.Outlined)"
+                                    OnClick="@(async () => await ToggleStatusAsync(kv.Key))">
+                                    @kv.Value.Label
+                                </MudChip>
+                            }
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+                @if (_dateRange?.Start != null || _dateRange?.End != null || _selectedStatuses.Count > 0)
+                {
+                    <div class="mt-2">
+                        <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                            Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                            OnClick="ClearFiltersAsync">
+                            Išvalyti filtrus
+                        </MudButton>
+                    </div>
+                }
+            </MudPaper>
+
+            <MudTable T="BankImportViewModel" Items="@FilteredBankImports" Hover="true" Dense="true" Loading="@_loading" LoadingProgressColor="Color.Info">
                 <HeaderContent>
                     <MudTh>Data</MudTh>
                     <MudTh>Failas</MudTh>
@@ -296,8 +328,19 @@
     // URL query-string parameter for entry-point filtering
     [SupplyParameterFromQuery(Name = "type")]
     public string? BankImportType { get; set; }
-    
+
+    [SupplyParameterFromQuery(Name = "from")]
+    private string? DateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    private string? DateTo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    private string? StatusCsv { get; set; }
+
     private string? _bankImportType;
+    private DateRange? _dateRange;
+    private HashSet<string> _selectedStatuses = new();
     
     private int _visibleMatchedRowsCount => _bankImportType switch
     {
@@ -315,6 +358,55 @@
     {
         _disposed = false;
         _bankImportType = BankImportType;
+
+        if (!string.IsNullOrWhiteSpace(DateFrom) && DateTime.TryParse(DateFrom, out var from))
+            _dateRange = new DateRange(from, _dateRange?.End);
+        if (!string.IsNullOrWhiteSpace(DateTo) && DateTime.TryParse(DateTo, out var to))
+            _dateRange = new DateRange(_dateRange?.Start, to);
+
+        _selectedStatuses = FilterUrlBuilder.ParseStatusCsv(StatusCsv);
+    }
+
+    private IEnumerable<BankImportViewModel> FilteredBankImports =>
+        _bankImports.Where(i =>
+            (_dateRange?.Start == null || i.ImportDate >= _dateRange.Start) &&
+            (_dateRange?.End == null || i.ImportDate <= _dateRange.End.Value.AddDays(1)) &&
+            (_selectedStatuses.Count == 0 || _selectedStatuses.Contains((i.Status ?? "").ToLower())));
+
+    private string GetBasePath() => Navigation.Uri.Split('?')[0];
+
+    private async Task ToggleStatusAsync(string status)
+    {
+        if (_selectedStatuses.Contains(status)) _selectedStatuses.Remove(status);
+        else _selectedStatuses.Add(status);
+
+        var url = FilterUrlBuilder.Build(GetBasePath(),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("type", string.IsNullOrEmpty(BankImportType) ? null : BankImportType));
+        Navigation.NavigateTo(url);
+    }
+
+    private async Task UpdateDateRangeAsync(DateRange? range)
+    {
+        _dateRange = range;
+        var url = FilterUrlBuilder.Build(GetBasePath(),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("type", string.IsNullOrEmpty(BankImportType) ? null : BankImportType));
+        Navigation.NavigateTo(url);
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _dateRange = null;
+        _selectedStatuses.Clear();
+        var url = string.IsNullOrEmpty(BankImportType)
+            ? GetBasePath()
+            : FilterUrlBuilder.Build(GetBasePath(), ("type", BankImportType));
+        Navigation.NavigateTo(url);
     }
     
     public void Dispose()
