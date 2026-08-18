@@ -16,7 +16,10 @@
 
         <MudNavGroup Title="Sandėlis" Icon="@Icons.Material.Filled.Warehouse" Expanded="false">
             <MudNavLink Href="/warehouse/deliveries/new" Icon="@Icons.Material.Filled.Add">Naujas pristatymas</MudNavLink>
-            <MudNavLink Href="/warehouse/deliveries" Icon="@Icons.Material.Filled.LocalShipping">Pristatymai</MudNavLink>
+            @if (!_isManager)
+            {
+                <MudNavLink Href="/warehouse/deliveries" Icon="@Icons.Material.Filled.LocalShipping">Pristatymai</MudNavLink>
+            }
             @if (_isAdmin || _isManager)
             {
                 <MudNavLink Href="/warehouse/delivery-pricing" Icon="@Icons.Material.Filled.PriceCheck">Kainos ir mokėjimai</MudNavLink>
