@@ -29,39 +29,22 @@
     }
 
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
-        <MudTextField Value="_filterSearch"
-                      ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
-                      Placeholder="Ieškoti pagal pavadinimą, kodą, PVM kodą..."
-                      Variant="Variant.Outlined"
-                      Immediate="true"
-                      FullWidth="true"
-                      Clearable="true"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Adornment="Adornment.Start" />
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudTextField T="string" Label="Paieška (pavadinimas / kodas / PVM kodas)"
+                    Value="_filterSearch"
+                    ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
+                    Immediate="true" Clearable="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudChipSet T="string" @bind-Values="_selectedStatuses" OnValuesChanged="_ => ApplyFilters()" Variant="Variant.Outlined">
+                    <MudChip Value="@("active")">Aktyvus</MudChip>
+                    <MudChip Value="@("inactive")">Neaktyvus</MudChip>
+                </MudChipSet>
+            </MudItem>
+        </MudGrid>
     </MudPaper>
-
-    <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
-        @{
-            var isActiveSelected = _filterActive == true;
-            var isInactiveSelected = _filterActive == false;
-        }
-        <MudChip T="string"
-                 Color="@(isActiveSelected ? Color.Success : Color.Default)"
-                 Variant="@(isActiveSelected ? Variant.Filled : Variant.Outlined)"
-                 OnClick="@(() => ToggleActiveFilter(true))"
-                 Size="Size.Small"
-                 Style="@(isActiveSelected ? "" : "opacity:0.7")">
-            Aktyvus
-        </MudChip>
-        <MudChip T="string"
-                 Color="@(isInactiveSelected ? Color.Error : Color.Default)"
-                 Variant="@(isInactiveSelected ? Variant.Filled : Variant.Outlined)"
-                 OnClick="@(() => ToggleActiveFilter(false))"
-                 Size="Size.Small"
-                 Style="@(isInactiveSelected ? "" : "opacity:0.7")">
-            Neaktyvus
-        </MudChip>
-    </div>
 
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
         <MudTable Items="@FilteredCustomers"
@@ -117,15 +100,15 @@
     [CascadingParameter] Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
     // URL query-string parameters (synchronized with filter state)
-    [SupplyParameterFromQuery(Name = "q")]
-    public string? FilterSearch { get; set; }
+    [SupplyParameterFromQuery]
+    public string? Q { get; set; }
 
-    [SupplyParameterFromQuery(Name = "active")]
-    public string? FilterActive { get; set; }
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? StatusCsv { get; set; }
 
     private List<Customer>? _customers;
-    private string? _filterSearch = null;
-    private bool? _filterActive;
+    private string _filterSearch = string.Empty;
+    private HashSet<string> _selectedStatuses = new();
     private bool _isAdmin;
     private bool _isManager;
     private DateTime _lastClickTime = DateTime.MinValue;
@@ -147,8 +130,8 @@
     protected override async Task OnParametersSetAsync()
     {
         // Sync URL query params into working-state fields before loading data
-        _filterSearch = FilterSearch;
-        _filterActive = FilterUrlBuilder.ParseBool(FilterActive);
+        _filterSearch = Q ?? string.Empty;
+        _selectedStatuses = FilterUrlBuilder.ParseStatusCsv(StatusCsv);
 
         var authState = await AuthStateTask;
         _isAdmin = authState.User.IsInRole("Admin");
@@ -161,13 +144,18 @@
         _customers = await CustomerService.GetCustomersAsync();
     }
 
-    private async Task UpdateFilterSearchAsync(string val)
+    private void ApplyFilters()
     {
-        _filterSearch = val;
-        var path = Navigation.Uri.Split('?')[0];
-        Navigation.NavigateTo(FilterUrlBuilder.Build(path,
-            ("q", _filterSearch),
-            ("active", FilterUrlBuilder.ToQueryValue(_filterActive))), replace: true);
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", string.IsNullOrWhiteSpace(_filterSearch) ? null : _filterSearch),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses))));
+    }
+
+    private Task UpdateFilterSearchAsync(string val)
+    {
+        _filterSearch = val ?? string.Empty;
+        ApplyFilters();
+        return Task.CompletedTask;
     }
 
     private List<Customer> FilteredCustomers
@@ -176,10 +164,10 @@
         {
             var list = _customers ?? new List<Customer>();
 
-            if (_filterActive.HasValue)
-                list = list.Where(c => c.IsActive == _filterActive.Value).ToList();
+            if (_selectedStatuses.Count > 0)
+                list = list.Where(c => _selectedStatuses.Contains(c.IsActive ? "active" : "inactive")).ToList();
 
-            if (string.IsNullOrEmpty(_filterSearch))
+            if (string.IsNullOrWhiteSpace(_filterSearch))
                 return list;
 
             return list.Where(c =>
@@ -188,15 +176,6 @@
                 (!string.IsNullOrEmpty(c.VatCode) && c.VatCode.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.City) && c.City.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase))).ToList();
         }
-    }
-
-    private void ToggleActiveFilter(bool value)
-    {
-        _filterActive = _filterActive == value ? null : value;
-        var path = Navigation.Uri.Split('?')[0];
-        Navigation.NavigateTo(FilterUrlBuilder.Build(path,
-            ("q", _filterSearch),
-            ("active", FilterUrlBuilder.ToQueryValue(_filterActive))), replace: false);
     }
 
     private async Task OnRowClick(Customer customer)
