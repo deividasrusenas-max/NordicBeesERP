@@ -36,6 +36,28 @@
             <MudItem xs="12" md="3">
                 <MudTextField @bind-Value="_searchCode" Label="Paieška (ID)" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDatePicker @bind-Date="_dateFrom" Label="Nuo" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" Clearable="true" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDatePicker @bind-Date="_dateTo" Label="Iki" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" Clearable="true" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12">
+                <div class="d-flex flex-wrap gap-2 align-center">
+                    <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
+                    @foreach (var status in _containerStatusDisplay)
+                    {
+                        <MudChip T="string"
+                                 Color="@(_status == status.Key ? status.Value.Color : Color.Default)"
+                                 Variant="@(_status == status.Key ? Variant.Filled : Variant.Outlined)"
+                                 OnClick="@(() => ToggleStatus(status.Key))"
+                                 Size="Size.Small"
+                                 Style="@(_status == status.Key ? "" : "opacity:0.7")">
+                            @status.Value.Label
+                        </MudChip>
+                    }
+                </div>
+            </MudItem>
             <MudItem xs="12" md="3" Class="d-flex align-end">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadContainers" Size="Size.Small">Filtruoti</MudButton>
             </MudItem>
@@ -45,7 +67,7 @@
     @if (_containers.Any())
     {
         <!-- Step 2: Select containers -->
-        <MudTable T="Container" Items="_containers" Hover="true" Striped="true"
+        <MudTable T="Container" Items="@FilteredContainers" Hover="true" Striped="true"
             MultiSelection="true" @bind-SelectedItems="_selectedContainers" RowsPerPage="50">
             <HeaderContent>
                 <MudTh>ID</MudTh>
@@ -114,6 +136,23 @@
     private int? _supplierId;
     private string? _status;
     private string? _searchCode;
+    private DateTime? _dateFrom;
+    private DateTime? _dateTo;
+
+    private readonly Dictionary<string, (string Label, Color Color)> _containerStatusDisplay = new()
+    {
+        ["RECEIVED"] = ("Priimtas", Color.Info),
+        ["IN_STOCK"] = ("Sandėlyje", Color.Success),
+        ["RESERVED"] = ("Rezervuotas", Color.Warning),
+        ["IN_PRODUCTION"] = ("Gamyboje", Color.Primary),
+        ["SOLD"] = ("Parduotas", Color.Secondary),
+        ["RETURNED"] = ("Grąžintas", Color.Default),
+        ["WRITTEN_OFF"] = ("Nurašytas", Color.Error)
+    };
+
+    private IEnumerable<Container> FilteredContainers => _containers.Where(c =>
+        (!_dateFrom.HasValue || c.CreatedAt.Date >= _dateFrom.Value.Date) &&
+        (!_dateTo.HasValue || c.CreatedAt.Date <= _dateTo.Value.Date));
 
     // URL query-string parameters (synchronized with filter state)
     [SupplyParameterFromQuery(Name = "warehouse")]
@@ -131,6 +170,12 @@
     [SupplyParameterFromQuery(Name = "q")]
     public string? FilterSearch { get; set; }
 
+    [SupplyParameterFromQuery(Name = "from")]
+    public DateTime? FilterDateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public DateTime? FilterDateTo { get; set; }
+
     private string _writeOffReason = "";
     private string _writeOffNotes = "";
     private bool _processing = false;
@@ -143,10 +188,18 @@
         _supplierId = FilterSupplierId;
         _status = FilterStatus;
         _searchCode = FilterSearch;
+        _dateFrom = FilterDateFrom;
+        _dateTo = FilterDateTo;
 
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _honeyTypes = (await HoneyTypeService.GetActiveAsync()).ToList();
         _suppliers = (await CustomerService.GetSuppliersAsync()).ToList();
+    }
+
+    private async Task ToggleStatus(string status)
+    {
+        _status = _status == status ? null : status;
+        await LoadContainers();
     }
 
     private async Task LoadContainers()
@@ -158,7 +211,9 @@
             ("honeyType", FilterUrlBuilder.ToQueryValue(_honeyTypeId)),
             ("supplier", FilterUrlBuilder.ToQueryValue(_supplierId)),
             ("status", FilterUrlBuilder.ToQueryValue(_status)),
-            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)));
+            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateFrom)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateTo)));
         Navigation.NavigateTo(newUrl, replace: false);
 
         _containers = await ContainerService.GetFilteredAsync(_warehouseId, _honeyTypeId, _supplierId, _status, _searchCode);
