@@ -4,6 +4,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @using NordicBeesERP.Models
+@using NordicBeesERP.Helpers
 
 <PageTitle>Sandėliai</PageTitle>
 
@@ -14,8 +15,24 @@
             OnClick="CreateNewWarehouse">Naujas sandėlis</MudButton>
     </div>
 
+    <MudPaper Class="pa-3 mb-4" Elevation="2">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudTextField T="string" Label="Paieška (kodas / pavadinimas)" @bind-Value="_searchText"
+                    Immediate="true" OnValueChange="UpdateFilterSearchAsync" Clearable="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudChipSet T="string" @bind-Values="_selectedStatuses" OnValuesChanged="_ => ApplyFilters()" Variant="Variant.Outlined">
+                    <MudChip Value="@("active")">Aktyvus</MudChip>
+                    <MudChip Value="@("inactive")">Neaktyvus</MudChip>
+                </MudChipSet>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-        <MudTable T="NordicBeesERP.Models.Warehouse" Items="@warehouses" Dense="true" Hover="true" Striped="true" Elevation="0">
+        <MudTable T="NordicBeesERP.Models.Warehouse" Items="@FilteredWarehouses" Dense="true" Hover="true" Striped="true" Elevation="0">
             <HeaderContent>
                 <MudTh>Kodas</MudTh>
                 <MudTh>Pavadinimas</MudTh>
@@ -69,9 +86,64 @@
 @code {
     private List<NordicBeesERP.Models.Warehouse> warehouses = new List<NordicBeesERP.Models.Warehouse>();
 
+    [SupplyParameterFromQuery]
+    private string? Q { get; set; }
+    [SupplyParameterFromQuery(Name = "status")]
+    private string? StatusCsv { get; set; }
+
+    private string _searchText = string.Empty;
+    private HashSet<string> _selectedStatuses = new();
+
     protected override async Task OnInitializedAsync()
     {
         warehouses = (List<NordicBeesERP.Models.Warehouse>)await WarehouseService.GetAllAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        _searchText = Q ?? string.Empty;
+        _selectedStatuses = FilterUrlBuilder.ParseStatusCsv(StatusCsv);
+    }
+
+    private IEnumerable<NordicBeesERP.Models.Warehouse> FilteredWarehouses
+    {
+        get
+        {
+            if (warehouses == null) yield break;
+            var q = _searchText?.Trim().ToLowerInvariant() ?? string.Empty;
+            foreach (var w in warehouses)
+            {
+                if (!string.IsNullOrWhiteSpace(q) &&
+                    !w.Code.ToLowerInvariant().Contains(q) &&
+                    !w.Name.ToLowerInvariant().Contains(q))
+                    continue;
+
+                if (_selectedStatuses.Count > 0)
+                {
+                    var status = w.IsActive ? "active" : "inactive";
+                    if (!_selectedStatuses.Contains(status))
+                        continue;
+                }
+
+                yield return w;
+            }
+        }
+    }
+
+    private Task UpdateFilterSearchAsync(string value)
+    {
+        _searchText = value ?? string.Empty;
+        ApplyFilters();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyFilters()
+    {
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses))));
     }
 
     private void EditWarehouse(int id)
