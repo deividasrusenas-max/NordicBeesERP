@@ -37,6 +37,9 @@ test-results/
 analyze-errors.py
 log-error.sh
 
+# Orchestrator/agent work reports (ephemeral, not project docs)
+.agent-reports/
+
 # Local working docs (not committed project documentation)
 AGENTS.md
 Docs/BUGLOG.md
