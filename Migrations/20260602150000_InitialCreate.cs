@@ -719,6 +719,7 @@ namespace NordicBeesERP.Migrations
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `bank_import_row_id` int DEFAULT NULL,
   `source` enum('manual','bank_import') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual',
+  `bank_confirmed` TINYINT(1) NOT NULL DEFAULT 0,
   `created_by` int DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `bank_import_id` int DEFAULT NULL,
