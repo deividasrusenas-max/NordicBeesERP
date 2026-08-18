@@ -4,7 +4,9 @@
 @inject IErpUserService ErpUserService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Navigation
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Helpers
 
 <PageTitle>Vartotojai</PageTitle>
 
@@ -15,14 +17,73 @@
             OnClick="OpenCreateDialog">Naujas vartotojas</MudButton>
     </div>
 
+    <!-- Filters -->
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudTextField T="string" Label="Kodas/Pavadinimas" @bind-Value="_searchText"
+                    Immediate="true" OnValueChange="UpdateFilterSearchAsync" Clearable="true" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search" FullWidth="@true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="string" Label="Rolė" @bind-Value="_selectedRole" OnValueChanged="UpdateRoleFilterAsync"
+                    Clearable="true" FullWidth="@true">
+                    <MudSelectItem T="string" Value="@null"></MudSelectItem>
+                    @foreach (var role in _allRoles)
+                    {
+                        <MudSelectItem T="string" Value="@role">@GetRoleLabel(role)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Status filter chips -->
+        <div class="d-flex flex-wrap gap-2 align-center">
+            <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
+            @if (_selectedStatuses.Any())
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                    StartIcon="@Icons.Material.Filled.FilterAltOff"
+                    OnClick="ClearStatusesAsync">
+                    Rodyti visus
+                </MudButton>
+            }
+            @foreach (var status in new[] { "active", "inactive" })
+            {
+                var isSelected = _selectedStatuses.Contains(status);
+                <MudChip T="string"
+                    Color="@(isSelected ? Color.Primary : Color.Default)"
+                    Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                    OnClick="@(() => ToggleStatusAsync(status))"
+                    Size="Size.Small"
+                    Style="@(isSelected ? "" : "opacity:0.7")">
+                    @(status == "active" ? "Aktyvus" : "Neaktyvus")
+                </MudChip>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_searchText) || _selectedRole != null || _selectedStatuses.Any())
+        {
+            <MudButton Class="mt-3" StartIcon="@Icons.Material.Filled.FilterAltOff"
+                Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                OnClick="ClearFiltersAsync">
+                Išvalyti filtrus
+            </MudButton>
+        }
+    </MudPaper>
+
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" />
     }
+    else if (!FilteredUsers.Any())
+    {
+        <MudAlert Severity="Severity.Info">Vartotojų nėra</MudAlert>
+    }
     else
     {
         <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-            <MudTable T="ErpUser" Items="_users" Dense="true" Hover="true" Striped="true" Elevation="0">
+            <MudTable T="ErpUser" Items="FilteredUsers" Dense="true" Hover="true" Striped="true" Elevation="0">
                 <HeaderContent>
                     <MudTh>El. paštas</MudTh>
                     <MudTh>Vardas</MudTh>
@@ -71,17 +132,40 @@
     private List<ErpUser> _users = new();
     private bool _loading = true;
 
+    [SupplyParameterFromQuery]
+    private string? Q { get; set; }
+    [SupplyParameterFromQuery(Name = "role")]
+    private string? RoleQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "status")]
+    private string? StatusCsv { get; set; }
+
+    private string _searchText = string.Empty;
+    private string? _selectedRole;
+    private HashSet<string> _selectedStatuses = new();
+
+    // Roles actually present in the data (drives the dropdown options)
+    private List<string> _allRoles = new();
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
     }
 
+    protected override void OnParametersSet()
+    {
+        _searchText = Q ?? string.Empty;
+        _selectedRole = RoleQuery;
+        _selectedStatuses = FilterUrlBuilder.ParseStatusCsv(StatusCsv);
+    }
+
     private async Task LoadAsync()
     {
         _loading = true;
+        StateHasChanged();
         try
         {
             _users = await ErpUserService.GetUsersAsync();
+            _allRoles = _users.Select(u => u.Role).Distinct().OrderBy(r => r).ToList();
         }
         catch (Exception ex)
         {
@@ -90,7 +174,82 @@
         finally
         {
             _loading = false;
+            StateHasChanged();
         }
+    }
+
+    private IEnumerable<ErpUser> GetFilteredUsers()
+    {
+        if (_users == null) return Enumerable.Empty<ErpUser>();
+        var q = _searchText?.Trim().ToLowerInvariant() ?? string.Empty;
+        return _users.Where(u =>
+        {
+            if (!string.IsNullOrWhiteSpace(q) &&
+                !u.Email.ToLowerInvariant().Contains(q) &&
+                !u.FullName.ToLowerInvariant().Contains(q))
+                return false;
+
+            if (_selectedRole != null && u.Role != _selectedRole)
+                return false;
+
+            if (_selectedStatuses.Any())
+            {
+                var statusValue = u.IsActive ? "active" : "inactive";
+                if (!_selectedStatuses.Contains(statusValue))
+                    return false;
+            }
+
+            return true;
+        });
+    }
+
+    private IEnumerable<ErpUser> FilteredUsers => GetFilteredUsers();
+
+    private string _basePageUrl() => Navigation.Uri.Split('?')[0];
+
+    private string BuildFilterUrl() => FilterUrlBuilder.Build(_basePageUrl(),
+        ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+        ("role", _selectedRole),
+        ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)));
+
+    private Task UpdateFilterSearchAsync(string value)
+    {
+        _searchText = value ?? string.Empty;
+        Navigation.NavigateTo(BuildFilterUrl());
+        return Task.CompletedTask;
+    }
+
+    private Task UpdateRoleFilterAsync(string? value)
+    {
+        _selectedRole = value;
+        Navigation.NavigateTo(BuildFilterUrl());
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleStatusAsync(string status)
+    {
+        if (_selectedStatuses.Contains(status))
+            _selectedStatuses.Remove(status);
+        else
+            _selectedStatuses.Add(status);
+        Navigation.NavigateTo(BuildFilterUrl());
+        return Task.CompletedTask;
+    }
+
+    private Task ClearStatusesAsync()
+    {
+        _selectedStatuses.Clear();
+        Navigation.NavigateTo(BuildFilterUrl());
+        return Task.CompletedTask;
+    }
+
+    private Task ClearFiltersAsync()
+    {
+        _searchText = string.Empty;
+        _selectedRole = null;
+        _selectedStatuses.Clear();
+        Navigation.NavigateTo(_basePageUrl());
+        return Task.CompletedTask;
     }
 
     private async Task OpenCreateDialog()
