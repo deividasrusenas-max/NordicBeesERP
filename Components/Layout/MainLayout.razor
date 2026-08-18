@@ -54,8 +54,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var s = await CompanySettingsService.GetSettingsAsync();
-        _companyName = s.CompanyName;
+        try
+        {
+            var s = await CompanySettingsService.GetSettingsAsync();
+            _companyName = s.CompanyName;
+        }
+        catch
+        {
+            // Company settings unavailable (e.g. row missing) — keep footer neutral instead of crashing the circuit.
+        }
     }
 
     private MudTheme _theme = new MudTheme
