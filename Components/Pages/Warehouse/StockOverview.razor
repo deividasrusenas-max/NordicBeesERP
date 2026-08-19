@@ -19,10 +19,10 @@
     <MudText Typo="Typo.h5" Class="mb-4">Sandėlio likučiai</MudText>
 
     <!-- Filters -->
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
         <MudGrid>
             <MudItem xs="12" md="2">
-                <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Clearable="true">
                     @foreach (var w in _warehouses)
                     {
                         <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
@@ -30,7 +30,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudSelect T="int?" Value="_filterHoneyTypeId" ValueChanged="@(async (int? v) => { _filterHoneyTypeId = v; await ApplyFiltersFromUrl(); })" Label="Medaus rūšis" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                <MudSelect T="int?" Value="_filterHoneyTypeId" ValueChanged="@(async (int? v) => { _filterHoneyTypeId = v; await ApplyFiltersFromUrl(); })" Label="Medaus rūšis" Clearable="true">
                     @foreach (var h in _honeyTypes)
                     {
                         <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
@@ -38,7 +38,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudSelect T="int?" Value="_filterSupplierId" ValueChanged="@(async (int? v) => { _filterSupplierId = v; await ApplyFiltersFromUrl(); })" Label="Tiekėjas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
+                <MudSelect T="int?" Value="_filterSupplierId" ValueChanged="@(async (int? v) => { _filterSupplierId = v; await ApplyFiltersFromUrl(); })" Label="Tiekėjas" Clearable="true">
                     @foreach (var s in _suppliers)
                     {
                         <MudSelectItem T="int?" Value="s.Id">@s.Name</MudSelectItem>
@@ -46,14 +46,13 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudDatePicker T="DateTime?" Value="_filterDateFrom" ValueChanged="@(async (DateTime? v) => { _filterDateFrom = v; await ApplyFiltersFromUrl(); })" Label="Nuo" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense" DateFormat="yyyy-MM-dd" />
+                <MudDatePicker T="DateTime?" Value="_filterDateFrom" ValueChanged="@(async (DateTime? v) => { _filterDateFrom = v; await ApplyFiltersFromUrl(); })" Label="Nuo" Clearable="true" DateFormat="yyyy-MM-dd" />
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudDatePicker T="DateTime?" Value="_filterDateTo" ValueChanged="@(async (DateTime? v) => { _filterDateTo = v; await ApplyFiltersFromUrl(); })" Label="Iki" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense" DateFormat="yyyy-MM-dd" />
+                <MudDatePicker T="DateTime?" Value="_filterDateTo" ValueChanged="@(async (DateTime? v) => { _filterDateTo = v; await ApplyFiltersFromUrl(); })" Label="Iki" Clearable="true" DateFormat="yyyy-MM-dd" />
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudTextField Value="_searchCode" ValueChanged="@(async (string v) => { _searchCode = v; await ApplyFiltersFromUrl(); })" Label="Paieška (ID)" Variant="Variant.Outlined" Margin="Margin.Dense"
-                    Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudTextField Value="_searchCode" ValueChanged="@(async (string v) => { _searchCode = v; await ApplyFiltersFromUrl(); })" Label="Paieška (ID)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
             </MudItem>
             <MudItem xs="12">
                 <div class="d-flex flex-wrap gap-2 align-center">
