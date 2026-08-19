@@ -29,20 +29,26 @@
     </div>
 
     <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
-    <div class="d-flex gap-2 mb-3">
-        <MudButton Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
-                   Color="Color.Primary"
-                   Style="@(_invoiceType == "LAK" ? "text-transform:none;min-width:180px;background:#1976d2;color:white;" : "text-transform:none;min-width:180px;background:#dbeafe;color:#1e40af;border-color:#93c5fd;")"
-                   OnClick="@(async () => await SetInvoiceType("LAK"))">
+    <MudStack Row="true" Class="mb-3">
+        <MudChip T="string"
+                 SelectionGroup="true"
+                 Checked="@(_invoiceType == "LAK")"
+                 Color="@(_invoiceType == "LAK" ? Color.Primary : Color.Default)"
+                 Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;min-width:180px;"
+                 OnCheckedChange="@(async (bool? c) => { if (c == true) await SetInvoiceType("LAK"); })">
             LAK — Pardavimai
-        </MudButton>
-        <MudButton Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
-                   Color="Color.Primary"
-                   Style="@(_invoiceType == "ULAK" ? "text-transform:none;min-width:180px;background:#1976d2;color:white;" : "text-transform:none;min-width:180px;background:#dbeafe;color:#1e40af;border-color:#93c5fd;")"
-                   OnClick="@(async () => await SetInvoiceType("ULAK"))">
+        </MudChip>
+        <MudChip T="string"
+                 SelectionGroup="true"
+                 Checked="@(_invoiceType == "ULAK")"
+                 Color="@(_invoiceType == "ULAK" ? Color.Primary : Color.Default)"
+                 Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;min-width:180px;"
+                 OnCheckedChange="@(async (bool? c) => { if (c == true) await SetInvoiceType("ULAK"); })">
             ULAK — Pirkimai
-        </MudButton>
-    </div>
+        </MudChip>
+    </MudStack>
 
     <!-- Loading indicator -->
     @if (_isLoading)
