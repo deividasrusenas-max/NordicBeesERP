@@ -11,8 +11,9 @@
 <PageTitle>Prekės</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
 
-    <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">Prekės</MudText>
+    <MudText Typo="Typo.h5" Class="mb-4">Prekės</MudText>
+
+    <div Class="mb-3">
         <MudButton OnClick="@OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary">Nauja prekė</MudButton>
     </div>
 
@@ -22,15 +23,22 @@
     }
 
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
-        <MudTextField Value="@_searchText"
-                      ValueChanged="@((string val) => UpdateSearchAsync(val))"
-                      Placeholder="Ieškoti pagal kodą, pavadinimą, EAN..."
-                      Variant="Variant.Outlined"
-                      Immediate="true"
-                      FullWidth="true"
-                      Clearable="true"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Adornment="Adornment.Start" />
+        <MudGrid>
+            <MudItem xs="12" md="11">
+                <MudTextField Value="@_searchText"
+                              ValueChanged="@((string val) => UpdateSearchAsync(val))"
+                              Placeholder="Ieškoti pagal kodą, pavadinimą, EAN..."
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              FullWidth="true"
+                              Clearable="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Adornment="Adornment.Start" />
+            </MudItem>
+            <MudItem xs="12" md="1" Class="d-flex align-end">
+                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff" Color="Color.Secondary" Size="Size.Small" OnClick="ClearFilters" Title="Išvalyti filtrus" />
+            </MudItem>
+        </MudGrid>
     </MudPaper>
 
     <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
@@ -252,6 +260,14 @@
             ("q", _searchText),
             ("type", FilterUrlBuilder.ToQueryValue(_selectedTypes.Select(t => t.ToString()))),
             ("active", FilterUrlBuilder.ToQueryValue(_filterActive))), replace: true);
+    }
+
+    private void ClearFilters()
+    {
+        _searchText = null;
+        _selectedTypes = new HashSet<ProductType>();
+        _filterActive = null;
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: true);
     }
 
     private static string GetProductTypeLabel(ProductType type) => type switch
