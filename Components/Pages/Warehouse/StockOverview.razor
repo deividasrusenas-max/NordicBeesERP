@@ -46,16 +46,30 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudSelect T="string" Value="_filterStatus" ValueChanged="@(async (string v) => { _filterStatus = v; await ApplyFiltersFromUrl(); })" Label="Statusas" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense">
-                    <MudSelectItem Value="@("IN_STOCK")">Sandėlyje</MudSelectItem>
-                    <MudSelectItem Value="@("RECEIVED")">Priimtas</MudSelectItem>
-                    <MudSelectItem Value="@("RESERVED")">Rezervuotas</MudSelectItem>
-                    <MudSelectItem Value="@("IN_PRODUCTION")">Gamyboje</MudSelectItem>
-                </MudSelect>
+                <MudDatePicker T="DateTime?" Value="_filterDateFrom" ValueChanged="@(async (DateTime? v) => { _filterDateFrom = v; await ApplyFiltersFromUrl(); })" Label="Nuo" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense" DateFormat="yyyy-MM-dd" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudDatePicker T="DateTime?" Value="_filterDateTo" ValueChanged="@(async (DateTime? v) => { _filterDateTo = v; await ApplyFiltersFromUrl(); })" Label="Iki" Variant="Variant.Outlined" Clearable="true" Margin="Margin.Dense" DateFormat="yyyy-MM-dd" />
             </MudItem>
             <MudItem xs="12" md="2">
                 <MudTextField Value="_searchCode" ValueChanged="@(async (string v) => { _searchCode = v; await ApplyFiltersFromUrl(); })" Label="Paieška (ID)" Variant="Variant.Outlined" Margin="Margin.Dense"
                     Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12">
+                <div class="d-flex flex-wrap gap-2 align-center">
+                    <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
+                    @foreach (var status in _containerStatusDisplay)
+                    {
+                        <MudChip T="string"
+                                 Color="@(_filterStatus == status.Key ? status.Value.Color : Color.Default)"
+                                 Variant="@(_filterStatus == status.Key ? Variant.Filled : Variant.Outlined)"
+                                 OnClick="@(() => ToggleStatus(status.Key))"
+                                 Size="Size.Small"
+                                 Style="@(_filterStatus == status.Key ? "" : "opacity:0.7")">
+                           @status.Value.Label
+                        </MudChip>
+                    }
+                </div>
             </MudItem>
             <MudItem xs="12" md="2" Class="d-flex align-end gap-2">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadData" Size="Size.Small">Filtruoti</MudButton>
@@ -96,7 +110,7 @@
     </MudGrid>
 
     <!-- Main table -->
-    <MudTable T="Container" Items="@_containers" Dense="true" Hover="true" Striped="true" Loading="_loading"
+    <MudTable T="Container" Items="@FilteredContainers" Dense="true" Hover="true" Striped="true" Loading="_loading"
         MultiSelection="true" @bind-SelectedItems="_selectedContainers" RowsPerPage="50">
         <HeaderContent>
             <MudTh>ID</MudTh>
@@ -216,6 +230,19 @@
     private int? _filterSupplierId;
     private string? _filterStatus;
     private string? _searchCode;
+    private DateTime? _filterDateFrom;
+    private DateTime? _filterDateTo;
+
+    // Client-side date-range filter applied on top of the server-fetched _containers
+    private IEnumerable<Container> FilteredContainers => _containers.Where(c =>
+        (!_filterDateFrom.HasValue || c.CreatedAt.Date >= _filterDateFrom.Value.Date) &&
+        (!_filterDateTo.HasValue || c.CreatedAt.Date <= _filterDateTo.Value.Date));
+
+    private async Task ToggleStatus(string status)
+    {
+        _filterStatus = _filterStatus == status ? null : status;
+        await ApplyFiltersFromUrl();
+    }
 
     // URL query-string parameters (synchronized with filter state)
     [SupplyParameterFromQuery(Name = "warehouse")]
@@ -233,6 +260,12 @@
     [SupplyParameterFromQuery(Name = "q")]
     public string? SearchCode { get; set; }
 
+    [SupplyParameterFromQuery(Name = "from")]
+    public string? DateFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "to")]
+    public string? DateTo { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
@@ -247,6 +280,10 @@
         _filterSupplierId = SupplierId;
         _filterStatus = Status;
         _searchCode = SearchCode;
+
+        // Parse date-range params (null-safe: a fresh load with no query string leaves both null)
+        _filterDateFrom = DateTime.TryParse(DateFrom, out var from) ? from : null;
+        _filterDateTo = DateTime.TryParse(DateTo, out var to) ? to : null;
 
         // Default: pirmas sandėlis (only if no URL param)
         if (!_filterWarehouseId.HasValue && _warehouses.Any())
@@ -308,7 +345,9 @@
             ("honeyType", FilterUrlBuilder.ToQueryValue(_filterHoneyTypeId)),
             ("supplier", FilterUrlBuilder.ToQueryValue(_filterSupplierId)),
             ("status", FilterUrlBuilder.ToQueryValue(_filterStatus)),
-            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)));
+            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)),
+            ("from", FilterUrlBuilder.ToQueryValue(_filterDateFrom)),
+            ("to", FilterUrlBuilder.ToQueryValue(_filterDateTo)));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
