@@ -18,7 +18,7 @@
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
         <MudGrid>
             <MudItem xs="12" md="3">
-                <MudSelect T="int?" @bind-Value="_warehouseId" Label="Sandėlis">
+                <MudSelect T="int?" Value="@_warehouseId" ValueChanged="@(async (int? v) => { _warehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Clearable="true">
                     @foreach (var w in _warehouses)
                     {
                         <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
@@ -26,7 +26,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="3">
-                <MudSelect T="int?" @bind-Value="_honeyTypeId" Label="Medaus rūšis" Clearable="true">
+                <MudSelect T="int?" Value="@_honeyTypeId" ValueChanged="@(async (int? v) => { _honeyTypeId = v; await ApplyFiltersFromUrl(); })" Label="Medaus rūšis" Clearable="true">
                     @foreach (var h in _honeyTypes)
                     {
                         <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
@@ -34,13 +34,10 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="3">
-                <MudTextField @bind-Value="_searchCode" Label="Paieška (ID)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Immediate="true" FullWidth="@true" Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" md="3">
-                <MudDatePicker @bind-Date="_dateFrom" Label="Nuo" DateFormat="yyyy-MM-dd" Clearable="true" />
-            </MudItem>
-            <MudItem xs="12" md="3">
-                <MudDatePicker @bind-Date="_dateTo" Label="Iki" DateFormat="yyyy-MM-dd" Clearable="true" />
+                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Outlined" FullWidth="@true" Clearable="true" />
             </MudItem>
             <MudItem xs="12">
                 <div class="d-flex flex-wrap gap-2 align-center">
@@ -59,7 +56,7 @@
                 </div>
             </MudItem>
             <MudItem xs="12" md="3" Class="d-flex align-end">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadContainers" Size="Size.Small">Filtruoti</MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff" Color="Color.Secondary" Size="Size.Small" OnClick="ClearFilters" Title="Išvalyti filtrus" />
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -135,9 +132,10 @@
     private int? _honeyTypeId;
     private int? _supplierId;
     private string? _status;
-    private string? _searchCode;
+    private string? _search;
     private DateTime? _dateFrom;
     private DateTime? _dateTo;
+    private DateRange? _dateRange;
 
     private readonly Dictionary<string, (string Label, Color Color)> _containerStatusDisplay = new()
     {
@@ -150,9 +148,22 @@
         ["WRITTEN_OFF"] = ("Nurašytas", Color.Error)
     };
 
+    // Client-side free-text + date-range filter applied on top of the server-fetched _containers
     private IEnumerable<Container> FilteredContainers => _containers.Where(c =>
-        (!_dateFrom.HasValue || c.CreatedAt.Date >= _dateFrom.Value.Date) &&
-        (!_dateTo.HasValue || c.CreatedAt.Date <= _dateTo.Value.Date));
+    {
+        var from = _dateRange?.Start;
+        var to = _dateRange?.End;
+        if (from.HasValue && c.CreatedAt.Date < from.Value.Date) return false;
+        if (to.HasValue && c.CreatedAt.Date > to.Value.Date) return false;
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var match = (c.ContainerCode != null && c.ContainerCode.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                || (GetSupplierName(c.SupplierId)?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (GetHoneyTypeName(c.HoneyTypeId)?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+            if (!match) return false;
+        }
+        return true;
+    });
 
     // URL query-string parameters (synchronized with filter state)
     [SupplyParameterFromQuery(Name = "warehouse")]
@@ -171,10 +182,10 @@
     public string? FilterSearch { get; set; }
 
     [SupplyParameterFromQuery(Name = "from")]
-    public DateTime? FilterDateFrom { get; set; }
+    public string? FilterDateFrom { get; set; }
 
     [SupplyParameterFromQuery(Name = "to")]
-    public DateTime? FilterDateTo { get; set; }
+    public string? FilterDateTo { get; set; }
 
     private string _writeOffReason = "";
     private string _writeOffNotes = "";
@@ -187,36 +198,61 @@
         _honeyTypeId = FilterHoneyTypeId;
         _supplierId = FilterSupplierId;
         _status = FilterStatus;
-        _searchCode = FilterSearch;
-        _dateFrom = FilterDateFrom;
-        _dateTo = FilterDateTo;
+        _search = FilterSearch;
+
+        // Parse date-range params (null-safe: a fresh load with no query string leaves both null)
+        _dateFrom = DateTime.TryParse(FilterDateFrom, out var from) ? from : (DateTime?)null;
+        _dateTo = DateTime.TryParse(FilterDateTo, out var to) ? to : (DateTime?)null;
+        _dateRange = (_dateFrom.HasValue || _dateTo.HasValue) ? new DateRange(_dateFrom, _dateTo) : null;
 
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _honeyTypes = (await HoneyTypeService.GetActiveAsync()).ToList();
         _suppliers = (await CustomerService.GetSuppliersAsync()).ToList();
+
+        await LoadContainers();
     }
 
     private async Task ToggleStatus(string status)
     {
         _status = _status == status ? null : status;
-        await LoadContainers();
+        await ApplyFiltersFromUrl();
     }
 
+    // Loads containers from the server for the load-bearing selects (warehouse/honey-type/supplier/status).
+    // Free-text search and date range are applied client-side in FilteredContainers.
     private async Task LoadContainers()
     {
         _selectedContainers.Clear();
+        _containers = await ContainerService.GetFilteredAsync(_warehouseId, _honeyTypeId, _supplierId, _status, null);
+    }
 
+    // Rebuilds the URL from current filter state and reloads. Navigating (replace) re-runs
+    // OnParametersSetAsync, which syncs query params into the fields and calls LoadContainers.
+    private async Task ApplyFiltersFromUrl()
+    {
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("warehouse", FilterUrlBuilder.ToQueryValue(_warehouseId)),
             ("honeyType", FilterUrlBuilder.ToQueryValue(_honeyTypeId)),
             ("supplier", FilterUrlBuilder.ToQueryValue(_supplierId)),
             ("status", FilterUrlBuilder.ToQueryValue(_status)),
-            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)),
+            ("q", FilterUrlBuilder.ToQueryValue(_search)),
             ("from", FilterUrlBuilder.ToQueryValue(_dateFrom)),
             ("to", FilterUrlBuilder.ToQueryValue(_dateTo)));
-        Navigation.NavigateTo(newUrl, replace: false);
+        Navigation.NavigateTo(newUrl, replace: true);
+    }
 
-        _containers = await ContainerService.GetFilteredAsync(_warehouseId, _honeyTypeId, _supplierId, _status, _searchCode);
+    private async Task UpdateSearchAsync(string? value)
+    {
+        _search = value;
+        await ApplyFiltersFromUrl();
+    }
+
+    private async Task UpdateDateRangeAsync(DateRange? range)
+    {
+        _dateRange = range;
+        _dateFrom = range?.Start;
+        _dateTo = range?.End;
+        await ApplyFiltersFromUrl();
     }
 
     private async Task ConfirmWriteOff()
@@ -246,15 +282,10 @@
     private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
     private string GetHoneyTypeName(int? id) => id.HasValue ? _honeyTypes.FirstOrDefault(h => h.Id == id.Value)?.Name ?? "-" : "-";
 
-    private async Task ClearFilters()
+    private void ClearFilters()
     {
-        _warehouseId = null;
-        _honeyTypeId = null;
-        _supplierId = null;
-        _status = null;
-        _searchCode = null;
-        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
-        _containers.Clear();
-        _selectedContainers.Clear();
+        // Navigating to the base URL (replace) re-runs OnParametersSetAsync with all query
+        // params empty, which resets every filter field and reloads containers.
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: true);
     }
 }
