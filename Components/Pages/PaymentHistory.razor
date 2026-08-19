@@ -38,7 +38,23 @@
                                     FullWidth="@true"
                                     Clearable="true" />
             </MudItem>
-            @if (!string.IsNullOrEmpty(_searchTerm) || (_dateRange?.Start != null))
+            <MudItem xs="12">
+                <div class="d-flex flex-wrap gap-2 align-center">
+                    <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būdas:</MudText>
+                    @foreach (var method in _paymentMethodDisplay)
+                    {
+                        <MudChip T="string"
+                                 Color="@(_filterMethod == method.Key ? method.Value.Color : Color.Default)"
+                                 Variant="@(_filterMethod == method.Key ? Variant.Filled : Variant.Outlined)"
+                                 OnClick="@(() => ToggleMethod(method.Key))"
+                                 Size="Size.Small"
+                                 Style="@(_filterMethod == method.Key ? "" : "opacity:0.7")">
+                           @method.Value.Label
+                        </MudChip>
+                    }
+                </div>
+            </MudItem>
+            @if (!string.IsNullOrEmpty(_searchTerm) || (_dateRange?.Start != null) || _filterMethod != null)
             {
                 <MudItem xs="12">
                     <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
@@ -116,6 +132,18 @@
     private bool _loading = true;
     private string? _searchTerm;
     private DateRange? _dateRange;
+    private string? _filterMethod;
+
+    // Display labels/colors for the PaymentMethod enum values (enum-name strings,
+    // compared against PaymentMethod.ToString() in the service)
+    private static readonly Dictionary<string, (string Label, Color Color)> _paymentMethodDisplay = new()
+    {
+        ["Cash"] = ("Grynais", Color.Success),
+        ["BankTransfer"] = ("Banko pavedimas", Color.Primary),
+        ["Card"] = ("Kortelė", Color.Info),
+        ["ElectronicMoney"] = ("Elektroniniai pinigai", Color.Warning),
+        ["Other"] = ("Kita", Color.Default)
+    };
     private int _rowsPerPage = 25;
     private bool _disposed = false;
     // Default sort: newest payment first (PaymentDate descending)
@@ -132,12 +160,16 @@
     [SupplyParameterFromQuery(Name = "to")]
     public DateTime? DateTo { get; set; }
 
+    [SupplyParameterFromQuery(Name = "method")]
+    public string? FilterMethod { get; set; }
+
     protected override async Task OnParametersSetAsync()
     {
         _searchTerm = FilterSearch;
         _dateRange = (DateFrom.HasValue || DateTo.HasValue)
             ? new DateRange(DateFrom, DateTo)
             : null;
+        _filterMethod = FilterMethod;
 
         await LoadPaymentsAsync();
     }
@@ -161,7 +193,7 @@
                 customerId: null,
                 fromDate: fromDate,
                 toDate: toDate,
-                paymentMethod: null,
+                paymentMethod: _filterMethod,
                 source: null,
                 searchTerm: _searchTerm,
                 sortBy: _sortBy,
@@ -206,7 +238,8 @@
         var newUrl = FilterUrlBuilder.Build("/payments/history",
             ("q", _searchTerm),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)));
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("method", FilterUrlBuilder.ToQueryValue(_filterMethod)));
         Navigation.NavigateTo(newUrl, replace: true);
     }
 
@@ -216,8 +249,20 @@
         var newUrl = FilterUrlBuilder.Build("/payments/history",
             ("q", _searchTerm),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)));
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("method", FilterUrlBuilder.ToQueryValue(_filterMethod)));
         Navigation.NavigateTo(newUrl, replace: false);
+    }
+
+    private async Task ToggleMethod(string method)
+    {
+        _filterMethod = _filterMethod == method ? null : method;
+        var newUrl = FilterUrlBuilder.Build("/payments/history",
+            ("q", _searchTerm),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("method", FilterUrlBuilder.ToQueryValue(_filterMethod)));
+        Navigation.NavigateTo(newUrl, replace: true);
     }
 
     private async Task HandleSortAsync(SortDirection sortDirection, string sortLabel)
