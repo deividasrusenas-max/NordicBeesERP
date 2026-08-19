@@ -28,30 +28,27 @@
                         <MudDateRangePicker T="DateTime?" Label="Importo data" @bind-DateRange="_dateRange"
                             OnRangeSelected="UpdateDateRangeAsync" />
                     </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudStack Row="true" Wrap="Wrap.Wrap">
-                            @foreach (var kv in _statusDisplay)
-                            {
-                                <MudChip T="string" Color="@(_selectedStatuses.Contains(kv.Key) ? kv.Value.Color : Color.Default)"
-                                    Variant="@(_selectedStatuses.Contains(kv.Key) ? Variant.Filled : Variant.Outlined)"
-                                    OnClick="@(async () => await ToggleStatusAsync(kv.Key))">
-                                    @kv.Value.Label
-                                </MudChip>
-                            }
-                        </MudStack>
-                    </MudItem>
                 </MudGrid>
+            </MudPaper>
+
+            <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+                @foreach (var kv in _statusDisplay)
+                {
+                    <MudChip T="string" Color="@(_selectedStatuses.Contains(kv.Key) ? kv.Value.Color : Color.Default)"
+                        Variant="@(_selectedStatuses.Contains(kv.Key) ? Variant.Filled : Variant.Outlined)"
+                        OnClick="@(async () => await ToggleStatusAsync(kv.Key))">
+                        @kv.Value.Label
+                    </MudChip>
+                }
                 @if (_dateRange?.Start != null || _dateRange?.End != null || _selectedStatuses.Count > 0)
                 {
-                    <div class="mt-2">
-                        <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
-                            Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                            OnClick="ClearFiltersAsync">
-                            Išvalyti filtrus
-                        </MudButton>
-                    </div>
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                        Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                        OnClick="ClearFiltersAsync">
+                        Išvalyti filtrus
+                    </MudButton>
                 }
-            </MudPaper>
+            </div>
 
             <MudTable T="BankImportViewModel" Items="@FilteredBankImports" Hover="true" Dense="true" Loading="@_loading" LoadingProgressColor="Color.Info">
                 <HeaderContent>
