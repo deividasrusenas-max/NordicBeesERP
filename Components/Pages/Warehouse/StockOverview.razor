@@ -45,14 +45,14 @@
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" md="2">
-                <MudDatePicker T="DateTime?" Value="_filterDateFrom" ValueChanged="@(async (DateTime? v) => { _filterDateFrom = v; await ApplyFiltersFromUrl(); })" Label="Nuo" Clearable="true" DateFormat="yyyy-MM-dd" />
+            <MudItem xs="12" md="3">
+                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis, sandėlis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Immediate="true" FullWidth="@true" Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudDatePicker T="DateTime?" Value="_filterDateTo" ValueChanged="@(async (DateTime? v) => { _filterDateTo = v; await ApplyFiltersFromUrl(); })" Label="Iki" Clearable="true" DateFormat="yyyy-MM-dd" />
+                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Outlined" FullWidth="@true" Clearable="true" />
             </MudItem>
-            <MudItem xs="12" md="2">
-                <MudTextField Value="_searchCode" ValueChanged="@(async (string v) => { _searchCode = v; await ApplyFiltersFromUrl(); })" Label="Paieška (ID)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+            <MudItem xs="12" md="1" Class="d-flex align-end">
+                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff" Color="Color.Secondary" Size="Size.Small" OnClick="ClearFilters" Title="Išvalyti filtrus" />
             </MudItem>
             <MudItem xs="12">
                 <div class="d-flex flex-wrap gap-2 align-center">
@@ -69,10 +69,6 @@
                         </MudChip>
                     }
                 </div>
-            </MudItem>
-            <MudItem xs="12" md="2" Class="d-flex align-end gap-2">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadData" Size="Size.Small">Filtruoti</MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="ClearFilters" Size="Size.Small">Valyti</MudButton>
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -228,14 +224,26 @@
     private int? _filterHoneyTypeId;
     private int? _filterSupplierId;
     private string? _filterStatus;
-    private string? _searchCode;
+    private string? _search;
     private DateTime? _filterDateFrom;
     private DateTime? _filterDateTo;
+    private DateRange? _dateRange;
 
-    // Client-side date-range filter applied on top of the server-fetched _containers
+    // Client-side date-range + free-text filter applied on top of the server-fetched _containers
     private IEnumerable<Container> FilteredContainers => _containers.Where(c =>
-        (!_filterDateFrom.HasValue || c.CreatedAt.Date >= _filterDateFrom.Value.Date) &&
-        (!_filterDateTo.HasValue || c.CreatedAt.Date <= _filterDateTo.Value.Date));
+    {
+        if (_filterDateFrom.HasValue && c.CreatedAt.Date < _filterDateFrom.Value.Date) return false;
+        if (_filterDateTo.HasValue && c.CreatedAt.Date > _filterDateTo.Value.Date) return false;
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var match = (c.ContainerCode != null && c.ContainerCode.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                || (GetSupplierName(c.SupplierId)?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (GetHoneyTypeName(c.HoneyTypeId)?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (GetWarehouseName(c.WarehouseId)?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+            if (!match) return false;
+        }
+        return true;
+    });
 
     private async Task ToggleStatus(string status)
     {
@@ -278,11 +286,12 @@
         _filterHoneyTypeId = HoneyTypeId;
         _filterSupplierId = SupplierId;
         _filterStatus = Status;
-        _searchCode = SearchCode;
+        _search = SearchCode;
 
         // Parse date-range params (null-safe: a fresh load with no query string leaves both null)
         _filterDateFrom = DateTime.TryParse(DateFrom, out var from) ? from : null;
         _filterDateTo = DateTime.TryParse(DateTo, out var to) ? to : null;
+        _dateRange = (_filterDateFrom.HasValue || _filterDateTo.HasValue) ? new DateRange(_filterDateFrom, _filterDateTo) : null;
 
         // Default: pirmas sandėlis (only if no URL param)
         if (!_filterWarehouseId.HasValue && _warehouses.Any())
@@ -295,7 +304,7 @@
     {
         _loading = true;
         _selectedContainers.Clear();
-        _containers = await ContainerService.GetFilteredAsync(_filterWarehouseId, _filterHoneyTypeId, _filterSupplierId, _filterStatus, _searchCode);
+        _containers = await ContainerService.GetFilteredAsync(_filterWarehouseId, _filterHoneyTypeId, _filterSupplierId, _filterStatus, null);
         
         // Calculate bičių duona stats
         await CalculateBiciuDuonaStats();
@@ -334,7 +343,7 @@
 
     private void ClearFilters()
     {
-        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: true);
     }
 
     private async Task ApplyFiltersFromUrl()
@@ -344,10 +353,24 @@
             ("honeyType", FilterUrlBuilder.ToQueryValue(_filterHoneyTypeId)),
             ("supplier", FilterUrlBuilder.ToQueryValue(_filterSupplierId)),
             ("status", FilterUrlBuilder.ToQueryValue(_filterStatus)),
-            ("q", FilterUrlBuilder.ToQueryValue(_searchCode)),
+            ("q", FilterUrlBuilder.ToQueryValue(_search)),
             ("from", FilterUrlBuilder.ToQueryValue(_filterDateFrom)),
             ("to", FilterUrlBuilder.ToQueryValue(_filterDateTo)));
-        Navigation.NavigateTo(newUrl, replace: false);
+        Navigation.NavigateTo(newUrl, replace: true);
+    }
+
+    private async Task UpdateSearchAsync(string? value)
+    {
+        _search = value;
+        await ApplyFiltersFromUrl();
+    }
+
+    private async Task UpdateDateRangeAsync(DateRange? range)
+    {
+        _dateRange = range;
+        _filterDateFrom = range?.Start;
+        _filterDateTo = range?.End;
+        await ApplyFiltersFromUrl();
     }
 
     private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
