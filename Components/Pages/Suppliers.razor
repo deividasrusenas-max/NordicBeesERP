@@ -41,19 +41,44 @@
                       Adornment="Adornment.Start" />
     </MudPaper>
 
-    <MudTabs ActivePanelIndex="@_tabIndex"
-             ActivePanelIndexChanged="@((int i) => OnTabChanged(i))"
-             Elevation="0" Rounded="true" Square="false" Class="mt-2 mb-0">
+    <MudStack Row="true" Class="mt-2 mb-0">
         @if (!_isWarehouse)
         {
-            <MudTabPanel Text="VISI" />
+            <MudChip T="string"
+                     Checked="@(_tabIndex == 0)"
+                     OnCheckedChange="@(async (bool v) => { if (v) OnTabChanged(0); })"
+                     Color="@(_tabIndex == 0 ? Color.Primary : Color.Default)"
+                     Variant="@(_tabIndex == 0 ? Variant.Filled : Variant.Outlined)"
+                     Size="Size.Small"
+                     SelectionGroup="true"
+                     Style="@(_tabIndex == 0 ? "" : "opacity:0.7")">
+                VISI
+            </MudChip>
         }
-        <MudTabPanel Text="ŪKININKAI" />
+        <MudChip T="string"
+                 Checked="@(_tabIndex == 1)"
+                 OnCheckedChange="@(async (bool v) => { if (v) OnTabChanged(1); })"
+                 Color="@(_tabIndex == 1 ? Color.Primary : Color.Default)"
+                 Variant="@(_tabIndex == 1 ? Variant.Filled : Variant.Outlined)"
+                 Size="Size.Small"
+                 SelectionGroup="true"
+                 Style="@(_tabIndex == 1 ? "" : "opacity:0.7")">
+            ŪKININKAI
+        </MudChip>
         @if (!_isWarehouse)
         {
-            <MudTabPanel Text="ĮMONĖS" />
+            <MudChip T="string"
+                     Checked="@(_tabIndex == 2)"
+                     OnCheckedChange="@(async (bool v) => { if (v) OnTabChanged(2); })"
+                     Color="@(_tabIndex == 2 ? Color.Primary : Color.Default)"
+                     Variant="@(_tabIndex == 2 ? Variant.Filled : Variant.Outlined)"
+                     Size="Size.Small"
+                     SelectionGroup="true"
+                     Style="@(_tabIndex == 2 ? "" : "opacity:0.7")">
+                ĮMONĖS
+            </MudChip>
         }
-    </MudTabs>
+    </MudStack>
 
     <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
         <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">PVM:</MudText>
@@ -347,7 +372,7 @@
         _isWarehouse = authState.User.IsInRole("Warehouse");
         _isAdmin = authState.User.IsInRole("Admin");
         _isManager = authState.User.IsInRole("Manager");
-        if (_isWarehouse) _tabIndex = 0;
+        if (_isWarehouse) _tabIndex = 1;
         _categories = await ExpenseService.GetCategoriesAsync(isActive: true);
         await LoadSuppliers();
         StateHasChanged();
