@@ -45,6 +45,22 @@
                     </MudButton>
                 </MudItem>
             }
+            <MudItem xs="12">
+                <div class="d-flex flex-wrap gap-2 align-center">
+                    <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Metodas:</MudText>
+                    @foreach (var method in _paymentMethodDisplay)
+                    {
+                        <MudChip T="string"
+                                 Color="@(_filterMethod == method.Key ? method.Value.Color : Color.Default)"
+                                 Variant="@(_filterMethod == method.Key ? Variant.Filled : Variant.Outlined)"
+                                 OnClick="@(() => ToggleMethod(method.Key))"
+                                 Size="Size.Small"
+                                 Style="@(_filterMethod == method.Key ? "" : "opacity:0.7")">
+                           @method.Value.Label
+                        </MudChip>
+                    }
+                </div>
+            </MudItem>
         </MudGrid>
     </MudPaper>
 
@@ -87,6 +103,13 @@
     private bool _loading = true;
     private string? _filterSearch;
     private DateRange? _dateRange;
+    private string? _filterMethod;
+
+    private readonly Dictionary<string, (string Label, Color Color)> _paymentMethodDisplay = new()
+    {
+        ["BANK"] = ("Banko pavedimas", Color.Primary),
+        ["CASH"] = ("Grynais", Color.Success)
+    };
 
     // URL query-string parameters (synchronized with filter state)
     [SupplyParameterFromQuery(Name = "q")]
@@ -98,6 +121,9 @@
     [SupplyParameterFromQuery(Name = "to")]
     public DateTime? DateTo { get; set; }
 
+    [SupplyParameterFromQuery(Name = "method")]
+    public string? FilterMethod { get; set; }
+
     // Lifecycle
     protected override async Task OnParametersSetAsync()
     {
@@ -105,6 +131,7 @@
         _dateRange = (DateFrom.HasValue || DateTo.HasValue)
             ? new DateRange(DateFrom, DateTo)
             : null;
+        _filterMethod = FilterMethod;
         await LoadPaymentsAsync();
     }
 
@@ -147,6 +174,8 @@
                     p.SupplierName.ToLower().Contains(s) ||
                     (p.Reference != null && p.Reference.ToLower().Contains(s)));
             }
+            if (!string.IsNullOrWhiteSpace(_filterMethod))
+                query = query.Where(p => p.PaymentMethod == _filterMethod);
 
             var rows = await query.OrderByDescending(p => p.PaymentDate).ToListAsync();
             _payments = rows.Select(p => new PaymentRow(
@@ -171,7 +200,8 @@
         var url = FilterUrlBuilder.Build("/expense-payments",
             ("q", _filterSearch),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)));
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("method", FilterUrlBuilder.ToQueryValue(_filterMethod)));
         Navigation.NavigateTo(url, replace: true);
     }
 
@@ -181,7 +211,19 @@
         var url = FilterUrlBuilder.Build("/expense-payments",
             ("q", _filterSearch),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)));
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("method", FilterUrlBuilder.ToQueryValue(_filterMethod)));
+        Navigation.NavigateTo(url, replace: true);
+    }
+
+    private void ToggleMethod(string method)
+    {
+        _filterMethod = _filterMethod == method ? null : method;
+        var url = FilterUrlBuilder.Build("/expense-payments",
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("method", FilterUrlBuilder.ToQueryValue(_filterMethod)));
         Navigation.NavigateTo(url, replace: true);
     }
 
