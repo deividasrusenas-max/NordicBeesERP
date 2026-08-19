@@ -91,6 +91,19 @@
         }
     </div>
 
+    <!-- Tabs -->
+    <MudTabs ActivePanelIndex="_selectedTab"
+             ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))"
+             Elevation="0" Rounded="true" Square="false" Class="mt-2">
+        <MudTabPanel Text="Visos" />
+        <MudTabPanel Text="Patvirtinti" />
+        <MudTabPanel Text="Pakuojami" />
+        <MudTabPanel Text="Paruošti atsiėmimui" />
+        <MudTabPanel Text="Išsiųsti" />
+        <MudTabPanel Text="Neišrašyta" />
+        <MudTabPanel Text="Šis mėnuo" />
+    </MudTabs>
+
     <!-- Table -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
         <MudTable Items="@FilteredItems"
@@ -134,6 +147,7 @@
 @code {
     private List<Order> _items = new();
     private bool _isLoading = false;
+    private int _selectedTab = 0;
     private Dictionary<int, string> _customerNames = new();
     private Dictionary<int, decimal> _palletCounts = new();
 
@@ -155,6 +169,9 @@
     [SupplyParameterFromQuery(Name = "status")]
     public string? StatusCsv { get; set; }
 
+    [SupplyParameterFromQuery(Name = "tab")]
+    public int? Tab { get; set; }
+
     // Available statuses for filtering
     private readonly List<string> _availableStatuses = new()
     {
@@ -174,6 +191,7 @@
         _selectedStatuses = !string.IsNullOrEmpty(StatusCsv)
             ? new HashSet<string>(StatusCsv.Split(','))
             : new HashSet<string>();
+        _selectedTab = Tab ?? 0;
 
         await LoadCustomersAsync();
         await LoadDataAsync();
@@ -258,7 +276,44 @@
             result = result.Where(o => o.OrderDate < end);
         }
 
+        // Tab filters (applied after search/date filters)
+        switch (_selectedTab)
+        {
+            case 1: // Patvirtinti
+                result = result.Where(o => o.Status == "confirmed");
+                break;
+            case 2: // Pakuojami
+                result = result.Where(o => o.Status == "packing");
+                break;
+            case 3: // Paruošti atsiėmimui
+                result = result.Where(o => o.Status == "ready_for_pickup");
+                break;
+            case 4: // Išsiųsti
+                result = result.Where(o => o.Status == "shipped");
+                break;
+            case 5: // Neišrašyta
+                result = result.Where(o => o.IsUninvoiced);
+                break;
+            case 6: // Šis mėnuo
+                var startOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                result = result.Where(o => o.OrderDate >= startOfMonth);
+                break;
+        }
+
         return result.ToList();
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _selectedTab = index;
+
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", index != 0 ? index.ToString() : null));
+        Navigation.NavigateTo(newUrl, replace: false);
     }
 
     private void ToggleStatus(string status)
