@@ -61,6 +61,16 @@
         }
     </div>
 
+    <MudTabs ActivePanelIndex="_selectedTab"
+             ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))"
+             Elevation="0" Rounded="true" Square="false" Class="mt-2">
+        <MudTabPanel Text="Visos" />
+        <MudTabPanel Text="Neapmokėtos" />
+        <MudTabPanel Text="Dalinai apmokėtos" />
+        <MudTabPanel Text="Apmokėtos" />
+        <MudTabPanel Text="Šis mėnuo" />
+    </MudTabs>
+
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" />
@@ -118,7 +128,10 @@
     private string? DateTo { get; set; }
     [SupplyParameterFromQuery(Name = "status")]
     private string? StatusCsv { get; set; }
+    [SupplyParameterFromQuery(Name = "tab")]
+    private int? Tab { get; set; }
 
+    private int _selectedTab = 0;
     private string _searchText = string.Empty;
     private DateRange? _dateRange;
     private HashSet<string> _selectedStatuses = new();
@@ -153,6 +166,7 @@
         if (!string.IsNullOrWhiteSpace(DateTo) && DateTime.TryParse(DateTo, out var to))
             _dateRange = new DateRange(_dateRange?.Start, to);
         _selectedStatuses = FilterUrlBuilder.ParseStatusCsv(StatusCsv);
+        _selectedTab = Tab ?? 0;
     }
 
     private async Task LoadData()
@@ -201,6 +215,21 @@
             if (_dateRange?.Start != null && d.DeliveryDate.Date < _dateRange.Start.Value.Date) return false;
             if (_dateRange?.End != null && d.DeliveryDate.Date > _dateRange.End.Value.Date) return false;
             if (_selectedStatuses.Count > 0 && !_selectedStatuses.Contains(GetStatusBadge(d).Label)) return false;
+            switch (_selectedTab)
+            {
+                case 1: // Neapmokėtos
+                    if (!(d.TotalAmount > 0 && d.PaidAmount <= 0)) return false;
+                    break;
+                case 2: // Dalinai apmokėtos
+                    if (!(d.PaidAmount > 0 && d.PaidAmount < d.TotalAmount)) return false;
+                    break;
+                case 3: // Apmokėtos
+                    if (d.PaidAmount <= 0 || d.PaidAmount < d.TotalAmount) return false;
+                    break;
+                case 4: // Šis mėnuo
+                    if (d.DeliveryDate.Date < new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)) return false;
+                    break;
+            }
             return true;
         });
     }
@@ -210,7 +239,12 @@
     private Task UpdateFilterSearchAsync(string value)
     {
         _searchText = value ?? string.Empty;
-        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0], ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText)));
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)));
         return Task.CompletedTask;
     }
 
@@ -218,8 +252,11 @@
     {
         _dateRange = range;
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("from", range?.Start?.ToString("yyyy-MM-dd")),
-            ("to", range?.End?.ToString("yyyy-MM-dd"))));
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("from", FilterUrlBuilder.ToQueryValue(range?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(range?.End)),
+            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)));
         return Task.CompletedTask;
     }
 
@@ -228,12 +265,29 @@
         if (_selectedStatuses.Contains(status)) _selectedStatuses.Remove(status);
         else _selectedStatuses.Add(status);
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses))));
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)));
+        return Task.CompletedTask;
+    }
+
+    private Task OnTabChangedAsync(int index)
+    {
+        _selectedTab = index;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
+            ("tab", index != 0 ? index.ToString() : null)));
         return Task.CompletedTask;
     }
 
     private Task ClearFiltersAsync()
     {
+        _selectedTab = 0;
         _searchText = string.Empty;
         _dateRange = null;
         _selectedStatuses.Clear();
