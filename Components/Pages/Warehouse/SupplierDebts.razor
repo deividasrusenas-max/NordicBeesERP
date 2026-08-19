@@ -48,19 +48,19 @@
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#f0fdf4; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Tiekėjų</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value">@_debtRows.Count</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value">@FilteredDebtRows.Count</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#fef3c7; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Bendra suma</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value">@_debtRows.Sum(r => r.TotalAmount).ToString("N2") €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value">@FilteredDebtRows.Sum(r => r.TotalAmount).ToString("N2") €</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#dbeafe; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Sumokėta</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value">@_debtRows.Sum(r => r.PaidAmount).ToString("N2") €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value">@FilteredDebtRows.Sum(r => r.PaidAmount).ToString("N2") €</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
@@ -79,7 +79,7 @@
         </MudTabs>
 
         <!-- Table -->
-        <MudTable T="SupplierDebtRow" Items="_debtRows" Dense="true" Hover="true" Striped="true"
+        <MudTable T="SupplierDebtRow" Items="FilteredDebtRows" Dense="true" Hover="true" Striped="true"
             OnRowClick="@((TableRowClickEventArgs<SupplierDebtRow> args) => { if (IsDoubleClick(args.Item)) GoToDetail(args.Item.SupplierId); })"
             Style="cursor:pointer">
             <HeaderContent>
@@ -114,10 +114,11 @@
 
     private List<Delivery> _deliveries = new();
     private List<SupplierDebtRow> _baseRows = new();
-    private List<SupplierDebtRow> _debtRows = new();
-    private decimal _totalDebt => _debtRows.Sum(r => r.Debt);
+    private decimal _totalDebt => FilteredDebtRows.Sum(r => r.Debt);
     private int _activeTab = 0;
-    private string _debtCardStyle = "";
+    private string _debtCardStyle => _totalDebt > 0
+        ? "background:#fee2e2; border-radius:12px"
+        : "background:#f0fdf4; border-radius:12px";
     private bool _loading = true;
     private string _searchText = string.Empty;
     private DateRange? _dateRange;
@@ -214,20 +215,27 @@
 
     // Applies the search filter (in-memory) over aggregated rows, then the
     // active tab to produce the displayed list. No service re-fetch on keystroke.
+    private List<SupplierDebtRow> FilteredDebtRows
+    {
+        get
+        {
+            var q = _searchText.Trim().ToLowerInvariant();
+            var searched = string.IsNullOrWhiteSpace(q)
+                ? _baseRows
+                : _baseRows.Where(r => r.SupplierName.ToLowerInvariant().Contains(q)).ToList();
+
+            return _activeTab switch
+            {
+                1 => searched.Where(r => r.Debt > 0).ToList(),
+                2 => searched.Where(r => r.Debt <= 0).ToList(),
+                _ => searched
+            };
+        }
+    }
+
     private void ApplyFilters()
     {
-        var q = _searchText.Trim().ToLowerInvariant();
-        var searched = string.IsNullOrWhiteSpace(q)
-            ? _baseRows
-            : _baseRows.Where(r => r.SupplierName.ToLowerInvariant().Contains(q)).ToList();
-
-        switch (_activeTab)
-        {
-            case 1: _debtRows = searched.Where(r => r.Debt > 0).ToList(); break;
-            case 2: _debtRows = searched.Where(r => r.Debt <= 0).ToList(); break;
-            default: _debtRows = searched; break;
-        }
-        UpdateDebtCardStyle();
+        StateHasChanged();
     }
 
     private bool IsDoubleClick(object item)
@@ -264,6 +272,7 @@
     private Task UpdateFilterSearchAsync(string value)
     {
         _searchText = value ?? string.Empty;
+        StateHasChanged();
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
@@ -286,6 +295,7 @@
         _dateRange = range;
         // Date range changes the underlying aggregation (filter deliveries BEFORE grouping).
         ApplyDateRange(range?.Start, range?.End);
+        StateHasChanged();
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
             ("from", FilterUrlBuilder.ToQueryValue(range?.Start)),
@@ -298,20 +308,9 @@
         _searchText = string.Empty;
         _dateRange = null;
         ApplyDateRange(null, null);
+        StateHasChanged();
         Navigation.NavigateTo(Navigation.Uri.Split('?')[0]);
         return Task.CompletedTask;
-    }
-
-    private void UpdateDebtCardStyle()
-    {
-        if (_totalDebt > 0)
-        {
-            _debtCardStyle = "background:#fee2e2; border-radius:12px";
-        }
-        else
-        {
-            _debtCardStyle = "background:#f0fdf4; border-radius:12px";
-        }
     }
 
     private string GetRowDebtClass(decimal debt)
