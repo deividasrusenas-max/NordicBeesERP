@@ -85,6 +85,17 @@
         }
     </div>
 
+    <!-- Tabs -->
+    <MudTabs ActivePanelIndex="_selectedTab"
+             ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))"
+             Elevation="0" Rounded="true" Square="false" Class="mt-2">
+        <MudTabPanel Text="Visos" />
+        <MudTabPanel Text="Juodraštis" />
+        <MudTabPanel Text="Atspausdinta" />
+        <MudTabPanel Text="Ginčijama" />
+        <MudTabPanel Text="Šis mėnuo" />
+    </MudTabs>
+
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
         <MudTable Items="@_filteredCreditNotes"
                   Dense="true"
@@ -143,6 +154,7 @@
     private List<CreditNoteListDto> _creditNotes = new();
     private List<CreditNoteListDto> _filteredCreditNotes = new();
     private bool _loading = true;
+    private int _selectedTab;
     private string? _searchTerm;
     private DateRange? _dateRange;
     private int _rowsPerPage = 25;
@@ -178,6 +190,9 @@
     [SupplyParameterFromQuery(Name = "status")]
     public string? StatusCsv { get; set; }
 
+    [SupplyParameterFromQuery(Name = "tab")]
+    public int? Tab { get; set; }
+
     protected override async Task OnParametersSetAsync()
     {
         _searchTerm = FilterSearch;
@@ -187,6 +202,7 @@
         _selectedStatuses = !string.IsNullOrEmpty(StatusCsv)
             ? new HashSet<string>(StatusCsv.Split(','))
             : new HashSet<string>();
+        _selectedTab = Tab ?? 0;
 
         await LoadCreditNotesAsync();
     }
@@ -275,6 +291,24 @@
             filtered = filtered.Where(c => c.CreditDate >= start && c.CreditDate <= end);
         }
 
+        // Tab filters (applied after status filter)
+        switch (_selectedTab)
+        {
+            case 1: // Juodraštis
+                filtered = filtered.Where(c => c.Status == CreditNoteStatus.Draft);
+                break;
+            case 2: // Atspausdinta
+                filtered = filtered.Where(c => c.Status == CreditNoteStatus.Printed);
+                break;
+            case 3: // Ginčijama
+                filtered = filtered.Where(c => c.Status == CreditNoteStatus.Disputed);
+                break;
+            case 4: // Šis mėnuo
+                var startOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                filtered = filtered.Where(c => c.CreditDate >= startOfMonth);
+                break;
+        }
+
         _filteredCreditNotes = filtered.ToList();
     }
 
@@ -313,7 +347,21 @@
             ("q", _searchTerm),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
             ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
-            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)));
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
+        Navigation.NavigateTo(newUrl, replace: false);
+    }
+
+    private async Task OnTabChangedAsync(int index)
+    {
+        _selectedTab = index;
+
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _searchTerm),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", index != 0 ? index.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
@@ -341,7 +389,8 @@
             ("q", val),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
             ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
-            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)));
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: true);
     }
 
@@ -353,7 +402,8 @@
             ("q", _searchTerm),
             ("from", FilterUrlBuilder.ToQueryValue(dr.Start)),
             ("to", FilterUrlBuilder.ToQueryValue(dr.End)),
-            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)));
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 }
