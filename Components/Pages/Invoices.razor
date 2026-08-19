@@ -16,17 +16,18 @@
 
 <PageTitle>Sąskaitos</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <!-- Header row -->
-    <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">Sąskaitos</MudText>
-        <MudButton OnClick="OpenCreateDialog"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   Style="text-transform:none">
-            Sukurti sąskaitą
-        </MudButton>
-    </div>
+    <!-- Title row -->
+    <MudText Typo="Typo.h5" Class="mb-3">Sąskaitos</MudText>
+
+    <!-- Primary action row -->
+    <MudButton OnClick="OpenCreateDialog"
+               StartIcon="@Icons.Material.Filled.Add"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-3"
+               Style="text-transform:none">
+        Sukurti sąskaitą
+    </MudButton>
 
     <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
     <MudStack Row="true" Class="mb-3">
@@ -93,40 +94,59 @@
         </MudGrid>
     </MudPaper>
 
-    <!-- Status chip filters (Level 2 - below type tabs) -->
+    <!-- Unified quick-filter + status chip row -->
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
-        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būsena:</MudText>
-        @if (_selectedStatuses.Any())
-        {
-            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
-                       StartIcon="@Icons.Material.Filled.FilterAltOff"
-                         OnClick="@(async () => await ClearFiltersAsync())">
-                Rodyti visas
-            </MudButton>
-        }
+        <MudChip T="string"
+                 Checked="@(_selectedTab == 0)"
+                 Color="@(_selectedTab == 0 ? Color.Primary : Color.Default)"
+                 Variant="@(_selectedTab == 0 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(0); })">
+            Visos
+        </MudChip>
+        <MudChip T="string"
+                  Checked="@(_selectedTab == 1)"
+                  Color="@(_selectedTab == 1 ? Color.Error : Color.Default)"
+                  Variant="@(_selectedTab == 1 ? Variant.Filled : Variant.Outlined)"
+                  Style="text-transform:none;"
+                  OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(1); })">
+             Neapmokėtos
+         </MudChip>
+         <MudChip T="string"
+                  Checked="@(_selectedTab == 2)"
+                  Color="@(_selectedTab == 2 ? Color.Warning : Color.Default)"
+                  Variant="@(_selectedTab == 2 ? Variant.Filled : Variant.Outlined)"
+                  Style="text-transform:none;"
+                  OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(2); })">
+             Vėluojančios
+         </MudChip>
+         <MudChip T="string"
+                  Checked="@(_selectedTab == 3)"
+                  Color="Color.Default"
+                  Variant="@(_selectedTab == 3 ? Variant.Filled : Variant.Outlined)"
+                  Style="text-transform:none;"
+                  OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(3); })">
+             Šis mėnuo
+         </MudChip>
+
+        @* Status chips (multi-select) — NO "Būsena:" label, "Paid/Apmokėta" excluded per v2 *@
         @foreach (var status in _availableStatuses)
         {
-            var isSelected = _selectedStatuses.Contains(status);
-            <MudChip T="string"
-                      Color="@(isSelected ? StatusDisplayHelper.GetColor(status, _statusDisplay) : Color.Default)"
-                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                        OnClick="@(async () => await ToggleStatusAsync(status))"
-                      Size="Size.Small"
-                      Style="@(isSelected ? "" : "opacity:0.7")">
-                 @StatusDisplayHelper.GetLabel(status, _statusDisplay)
-            </MudChip>
+            @if (status != "Paid")
+            {
+                var isSelected = _selectedStatuses.Contains(status);
+                var chipColor = status == "Confirmed" ? Color.Info : Color.Default;
+                <MudChip T="string"
+                          Color="@chipColor"
+                          Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                          OnClick="@(async () => await ToggleStatusAsync(status))"
+                          Size="Size.Small"
+                          Style="@(isSelected ? "" : "opacity:0.7")">
+                    @StatusDisplayHelper.GetLabel(status, _statusDisplay)
+                </MudChip>
+            }
         }
     </div>
-
-    <!-- Tabs -->
-    <MudTabs ActivePanelIndex="_selectedTab"
-              ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))"
-             Elevation="0" Rounded="true" Square="false" Class="mt-2">
-        <MudTabPanel Text="Visos" />
-        <MudTabPanel Text="Nesumokėtos" />
-        <MudTabPanel Text="Vėluojančios" />
-        <MudTabPanel Text="Šis mėnuo" />
-    </MudTabs>
 
     <!-- Bulk actions bar -->
     @if (_selectedInvoices.Count > 0)
