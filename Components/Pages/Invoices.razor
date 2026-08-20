@@ -23,30 +23,27 @@
     <MudButton OnClick="OpenCreateDialog"
                StartIcon="@Icons.Material.Filled.Add"
                Variant="Variant.Filled"
-               Color="Color.Primary"
-               Class="mb-3"
-               Style="text-transform:none">
-        Sukurti sąskaitą
+                Color="Color.Primary"
+                Class="mb-4"
+                Style="text-transform:none">
+         Sukurti sąskaitą
     </MudButton>
 
     <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
-    <MudStack Row="true" Class="mb-3">
+    <MudStack Row="true" Class="mb-3" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:8px;">Tipas:</MudText>
         <MudChip T="string"
-                 SelectionGroup="true"
-                 Checked="@(_invoiceType == "LAK")"
                  Color="@(_invoiceType == "LAK" ? Color.Primary : Color.Default)"
                  Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
                  Style="text-transform:none;min-width:180px;"
-                 OnCheckedChange="@(async (bool? c) => { if (c == true) await SetInvoiceType("LAK"); })">
+                 OnClick="@(async () => { if (_invoiceType != "LAK") await SetInvoiceType("LAK"); })">
             LAK — Pardavimai
         </MudChip>
         <MudChip T="string"
-                 SelectionGroup="true"
-                 Checked="@(_invoiceType == "ULAK")"
                  Color="@(_invoiceType == "ULAK" ? Color.Primary : Color.Default)"
                  Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
                  Style="text-transform:none;min-width:180px;"
-                 OnCheckedChange="@(async (bool? c) => { if (c == true) await SetInvoiceType("ULAK"); })">
+                 OnClick="@(async () => { if (_invoiceType != "ULAK") await SetInvoiceType("ULAK"); })">
             ULAK — Pirkimai
         </MudChip>
     </MudStack>
@@ -63,8 +60,8 @@
             <MudItem xs="12" sm="6" md="4">
                 <MudTextField Value="@_filterSearch"
                                 ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
-                               Label="Paieška pagal Nr. arba klientą"
-                              Variant="Variant.Outlined"
+                                Label="Paieška pagal Nr. arba klientą"
+                               Variant="Variant.Text"
                                Immediate="true"
                                FullWidth="@true"
                                Clearable="true"
@@ -75,7 +72,7 @@
                 <MudDateRangePicker DateRange="@_dateRange"
                                         DateRangeChanged="@(async (DateRange dr) => await UpdateDateRangeAsync(dr))"
                                     Label="Data (nuo / iki)"
-                                     Variant="Variant.Outlined"
+                                     Variant="Variant.Text"
                                      FullWidth="@true"
                                      Clearable="true" />
             </MudItem>
@@ -97,35 +94,35 @@
     <!-- Unified quick-filter + status chip row -->
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
         <MudChip T="string"
-                 Checked="@(_selectedTab == 0)"
                  Color="@(_selectedTab == 0 ? Color.Primary : Color.Default)"
-                 Variant="@(_selectedTab == 0 ? Variant.Filled : Variant.Outlined)"
-                 Style="text-transform:none;"
-                 OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(0); })">
+                  Variant="@(_selectedTab == 0 ? Variant.Filled : Variant.Outlined)"
+                  Style="text-transform:none;"
+                  Size="Size.Small"
+                  OnClick="@(async () => { if (_selectedTab != 0) await OnTabChangedAsync(0); })">
             Visos
         </MudChip>
         <MudChip T="string"
-                  Checked="@(_selectedTab == 1)"
                   Color="@(_selectedTab == 1 ? Color.Error : Color.Default)"
                   Variant="@(_selectedTab == 1 ? Variant.Filled : Variant.Outlined)"
                   Style="text-transform:none;"
-                  OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(1); })">
+                  Size="Size.Small"
+                  OnClick="@(async () => { if (_selectedTab != 1) await OnTabChangedAsync(1); })">
              Neapmokėtos
          </MudChip>
-         <MudChip T="string"
-                  Checked="@(_selectedTab == 2)"
-                  Color="@(_selectedTab == 2 ? Color.Warning : Color.Default)"
-                  Variant="@(_selectedTab == 2 ? Variant.Filled : Variant.Outlined)"
-                  Style="text-transform:none;"
-                  OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(2); })">
+          <MudChip T="string"
+                   Color="@(_selectedTab == 2 ? Color.Warning : Color.Default)"
+                    Variant="@(_selectedTab == 2 ? Variant.Filled : Variant.Outlined)"
+                    Style="text-transform:none;"
+                    Size="Size.Small"
+                    OnClick="@(async () => { if (_selectedTab != 2) await OnTabChangedAsync(2); })">
              Vėluojančios
          </MudChip>
-         <MudChip T="string"
-                  Checked="@(_selectedTab == 3)"
-                  Color="Color.Default"
-                  Variant="@(_selectedTab == 3 ? Variant.Filled : Variant.Outlined)"
-                  Style="text-transform:none;"
-                  OnCheckedChange="@(async (bool? c) => { if (c == true) await OnTabChangedAsync(3); })">
+          <MudChip T="string"
+                   Color="@(_selectedTab == 3 ? Color.Primary : Color.Default)"
+                    Variant="@(_selectedTab == 3 ? Variant.Filled : Variant.Outlined)"
+                    Style="text-transform:none;"
+                    Size="Size.Small"
+                    OnClick="@(async () => { if (_selectedTab != 3) await OnTabChangedAsync(3); })">
              Šis mėnuo
          </MudChip>
 
