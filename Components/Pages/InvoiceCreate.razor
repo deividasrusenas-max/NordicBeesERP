@@ -229,6 +229,7 @@
     private DateTime? _invoiceDate = DateTime.Today;
     private int _paymentTermDays = 7;
     private DateTime? _paymentDueDate;
+    private bool _dueDateManuallyEdited = false;
     private int? _selectedCustomerId;
     private Customer? _selectedCustomer;
     private string _language = "LT";
@@ -384,6 +385,7 @@
     private void UpdateDueDate(int newDays)
     {
         _paymentTermDays = newDays;
+        _dueDateManuallyEdited = true;
         if (_invoiceDate.HasValue)
             _paymentDueDate = _invoiceDate.Value.AddDays(_paymentTermDays);
         StateHasChanged();
@@ -481,6 +483,7 @@
         {
             _selectedCustomerId = null;
             _paymentTermDays = 7;
+            _dueDateManuallyEdited = false;
             _language = "LT";
             _defaultVatRate = 21m;
             UpdateDueDate();
@@ -490,7 +493,10 @@
 
         _selectedCustomer = customer;
         _selectedCustomerId = customer.Id;
-        _paymentTermDays = customer.PaymentTermDays;
+        if (!_dueDateManuallyEdited)
+        {
+            _paymentTermDays = customer.PaymentTermDays > 0 ? customer.PaymentTermDays : 7;
+        }
         _language = customer.DefaultLanguage;
         _defaultVatRate = customer.DefaultVatRate;
 
