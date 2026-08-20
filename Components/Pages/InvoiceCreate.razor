@@ -64,8 +64,8 @@
                                   ValueChanged="@(days => UpdateDueDate(days))" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="3">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Apmokėti iki</MudText>
-                <MudText Typo="Typo.body2">@(_paymentDueDate?.ToString("yyyy-MM-dd") ?? "—")</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Apmokėti iki</MudText>
+            <MudText Typo="Typo.body1">@(_paymentDueDate?.ToString("yyyy-MM-dd") ?? "—")</MudText>
             </MudItem>
               @if (!_isPurchase)
               {
