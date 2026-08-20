@@ -11,23 +11,18 @@
 
 <PageTitle>Užsakymai</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <!-- Header row -->
-    <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">Užsakymai</MudText>
-        <MudButton OnClick="OpenCreatePage"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   Style="text-transform:none">
-            Naujas užsakymas
-        </MudButton>
-    </div>
+    <!-- Title row -->
+    <MudText Typo="Typo.h5" Class="mb-3">Užsakymai</MudText>
 
-    <!-- Loading indicator -->
-    @if (_isLoading)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
-    }
+    <!-- Primary action row -->
+    <MudButton OnClick="OpenCreatePage"
+               StartIcon="@Icons.Material.Filled.Add"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-3"
+               Style="text-transform:none">
+        Naujas užsakymas
+    </MudButton>
 
     <!-- Filter section -->
     <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
@@ -66,43 +61,86 @@
         </MudGrid>
     </MudPaper>
 
-    <!-- Status chip filters -->
+    <!-- Loading indicator -->
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+
+    <!-- Unified quick-filter + status chip row -->
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
-        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Būsena:</MudText>
-        @if (_selectedStatuses.Any())
-        {
-            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
-                       StartIcon="@Icons.Material.Filled.FilterAltOff"
-                       OnClick="@(async () => await ClearFiltersAsync())">
-                Rodyti visas
-            </MudButton>
-        }
+        @* Quick-filter chips (single-select, driven by _selectedTab) — valid MudBlazor 8.15 API: Selected + OnClick *@
+        <MudChip T="string"
+                 Selected="@(_selectedTab == 0)"
+                 Color="@(_selectedTab == 0 ? Color.Primary : Color.Default)"
+                 Variant="@(_selectedTab == 0 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnClick="@(async () => await OnTabChangedAsync(0))">
+            Visos
+        </MudChip>
+        <MudChip T="string"
+                 Selected="@(_selectedTab == 1)"
+                 Color="@(_selectedTab == 1 ? StatusDisplayHelper.GetColor("confirmed", _statusDisplay) : Color.Default)"
+                 Variant="@(_selectedTab == 1 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnClick="@(async () => await OnTabChangedAsync(1))">
+            Patvirtinti
+        </MudChip>
+        <MudChip T="string"
+                 Selected="@(_selectedTab == 2)"
+                 Color="@(_selectedTab == 2 ? StatusDisplayHelper.GetColor("packing", _statusDisplay) : Color.Default)"
+                 Variant="@(_selectedTab == 2 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnClick="@(async () => await OnTabChangedAsync(2))">
+            Pakuojami
+        </MudChip>
+        <MudChip T="string"
+                 Selected="@(_selectedTab == 3)"
+                 Color="@(_selectedTab == 3 ? StatusDisplayHelper.GetColor("ready_for_pickup", _statusDisplay) : Color.Default)"
+                 Variant="@(_selectedTab == 3 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnClick="@(async () => await OnTabChangedAsync(3))">
+            Paruošti atsiėmimui
+        </MudChip>
+        <MudChip T="string"
+                 Selected="@(_selectedTab == 4)"
+                 Color="@(_selectedTab == 4 ? StatusDisplayHelper.GetColor("shipped", _statusDisplay) : Color.Default)"
+                 Variant="@(_selectedTab == 4 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnClick="@(async () => await OnTabChangedAsync(4))">
+            Išsiųsti
+        </MudChip>
+        <MudChip T="string"
+                 Selected="@(_selectedTab == 5)"
+                 Color="@(_selectedTab == 5 ? Color.Error : Color.Default)"
+                 Variant="@(_selectedTab == 5 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnClick="@(async () => await OnTabChangedAsync(5))">
+            Neišrašyta
+        </MudChip>
+        <MudChip T="string"
+                 Selected="@(_selectedTab == 6)"
+                 Color="@(_selectedTab == 6 ? Color.Info : Color.Default)"
+                 Variant="@(_selectedTab == 6 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 OnClick="@(async () => await OnTabChangedAsync(6))">
+            Šis mėnuo
+        </MudChip>
+
+        @* Status chips (multi-select) *@
         @foreach (var status in _availableStatuses)
         {
             var isSelected = _selectedStatuses.Contains(status);
             <MudChip T="string"
-                      Color="@(isSelected ? StatusDisplayHelper.GetColor(status, _statusDisplay) : Color.Default)"
-                      Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                       OnClick="@(async () => await ToggleStatusAsync(status))"
-                      Size="Size.Small"
-                      Style="@(isSelected ? "" : "opacity:0.7")">
+                     Color="@(isSelected ? StatusDisplayHelper.GetColor(status, _statusDisplay) : Color.Default)"
+                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(async () => await ToggleStatusAsync(status))"
+                     Size="Size.Small"
+                     Style="@(isSelected ? "" : "opacity:0.7")">
                 @StatusDisplayHelper.GetLabel(status, _statusDisplay)
             </MudChip>
         }
     </div>
-
-    <!-- Tabs -->
-    <MudTabs ActivePanelIndex="_selectedTab"
-             ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))"
-             Elevation="0" Rounded="true" Square="false" Class="mt-2">
-        <MudTabPanel Text="Visos" />
-        <MudTabPanel Text="Patvirtinti" />
-        <MudTabPanel Text="Pakuojami" />
-        <MudTabPanel Text="Paruošti atsiėmimui" />
-        <MudTabPanel Text="Išsiųsti" />
-        <MudTabPanel Text="Neišrašyta" />
-        <MudTabPanel Text="Šis mėnuo" />
-    </MudTabs>
 
     <!-- Table -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
@@ -314,19 +352,6 @@
             ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
             ("tab", index != 0 ? index.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: false);
-    }
-
-    private void ToggleStatus(string status)
-    {
-        if (_selectedStatuses.Contains(status))
-        {
-            _selectedStatuses.Remove(status);
-        }
-        else
-        {
-            _selectedStatuses.Add(status);
-        }
-        StateHasChanged();
     }
 
     private async Task ToggleStatusAsync(string status)
