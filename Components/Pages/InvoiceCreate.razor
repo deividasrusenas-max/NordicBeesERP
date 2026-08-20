@@ -140,11 +140,23 @@
             <RowTemplate Context="line">
                 <MudTd DataLabel="Nr.">@(_lines.IndexOf(line) + 1)</MudTd>
                 <MudTd DataLabel="Prekė">
-                    <MudTextField T="string" @bind-Value="line.Description" Variant="Variant.Text" 
-                                  Margin="Margin.Dense"
-                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
-                                  OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })"
-                                  @ondblclick="@(( MouseEventArgs args) => HandleProductDoubleClick(args, line))" />
+                    <MudAutocomplete T="Product"
+                                     Value="@line.SelectedProduct"
+                                     SearchFunc="SearchProducts"
+                                     ToStringFunc="@(p => p != null ? $"{p.Name} ({p.Code})" : null)"
+                                     ValueChanged="@(product => OnProductSelected(product, line))"
+                                     Variant="Variant.Text"
+                                     Margin="Margin.Dense"
+                                     Dense="true"
+                                     Clearable="true"
+                                     Placeholder="Ieškoti produkto..."
+                                     Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                     OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })"
+                                     @ondblclick="@((MouseEventArgs args) => HandleProductDoubleClick(args, line))">
+                        <ItemTemplate>
+                            <MudText Typo="Typo.body2">@context.Name (@context.Code)</MudText>
+                        </ItemTemplate>
+                    </MudAutocomplete>
                 </MudTd>
                 <MudTd DataLabel="Kiekis">
                     <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined" 
@@ -464,6 +476,14 @@
         return Task.FromResult<IEnumerable<Customer>>(results);
     }
 
+    private Task<IEnumerable<Product>> SearchProducts(string? value, CancellationToken token = default)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Task.FromResult<IEnumerable<Product>>(_products);
+        var s = value.ToLower();
+        var results = _products.Where(p => p.Name?.ToLower().Contains(s) == true || p.Code?.ToLower().Contains(s) == true).ToList();
+        return Task.FromResult<IEnumerable<Product>>(results);
+    }
+
     private string FormatCustomerDisplay(Customer? c)
     {
         if (c is null)
@@ -508,6 +528,24 @@
         StateHasChanged();
     }
 
+    private void OnProductSelected(Product? product, InvoiceLineInput line)
+    {
+        line.SelectedProduct = product;
+        if (product is null)
+        {
+            line.ProductId = null;
+            line.ProductCode = null;
+            return;
+        }
+
+        line.ProductId = product.Id;
+        line.ProductCode = product.Code;
+        line.Description = product.Name;
+        line.Unit = product.Unit;
+        line.PriceExclVat = _isPurchase ? product.PurchasePrice : product.SalePrice;
+        CalculateLine(line);
+    }
+
     private async Task OpenProductDialog(InvoiceLineInput line)
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
@@ -519,11 +557,12 @@
         
         if (!result.Canceled && result.Data is Product selectedProduct)
         {
+            line.SelectedProduct = selectedProduct;
             line.ProductId = selectedProduct.Id;
             line.ProductCode = selectedProduct.Code;
             line.Description = selectedProduct.Name;
             line.Unit = selectedProduct.Unit;
-            line.PriceExclVat = selectedProduct.SalePrice;
+            line.PriceExclVat = _isPurchase ? selectedProduct.PurchasePrice : selectedProduct.SalePrice;
             
             CalculateLine(line);
             
@@ -542,6 +581,7 @@
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is RawMaterialType material)
         {
+            line.SelectedProduct = null;
             line.Description = material.Name;
             line.Unit = "kg";
             line.VatRate = 6;
@@ -722,5 +762,6 @@
         public decimal PriceExclVat { get; set; } = 0;
         public decimal VatRate { get; set; } = 21;
         public decimal LineTotal { get; set; } = 0;
+        public Product? SelectedProduct { get; set; }
     }
 }
