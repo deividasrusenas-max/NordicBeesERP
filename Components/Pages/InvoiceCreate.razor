@@ -148,7 +148,7 @@
                 </MudTd>
                 <MudTd DataLabel="Kiekis">
                     <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined" 
-                                     Margin="Margin.Dense" Min="0" Step="1M"
+                                     Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M"
                                      ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Vnt.">
@@ -157,12 +157,12 @@
                 </MudTd>
                 <MudTd DataLabel="Kaina">
                     <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
-                                     Margin="Margin.Dense" Min="0" Step="0.01M"
+                                     Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="0.01M"
                                      ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="PVM %">
                     <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
-                                     Margin="Margin.Dense" Min="0" Step="1M" Format="G29"
+                                     Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M" Format="G29"
                                      ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Suma">
