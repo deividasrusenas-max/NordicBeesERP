@@ -497,7 +497,11 @@
         {
             _paymentTermDays = customer.PaymentTermDays > 0 ? customer.PaymentTermDays : 7;
         }
-        _language = customer.DefaultLanguage;
+        var lang = customer.DefaultLanguage?.Trim().ToUpperInvariant();
+        if (lang is "LT" or "EN")
+        {
+            _language = lang;
+        }
         _defaultVatRate = customer.DefaultVatRate;
 
         UpdateDueDate();
