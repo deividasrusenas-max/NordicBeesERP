@@ -66,7 +66,7 @@ Visada po header row, prieš filtrus.
             <MudTextField Value="@_filterSearch"
                           ValueChanged="@(async (string val) => { _filterSearch = val; await LoadDataAsync(); })"
                           Label="Paieška pagal Nr. arba pavadinimą"
-                          Variant="Variant.Outlined"
+                          Variant="Variant.Text"
                           Immediate="true"
                           FullWidth="true"
                           Clearable="true"
@@ -77,7 +77,7 @@ Visada po header row, prieš filtrus.
             <MudDateRangePicker DateRange="@_dateRange"
                                 DateRangeChanged="@(async (DateRange dr) => { _dateRange = dr; await LoadDataAsync(); })"
                                 Label="Data (nuo / iki)"
-                                Variant="Variant.Outlined"
+                                Variant="Variant.Text"
                                 FullWidth="true"
                                 Clearable="true" />
         </MudItem>
@@ -98,7 +98,7 @@ Visada po header row, prieš filtrus.
 ```
 
 **Taisyklės:**
-- Visada `Variant.Outlined`
+- **(2026-08-20)** Filtrų laukai (search, data) — `Variant.Text` (be rėmelio, tik apatinė linija). ANKSčiau buvo `Variant.Outlined` — pakeista pagal vartotojo sprendimą po `/invoices/sales` perižiŭros. Senesni puslapiai su `Outlined` filtrų laukais turi būti palaipsniui perkelti į `Text`.
 - Search — `Immediate=true`, `Clearable=true`, search icon adornment
 - Datos — `MudDateRangePicker` (NE du atskiri `MudDatePicker`)
 - "Valyti filtrus" — rodomas TIK kai aktyvus bent vienas filtras
