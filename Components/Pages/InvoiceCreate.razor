@@ -54,7 +54,7 @@
                 }
             </MudItem>
             <MudItem xs="12" sm="3">
-<MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate"
+<MudDatePicker Label="Išrašymo data *" Date="@_invoiceDate" Editable="true" DateFormat="yyyy-MM-dd"
                                 Variant="Variant.Outlined" Required="true" 
                                 DateChanged="@(date => UpdateDueDate(date))" Margin="Margin.Dense" />
             </MudItem>
