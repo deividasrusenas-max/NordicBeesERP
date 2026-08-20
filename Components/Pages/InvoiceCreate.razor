@@ -67,15 +67,17 @@
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Apmokėti iki</MudText>
                 <MudText Typo="Typo.body2">@(_paymentDueDate?.ToString("yyyy-MM-dd") ?? "—")</MudText>
             </MudItem>
-             @if (!_isPurchase)
-             {
-                 <MudItem xs="12" sm="6">
-                      <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
-                                    Variant="Variant.Outlined" ReadOnly="true" 
-                                    Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
-                                    OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" Margin="Margin.Dense" />
-                 </MudItem>
-             }
+              @if (!_isPurchase)
+              {
+                  <MudItem xs="12" sm="6">
+                    <MudAutocomplete T="Customer" Label="Klientas *" Value="_selectedCustomer"
+                                     SearchFunc="@SearchCustomers"
+                                      ToStringFunc="@FormatCustomerDisplay"
+                                     ValueChanged="OnClientSelected"
+                                     Variant="Variant.Outlined" Required="true" Clearable="true"
+                                     Placeholder="Pasirinkite klientą..." Margin="Margin.Dense" />
+                  </MudItem>
+              }
             else
             {
                 <MudItem xs="12" sm="6">
@@ -228,7 +230,7 @@
     private int _paymentTermDays = 7;
     private DateTime? _paymentDueDate;
     private int? _selectedCustomerId;
-    private string _selectedClientDisplay = "";
+    private Customer? _selectedCustomer;
     private string _language = "LT";
     private string _invoiceType = "PVM SĄSKAITA FAKTŪRA";
     private decimal _defaultVatRate = 21m;
@@ -452,28 +454,48 @@
         StateHasChanged();
     }
 
-    private async Task OpenClientDialog()
+    private Task<IEnumerable<Customer>> SearchCustomers(string? value, CancellationToken token)
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
-        var parameters = new DialogParameters<ClientSelectDialog>();
-        parameters.Add(x => x.Customers, _customers);
-        
-        var dialog = await DialogService.ShowAsync<ClientSelectDialog>("Pasirinkite klientą", parameters, _stdOpt);
-        var result = await dialog.Result;
-        
-        if (!result.Canceled && result.Data is Customer selectedCustomer)
+        if (string.IsNullOrWhiteSpace(value)) return Task.FromResult<IEnumerable<Customer>>(_customers);
+        var s = value.ToLower();
+        var results = _customers.Where(c => c.Name?.ToLower().Contains(s) == true || c.VatCode?.ToLower().Contains(s) == true).ToList();
+        return Task.FromResult<IEnumerable<Customer>>(results);
+    }
+
+    private string FormatCustomerDisplay(Customer? c)
+    {
+        if (c is null)
+            return "";
+        if (!string.IsNullOrWhiteSpace(c.Name))
+            return c.Name;
+        if (!string.IsNullOrEmpty(c.VatCode))
+            return c.VatCode;
+        if (!string.IsNullOrEmpty(c.CompanyCode))
+            return c.CompanyCode;
+        return $"Klientas #{c.Id}";
+    }
+
+    private void OnClientSelected(Customer? customer)
+    {
+        if (customer is null)
         {
-            _selectedCustomerId = selectedCustomer.Id;
-            _selectedClientDisplay = selectedCustomer.Name;
-            _paymentTermDays = selectedCustomer.PaymentTermDays;
-            _language = selectedCustomer.DefaultLanguage;
-            _defaultVatRate = selectedCustomer.DefaultVatRate;
-            
+            _selectedCustomerId = null;
+            _paymentTermDays = 7;
+            _language = "LT";
+            _defaultVatRate = 21m;
             UpdateDueDate();
-            
-            // Force UI refresh after dialog returns
-            await InvokeAsync(StateHasChanged);
+            StateHasChanged();
+            return;
         }
+
+        _selectedCustomer = customer;
+        _selectedCustomerId = customer.Id;
+        _paymentTermDays = customer.PaymentTermDays;
+        _language = customer.DefaultLanguage;
+        _defaultVatRate = customer.DefaultVatRate;
+
+        UpdateDueDate();
+        StateHasChanged();
     }
 
     private async Task OpenProductDialog(InvoiceLineInput line)
