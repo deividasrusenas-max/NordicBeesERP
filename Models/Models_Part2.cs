@@ -282,6 +282,9 @@ public class Invoice
     [Column("customer_id")]
     public int CustomerId { get; set; }
 
+    [Column("customer_vat_code")]
+    public string? CustomerVatCode { get; set; }
+
     [Column("currency_id")]
     public int? CurrencyId { get; set; }
 

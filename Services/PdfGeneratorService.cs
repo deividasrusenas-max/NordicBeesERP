@@ -150,7 +150,7 @@ namespace NordicBeesERP.Services
                 Name = invoice.Customer.Name,
                 CompanyCode = invoice.Customer.CompanyCode,
                 Address = invoice.Customer.Address,
-                VatCode = invoice.Customer.VatCode,
+                VatCode = invoice.CustomerVatCode ?? invoice.Customer?.VatCode,
                 Phone = invoice.Customer.Phone,
                 Email = invoice.Customer.Email,
                 BankAccount = invoice.Customer.BankAccount,

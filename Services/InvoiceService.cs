@@ -210,6 +210,11 @@ namespace NordicBeesERP.Services
             // Calculate invoice totals
             invoice = CalculateInvoiceTotals(invoice);
 
+            // Snapshot the customer's VAT code at issuance (forward-looking; never changes retroactively)
+            var customerPartner = await context.BusinessPartners.AsNoTracking()
+                .FirstOrDefaultAsync(bp => bp.Id == invoice.CustomerId);
+            invoice.CustomerVatCode = customerPartner?.VatCode;
+
             context.Invoices.Add(invoice);
             await context.SaveChangesAsync();
             
@@ -659,7 +664,10 @@ namespace NordicBeesERP.Services
             
             // Calculate totals
             invoice = CalculateInvoiceTotals(invoice);
-            
+
+            // Snapshot the supplier's VAT code at issuance
+            invoice.CustomerVatCode = supplier?.VatCode;
+
             context.Invoices.Add(invoice);
             await context.SaveChangesAsync();
 

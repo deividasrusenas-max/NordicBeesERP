@@ -87,4 +87,54 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", partnerId);
     }
+
+    [Fact]
+    public async Task CreateInvoiceAsync_SnapshotsCustomerVatCode()
+    {
+        // Arrange: insert a real BusinessPartner (FK target) and build an invoice
+        // with at least one line so CreateInvoiceAsync's foreach over Lines runs.
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        const string vatCode = "LT123456789";
+
+        var partner = NewTestCustomer($"Test Customer {Guid.NewGuid():N}");
+        partner.VatCode = vatCode; // CreateInvoiceAsync snapshots this onto the invoice
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        var invoice = NewTestInvoice(partnerId, $"INV-{Guid.NewGuid():N}");
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "Test line",
+            Quantity = 1m,
+            PriceExclVat = 100m,
+            VatRate = 21m
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+
+        // Act
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceAsync should return the new invoice id");
+
+        // Assert: customer_vat_code was actually persisted to the database
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var storedVatCode = await verifyContext.Invoices
+            .AsNoTracking()
+            .Where(i => i.Id == invoiceId)
+            .Select(i => i.CustomerVatCode)
+            .FirstOrDefaultAsync();
+
+        Assert.Equal(vatCode, storedVatCode);
+
+        // Cleanup (defensive)
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
 }

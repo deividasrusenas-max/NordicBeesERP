@@ -87,13 +87,13 @@
                         <MudItem xs="7">
                             <MudText Typo="Typo.body1">@_invoice.Customer?.Name</MudText>
                         </MudItem>
-                        @if (!string.IsNullOrEmpty(_invoice.Customer?.VatCode))
+                        @if (!string.IsNullOrEmpty(_invoice.CustomerVatCode) || !string.IsNullOrEmpty(_invoice.Customer?.VatCode))
                         {
                             <MudItem xs="5">
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas</MudText>
                             </MudItem>
                             <MudItem xs="7">
-                                <MudText Typo="Typo.body1">@_invoice.Customer.VatCode</MudText>
+                                <MudText Typo="Typo.body1">@(_invoice.CustomerVatCode ?? _invoice.Customer?.VatCode)</MudText>
                             </MudItem>
                         }
                         @if (!string.IsNullOrEmpty(_invoice.Customer?.CompanyCode))

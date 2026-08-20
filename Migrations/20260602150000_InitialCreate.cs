@@ -513,6 +513,7 @@ namespace NordicBeesERP.Migrations
   `invoice_number` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `invoice_date` date NOT NULL,
   `customer_id` int NOT NULL,
+  `customer_vat_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `currency_id` int DEFAULT NULL,
   `payment_due_date` date DEFAULT NULL,
   `payment_term_days` int DEFAULT '7',
