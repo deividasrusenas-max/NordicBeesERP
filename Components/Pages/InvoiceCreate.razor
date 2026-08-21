@@ -184,6 +184,7 @@
                 <MudTd DataLabel="PVM %">
                     <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
                                      Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M" Format="G29"
+                                     @key="(line, _selectedCustomerId)"
                                      ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Suma">
