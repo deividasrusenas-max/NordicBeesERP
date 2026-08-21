@@ -5,7 +5,7 @@
 
 <MudDialog Options="@_dialogOptions">
     <DialogContent>
-        <MudTextField T="string" @bind-Value="_search"
+        <MudTextField T="string" @ref="_searchField" @bind-Value="_search"
                       Placeholder="Ieškoti pagal pavadinimą, kodą..."
                       Variant="Variant.Outlined"
                       Adornment="Adornment.Start"
@@ -46,7 +46,17 @@
     
     [Parameter] public List<Customer> Customers { get; set; } = new();
     
+    private MudTextField<string>? _searchField;
     private string? _search = null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _searchField != null)
+        {
+            await Task.Delay(100);
+            await _searchField.FocusAsync();
+        }
+    }
 
     private List<Customer> FilteredCustomers =>
         string.IsNullOrWhiteSpace(_search) 

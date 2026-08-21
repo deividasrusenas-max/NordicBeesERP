@@ -76,8 +76,11 @@
                                      ValueChanged="OnClientSelected"
                                      @bind-Text="_clientSearchText"
                                       SelectValueOnTab="true"
-                                      OnBlur="@(() => TryResolveSelectedCustomerFromText())"
-                                      @ref="_clientAutocomplete"
+                                       OnBlur="@(() => TryResolveSelectedCustomerFromText())"
+                                       Adornment="Adornment.End"
+                                       AdornmentIcon="@Icons.Material.Filled.Search"
+                                       OnAdornmentClick="@OpenClientDialog"
+                                       @ref="_clientAutocomplete"
                                      Variant="Variant.Outlined" Required="true" Clearable="true"
                                      Placeholder="Pasirinkite klientą..." Margin="Margin.Dense" />
                   </MudItem>
@@ -566,6 +569,20 @@
         line.Unit = product.Unit;
         line.PriceExclVat = _isPurchase ? product.PurchasePrice : product.SalePrice;
         CalculateLine(line);
+    }
+
+    private async Task OpenClientDialog()
+    {
+        var parameters = new DialogParameters<ClientSelectDialog>();
+        parameters.Add(x => x.Customers, _customers);
+
+        var dialog = await DialogService.ShowAsync<ClientSelectDialog>("Pasirinkite klientą", parameters, _stdOpt);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is Customer selectedCustomer)
+        {
+            OnClientSelected(selectedCustomer);
+        }
     }
 
     private async Task OpenProductDialog(InvoiceLineInput line)
