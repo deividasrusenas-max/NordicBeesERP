@@ -143,7 +143,8 @@
                     <MudAutocomplete T="Product"
                                      Value="@line.SelectedProduct"
                                      SearchFunc="SearchProducts"
-                                     ToStringFunc="@(p => p != null ? $"{p.Name} ({p.Code})" : null)"
+                                     ToStringFunc="@(p => p?.Name)"
+                                     @bind-Text="line.Description"
                                      ValueChanged="@(product => OnProductSelected(product, line))"
                                      Variant="Variant.Text"
                                      Margin="Margin.Dense"
@@ -153,16 +154,10 @@
                                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
                                      OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })"
                                      @ondblclick="@((MouseEventArgs args) => HandleProductDoubleClick(args, line))">
-                         <ItemTemplate>
-                            <MudText Typo="Typo.body2">@context.Name (@context.Code)</MudText>
-                        </ItemTemplate>
-                    </MudAutocomplete>
-                    <MudTextField T="string" @bind-Value="line.Description"
-                                  Variant="Variant.Text" Margin="Margin.Dense"
-                                  Placeholder="Prekės aprašymas (redaguojamas)"
-                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
-                                  OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })"
-                                  @ondblclick="@((MouseEventArgs args) => HandleProductDoubleClick(args, line))" />
+                        <ItemTemplate>
+                           <MudText Typo="Typo.body2">@context.Name (@context.Code)</MudText>
+                       </ItemTemplate>
+                   </MudAutocomplete>
                 </MudTd>
                 <MudTd DataLabel="Kiekis">
                     <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined" 
