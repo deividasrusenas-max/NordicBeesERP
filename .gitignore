@@ -41,8 +41,6 @@ log-error.sh
 .agent-reports/
 
 # Local working docs (not committed project documentation)
-AGENTS.md
-Docs/BUGLOG.md
 Docs/PROJECT_STATE.md
 Docs/PR_CHECKLIST.md
 Docs/WORKFLOW.md
