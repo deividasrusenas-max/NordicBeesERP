@@ -297,14 +297,14 @@ namespace NordicBeesERP.Services
                 {
                     table.ColumnsDefinition(columns =>
                     {
-                        columns.ConstantColumn(30);  // No.
+                        columns.ConstantColumn(26);  // No.
                         columns.RelativeColumn(3);    // Description
-                        columns.ConstantColumn(40);   // Unit
-                        columns.ConstantColumn(40);   // Qty
+                        columns.ConstantColumn(32);   // Unit
+                        columns.ConstantColumn(50);   // Qty
                         columns.ConstantColumn(60);   // Price (excl. VAT)
                         columns.ConstantColumn(60);   // Total (excl. VAT)
-                        columns.ConstantColumn(45);   // VAT %
-                        columns.ConstantColumn(60);   // VAT
+                        columns.ConstantColumn(36);   // VAT %
+                        columns.ConstantColumn(54);   // VAT
                         columns.ConstantColumn(70);   // Total (incl. VAT)
                     });
                     
@@ -791,14 +791,14 @@ namespace NordicBeesERP.Services
                         {
                             table.ColumnsDefinition(columns =>
                             {
-                                columns.ConstantColumn(30);  // No.
+                                columns.ConstantColumn(26);  // No.
                                 columns.RelativeColumn(3);    // Description
-                                columns.ConstantColumn(40);   // Unit
-                                columns.ConstantColumn(40);   // Qty
+                                columns.ConstantColumn(32);   // Unit
+                                columns.ConstantColumn(50);   // Qty
                                 columns.ConstantColumn(60);   // Price (excl. VAT)
                                 columns.ConstantColumn(60);   // Total (excl. VAT)
-                                columns.ConstantColumn(45);   // VAT %
-                                columns.ConstantColumn(60);   // VAT
+                                columns.ConstantColumn(36);   // VAT %
+                                columns.ConstantColumn(54);   // VAT
                                 columns.ConstantColumn(70);   // Total (incl. VAT)
                             });
                             
