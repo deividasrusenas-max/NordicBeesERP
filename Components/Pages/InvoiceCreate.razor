@@ -75,8 +75,9 @@
                                       ToStringFunc="@FormatCustomerDisplay"
                                      ValueChanged="OnClientSelected"
                                      @bind-Text="_clientSearchText"
-                                     SelectValueOnTab="true"
-                                     @ref="_clientAutocomplete"
+                                      SelectValueOnTab="true"
+                                      OnBlur="@(() => TryResolveSelectedCustomerFromText())"
+                                      @ref="_clientAutocomplete"
                                      Variant="Variant.Outlined" Required="true" Clearable="true"
                                      Placeholder="Pasirinkite klientą..." Margin="Margin.Dense" />
                   </MudItem>
