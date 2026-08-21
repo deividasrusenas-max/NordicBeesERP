@@ -74,6 +74,8 @@
                                      SearchFunc="@SearchCustomers"
                                       ToStringFunc="@FormatCustomerDisplay"
                                      ValueChanged="OnClientSelected"
+                                     @bind-Text="_clientSearchText"
+                                     SelectValueOnTab="true"
                                      Variant="Variant.Outlined" Required="true" Clearable="true"
                                      Placeholder="Pasirinkite klientą..." Margin="Margin.Dense" />
                   </MudItem>
@@ -246,6 +248,7 @@
     private bool _dueDateManuallyEdited = false;
     private int? _selectedCustomerId;
     private Customer? _selectedCustomer;
+    private string _clientSearchText = "";
     private string _language = "LT";
     private string _invoiceType = "PVM SĄSKAITA FAKTŪRA";
     private decimal _defaultVatRate = 21m;
@@ -504,6 +507,7 @@
         if (customer is null)
         {
             _selectedCustomerId = null;
+            _clientSearchText = "";
             _paymentTermDays = 7;
             _dueDateManuallyEdited = false;
             _language = "LT";
@@ -515,15 +519,18 @@
 
         _selectedCustomer = customer;
         _selectedCustomerId = customer.Id;
+
         if (!_dueDateManuallyEdited)
         {
             _paymentTermDays = customer.PaymentTermDays > 0 ? customer.PaymentTermDays : 7;
         }
+
         var lang = customer.DefaultLanguage?.Trim().ToUpperInvariant();
         if (lang is "LT" or "EN")
         {
             _language = lang;
         }
+
         _defaultVatRate = customer.DefaultVatRate;
 
         UpdateDueDate();
@@ -638,6 +645,8 @@
             return true;
         }
         
+        TryResolveSelectedCustomerFromText();
+
         if (!_selectedCustomerId.HasValue)
         {
             _errorMessage = "Prašome pasirinkti klientą!";
@@ -676,6 +685,21 @@
         
         _errorMessage = null;
         return true;
+    }
+
+    private void TryResolveSelectedCustomerFromText()
+    {
+        var text = _clientSearchText?.Trim();
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        var match = _customers.FirstOrDefault(c =>
+            string.Equals(c.Name?.Trim(), text, StringComparison.OrdinalIgnoreCase));
+
+        if (match is not null)
+        {
+            OnClientSelected(match);
+        }
     }
 
     private Invoice BuildInvoice()
