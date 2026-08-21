@@ -60,7 +60,7 @@
             </MudItem>
             <MudItem xs="12" sm="3">
 <MudNumericField T="int" Label="Apmokėjimo terminas (dienų) *" Value="@_paymentTermDays" 
-                                  Variant="Variant.Outlined" Min="0" 
+                                  Variant="Variant.Outlined" Min="0" @key="_selectedCustomerId"
                                   ValueChanged="@(days => UpdateDueDate(days))" Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12" sm="3">
@@ -548,6 +548,15 @@
         }
 
         _defaultVatRate = customer.DefaultVatRate;
+
+        // Retroactively apply the new default VAT rate to lines already on the invoice —
+        // previously only affected lines added AFTER selection, since AddLine() runs at
+        // page load (before any client is chosen) and this field is never re-read afterward.
+        foreach (var line in _lines)
+        {
+            line.VatRate = _defaultVatRate;
+            CalculateLine(line);
+        }
 
         UpdateDueDate();
         StateHasChanged();
