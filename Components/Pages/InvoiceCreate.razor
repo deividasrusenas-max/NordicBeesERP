@@ -70,12 +70,13 @@
               @if (!_isPurchase)
               {
                   <MudItem xs="12" sm="6">
-                    <MudAutocomplete T="Customer" Label="Klientas *" Value="_selectedCustomer"
+                     <MudAutocomplete T="Customer" Label="Klientas *" Value="_selectedCustomer"
                                      SearchFunc="@SearchCustomers"
                                       ToStringFunc="@FormatCustomerDisplay"
                                      ValueChanged="OnClientSelected"
                                      @bind-Text="_clientSearchText"
                                      SelectValueOnTab="true"
+                                     @ref="_clientAutocomplete"
                                      Variant="Variant.Outlined" Required="true" Clearable="true"
                                      Placeholder="Pasirinkite klientą..." Margin="Margin.Dense" />
                   </MudItem>
@@ -265,6 +266,17 @@
     private string _notes = "";
 
     private bool _isPurchase = false;
+
+    private MudAutocomplete<Customer>? _clientAutocomplete;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isPurchase && _clientAutocomplete is not null)
+        {
+            await _clientAutocomplete.FocusAsync();
+            await _clientAutocomplete.OpenMenuAsync();
+        }
+    }
 
     private async Task OnSupplierSelected(int? supplierId)
     {
