@@ -626,6 +626,24 @@
                 var dataUrl = $"data:application/pdf;base64,{base64}";
                 await JS.InvokeVoidAsync("downloadPdf", dataUrl, fileName);
                 Snackbar.Add($"PDF su {selectedIds.Count} sąskaitomis sugeneruotas", Severity.Success);
+
+                // Update each invoice status from Draft to Confirmed (PDF generation = "sending")
+                foreach (var invoiceId in selectedIds)
+                {
+                    var invoice = _items.FirstOrDefault(i => i.Id == invoiceId);
+                    if (invoice?.Status == InvoiceStatus.Draft)
+                    {
+                        try
+                        {
+                            await InvoiceService.UpdateInvoiceStatusAsync(invoiceId, InvoiceStatus.Confirmed);
+                        }
+                        catch (Exception statusEx)
+                        {
+                            // Log error but don't fail the batch - the PDF was generated successfully
+                            Console.WriteLine($"Sąskaitų sąrašas: nepavyko atnaujinti būsenos iš Draft į Confirmed: {statusEx.Message}");
+                        }
+                    }
+                }
             }
             else
             {
@@ -657,6 +675,20 @@
             var dataUrl = $"data:application/pdf;base64,{base64}";
             await JS.InvokeVoidAsync("downloadPdf", dataUrl, fileName);
             Snackbar.Add("PDF sėkmingai sugeneruotas", Severity.Success);
+
+            // Update invoice status from Draft to Confirmed (PDF generation = "sending")
+            if (invoice?.Status == InvoiceStatus.Draft)
+            {
+                try
+                {
+                    await InvoiceService.UpdateInvoiceStatusAsync(invoiceId, InvoiceStatus.Confirmed);
+                }
+                catch (Exception statusEx)
+                {
+                    // Log error but don't fail PDF download - the PDF was generated successfully
+                    Console.WriteLine($"Sąskaitų sąrašas: nepavyko atnaujinti būsenos iš Draft į Confirmed: {statusEx.Message}");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -686,6 +718,20 @@
                         var entry = zip.CreateEntry(entryName);
                         using var entryStream = entry.Open();
                         await entryStream.WriteAsync(pdfBytes);
+
+                        // Update invoice status from Draft to Confirmed (PDF generation = "sending")
+                        if (invoice?.Status == InvoiceStatus.Draft)
+                        {
+                            try
+                            {
+                                await InvoiceService.UpdateInvoiceStatusAsync(id, InvoiceStatus.Confirmed);
+                            }
+                            catch (Exception statusEx)
+                            {
+                                // Log error but don't fail the batch - the PDF was generated successfully
+                                Console.WriteLine($"Sąskaitų sąrašas: nepavyko atnaujinti būsenos iš Draft į Confirmed: {statusEx.Message}");
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
