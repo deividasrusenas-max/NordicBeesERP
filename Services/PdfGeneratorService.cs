@@ -463,7 +463,7 @@ namespace NordicBeesERP.Services
                 DocumentTitle: "PVM SĄSKAITA FAKTŪRA",
                 NumberLabel: "Nr.",
                 Seller: isReverseCharge6 ? "Pirkėjas" : "Pardavėjas",
-                Buyer: isReverseCharge6 ? "Tiekėjas" : "Klientas",
+                Buyer: isReverseCharge6 ? "Tiekėjas" : "Pirkėjas",
                 CompanyCodeLabel: "Įmonės kodas:",
                 VatCodeLabel: "PVM mokėtojo kodas:",
                 AddressLabel: "Adresas:",
