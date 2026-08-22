@@ -18,15 +18,17 @@ wwwroot/uploads/
 wwwroot/lib/
 .aider*
 
-# Machine-specific agent tooling / local working state (not project deliverables)
-.agent-guardrails/
-.kilo/
-.opencode/
-.planning/
+# Agent harness — TRACKED (opencode.json, .opencode/prompts, .opencode/skills,
+# .agent-guardrails/config.json + rules are project policy, not machine-specific)
+# Only these specific ephemeral/secret sub-paths are ignored:
+.opencode/node_modules/
+.opencode/plugin/node_modules/
+.opencode/plugins/node_modules/
+.opencode/secrets/
+.opencode/planning/
+.opencode/reports/
+.agent-guardrails/evidence/
 .playwright-mcp/
-kilo.jsonc
-kilo.jsonc.bak*
-opencode.json
 opencode.json.bak*
 *.bak_[0-9]*
 
@@ -36,9 +38,6 @@ server.log
 test-results/
 analyze-errors.py
 log-error.sh
-
-# Orchestrator/agent work reports (ephemeral, not project docs)
-.agent-reports/
 
 # Local working docs (not committed project documentation)
 Docs/PROJECT_STATE.md
