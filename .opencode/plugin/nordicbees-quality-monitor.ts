@@ -74,10 +74,42 @@ function extractVerdict(text: string): string | null {
 }
 
 function extractGuardrailScore(text: string): number | null {
-  const m = text.match(/Score:\s*(\d{1,3})\s*\/\s*100/i)
-  if (!m) return null
-  const n = parseInt(m[1], 10)
-  return Number.isFinite(n) ? n : null
+  // Tries several phrasings a model might use to report the
+  // agent-guardrails score, since the exact wording isn't guaranteed:
+  // "Score: 95/100", "score 95 / 100", "95 out of 100", "guardrail
+  // score of 95/100", etc.
+  const patterns = [
+    /score\s*:?\s*(\d{1,3})\s*\/\s*100/i,
+    /(\d{1,3})\s*\/\s*100/i,
+    /(\d{1,3})\s+out\s+of\s+100/i,
+  ]
+  for (const re of patterns) {
+    const m = text.match(re)
+    if (m) {
+      const n = parseInt(m[1], 10)
+      if (Number.isFinite(n) && n >= 0 && n <= 100) return n
+    }
+  }
+  return null
+}
+
+/**
+ * Turns whatever shape a hook parameter's "output" value has (a plain
+ * string, a nested {output: "..."} object, an array of content blocks,
+ * or anything else) into a single searchable string. This is
+ * deliberately crude (JSON.stringify + fallback) rather than assuming
+ * one exact shape, because the precise structure isn't guaranteed and
+ * guessing wrong here previously caused every extraction to silently
+ * return nothing (verdict/guardrail_score always null) for hours.
+ */
+function toSearchableText(value: unknown): string {
+  if (typeof value === "string") return value
+  if (value === null || value === undefined) return ""
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
 }
 
 function appendRecord(logPath: string, reportsDir: string, record: Record<string, unknown>) {
@@ -186,10 +218,14 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
       const started = pendingStarts[subagent]?.shift()
       const durationSec = started ? Math.round((Date.now() - started.startedAt) / 100) / 10 : null
 
-      const outputText =
-        (second && typeof second === "object" && (second as any).output) ||
-        (input && typeof input === "object" && (input as any).output) ||
-        ""
+      // Search across every plausible location for the tool's textual
+      // output, since the exact shape/parameter isn't guaranteed (see
+      // toSearchableText's doc comment).
+      const outputText = [
+        toSearchableText(second?.output),
+        toSearchableText(input?.output),
+        toSearchableText(second),
+      ].join(" ")
 
       const record: Record<string, unknown> = {
         ts: new Date().toISOString(),
