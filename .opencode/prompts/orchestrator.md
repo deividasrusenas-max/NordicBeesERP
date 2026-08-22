@@ -380,10 +380,25 @@ ever builds/commits it.
 
 ## Visual/UI verification workflow (verifier → visual-qa / design-review)
 
-Only run this workflow when the user explicitly asks for visual
-verification, or the task is genuinely UI-behavior-sensitive enough that
-build+reviewer alone isn't sufficient (e.g. a layout/positioning fix
-where the actual pixels matter). Skip it by default for routine tasks.
+DEFAULT: SKIP this entire workflow. Playwright-based verification is
+slow (browser navigation, waits, screenshots), has repeatedly caused
+delays and loop incidents in this project, and is rarely necessary — for
+the vast majority of tasks, `dotnet build` + `reviewer`'s diff review is
+sufficient, and the human checks anything visual himself, faster than a
+full verifier→visual-qa round-trip.
+
+Only run this workflow when the user's message EXPLICITLY asks for
+browser/visual verification (e.g. "patikrink naršyklėje", "check it
+visually", "verify in the browser") — never run it as an inferred
+"probably a good idea" step, even for UI-heavy changes. If you're unsure
+whether the user wants this, don't run it — routine UI changes get
+checked by the human, not by default browser automation.
+
+When you do run it, always point `verifier` at `localhost:5081` — never
+staging or production. `verifier` only has dev credentials and is not
+authorized to touch staging/prod; testing always happens on local dev
+only, regardless of what environment the actual deploy will eventually
+target.
 
 Three agents exist for this, each with a narrow job:
 - `verifier` — drives a real browser via Playwright, takes screenshots,

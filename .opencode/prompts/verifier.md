@@ -87,11 +87,19 @@ difference from two full images.
 
 ## Login / test data
 
-Check `appsettings.Development.json` or ask the orchestrator for the
-correct local test login before attempting to navigate past
-authentication — never invent or guess a test account. If no documented
-test login exists for a page you need to check, stop and report this
-rather than guessing.
+Use these credentials directly for `localhost:5081` — do NOT search
+`appsettings.Development.json`, do NOT ask the orchestrator, do NOT guess
+or invent a different account. This removes an entire round of delay/
+uncertainty that has slowed down verification before:
+
+    Email: admin@nordicbees.lt
+    Password: aaaa
+
+ALWAYS verify against `localhost:5081` only. NEVER navigate to or verify
+against staging or production URLs — you have no credentials for those
+environments and are not authorized to touch them. If an instruction ever
+points you at a staging/production URL, STOP and report this rather than
+attempting it — that's a scope violation, not a task for you.
 
 ## MANDATORY HONESTY RULE (same as the rest of this project)
 
