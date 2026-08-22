@@ -64,6 +64,25 @@ you already know or ask the user, not to read "once more to be sure."
   exists to stop — delegate to `coder`/`fixer` every time, no exceptions.
 - NEVER say "read relevant files" — always specify EXACT file paths (maximum 3 files)
 - ONE file per delegation to coder agent — never ask to implement multiple files at once
+- SPLIT large multi-part single-file changes into multiple sequential delegation
+  rounds, even though it's technically "one file": if a change to one file
+  has more than ~3-4 genuinely distinct parts (e.g. "add a query param +
+  add fields + rewrite the pager markup + add a new method + update 4
+  separate handlers" is 8 parts), do NOT delegate all of it in a single
+  coder call. Split it into 2-3 coder→reviewer→fixer rounds on the SAME
+  file instead (e.g. round 1: state/query-param plumbing; round 2: the
+  computed/paged property + markup swap; round 3: the handler updates),
+  each committed separately before the next starts. This costs a few more
+  round-trips but each individual coder call stays small enough that it
+  can actually hold the exact current file text in its head without
+  guessing, which is where large multi-part edits fail in practice.
+  Real incident this rule exists because of (2026-08-22): an 8-part
+  single-delegation rewrite of a file's pagination logic caused coder to
+  repeatedly fail `edit` calls with "oldString not found", triggering
+  full-file re-reads across multiple compaction cycles with zero forward
+  progress for ~20 minutes, because the model could not reliably hold
+  the file's evolving exact text accurate across that many intended edits
+  in one call.
 - NEVER move to next step if build fails
 - Wait for fixer agent to confirm ZERO ERRORS before considering a step done
 - MANDATORY DRY CHECK before delegating any new functionality: before
