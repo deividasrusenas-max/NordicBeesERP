@@ -32,20 +32,23 @@
     <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
     <MudStack Row="true" Class="mb-3" AlignItems="AlignItems.Center">
         <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:8px;">Tipas:</MudText>
-        <MudChip T="string"
-                 Color="@(_invoiceType == "LAK" ? Color.Primary : Color.Default)"
-                 Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
-                 Style="text-transform:none;min-width:180px;"
-                 OnClick="@(async () => { if (_invoiceType != "LAK") await SetInvoiceType("LAK"); })">
-            LAK — Pardavimai
-        </MudChip>
-        <MudChip T="string"
-                 Color="@(_invoiceType == "ULAK" ? Color.Primary : Color.Default)"
-                 Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
-                 Style="text-transform:none;min-width:180px;"
-                 OnClick="@(async () => { if (_invoiceType != "ULAK") await SetInvoiceType("ULAK"); })">
-            ULAK — Pirkimai
-        </MudChip>
+        <MudChipSet T="string"
+                    SelectedValue="_invoiceType"
+                    SelectedValueChanged="@(async (val) => { if (val != null && val != _invoiceType) await SetInvoiceType(val); })"
+                    SelectionMode="SelectionMode.SingleSelection">
+            <MudChip T="string" Value="@("LAK")"
+                     Color="@(_invoiceType == "LAK" ? Color.Primary : Color.Default)"
+                     Variant="@(_invoiceType == "LAK" ? Variant.Filled : Variant.Outlined)"
+                     Style="text-transform:none;min-width:180px;">
+                LAK — Pardavimai
+            </MudChip>
+            <MudChip T="string" Value="@("ULAK")"
+                     Color="@(_invoiceType == "ULAK" ? Color.Primary : Color.Default)"
+                     Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
+                     Style="text-transform:none;min-width:180px;">
+                ULAK — Pirkimai
+            </MudChip>
+        </MudChipSet>
     </MudStack>
 
     <!-- Loading indicator -->
