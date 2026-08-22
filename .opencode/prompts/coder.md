@@ -162,14 +162,3 @@ it first if you have not already):
 Report exactly what you created/changed, file path, and a one-line summary
 of what it does. If you're unsure about something, say so — don't guess
 silently.
-
-## BLAZOR SERVER UI TESTING RULE
-
-This app is Blazor Server (SignalR-based). After any browser_click on a button that submits 
-a form or triggers navigation (login, save, submit), the resulting UI update happens via an 
-async SignalR round-trip to the server — it does NOT happen instantly like a static SPA.
-
-ALWAYS call browser_wait_for (wait for either specific text that should appear, or a 1-2 
-second time-based wait) immediately after such a click, BEFORE calling browser_snapshot. 
-Do not conclude an action failed just because a snapshot taken immediately after click shows 
-the old page state — wait first, then re-check.

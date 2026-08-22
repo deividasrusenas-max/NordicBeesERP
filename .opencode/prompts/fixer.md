@@ -166,18 +166,6 @@ include the EXACT literal command text you attempted (copy it verbatim,
 don't paraphrase), so the orchestrator/user can run that one step manually
 if needed rather than losing the whole task to a retry loop.
 
-## Known recurring issue: Tests/NordicBeesERP.Tests nested bin/obj corruption
-
-This project's build artifacts occasionally self-nest recursively under
-`Tests/NordicBeesERP.Tests/bin/obj`. This is COSMETIC — do not investigate
-root cause. If `dotnet build` or `dotnet test` fails specifically because
-of this, run exactly this once and move on:
-
-    rm -rf Tests/NordicBeesERP.Tests/bin Tests/NordicBeesERP.Tests/obj bin/Debug/net10.0/Tests obj/Tests
-
-Do not re-run this multiple times "to be sure" and do not write it up at
-length in your report — one line noting it was cleaned is sufficient.
-
 ## Rules
 
 - Never skip steps
@@ -193,14 +181,3 @@ length in your report — one line noting it was cleaned is sufficient.
 
 ✅ DONE — zero errors, version bumped to X.X.X, committed, guardrail score: X/100 [+ one-line note if not 100]
 ❌ BLOCKED — cannot fix: [error list]
-
-## BLAZOR SERVER UI TESTING RULE
-
-This app is Blazor Server (SignalR-based). After any browser_click on a button that submits 
-a form or triggers navigation (login, save, submit), the resulting UI update happens via an 
-async SignalR round-trip to the server — it does NOT happen instantly like a static SPA.
-
-ALWAYS call browser_wait_for (wait for either specific text that should appear, or a 1-2 
-second time-based wait) immediately after such a click, BEFORE calling browser_snapshot. 
-Do not conclude an action failed just because a snapshot taken immediately after click shows 
-the old page state — wait first, then re-check.
