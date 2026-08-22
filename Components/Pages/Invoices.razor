@@ -175,11 +175,10 @@
 
     <!-- Table -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-        <MudTable Items="@FilteredItems"
+        <MudTable Items="@PagedItems"
                   Dense="true"
                   Hover="true"
                   Striped="true"
-                  RowsPerPage="25"
                   Elevation="0"
                   RowStyleFunc="@GetRowStyle"
                    Style="cursor:default">
@@ -263,7 +262,45 @@
                 </MudTd>
             </RowTemplate>
             <PagerContent>
-                <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+                @if (FilteredItems.Count > PageSize)
+                {
+                    var totalPages = (int)Math.Ceiling((double)FilteredItems.Count / PageSize);
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="pa-2">
+                        <MudButton Variant="Variant.Outlined" 
+                                   Size="Size.Small"
+                                   Disabled="@(_currentPage <= 1)"
+                                   OnClick="@(() => NavigateToPage(_currentPage - 1))"
+                                   StartIcon="@Icons.Material.Filled.ChevronLeft">
+                            Ankstesnė
+                        </MudButton>
+                        
+                        @for (int i = 0; i < totalPages; i++)
+                        {
+                            var pageNum = i + 1;
+                            if (ShouldShowPage(pageNum, _currentPage, totalPages))
+                            {
+                                if (i > 0 && !ShouldShowPage(pageNum - 1, _currentPage, totalPages))
+                                {
+                                    <MudText Class="mx-1">...</MudText>
+                                }
+                                <MudButton Variant="@(pageNum == _currentPage ? Variant.Filled : Variant.Outlined)"
+                                           Color="@(pageNum == _currentPage ? Color.Primary : Color.Default)"
+                                           Size="Size.Small"
+                                           OnClick="@(() => NavigateToPage(pageNum))">
+                                    @pageNum
+                                </MudButton>
+                            }
+                        }
+                        
+                        <MudButton Variant="Variant.Outlined" 
+                                   Size="Size.Small"
+                                   Disabled="@(_currentPage >= totalPages)"
+                                   OnClick="@(() => NavigateToPage(_currentPage + 1))"
+                                   EndIcon="@Icons.Material.Filled.ChevronRight">
+                            Kitas
+                        </MudButton>
+                    </MudStack>
+                }
             </PagerContent>
             <NoRecordsContent>
                 <MudText Class="text-center py-4">Įrašų nėra</MudText>
@@ -313,6 +350,13 @@
     [SupplyParameterFromQuery(Name = "type")]
     public string? InvoiceTypeParam { get; set; }
 
+    [SupplyParameterFromQuery(Name = "page")]
+    public string? PageParam { get; set; }
+
+    // Pagination state
+    private int _currentPage = 1;
+    private const int PageSize = 25;
+
     // Available statuses for filtering
     private readonly List<string> _availableStatuses = new()
     {
@@ -321,6 +365,15 @@
 
     // Computed
     private List<Invoice> FilteredItems => GetFilteredItems();
+    private List<Invoice> PagedItems
+    {
+        get
+        {
+            var filtered = FilteredItems;
+            int start = (_currentPage - 1) * PageSize;
+            return filtered.Skip(start).Take(PageSize).ToList();
+        }
+    }
 
     // Lifecycle
     protected override async Task OnParametersSetAsync()
@@ -335,6 +388,7 @@
         _selectedTab = Tab ?? 0;
         if (!string.IsNullOrEmpty(InvoiceTypeParam))
             _invoiceType = InvoiceTypeParam;
+        _currentPage = int.TryParse(PageParam, out var p) && p > 0 ? p : 1;
 
         _selectedInvoices.Clear();
         await LoadDataAsync();
@@ -371,6 +425,7 @@
     {
         _invoiceType = type;
         _selectedInvoices.Clear();
+        _currentPage = 1;
 
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _filterSearch),
@@ -378,7 +433,8 @@
             ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
             ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
             ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
-            ("type", !string.IsNullOrEmpty(type) && type != "LAK" ? type : null));
+            ("type", !string.IsNullOrEmpty(type) && type != "LAK" ? type : null),
+            ("page", null));
         Navigation.NavigateTo(newUrl, replace: false);
         await LoadDataAsync();
     }
@@ -426,13 +482,15 @@
 
         _selectedStatuses = newStatuses;
         _selectedInvoices.Clear();
+        _currentPage = 1;
 
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _filterSearch),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
             ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
             ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
-            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+            ("page", null));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
@@ -440,13 +498,15 @@
     {
         _selectedTab = index;
         _selectedInvoices.Clear();
+        _currentPage = 1;
 
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _filterSearch),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
             ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
             ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
-            ("tab", index != 0 ? index.ToString() : null));
+            ("tab", index != 0 ? index.ToString() : null),
+            ("page", null));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
@@ -459,13 +519,16 @@
     {
         _filterSearch = val;
         _selectedInvoices.Clear();
+        _currentPage = 1;
 
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", val),
             ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
             ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
             ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
-            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+            ("type", !string.IsNullOrEmpty(_invoiceType) && _invoiceType != "LAK" ? _invoiceType : null),
+            ("page", null));
         Navigation.NavigateTo(newUrl, replace: true);
     }
 
@@ -473,19 +536,31 @@
     {
         _dateRange = dr;
         _selectedInvoices.Clear();
+        _currentPage = 1;
 
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _filterSearch),
             ("from", FilterUrlBuilder.ToQueryValue(dr.Start)),
             ("to", FilterUrlBuilder.ToQueryValue(dr.End)),
             ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
-            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null));
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+            ("type", !string.IsNullOrEmpty(_invoiceType) && _invoiceType != "LAK" ? _invoiceType : null),
+            ("page", null));
         Navigation.NavigateTo(newUrl, replace: false);
     }
 
     private void ViewInvoice(int invoiceId)
     {
-        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/invoices/{invoiceId}", Navigation.Uri, Navigation.BaseUri);
+        var basePath = Navigation.Uri.Split('?')[0];
+        var currentListUrl = FilterUrlBuilder.Build(basePath,
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+            ("type", !string.IsNullOrEmpty(_invoiceType) && _invoiceType != "LAK" ? _invoiceType : null),
+            ("page", _currentPage > 1 ? _currentPage.ToString() : null));
+        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/invoices/{invoiceId}", currentListUrl, Navigation.BaseUri);
         Navigation.NavigateTo(detailUrl);
     }
 
@@ -497,6 +572,29 @@
     private void OnCreateClick()
     {
         Navigation.NavigateTo("/invoices/create");
+    }
+
+    // Pagination navigation
+    private void NavigateToPage(int page)
+    {
+        _currentPage = page;
+        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+            ("type", !string.IsNullOrEmpty(_invoiceType) && _invoiceType != "LAK" ? _invoiceType : null),
+            ("page", page > 1 ? page.ToString() : null));
+        Navigation.NavigateTo(newUrl, replace: true);
+    }
+
+    // Page visibility helper for pager UI
+    private static bool ShouldShowPage(int page, int currentPage, int totalPages)
+    {
+        if (page == 1 || page == totalPages) return true;
+        if (Math.Abs(page - currentPage) <= 2) return true;
+        return false;
     }
 
     // Display helpers
