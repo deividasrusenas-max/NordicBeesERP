@@ -1,0 +1,104 @@
+rules:
+  - id: nordicbees-notracking-savechanges
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      This project uses global QueryTrackingBehavior.NoTracking. Calling
+      SaveChangesAsync() after Add/Update/Remove on a tracked entity silently
+      persists 0 rows with no error. Use ExecuteSqlRawAsync with positional
+      {0},{1} parameters instead. See AGENTS.md "Database writes".
+    patterns:
+      - pattern: $CTX.SaveChangesAsync(...)
+      - pattern-not: $CTX.Database.ExecuteSqlRawAsync(...)
+
+  - id: nordicbees-sql-string-interpolation
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      SQL built via string interpolation ($"...") is a SQL injection risk,
+      even with .Replace("'", "''") escaping. Use ExecuteSqlRawAsync or
+      SqlQueryRaw with positional {0},{1} parameters, or DbParameter objects
+      with @name placeholders. This exact pattern caused a real incident in
+      this project on 2026-07-15. See AGENTS.md "Database writes".
+    patterns:
+      - pattern-regex: '=\s*\$"[^"]*\b(INSERT|UPDATE|DELETE|SELECT)\b'
+
+  - id: nordicbees-hardcoded-test-credentials
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      Hardcoded email/password-looking literals in test or source files are
+      forbidden. Read credentials from appsettings.Development.json or
+      environment variables. See AGENTS.md "Secrets".
+    patterns:
+      - pattern-either:
+          - pattern: private readonly string $VAR = "$PASS";
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(password|pwd|pass).*
+      - metavariable-regex:
+          metavariable: $PASS
+          regex: ^.{6,}$
+
+  - id: nordicbees-migration-if-not-exists
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      "ADD COLUMN IF NOT EXISTS" is not reliably supported by MariaDB in this
+      project's environment (documented past failure). Use plain ADD COLUMN
+      and pre-check via information_schema.COLUMNS if idempotency is needed.
+    patterns:
+      - pattern-regex: 'ADD COLUMN IF NOT EXISTS'
+
+  - id: nordicbees-stringcomparison-in-linq
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      StringComparison.OrdinalIgnoreCase (or any StringComparison overload
+      of .Contains/.Equals/.StartsWith) inside an EF Core LINQ query against
+      NordicBeesErpContext cannot be translated by the MariaDB provider and
+      throws at runtime ("Translation of method 'string.Contains' failed").
+      This caused a real incident in InvoiceService.SearchInvoicesAsync on
+      2026-07-16. Use EF.Functions.Like(field, $"%{term}%") instead for
+      case-insensitive matching. See AGENTS.md "Database writes".
+    patterns:
+      - pattern-either:
+          - pattern: $X.Contains($Y, System.StringComparison.OrdinalIgnoreCase)
+          - pattern: $X.Contains($Y, StringComparison.OrdinalIgnoreCase)
+          - pattern: $X.Equals($Y, System.StringComparison.OrdinalIgnoreCase)
+          - pattern: $X.Equals($Y, StringComparison.OrdinalIgnoreCase)
+          - pattern: $X.StartsWith($Y, System.StringComparison.OrdinalIgnoreCase)
+          - pattern: $X.StartsWith($Y, StringComparison.OrdinalIgnoreCase)
+
+  - id: nordicbees-dbnull-explicit-cast
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      The `(object?)$X ?? DBNull.Value` pattern boxes a null value as
+      System.DBNull before EF Core's ExecuteSqlRawAsync parameter binding
+      sees it, which the MariaDB provider cannot map ("no store type
+      mapping for properties of type 'DBNull'"). This caused a real
+      incident in Orders CreateOrderAsync on 2026-07-16. Pass the nullable
+      value directly (without the (object?) cast or ?? DBNull.Value
+      fallback) to ExecuteSqlRawAsync's positional parameters instead.
+    patterns:
+      - pattern-regex: '\(object\?\)\s*\w+(\.\w+)*\s*\?\?\s*DBNull\.Value'
+
+  - id: nordicbees-silent-catch-no-snackbar
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      A catch block in a .razor page/dialog handler swallows the exception
+      without showing it to the user (no Snackbar.Add call). Users have
+      repeatedly reported forms that silently fail to save with no visible
+      error, requiring manual investigation to discover. Every catch block
+      in a UI action handler (button click, form submit) must call
+      Snackbar.Add with the error, or explicitly log via ILogger with a
+      documented reason why the user doesn't need to see it.
+    patterns:
+      - pattern: |
+          catch ($EXTYPE $EX) { }
+      - pattern-not: |
+          catch ($EXTYPE $EX) { ...; Snackbar.Add(...); ... }
+      - pattern-not: |
+          catch ($EXTYPE $EX) { ...; _logger.Log...(...); ... }

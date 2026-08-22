@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 2,
+  "preset": "generic",
+  "workflow": {
+    "planDefaults": {
+      "allowedPaths": [],
+      "requiredCommands": [],
+      "evidencePaths": [
+        ".agent-guardrails/evidence/current-task.md"
+      ]
+    },
+    "readBeforeWrite": [],
+    "_readBeforeWriteNote": "Intentionally empty. Subagents (coder/fixer) do NOT self-direct extra reads of AGENTS.md/README.md by design (context-budget reasons, see orchestrator.md) -- the orchestrator distills relevant rules into each delegation instead. This previously contradicted orchestrator.md/coder.md/fixer.md, which explicitly say not to read AGENTS.md unless named. Fixed 2026-08-22.",
+    "constraints": [
+      "Keep changes bounded and reviewable.",
+      "Prefer modifying existing files over creating new ones.",
+      "Match existing project conventions."
+    ],
+    "definitionOfDone": [
+      "The change stays within the configured file budget.",
+      "Project state is still accurate after meaningful work."
+    ]
+  },
+  "checks": {
+    "maxChangedFilesPerTask": 6,
+    "requireTestsWithSourceChanges": false,
+    "allowedPaths": [],
+    "consistency": {
+      "maxChangedFilesPerTask": 6,
+      "maxTopLevelEntries": 3,
+      "maxBreadthMultiplier": 2,
+      "warnOnBroadChanges": true
+    },
+    "correctness": {
+      "requireTestsWithSourceChanges": false,
+      "requireCommandsReported": false,
+      "requireEvidenceFiles": true
+    },
+    "risk": {
+      "requireReviewNotesForProtectedAreas": true,
+      "warnOnInterfaceChangesWithoutContract": true,
+      "warnOnConfigOrMigrationChanges": true
+    },
+    "sourceRoots": [],
+    "sourceExtensions": [
+      ".cs",
+      ".razor",
+      ".cshtml",
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx",
+      ".py",
+      ".rb",
+      ".go",
+      ".rs",
+      ".java",
+      ".html",
+      ".css",
+      ".scss",
+      ".less",
+      ".vue",
+      ".svelte",
+      ".php",
+      ".c",
+      ".cpp",
+      ".h",
+      ".m",
+      ".sh",
+      ".lua",
+      ".swift"
+    ],
+    "testRoots": [
+      "Tests/"
+    ],
+    "testExtensions": [
+      ".cs",
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx",
+      ".py",
+      ".rb",
+      ".go",
+      ".rs",
+      ".java",
+      ".swift"
+    ],
+    "testFileSignals": [
+      ".test.",
+      ".spec.",
+      "test_",
+      "_test.",
+      "Tests.cs",
+      "E2ETests"
+    ],
+    "mutation": {
+      "enabled": true,
+      "survivalThreshold": 50,
+      "maxMutations": 20,
+      "timeoutMs": 15000
+    },
+    "scope": {
+      "violationSeverity": "error",
+      "violationBudget": 0
+    }
+  },
+  "protectedAreas": [
+    "Migrations/*",
+    "appsettings.Development.json",
+    "Data/NordicBeesErpContext.cs",
+    "Program.cs",
+    ".env*",
+    "wwwroot/js/dropzone.js",
+    "Services/OcrQueueWorker.cs",
+    "Services/ViesService.cs",
+    "Components/Pages/BankImport.razor",
+    "Services/BankImportService.cs"
+  ],
+  "productionProfiles": {},
+  "nfrPolicies": {
+    "security": {
+      "evidenceHint": "Mention auth, secrets, permissions, and sensitive-data handling explicitly."
+    },
+    "dependency": {
+      "evidenceHint": "Mention new or upgraded packages, lockfile changes, and dependency impact explicitly."
+    },
+    "performance": {
+      "evidenceHint": "Mention performance, latency, or load impact in evidence."
+    },
+    "understanding": {
+      "evidenceHint": "Explain the main tradeoffs so future maintainers can follow the change."
+    },
+    "continuity": {
+      "evidenceHint": "Mention reuse targets and any deliberate continuity break in evidence."
+    }
+  },
+  "languagePlugins": {},
+  "criticalPaths": [],
+  "runtimeSurfaces": [],
+  "performanceSensitiveAreas": [],
+  "review": {
+    "includeEvidenceSummary": true
+  }
+}

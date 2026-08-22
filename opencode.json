@@ -1,0 +1,648 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "experimental": {
+    "mcp_timeout": 60000
+  },
+  "agent": {
+    "coder": {
+      "mode": "all",
+      "model": "llama-swap/coder",
+      "permission": {
+        "agent_manager": "deny",
+        "agent_manager_models": "deny",
+        "background_process": "deny",
+        "bash": "deny",
+        "codebase_search": "deny",
+        "edit": "allow",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "lsp": "deny",
+        "nordicbees-db": "deny",
+        "nordicbees-db_mysql_query": "deny",
+        "semgrep": "allow",
+        "roslyn": "allow",
+        "mudblazor": "allow",
+        "microsoft-docs": "allow",
+        "playwright": "allow",
+        "question": "deny",
+        "semantic_search": "deny",
+        "skill": "allow",
+        "suggest": "deny",
+        "task": "deny",
+        "todoread": "deny",
+        "todowrite": "deny",
+        "websearch": "deny"
+      },
+      "prompt": "{file:./.opencode/prompts/coder.md}",
+      "steps": 5000,
+      "temperature": 0.25
+    },
+    "fixer": {
+      "mode": "all",
+      "model": "llama-swap/fixer",
+      "permission": {
+        "agent_manager": "deny",
+        "agent_manager_models": "deny",
+        "background_process": "deny",
+        "bash": {
+          "*": "allow",
+          "mariadb *": "deny",
+          "mysql *": "deny"
+        },
+        "codebase_search": "deny",
+        "edit": "allow",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "lsp": "deny",
+        "nordicbees-db": "allow",
+        "semgrep": "allow",
+        "roslyn": "allow",
+        "mudblazor": "allow",
+        "microsoft-docs": "allow",
+        "playwright": "allow",
+        "question": "deny",
+        "semantic_search": "deny",
+        "skill": "allow",
+        "suggest": "deny",
+        "task": "deny",
+        "todoread": "deny",
+        "todowrite": "deny",
+        "websearch": "deny"
+      },
+      "prompt": "{file:./.opencode/prompts/fixer.md}",
+      "steps": 5000
+    },
+    "orchestrator": {
+      "mode": "primary",
+      "model": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "permission": {
+        "bash": {
+          "*": "allow"
+        },
+        "edit": {
+        "*": "deny",
+        ".opencode/planning/*": "allow",
+        ".opencode/planning/**": "allow",
+        ".opencode/reports/*": "allow",
+        ".opencode/reports/**": "allow",
+        "Docs/BUGLOG.md": "allow",
+        ".agent-guardrails/evidence/*": "allow",
+        ".agent-guardrails/evidence/**": "allow"
+      },
+      "task": {
+          "*": "deny",
+          "coder": "allow",
+          "fixer": "allow",
+          "reviewer": "allow",
+          "verifier": "allow",
+          "visual-qa": "allow",
+          "design-review": "allow"
+        },
+        "write": "deny",
+        "nordicbees-db": "deny",
+        "nordicbees-db_mysql_query": "deny",
+        "roslyn": "deny",
+        "roslyn_add_missing_imports": "deny",
+        "roslyn_add_null_checks": "deny",
+        "roslyn_apply_code_action_by_title": "deny",
+        "roslyn_apply_code_fix": "deny",
+        "roslyn_change_signature": "deny",
+        "roslyn_encapsulate_field": "deny",
+        "roslyn_extract_interface": "deny",
+        "roslyn_extract_method": "deny",
+        "roslyn_extract_variable": "deny",
+        "roslyn_fix_all": "deny",
+        "roslyn_format_document_batch": "deny",
+        "roslyn_generate_constructor": "deny",
+        "roslyn_generate_equality_members": "deny",
+        "roslyn_generate_test_stub": "deny",
+        "roslyn_implement_missing_members": "deny",
+        "roslyn_inline_variable": "deny",
+        "roslyn_move_type_to_file": "deny",
+        "roslyn_organize_usings": "deny",
+        "roslyn_organize_usings_batch": "deny",
+        "roslyn_remove_unused_code": "deny",
+        "roslyn_rename_symbol": "deny",
+        "roslyn_split_type": "deny",
+        "roslyn_analyze_change_impact": "allow",
+        "roslyn_analyze_control_flow": "allow",
+        "roslyn_analyze_data_flow": "allow",
+        "roslyn_analyze_method": "allow",
+        "roslyn_check_architecture": "allow",
+        "roslyn_check_type_compatibility": "allow",
+        "roslyn_dependency_graph": "allow",
+        "roslyn_diff_api_surface": "allow",
+        "roslyn_find_async_issues": "allow",
+        "roslyn_find_attribute_usages": "allow",
+        "roslyn_find_callers": "allow",
+        "roslyn_find_catch_blocks": "allow",
+        "roslyn_find_circular_dependencies": "allow",
+        "roslyn_find_dead_branches": "allow",
+        "roslyn_find_god_objects": "allow",
+        "roslyn_find_implementations": "allow",
+        "roslyn_find_interceptors": "allow",
+        "roslyn_find_naming_violations": "allow",
+        "roslyn_find_pattern_usages": "allow",
+        "roslyn_find_reflection_usage": "allow",
+        "roslyn_find_references": "allow",
+        "roslyn_find_similar_code": "allow",
+        "roslyn_find_tests": "allow",
+        "roslyn_find_throw_sites": "allow",
+        "roslyn_find_type_instantiations": "allow",
+        "roslyn_find_untested_code": "allow",
+        "roslyn_find_unused_code": "allow",
+        "roslyn_find_unused_dependencies": "allow",
+        "roslyn_get_attributes": "allow",
+        "roslyn_get_base_types": "allow",
+        "roslyn_get_call_graph": "allow",
+        "roslyn_get_code_actions_at_position": "allow",
+        "roslyn_get_code_fixes": "allow",
+        "roslyn_get_complexity_metrics": "allow",
+        "roslyn_get_containing_member": "allow",
+        "roslyn_get_derived_types": "allow",
+        "roslyn_get_di_registrations": "allow",
+        "roslyn_get_diagnostics": "allow",
+        "roslyn_get_documentation": "allow",
+        "roslyn_get_exception_flow": "allow",
+        "roslyn_get_extension_methods": "allow",
+        "roslyn_get_external_type_info": "allow",
+        "roslyn_get_file_overview": "allow",
+        "roslyn_get_generated_code": "allow",
+        "roslyn_get_instantiation_options": "allow",
+        "roslyn_get_method_overloads": "allow",
+        "roslyn_get_method_signature": "allow",
+        "roslyn_get_method_source": "allow",
+        "roslyn_get_method_source_batch": "allow",
+        "roslyn_get_missing_members": "allow",
+        "roslyn_get_nuget_dependencies": "allow",
+        "roslyn_get_outgoing_calls": "allow",
+        "roslyn_get_project_health": "allow",
+        "roslyn_get_project_structure": "allow",
+        "roslyn_get_source_generators": "allow",
+        "roslyn_get_super_method": "allow",
+        "roslyn_get_symbol_info": "allow",
+        "roslyn_get_type_hierarchy": "allow",
+        "roslyn_get_type_members": "allow",
+        "roslyn_get_type_members_batch": "allow",
+        "roslyn_get_type_overview": "allow",
+        "roslyn_go_to_definition": "allow",
+        "roslyn_health_check": "allow",
+        "roslyn_load_solution": "allow",
+        "roslyn_resolve_stack_trace": "allow",
+        "roslyn_search_symbols": "allow",
+        "roslyn_semantic_query": "allow",
+        "roslyn_sync_documents": "allow",
+        "roslyn_validate_code": "allow"
+      },
+      "prompt": "{file:./.opencode/prompts/orchestrator.md}",
+      "steps": 5000
+    },
+    "verifier": {
+      "mode": "all",
+      "model": "llama-swap/coder",
+      "permission": {
+        "agent_manager": "deny",
+        "agent_manager_models": "deny",
+        "background_process": "deny",
+        "bash": {
+          "*": "deny",
+          "which *": "allow",
+          "magick *": "allow",
+          "compare *": "allow"
+        },
+        "codebase_search": "deny",
+        "edit": "deny",
+        "write": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "lsp": "deny",
+        "nordicbees-db": "deny",
+        "nordicbees-db_mysql_query": "deny",
+        "semgrep": "deny",
+        "roslyn": "deny",
+        "mudblazor": "deny",
+        "microsoft-docs": "deny",
+        "playwright": "allow",
+        "question": "deny",
+        "read": "allow",
+        "semantic_search": "deny",
+        "skill": "deny",
+        "suggest": "deny",
+        "task": "deny",
+        "todoread": "deny",
+        "todowrite": "deny",
+        "websearch": "deny"
+      },
+      "prompt": "{file:./.opencode/prompts/verifier.md}",
+      "steps": 2000,
+      "temperature": 0.1
+    },
+    "visual-qa": {
+      "mode": "all",
+      "model": "llama-swap/vl-ocr",
+      "permission": {
+        "agent_manager": "deny",
+        "agent_manager_models": "deny",
+        "background_process": "deny",
+        "bash": "deny",
+        "codebase_search": "deny",
+        "edit": "deny",
+        "write": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "lsp": "deny",
+        "nordicbees-db": "deny",
+        "nordicbees-db_mysql_query": "deny",
+        "semgrep": "deny",
+        "roslyn": "deny",
+        "mudblazor": "deny",
+        "microsoft-docs": "deny",
+        "playwright": "deny",
+        "question": "deny",
+        "read": "allow",
+        "semantic_search": "deny",
+        "skill": "deny",
+        "suggest": "deny",
+        "task": "deny",
+        "todoread": "deny",
+        "todowrite": "deny",
+        "websearch": "deny"
+      },
+      "prompt": "{file:./.opencode/prompts/visual-qa.md}",
+      "steps": 100,
+      "temperature": 0.1
+    },
+    "design-review": {
+      "mode": "all",
+      "model": "llama-swap/vl-ocr",
+      "permission": {
+        "agent_manager": "deny",
+        "agent_manager_models": "deny",
+        "background_process": "deny",
+        "bash": "deny",
+        "codebase_search": "deny",
+        "edit": "deny",
+        "write": "deny",
+        "glob": "deny",
+        "grep": "deny",
+        "list": "deny",
+        "lsp": "deny",
+        "nordicbees-db": "deny",
+        "nordicbees-db_mysql_query": "deny",
+        "semgrep": "deny",
+        "roslyn": "deny",
+        "mudblazor": "deny",
+        "microsoft-docs": "deny",
+        "playwright": "deny",
+        "question": "deny",
+        "read": "allow",
+        "semantic_search": "deny",
+        "skill": "deny",
+        "suggest": "deny",
+        "task": "deny",
+        "todoread": "deny",
+        "todowrite": "deny",
+        "websearch": "deny"
+      },
+      "prompt": "{file:./.opencode/prompts/design-review.md}",
+      "steps": 100,
+      "temperature": 0.1
+    },
+    "reviewer": {
+      "mode": "all",
+      "model": "llama-swap/reviewer",
+      "permission": {
+        "agent_manager": "deny",
+        "agent_manager_models": "deny",
+        "background_process": "deny",
+        "bash": {
+          "*": "deny",
+          "find *": "allow",
+          "grep *": "allow",
+          "git diff *": "allow",
+          "git show *": "allow",
+          "git status *": "allow",
+          "git log *": "allow",
+          "git -C * diff *": "allow",
+          "git -C * show *": "allow",
+          "git -C * status*": "allow",
+          "git -C * log *": "allow"
+        },
+        "codebase_search": "deny",
+        "edit": "deny",
+        "lsp": "deny",
+        "semgrep": "allow",
+        "roslyn": "allow",
+        "question": "deny",
+        "semantic_search": "deny",
+        "skill": "allow",
+        "suggest": "deny",
+        "task": "deny",
+        "todoread": "deny",
+        "todowrite": "deny",
+        "websearch": "deny"
+      },
+      "prompt": "{file:./.opencode/prompts/reviewer.md}",
+      "steps": 5000,
+      "temperature": 0.1
+    }
+  },
+  "mcp": {
+    "agent-guardrails": {
+      "command": [
+        "agent-guardrails",
+        "mcp"
+      ],
+      "enabled": false,
+      "type": "local",
+      "timeout": 60000
+    },
+    "semgrep": {
+      "command": [
+        "uvx",
+        "semgrep-mcp",
+        "-t",
+        "stdio",
+        "--semgrep-path",
+        "/opt/homebrew/bin/semgrep"
+      ],
+      "enabled": true,
+      "type": "local"
+    },
+    "roslyn": {
+      "command": [
+        "npx",
+        "-y",
+        "sharplens-mcp"
+      ],
+      "environment": {
+        "DOTNET_SOLUTION_PATH": "/Users/deividasru/Projects/NordicBeesERP/NordicBeesERP.sln"
+      },
+      "enabled": true,
+      "type": "local"
+    },
+    "mudblazor": {
+      "command": [
+        "dotnet",
+        "run",
+        "--project",
+        "/Users/deividasru/MudMCP/src/MudBlazor.Mcp/MudBlazor.Mcp.csproj",
+        "--",
+        "--stdio",
+        "--version",
+        "8.15.0"
+      ],
+      "enabled": true,
+      "type": "local"
+    },
+    "microsoft-docs": {
+      "command": [
+        "npx",
+        "-y",
+        "mcp-remote",
+        "https://learn.microsoft.com/api/mcp"
+      ],
+      "enabled": true,
+      "type": "local"
+    },
+    "mempalace": {
+      "command": [
+        "python3",
+        "-m",
+        "mempalace.mcp_server"
+      ],
+      "enabled": true,
+      "type": "local"
+    },
+    "nordicbees-db": {
+      "command": [
+        "node",
+        "/Users/deividasru/mysql-mcp/server.js"
+      ],
+      "enabled": true,
+      "type": "local"
+    },
+    "playwright": {
+      "command": [
+        "npx",
+        "@playwright/mcp@latest",
+        "--timeout-action",
+        "15000",
+        "--timeout-navigation",
+        "45000"
+      ],
+      "enabled": true,
+      "type": "local"
+    }
+  },
+  "model": "llama-swap/coder",
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "awk *": "allow",
+      "bash *": "allow",
+      "cat *": "allow",
+      "continue *": "allow",
+      "cp *": "allow",
+      "curl *": "allow",
+      "cut *": "allow",
+      "dotnet *": "allow",
+      "echo *": "allow",
+      "find *": "allow",
+      "grep *": "allow",
+      "head *": "allow",
+      "ilspycmd *": "allow",
+      "ls *": "allow",
+      "lsof *": "allow",
+      "mkdir *": "allow",
+      "mysql --version *": "allow",
+      "mysql -u *": "deny",
+      "od *": "allow",
+      "read *": "allow",
+      "rg *": "allow",
+      "rm *": "allow",
+      "sed *": "allow",
+      "sort *": "allow",
+      "tail *": "allow",
+      "tr *": "allow",
+      "wc *": "allow"
+    },
+    "doom_loop": "allow",
+    "external_directory": {
+      "/tmp/*": "allow",
+      "/tmp/ApiCheck/*": "allow"
+    },
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "lsp": "allow",
+    "skill": "allow",
+    "task": "allow",
+    "todoread": "allow",
+    "todowrite": "allow",
+    "webfetch": "allow",
+    "websearch": "allow"
+  },
+  "provider": {
+    "local-35b-debug": {
+      "models": {
+        "qwen3-a3b-debug": {
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          },
+          "name": "Qwen3.6-35B-A3B 65K",
+          "tool_call": true
+        }
+      },
+      "name": "Qwen3.6-35B-A3B (Debug)",
+      "options": {
+        "apiKey": "local",
+        "baseURL": "http://100.110.26.80:8087/v1"
+      }
+    },
+    "local-35b-review": {
+      "models": {
+        "qwen3-a3b-review": {
+          "limit": {
+            "context": 65536,
+            "output": 8192
+          },
+          "name": "Qwen3.6-35B-A3B 65K",
+          "tool_call": true
+        }
+      },
+      "name": "Qwen3.6-35B-A3B (Reviewer)",
+      "options": {
+        "apiKey": "local",
+        "baseURL": "http://100.110.26.80:8088/v1"
+      }
+    },
+    "llama-swap": {
+      "models": {
+        "coder": {
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          },
+          "name": "Qwen3.8-27B (Coder, via llama-swap)",
+          "tool_call": true
+        },
+        "fixer": {
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          },
+          "name": "Qwen3.6-35B-A3B (Fixer, via llama-swap)",
+          "tool_call": true
+        },
+        "reviewer": {
+          "limit": {
+            "context": 61440,
+            "output": 8192
+          },
+          "name": "Qwen3.6-35B-A3B (Reviewer, via llama-swap)",
+          "tool_call": true
+        },
+        "vl-ocr": {
+          "limit": {
+            "context": 16384,
+            "output": 4096
+          },
+          "name": "Qwen2.5-VL-7B (Vision, via llama-swap)",
+          "attachment": true,
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "tool_call": false
+        }
+      },
+      "name": "llama-swap (unified proxy)",
+      "options": {
+        "apiKey": "local",
+        "baseURL": "http://100.110.26.80:9292/v1"
+      }
+    },
+    "openrouter": {
+      "models": {
+        "qwen/qwen3-235b-a22b-thinking-2507": {
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          },
+          "name": "Qwen3 235B Thinking",
+          "tool_call": true
+        },
+        "nvidia/nemotron-3-ultra-550b-a55b:free": {
+          "name": "Nemotron 3 Ultra (free)",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "tool_call": true
+        }
+      },
+      "name": "OpenRouter",
+      "options": {
+        "apiKey": "{file:.opencode/secrets/openrouter.key}",
+        "baseURL": "https://openrouter.ai/api/v1"
+      }
+    },
+    "qwen-vl": {
+      "models": {
+        "qwen-vl": {
+          "limit": {
+            "context": 16384,
+            "output": 4096
+          },
+          "name": "Qwen2.5-VL-7B-Instruct",
+          "attachment": true,
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "tool_call": false
+        }
+      },
+      "name": "Qwen2.5-VL-7B (vision)",
+      "options": {
+        "apiKey": "local",
+        "baseURL": "http://100.110.26.80:8089/v1"
+      }
+    },
+    "qwen27b": {
+      "models": {
+        "qwen27b": {
+          "limit": {
+            "context": 98304,
+            "output": 16384
+          },
+          "name": "Qwen3.6-27B Q6K 98K",
+          "tool_call": true
+        }
+      },
+      "name": "Qwen3.6-27B Q6K",
+      "options": {
+        "apiKey": "local",
+        "baseURL": "http://100.110.26.80:8086/v1"
+      }
+    }
+  },
+  "autoupdate": "notify",
+  "plugin": [
+    [
+      "opencode-auto-resume",
+      {
+        "chunkTimeoutMs": 60000,
+        "gracePeriodMs": 3000,
+        "maxRetries": 3,
+        "subagentWaitMs": 20000
+      }
+    ]
+  ]
+}
