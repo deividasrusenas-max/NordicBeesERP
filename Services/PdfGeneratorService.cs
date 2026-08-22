@@ -98,10 +98,6 @@ namespace NordicBeesERP.Services
             {
                 invoice.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == invoice.CustomerId);
                 invoice.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == invoice.Id).ToList();
-                foreach (var line in invoice.Lines)
-                {
-                    System.IO.File.AppendAllText("/tmp/pdf_debug.txt", $"[PDF DEBUG] Invoice {invoiceId} Line {line.Id}: Quantity={line.Quantity} (raw), Quantity%1={line.Quantity % 1}, Formatted_F0={line.Quantity.ToString("F0", CultureInfo.InvariantCulture)}, Formatted_G29={line.Quantity.ToString("G29")}\n");
-                }
                 if (invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
                     invoice.Language = invoice.Customer.DefaultLanguage;
             }
@@ -300,7 +296,7 @@ namespace NordicBeesERP.Services
                         columns.ConstantColumn(26);  // No.
                         columns.RelativeColumn(3);    // Description
                         columns.ConstantColumn(32);   // Unit
-                        columns.ConstantColumn(50);   // Qty
+                        columns.ConstantColumn(65);   // Qty
                         columns.ConstantColumn(60);   // Price (excl. VAT)
                         columns.ConstantColumn(60);   // Total (excl. VAT)
                         columns.ConstantColumn(36);   // VAT %
@@ -794,7 +790,7 @@ namespace NordicBeesERP.Services
                                 columns.ConstantColumn(26);  // No.
                                 columns.RelativeColumn(3);    // Description
                                 columns.ConstantColumn(32);   // Unit
-                                columns.ConstantColumn(50);   // Qty
+                                columns.ConstantColumn(65);   // Qty
                                 columns.ConstantColumn(60);   // Price (excl. VAT)
                                 columns.ConstantColumn(60);   // Total (excl. VAT)
                                 columns.ConstantColumn(36);   // VAT %
