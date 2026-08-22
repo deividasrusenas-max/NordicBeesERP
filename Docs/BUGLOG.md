@@ -26,17 +26,29 @@ Status: monitoring (guardrail just added, no re-exposure yet) |
   was already added for it once — the prompt-text/skill-note guardrail
   was proven insufficient, so a stronger mechanical check, e.g. a
   semgrep rule or an `agent-guardrails` check, is needed instead of
-  another similar sentence)
+  another similar sentence) | N/A (no guardrail was added for this entry
+  — see the entry's own Guardrail line for why; there is nothing to
+  monitor the effectiveness of, and this error class is currently
+  UNGUARDED — a periodic review should treat N/A entries as the
+  highest-priority candidates for actually adding a guardrail, since
+  recurrence here would be silent and unprotected)
 
 **Before writing a NEW entry, check whether its Error class already
 exists in this log** (grep this file for the candidate tag). If it does
 and the same mechanism just recurred, that is objective, non-self-graded
-evidence the earlier guardrail didn't work — file the new entry with
-`Status: escalated`, referencing the earlier entry's date, and prefer
-escalating the existing guardrail (weaker→stronger mechanism) over
-adding a near-duplicate note. Entries predating this field (above the
-2026-08-23 entries below) don't have Error class/Status retrofitted —
-treat them as `Category`-only history, not part of the recurrence check.
+evidence the earlier guardrail didn't work (or, for an N/A entry, that
+the lack of a guardrail is now costing real time) — file the new entry
+with `Status: escalated`, referencing the earlier entry's date, and
+prefer escalating the existing guardrail (weaker→stronger mechanism, or
+N/A→an actual guardrail) over adding a near-duplicate note.
+
+**2026-08-23 retrofit note**: all entries below (including the ones
+originally logged 2026-07-17 through 2026-08-21, before this field
+existed) now have Error class/Status assigned retroactively, so the
+recurrence check covers the full history, not just entries written after
+this system existed. Each retrofitted tag was chosen by re-reading that
+entry's actual Root cause and picking the underlying MECHANISM, not
+re-labeling the symptom.
 
 
 ## Entries
@@ -47,6 +59,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: Added 'draft' to the status IN clause.
 - **Guardrail added**: none (one-off business logic bug, not a generalizable pattern)
 - **Category**: EF-core
+- **Error class**: `status-transition-incomplete-allowlist`
+- **Status**: N/A — no guardrail exists; a future status-transition method with a similarly incomplete allowed-source-status list would not be caught by anything today
 
 ### 2026-07-17 — Expiry date not saved when packing order line
 - **Symptom**: MudDatePicker value not persisted after selecting a date and confirming.
@@ -54,6 +68,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: Switched to explicit Value + ValueChanged pattern.
 - **Guardrail added**: added to `mudblazor` skill's known pitfalls
 - **Category**: UI-form
+- **Error class**: `mudblazor-bind-value-commit-timing`
+- **Status**: monitoring — skill note added 2026-07-17, no confirmed re-exposure tracked yet
 
 ### 2026-07-17 — EF Core translation failure on invoice search
 - **Symptom**: Runtime exception "Translation of method 'string.Contains' failed".
@@ -61,6 +77,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: Replaced with `EF.Functions.Like`.
 - **Guardrail added**: semgrep rule `nordicbees-stringcomparison-in-linq`
 - **Category**: EF-core
+- **Error class**: `ef-linq-untranslatable-stringcomparison`
+- **Status**: monitoring — this is a mechanical (semgrep) guardrail, structurally stronger than a prompt reminder since it can't be skipped by an agent simply not reading a sentence; still marked monitoring rather than stable because no confirmed exposure count has been tracked yet, not because the guardrail itself is weak
 
 ### 2026-07-17 — DBNull mapping error creating orders
 - **Symptom**: "no store type mapping for properties of type 'DBNull'" on order creation.
@@ -68,6 +86,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: Pass nullable values directly without the cast/fallback.
 - **Guardrail added**: semgrep rule `nordicbees-dbnull-explicit-cast`
 - **Category**: EF-core
+- **Error class**: `ef-dbnull-explicit-cast`
+- **Status**: monitoring — mechanical semgrep guardrail, same reasoning as above
 
 ### 2026-07-17 — FK constraint failure creating orders
 - **Symptom**: Intermittent FK violation on order_lines insert.
@@ -75,6 +95,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: Explicitly open and hold one connection for the whole method.
 - **Guardrail added**: already covered by `dotnet-efcore-nordicbees` skill's connection-scope guidance (pre-existing rule, reinforced)
 - **Category**: EF-core
+- **Error class**: `ef-connection-pool-race-last-insert-id`
+- **Status**: monitoring — this is a prompt/skill-text guardrail (not mechanical), so it's the weaker kind — worth watching for recurrence more closely than the semgrep-backed entries above
 
 ### 2026-07-17 — Delivery.cs column/type mismatch
 - **Symptom**: "Unknown column 'd.inspection_by'" loading invoice details with a linked delivery.
@@ -82,6 +104,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: Corrected the property name/type to match DB.
 - **Guardrail added**: none (one-off schema drift, covered generically by `dotnet-efcore-nordicbees` Rule 2 — "never assume a column exists based on the model alone")
 - **Category**: EF-core
+- **Error class**: `schema-drift-unverified-column-mapping`
+- **Status**: N/A — the generic skill rule is a soft mitigation (applies broadly, not specifically triggered by this pattern), not a dedicated guardrail for this exact mechanism; treat as effectively unguarded for recurrence-tracking purposes
 
 ### 2026-08-18 — Artwork "Upload first version" button redirects to /login on prod
 - **Symptom**: Clicking "Ikelti pirma versija" on an artwork asset detail page instantly redirected to /login in production, before any file was selected. Dev was unaffected; the sibling "Ikelti nauja versija" button worked.
@@ -90,6 +114,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Verified**: FULL (as of 2026-08-18 13:16 UTC). The fix is confirmed present in the deployed v0.11.169 build (footer shows v0.11.169; code review of e2593dc confirms forceLoad removed) and SPA navigation is proven working on staging. With the separate circuit-crash bug fixed (see 2026-08-18 MainLayout entry) and staging on v0.11.170, a fresh asset was created on staging and "Ikelti pirma versija" was clicked via SPA nav -> landed on /artwork/upload/0 (the real upload page: "Upload New Version for ..." with a file-drop area), NOT /login. Console: 0 errors. The original crash that blocked this test (SignalR circuit terminated at the home route, 2026-08-18 12:36:02) was a different pre-existing bug; now resolved, the button works end-to-end.
 - **Guardrail added**: none yet (one-off inconsistency — file-download endpoints intentionally keep forceLoad: true). Consider a repo convention that forceLoad:true is reserved for genuine file/PDF download endpoints only.
 - **Category**: infra
+- **Error class**: `blazor-forceload-fullreload-auth-redirect`
+- **Status**: N/A — no guardrail exists; any future button copy-pasting `forceLoad: true` outside a genuine download endpoint would hit the same failure with nothing to catch it
 
 ### 2026-08-18 — Unhandled SignalR circuit exception killing authed pages (MainLayout)
 - **Symptom**: On staging (v0.11.169) admin login succeeded, but the next navigation (e.g. to "/") threw "There was an unhandled exception on the current circuit, so this circuit will be terminated" and froze the UI. /login was unaffected.
@@ -98,6 +124,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Verified**: FULL — on staging v0.11.170 the home route renders completely with 0 console errors/warnings; the crash is gone. The company_settings row was also confirmed present on staging, so the guard is now belt-and-suspenders.
 - **Guardrail added**: none (one-off missing try/catch). Consider a convention: any DB call in a layout/OnInitializedAsync must be wrapped defensively.
 - **Category**: infra
+- **Error class**: `layout-lifecycle-unguarded-db-call`
+- **Status**: N/A — no guardrail exists; any other layout/OnInitializedAsync method with an unguarded DB call would kill its circuit with nothing to catch it
 
 ### 2026-08-21 — Invoice create says "pasirinkite klientą" despite selected client
 - **Symptom**: On /invoices/create, picking a client by typing + Tab left the name visible but Save showed "Prašome pasirinkti klientą!" every time.
@@ -105,6 +133,8 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: commit 1f4aaaf (v0.11.217) — @bind-Text tracking + SelectValueOnTab="true" + TryResolveSelectedCustomerFromText() exact-match fallback in ValidateInvoice. Follow-up commit dbc146e (v0.11.218) also auto-focuses/opens the client autocomplete on first render.
 - **Guardrail added**: none yet (component-default gotcha, one-off). Candidate: note in mudblazor skill that MudAutocomplete value commitment requires SelectValueOnTab or explicit selection when used inline in forms.
 - **Category**: UI-form
+- **Error class**: `mudblazor-autocomplete-tab-value-commit`
+- **Status**: N/A — the candidate skill note mentioned in Guardrail added was never actually confirmed as written; treat as unguarded until verified present in the `mudblazor` skill's known pitfalls
 
 ### 2026-08-21 — Build artifact self-nesting caused MSB3021 build failure
 - **Symptom**: `dotnet build`/`dotnet test` failed with MSB3021 "path too long"; `Tests/NordicBeesERP.Tests/bin/Debug/net10.0/Tests/...` self-nested ~21 levels deep, growing by one level per build.
@@ -112,3 +142,32 @@ treat them as `Category`-only history, not part of the recurrence check.
 - **Fix**: Added `Content`/`None`/`EmbeddedResource` excludes for `Tests/**` alongside the existing `Compile` exclude in `NordicBeesERP.csproj` (commit 99710a3, v0.11.222), matching the mechanism above exactly. One-time `rm -rf` of the existing corrupted trees was also needed to clear the already-poisoned state.
 - **Guardrail added**: csproj glob exclusion (commit 99710a3) prevents recurrence at the source. AGENTS.md also updated with a fast-path rule so agents don't waste time deep-diagnosing this class of issue in the future.
 - **Category**: infra
+- **Error class**: `csproj-implicit-glob-nested-test-output`
+- **Status**: monitoring — structurally this guardrail is stronger than a typical prompt rule (it eliminates the root cause at the build-config level, not just an instruction to avoid it), so recurrence should be effectively impossible unless the csproj exclusion is later reverted or the test project's output structure changes; still marked monitoring rather than stable since no confirmed post-fix exposure has been explicitly tracked
+
+### 2026-08-22 — BUCKET_GROUP hardcode check was structurally broken (whole-repo grep)
+- **Symptom**: `fixer` sessions repeatedly got stuck treating a permanently-true `grep` match as a blocker requiring investigation, across at least two separate tasks the same day, burning many minutes each time re-diagnosing the identical, unchanging state.
+- **Root cause**: `fixer.md`'s hardcode-check step read `grep -r "BUCKET_GROUP" --include="*.cs" --include="*.razor" .` (whole repository) and required 0 matches to proceed — but `BUCKET_GROUP` is a real, legitimate `ContainerType` enum value used correctly throughout the warehouse module (Migrations, ContainerEnums.cs, Home.razor, several Delivery*.razor files). This check could never pass regardless of what was actually being committed, since it wasn't scoped to the current task's own change.
+- **Fix**: Rescoped the check to `git diff --cached -- [task's own files] | grep "BUCKET_GROUP"` — only the staged diff of the current task, never the whole repo (commit on 2026-08-22, see `.opencode/prompts/fixer.md` and `orchestrator.md`).
+- **Guardrail added**: the fix itself is the guardrail (the check is now scoped correctly at the source) — no separate mechanical enforcement beyond that, since this was a prompt-instruction bug, not something semgrep-checkable.
+- **Category**: infra (harness/prompt bug, not application code)
+- **Error class**: `harness-check-unscoped-repo-wide-grep`
+- **Status**: monitoring — same reasoning as the csproj entry above: this was a structural fix to the check's scope, not a text reminder, so recurrence of THIS exact check failing is unlikely; however the underlying pattern (a hardcode/lint-style check accidentally scoped to the whole repo instead of the current diff) could recur if a similar check is added elsewhere in the harness without the same scoping discipline — worth re-checking any future grep-based check against this class
+
+### 2026-08-22 — fixer re-diagnosed an unchanging blocker 14+ times across compactions
+- **Symptom**: `fixer` correctly diagnosed on its FIRST check that `bump-version.sh` was blocked by an unrelated, out-of-scope uncommitted file (a harness prompt file being edited concurrently) — then re-ran the identical `git status` diagnostic at least 14 more times across several compaction cycles, never actually stopping to report the (unchanging) finding as final.
+- **Root cause**: neither `fixer.md` nor `orchestrator.md` had an explicit "once you determine you are BLOCKED for a reason outside your control, report ONCE and STOP" rule — the model correctly re-verified state after each compaction (per the earlier compaction-safety rule) but had no instruction telling it that a repeatedly-identical diagnostic result should terminate the loop rather than trigger another identical check.
+- **Fix**: added an explicit "MANDATORY: once BLOCKED, report ONCE and STOP — never re-diagnose an unchanging blocker" section to `fixer.md`, plus matching guidance in `orchestrator.md`'s error-handling section for how the orchestrator itself should react to this specific blocker (check `git status` itself, don't re-delegate to fixer to "check again").
+- **Guardrail added**: prompt-text rule (not mechanical) — see Status note.
+- **Category**: infra (harness/prompt bug)
+- **Error class**: `harness-blocked-state-not-terminated`
+- **Status**: monitoring — this is a prompt-text guardrail, the weaker kind (an agent could in principle still not weight/follow it under context pressure) — this Error class is a good candidate to watch closely for recurrence, and if it recurs, escalating to a mechanical circuit-breaker (e.g. the plugin auto-detecting N identical consecutive tool calls and injecting a hard stop) would be the appropriate escalation
+
+### 2026-08-22 — nordicbees-quality-monitor.ts: hook argument shape assumed wrong parameter
+- **Symptom**: `duration_sec` was `null` for every single recorded task-stats entry for hours after the plugin was first written — the "started" lifecycle event was silently never being written at all.
+- **Root cause**: the OpenCode plugin API puts a tool call's `args` on the SECOND parameter for the `tool.execute.before` hook, but on the FIRST parameter for `tool.execute.after` — the plugin's `before` handler read `input.args` (first parameter), which is `undefined` for that hook, causing an early return before any record was ever written. Confirmed against official OpenCode plugin documentation examples after the fact, not guessed.
+- **Fix**: added a `getArgs(input, second)` helper that checks both parameter positions, making the plugin resilient regardless of which hook is calling it.
+- **Guardrail added**: none beyond the fix itself (this is infrastructure code, not a pattern checkable by semgrep/agent-guardrails against application code).
+- **Category**: infra (harness plugin bug)
+- **Error class**: `opencode-plugin-hook-arg-shape-mismatch`
+- **Status**: monitoring — if a similar hook-shape assumption bug appears in a DIFFERENT plugin file later (e.g. a future plugin also gets the before/after parameter shape backwards), that would be a recurrence of this exact mechanism and should reuse this tag
