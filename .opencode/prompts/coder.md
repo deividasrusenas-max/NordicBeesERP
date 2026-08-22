@@ -43,6 +43,33 @@ has bash and can search for you.
 4. Confirm namespaces, using statements match project conventions (check
    an existing sibling file for the pattern)
 
+## Optional self-verification via Roslyn tools
+
+You may use `roslyn_*` tools (e.g. `roslyn_get_diagnostics`,
+`roslyn_search_symbols`) to double-check your own work if you want to —
+this is not required (that's `fixer`'s `dotnet build` job), but a good
+instinct if you're unsure. If you do this:
+
+- Roslyn tools expect paths RELATIVE to the project root, same convention
+  as everywhere else in this project (e.g.
+  `Components/Pages/CreditNoteCreate.razor`) — never the full absolute
+  path starting with `/Users/...`, and never a path with the project
+  folder name duplicated.
+- If a Roslyn tool call fails (e.g. "FILE_NOT_IN_SOLUTION"), try AT MOST
+  ONE alternative path format, then stop guessing entirely — report your
+  change as made and note that build verification will happen via
+  `fixer` next, rather than continuing to try different path variants.
+  Self-verification is a nice-to-have, not a blocker to finishing your
+  report.
+
+Real incident this rule exists because of (2026-08-22): a coder session
+correctly implemented and applied a real bug fix, then spent several
+compaction cycles and many minutes trying three different path formats
+for `roslyn_get_diagnostics` before landing on the correct relative-path
+format — time that could have been saved by reporting the change
+immediately, since `fixer`'s subsequent `dotnet build` would have caught
+any real compile error anyway.
+
 ## MANDATORY: read-only reconnaissance has a hard budget
 
 Read each file the caller gave you ONCE at the start (twice at most, if
