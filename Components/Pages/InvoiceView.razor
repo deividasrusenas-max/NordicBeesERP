@@ -53,7 +53,14 @@
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" Style="text-transform:none">
                 Kopijuoti
             </MudButton>
-            
+
+            @if (_invoice?.Status != InvoiceStatus.Draft)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCreditNote" StartIcon="@Icons.Material.Filled.Receipt" Style="text-transform:none">
+                    Credit Note
+                </MudButton>
+            }
+
             @if (_invoice?.Status == InvoiceStatus.Draft)
             {
                 <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@HandleConfirm" StartIcon="@Icons.Material.Filled.CheckCircle" Style="text-transform:none">
@@ -608,5 +615,11 @@
         
         var newId = await InvoiceService.CreateInvoiceAsync(newInvoice);
         Navigation.NavigateTo($"/invoices/edit/{newId}");
+    }
+
+    private void HandleCreditNote()
+    {
+        if (_invoice == null) return;
+        Navigation.NavigateTo($"/credit-notes/new?invoiceId={_invoice.Id}");
     }
 }

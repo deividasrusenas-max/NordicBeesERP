@@ -8,6 +8,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IAuthService _authService
+@inject IInvoiceService InvoiceService
 
 <PageTitle>Nauja kreditinė sąskaita</PageTitle>
 
@@ -169,6 +170,9 @@
     
     private string? _errorMessage;
 
+    [SupplyParameterFromQuery(Name = "invoiceId")]
+    public int? InvoiceId { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -179,6 +183,28 @@
         catch (Exception ex)
         {
             _errorMessage = $"Klaida kraunant duomenis: {ex.Message}";
+        }
+
+        // Prefill from ?invoiceId=<id> if provided
+        if (InvoiceId.HasValue)
+        {
+            try
+            {
+                var invoice = await InvoiceService.GetInvoiceWithDetailsAsync(InvoiceId.Value);
+                if (invoice != null)
+                {
+                    var dto = new InvoiceSelectDto
+                    {
+                        Id = invoice.Id,
+                        CustomerName = invoice.Customer?.Name ?? string.Empty
+                    };
+                    await OnInvoiceSelected(dto);
+                }
+            }
+            catch
+            {
+                // Fail silently - user can still pick an invoice manually
+            }
         }
     }
 
