@@ -276,7 +276,14 @@
 
     private void HandleBack()
     {
-        Navigation.NavigateTo("/credit-notes");
+        if (_creditNote?.OriginalInvoiceId.HasValue == true)
+        {
+            Navigation.NavigateTo($"/invoices/{_creditNote.OriginalInvoiceId}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/credit-notes");
+        }
     }
 
 
