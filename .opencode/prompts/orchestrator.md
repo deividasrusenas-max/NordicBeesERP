@@ -472,17 +472,43 @@ If the task you just completed was fixing an actual bug (not a new
 feature, not a refactor like FilterUrlBuilder), after fixer confirms the
 commit, append one entry to `Docs/BUGLOG.md` yourself, following the
 exact format already in that file: Symptom / Root cause / Fix / Guardrail
-added / Category. `Docs/BUGLOG.md` is a normal tracked file (not
-gitignored) — if you have edit access to it per the live `opencode.json`
-config, edit it directly; if not, ask the user to append it via a shell
-command. Don't do this for every task — only for genuine bugs, to keep
-the log meaningful rather than noisy.
+added / Category / Error class / Status. `Docs/BUGLOG.md` is a normal
+tracked file (not gitignored) — if you have edit access to it per the
+live `opencode.json` config, edit it directly; if not, ask the user to
+append it via a shell command. Don't do this for every task — only for
+genuine bugs, to keep the log meaningful rather than noisy.
+
+**MANDATORY recurrence check before writing the new entry**: `grep
+-i "Error class" Docs/BUGLOG.md` (or just read the file — it's short) to
+see whether a stable tag matching this bug's underlying MECHANISM (not
+this specific symptom) already exists. Two outcomes:
+- **No matching tag exists** — mint a new short stable tag for the
+  mechanism (e.g. `mudblazor-tab-value-commit`, not
+  `invoice-client-picker-bug`), write the entry with `Status: monitoring`.
+- **A matching tag already exists** — this is a RECURRENCE of a
+  mechanism you already tried to guard against once. This is objective,
+  non-self-graded evidence that the earlier guardrail (usually a
+  prompt-text rule or skill note) did not actually prevent the failure.
+  Write the new entry reusing the SAME tag, set `Status: escalated`,
+  and reference the earlier entry's date in the Root cause line. Do NOT
+  just add another similar sentence to a skill/prompt — propose (to the
+  user, in your final report, don't silently decide) escalating to a
+  stronger mechanical check instead: a `semgrep` rule, an
+  `agent-guardrails` static check, or a build-time assertion — something
+  that can't be skipped by an agent simply not reading/weighting a prompt
+  sentence, rather than a second copy of the same kind of guidance that
+  already failed once.
 
 This log exists so that every few weeks the user can review it for
 patterns (e.g. "3 of the last 10 entries are EF Core translation
 failures") and decide whether a new systemic guardrail (semgrep rule,
 skill update, or architectural change) is worth adding — the log is the
-raw material for that periodic review, not a replacement for it.
+raw material for that periodic review, not a replacement for it. The
+Error class/Status fields exist specifically so this periodic review can
+compute, per error class, how many tasks have happened since a guardrail
+was added (exposure count) and whether it actually held — promoting
+`monitoring` → `stable` after a clean exposure window, or confirming an
+`escalated` entry's stronger guardrail is now in place.
 
 ## Schema changes are human-only
 

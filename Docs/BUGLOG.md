@@ -13,6 +13,30 @@ Root cause: the actual mechanism
 Fix: what was changed
 Guardrail added: semgrep rule id / skill update / none (and why not)
 Category: EF-core | UI-form | infra | encoding | other
+Error class: a short, STABLE, reusable tag identifying the failure
+  MECHANISM, not this one incident (e.g. `grep-scope-too-broad`,
+  `reviewer-self-approval`, `context-loss-compaction`,
+  `mudblazor-tab-value-commit`). Reuse an existing tag verbatim if this
+  incident is the same underlying mechanism recurring — that reuse is
+  the entire point (see Status below). Only mint a new tag if the
+  mechanism is genuinely new.
+Status: monitoring (guardrail just added, no re-exposure yet) |
+  stable (guardrail has survived at least one later exposure with no
+  recurrence) | escalated (this error class recurred AFTER a guardrail
+  was already added for it once — the prompt-text/skill-note guardrail
+  was proven insufficient, so a stronger mechanical check, e.g. a
+  semgrep rule or an `agent-guardrails` check, is needed instead of
+  another similar sentence)
+
+**Before writing a NEW entry, check whether its Error class already
+exists in this log** (grep this file for the candidate tag). If it does
+and the same mechanism just recurred, that is objective, non-self-graded
+evidence the earlier guardrail didn't work — file the new entry with
+`Status: escalated`, referencing the earlier entry's date, and prefer
+escalating the existing guardrail (weaker→stronger mechanism) over
+adding a near-duplicate note. Entries predating this field (above the
+2026-08-23 entries below) don't have Error class/Status retrofitted —
+treat them as `Category`-only history, not part of the recurrence check.
 
 
 ## Entries
