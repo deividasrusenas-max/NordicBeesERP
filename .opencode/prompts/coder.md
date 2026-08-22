@@ -43,6 +43,56 @@ has bash and can search for you.
 4. Confirm namespaces, using statements match project conventions (check
    an existing sibling file for the pattern)
 
+## MANDATORY: read-only reconnaissance has a hard budget
+
+Read each file the caller gave you ONCE at the start (twice at most, if
+you genuinely need to double-check something specific after an edit
+failure — see below). Do NOT re-read a reference file (e.g. a sibling
+page given as a pattern to follow) again "to re-verify" if you already
+read it and nothing has changed since — trust what you already read.
+
+Real incident this rule exists because of (2026-08-22): a coder session
+re-read the same two files (a target file + a reference file) SEVEN times
+across repeated compaction cycles, treating each compaction as a reason
+to "re-verify" everything from scratch instead of trusting its own
+already-recorded progress, and never actually completed a single edit in
+nearly 20 minutes.
+
+If an `edit` call fails with "could not find oldString" or similar:
+do NOT re-read the entire file again. Read ONLY the narrow line range
+around where that edit was supposed to go (use the `offset`/`limit`
+parameters on `read` if available, e.g. 20-30 lines centered on the
+target), get the exact current text for JUST that section, and retry with
+the corrected oldString. A full-file re-read is almost never necessary to
+fix one failed edit — the mismatch is local, so the fix should be too.
+
+If that SECOND attempt (the narrow re-read + retry) ALSO fails, do not
+attempt a third blind guess at the exact oldString. Instead, switch
+strategy entirely, following the same convention used by mature coding
+agents (Cline, Aider) for exactly this situation:
+- Check the target file's total line count (from your most recent full
+  read, or a fresh one if you no longer have it).
+- If it's under roughly 400 lines: read the WHOLE current file once (a
+  single read is fine here, this is the exception to the read-budget
+  rule above precisely because it replaces further failed edit attempts,
+  not because you're re-verifying), then use `write` to replace the
+  ENTIRE file with your corrected version, applying the change you were
+  asked to make within that full rewrite. Whole-file rewrite sidesteps
+  the exact-substring-match problem entirely, and industry benchmarking
+  (Cursor's own findings) shows whole-file rewrite outperforms
+  search/replace-style edits specifically for files under ~400 lines.
+- If it's over roughly 400 lines: do NOT attempt a whole-file rewrite
+  (too large, too expensive, too risky to reproduce perfectly). Instead
+  report exactly what you attempted and the exact error, and let the
+  orchestrator decide (it can read the file itself and give you the
+  precise oldString, or split the task into a smaller piece).
+
+Real incident this rule exists because of (2026-08-22): a coder session
+kept hitting "oldString not found" on the same section of a ~410-line
+file, re-read the entire file from scratch each time instead of either a
+narrow re-read or a whole-file rewrite, across multiple compaction
+cycles, with zero forward progress for roughly 20 minutes.
+
 ## Implementation rules
 
 - **Self-check for duplicate logic before writing it** — even if the caller's instruction doesn't mention this, before implementing any real logic (a helper method, a filter/URL-building routine, a dialog shape, a validation rule — anything beyond a one-line UI tweak), quickly consider: does this look like something that should already exist elsewhere in the project (a similar helper in `Helpers/`, a similar service method)? You only have the files you were given to read, so you can't grep the whole project yourself — but if a caller-given file already contains equivalent logic, or the pattern looks like it's the 2nd/3rd near-identical inline copy of something, say so explicitly in your report ("this looks similar to X in file Y — flagging in case a shared helper would be better") rather than silently writing another copy. Real incident (2026-07): URL-based filter persistence was implemented as near-identical duplicated inline code across 6+ separate .razor files before anyone extracted `Helpers/FilterUrlBuilder.cs`.
