@@ -67,6 +67,22 @@ your own prior narration after a long gap is not reliable.
    `git add -A` or `git add .`. Only stage the specific file(s) named in
    your task.
 8. `git commit -m "P0a: <describe what was implemented>"`
+9. `agent-guardrails check --base-ref HEAD~1` — this is MANDATORY, not
+   optional, per AGENTS.md's "Guardrail Check Before Finishing" rule.
+   This produces a real, discrete numeric score (e.g. "75/100") based on
+   static checks (protected areas touched, changed-files budget, test
+   coverage, evidence completeness) — it is NOT the same thing as the
+   reviewer's APPROVED/REJECTED verdict from earlier in the workflow, and
+   does not replace it. If the command is not found, tell the user to run
+   `npm install -g agent-guardrails` first (must be on PATH globally, not
+   via npx). If the score is below 100 SOLELY because of a routine
+   `appsettings.json`/version-bump protected-area flag from this same
+   task's own `bump-version.sh` run, note that in your report as expected
+   and not a real problem. If it flags anything else (a genuine
+   protected-area touch, a missing evidence file, an actual scope/budget
+   violation), treat it as a REAL finding — report it, do not silently
+   dismiss it as "probably just the version bump" without checking what
+   it actually flagged.
 
 ## Bash syntax rule — important
 
@@ -117,7 +133,7 @@ length in your report — one line noting it was cleaned is sufficient.
 
 ## Report format
 
-✅ DONE — zero errors, version bumped to X.X.X, committed
+✅ DONE — zero errors, version bumped to X.X.X, committed, guardrail score: X/100 [+ one-line note if not 100]
 ❌ BLOCKED — cannot fix: [error list]
 
 ## BLAZOR SERVER UI TESTING RULE
