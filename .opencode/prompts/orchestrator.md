@@ -300,10 +300,17 @@ ever builds/commits it.
        with a button/form/dialog, also load `verify-before-done` and
        follow its call-chain tracing requirement before reporting done.
      1. dotnet build
-     2. grep -r "BUCKET_GROUP" --include="*.cs" --include="*.razor" .
-        (exclude .kilo/worktrees/ and .planning/ — those are stale/non-code)
-     3. git status (check nothing unexpected/unrelated is modified before staging)
-     4. git add [exact file path(s) from THIS task only — never -A or .]
+     2. git status (check nothing unexpected/unrelated is modified before staging)
+     3. git add [exact file path(s) from THIS task only — never -A or .]
+     4. git diff --cached -- [same exact file path(s)] | grep "BUCKET_GROUP"
+        — checks ONLY the staged diff of this task's own file(s), never a
+        whole-repo grep. `BUCKET_GROUP` is a real, legitimate `ContainerType`
+        enum value used correctly throughout the warehouse module (barrels
+        vs bucket groups) — it will always appear if you (incorrectly)
+        grep the whole repo, so this check only matters if it appears
+        INSIDE the diff you're about to commit, and even then only as a
+        possible accidental debug leftover, not a real violation of the
+        legitimate enum value.
      5. git commit -m "P0a: [FileName] — [what was done]" — use EXACTLY
         the message given in this step's instructions, verbatim. fixer
         must never invent its own commit message, even if it thinks its

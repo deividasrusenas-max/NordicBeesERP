@@ -27,7 +27,7 @@ session, especially after a long gap or if your context may have been
 summarized/compacted. Before executing each numbered step below, run a
 real, cheap command to confirm ground truth first:
 
-- Before step 6 (git status): if you're not certain steps 1-5 actually
+- Before step 4 (git status): if you're not certain steps 1-3 actually
   completed in THIS session (not just that you believe they did), run
   `git status` and `git log --oneline -3` FIRST to see what's actually
   true, before deciding what to do next.
@@ -83,11 +83,7 @@ correct behavior was to report and stop after the first diagnosis.
    `edit`, `dotnet build` again
 3. Repeat until ZERO errors (max 3 rounds — if still failing, report
    BLOCKED with the full error list instead of continuing to loop)
-4. `grep -r "BUCKET_GROUP" --include="*.cs" --include="*.razor" .` — must
-   return 0 matches
-5. Bump patch version in NordicBeesERP.csproj (e.g. 1.2.3 → 1.2.4), or run
-   `./bump-version.sh patch` if that script exists
-6. `git status` — check which files are actually modified before staging.
+4. `git status` — check which files are actually modified before staging.
    If you see files listed that you did NOT intentionally touch this
    session, STOP and report them instead of committing — do not silently
    sweep unexpected changes into your commit. This has caused real damage
@@ -95,26 +91,56 @@ correct behavior was to report and stop after the first diagnosis.
    earlier session, and a later `git add -A` silently committed that
    corruption under an unrelated commit message, where nobody noticed for
    hours.
-7. `git add <exact file path(s) you were told to work on>` — NEVER
+5. `git add <exact file path(s) you were told to work on>` — NEVER
    `git add -A` or `git add .`. Only stage the specific file(s) named in
    your task.
-8. `git commit -m "P0a: <describe what was implemented>"`
-9. `agent-guardrails check --base-ref HEAD~1` — this is MANDATORY, not
-   optional, per AGENTS.md's "Guardrail Check Before Finishing" rule.
-   This produces a real, discrete numeric score (e.g. "75/100") based on
-   static checks (protected areas touched, changed-files budget, test
-   coverage, evidence completeness) — it is NOT the same thing as the
-   reviewer's APPROVED/REJECTED verdict from earlier in the workflow, and
-   does not replace it. If the command is not found, tell the user to run
-   `npm install -g agent-guardrails` first (must be on PATH globally, not
-   via npx). If the score is below 100 SOLELY because of a routine
-   `appsettings.json`/version-bump protected-area flag from this same
-   task's own `bump-version.sh` run, note that in your report as expected
-   and not a real problem. If it flags anything else (a genuine
-   protected-area touch, a missing evidence file, an actual scope/budget
-   violation), treat it as a REAL finding — report it, do not silently
-   dismiss it as "probably just the version bump" without checking what
-   it actually flagged.
+6. `git diff --cached -- <same exact file path(s)> | grep "BUCKET_GROUP"`
+   (checks only the STAGED diff of the file(s) you just added — NEVER a
+   whole-repo grep). This is meant to catch a placeholder/debug string
+   accidentally left in the CHANGE you're committing, not to audit the
+   entire codebase's history. `BUCKET_GROUP` is a real, legitimate
+   business value in this project (a `ContainerType` enum member for
+   warehouse container types — barrels vs bucket groups) and appears
+   correctly in many pre-existing files (Migrations, ContainerEnums.cs,
+   Home.razor, Delivery*.razor, etc.) that you did NOT touch — a match in
+   those other files is irrelevant and expected; you are only checking
+   YOUR OWN staged diff. A match INSIDE your own staged diff is only
+   worth a second look if it looks like an accidental debug leftover
+   rather than a legitimate use of the real enum value.
+   Real incident this rule exists because of (2026-08-22): this check was
+   previously written as a whole-repo `grep -r`, which finds
+   `BUCKET_GROUP` every single time regardless of what's being committed
+   (it's real, correct, pre-existing data spread across many files) — a
+   fixer session spent many minutes across several compactions treating
+   this permanently-true match as a blocker requiring investigation, when
+   the check as originally written could never pass in this repository no
+   matter what the actual task was.
+7. `git commit -m "P0a: <describe what was implemented>"`
+8. `git log --oneline -1` — confirm the commit that was JUST made
+   contains this task's actual file AND has the expected message. A wrong
+   file in the right commit is a failure — do NOT proceed to step 9
+   unless confirmed via a real tool call result, not assumed.
+9. `./bump-version.sh patch` (or bump the version fields directly in
+   NordicBeesERP.csproj if that script doesn't exist) — this runs AFTER
+   the code commit (step 7), never before. Running it first risks a
+   pushed version tag with no corresponding code commit if anything fails
+   between steps.
+10. `agent-guardrails check --base-ref HEAD~1` — this is MANDATORY, not
+    optional, per AGENTS.md's "Guardrail Check Before Finishing" rule.
+    This produces a real, discrete numeric score (e.g. "75/100") based on
+    static checks (protected areas touched, changed-files budget, test
+    coverage, evidence completeness) — it is NOT the same thing as the
+    reviewer's APPROVED/REJECTED verdict from earlier in the workflow, and
+    does not replace it. If the command is not found, tell the user to run
+    `npm install -g agent-guardrails` first (must be on PATH globally, not
+    via npx). If the score is below 100 SOLELY because of a routine
+    `appsettings.json`/version-bump protected-area flag from this same
+    task's own `bump-version.sh` run, note that in your report as expected
+    and not a real problem. If it flags anything else (a genuine
+    protected-area touch, a missing evidence file, an actual scope/budget
+    violation), treat it as a REAL finding — report it, do not silently
+    dismiss it as "probably just the version bump" without checking what
+    it actually flagged.
 
 ## Bash syntax rule — important
 
