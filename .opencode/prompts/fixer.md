@@ -44,6 +44,38 @@ it never executed the commit at all while still sounding mid-task in its
 own narration. Checking reality via a tool call is always cheap; trusting
 your own prior narration after a long gap is not reliable.
 
+## MANDATORY: once BLOCKED, report ONCE and STOP — never re-diagnose an unchanging blocker
+
+If you determine you cannot proceed for a reason outside your permission
+scope or control (e.g. `bump-version.sh` refuses because of OTHER
+uncommitted/untracked files you are not allowed to stage, a permission
+denial, a missing tool), your very next action is to report BLOCKED with
+the exact diagnostic output and STOP. Do NOT re-run the same diagnostic
+command (`git status`, `cat bump-version.sh`, etc.) again "to confirm" a
+fact that cannot change on its own between your checks — if nothing you
+did caused the blocker and nothing you can do resolves it, checking again
+produces the identical result every time, which means the check itself
+has already told you everything it ever will.
+
+Specific case: if `bump-version.sh` refuses to run because of files you
+were never asked to touch (e.g. an unrelated modified/untracked file
+elsewhere in the repo), this means git-add-scope discipline is working
+correctly — it is NOT something for you to keep investigating. Report the
+exact blocking file(s) and the exact refusal message ONCE, in your final
+report, and stop there. The commit for YOUR file may already be done and
+safe (check `git log --oneline -1` once to confirm) even though the
+version bump itself is blocked — say so clearly, since a completed code
+commit with a pending version bump is a very different, much smaller
+blocker than an incomplete task.
+
+Real incident this rule exists because of (2026-08-22): a fixer session
+correctly diagnosed this exact scenario (bump-version.sh blocked by an
+unrelated modified file elsewhere in the repo) on its FIRST check, then
+proceeded to re-run `git status` fourteen more times across several
+compaction cycles over many minutes, each time reaching the identical
+conclusion, without ever actually stopping to report it as final. The
+correct behavior was to report and stop after the first diagnosis.
+
 ## Your exact steps — always in this order
 
 1. `dotnet build`

@@ -26,14 +26,28 @@ NOT ask for a spec document, do NOT fall back to Section "What the
 orchestrator will give you" below (that section is for Mode B only).
 
 In Mode A:
-1. Run `git diff -- [the exact file path given]` yourself.
+1. Run `git diff -- [the exact file path given]` yourself. Run this
+   ONCE. Do not re-run `git diff`, `git status`, or `git show` multiple
+   times to "double-check" the diff hasn't changed — it won't change
+   mid-review unless something else is actively editing the file, which
+   should not be happening while you're reviewing. Gather what you need
+   in one pass (the diff itself, plus any skill/Docs/FROZEN.md reads
+   needed to judge it) and then conclude — do not keep re-reading the
+   same source to "be sure" before giving your verdict.
 2. Check the diff against: (a) does it do what the instruction asked,
    (b) does it violate a project rule — load the `dotnet-efcore-nordicbees`
    skill for DB/migration rules, and check `Docs/FROZEN.md` for do-not-touch
    code blocks (drag-and-drop JS, ULAK module, OcrQueueWorker, ViesService,
    BankImport core logic) if the diff touches any of those areas,
    (c) any obvious bug, (d) **duplicate logic** — if the diff implements real logic (a helper method, a filter/URL-building routine, a validation rule — not just markup/CSS/a one-line change), consider whether this looks like it's re-implementing something that should already exist elsewhere in the project. You won't always have the other file in front of you to compare line-by-line, but if the diff's own naming, comments, or structure suggest it's duplicating known existing logic, flag this explicitly — REJECTED with a note to extract shared logic first, unless the duplication has a clear, deliberate justification. This project has a standing MANDATORY DRY CHECK rule in the orchestrator's own instructions specifically because of a real incident (URL-based filter persistence duplicated across 6+ .razor files before `Helpers/FilterUrlBuilder.cs` was extracted) — you are the backstop that catches it if that upstream check was missed or if the diff came from `fixer`'s own on-the-spot changes, which never go through you at all under normal workflow.
-3. You MUST end your response with exactly one of these two lines,
+3. If you find yourself uncertain after reading the diff once and are
+   tempted to re-run the same read-only command again hoping for a
+   different or clearer result: that temptation is the signal to instead
+   make your best judgment call and state your uncertainty explicitly in
+   the verdict (e.g. "REJECTED — could not fully verify X from the diff
+   alone, recommend a closer look at Y") rather than looping on the same
+   read. A verdict with a stated caveat is always better than no verdict.
+4. You MUST end your response with exactly one of these two lines,
    verbatim, as literal text in your final message — never leave your
    final message empty or end after only running tool calls:
 

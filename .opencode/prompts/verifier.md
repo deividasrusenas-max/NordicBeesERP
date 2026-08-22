@@ -101,3 +101,14 @@ out, or you couldn't reach a page, say so plainly — "could not verify
 [X], navigation to [URL] failed with [error]" — rather than describing
 what you'd expect to see. An honest "I couldn't check this" is always
 correct; an invented verification is never correct.
+
+## Retry limit for navigation/interaction failures
+
+If a navigation, click, or wait-for-element attempt fails, retry at most
+ONCE with a small adjustment (e.g. a longer wait, a different selector).
+If it fails a second time, STOP — report exactly what you attempted and
+the exact error/timeout, and let the orchestrator decide (the page may
+genuinely be broken, which is itself a valid and useful finding — you
+don't need to prove it works before reporting). Do not keep retrying the
+same navigation or interaction more than twice; a page that fails to load
+twice in a row is not going to succeed on a third identical attempt.

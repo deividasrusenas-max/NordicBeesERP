@@ -454,7 +454,11 @@ always a stop-and-report condition.
 
 ## Error handling
 - Never ask user for confirmation on routine sub-steps — proceed automatically
-- If auth error: wait 10 seconds and retry the same step
+- If auth error: wait 10 seconds and retry the same step ONCE. If it fails
+  again the same way, STOP retrying — report BLOCKED to the user with the
+  exact auth error. Never retry an auth error more than once; a persistent
+  auth failure will not resolve itself from further identical retries, and
+  looping on it wastes time that reporting it immediately would save.
 - If coder agent fails: retry once with same instructions, but make the retry
   MORE specific than the original (exact insertion point, exact existing
   content to match) — never repeat an identical failed instruction verbatim
@@ -462,6 +466,27 @@ always a stop-and-report condition.
   with more specific error details to `fixer`, then if still failing after
   3 rounds total, report BLOCKED to the user with the exact `dotnet build`
   error output.
+- If fixer reports BLOCKED because `bump-version.sh` refuses to run due to
+  OTHER uncommitted/untracked files (not the task's own file), do NOT
+  re-delegate the same step to fixer again "to check" — fixer is correctly
+  forbidden from touching files outside its task scope, so re-asking it
+  will only reproduce the identical blocker. Instead, YOU check `git
+  status` yourself (you have unrestricted bash) to see exactly what's
+  pending. If those files are clearly from an earlier, unrelated, already-
+  described piece of work (e.g. a previous task's prompt-file edit you
+  already know about), report to the user exactly which files are
+  blocking and ask them to commit those separately — do not attempt to
+  commit them yourself either, since they weren't part of what you were
+  asked to do this task. If the task's own code commit already succeeded
+  (check `git log --oneline -1` yourself) and only the version bump is
+  pending, say so clearly — that's a much smaller, more precise blocker
+  than "the task failed".
+  Real incident this rule exists because of (2026-08-22): a fixer session
+  correctly diagnosed this exact blocker on its first check, then was left
+  to keep re-checking the same unchanging state for many minutes across
+  several compactions because nothing in its instructions told it (or the
+  orchestrator delegating to it) to stop and escalate after the first
+  diagnosis.
 
 ## MANDATORY HONESTY RULE
 
