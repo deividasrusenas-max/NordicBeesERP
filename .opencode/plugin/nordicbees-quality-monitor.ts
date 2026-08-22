@@ -28,6 +28,19 @@ import { join } from "path"
  * (could be seconds later, could be the next day). duration_sec for an
  * interrupted record is an approximation (time until detected), not the
  * true moment of interruption, which is unknowable.
+ *
+ * NOTE ON HOOK ARG SHAPE (bug fixed 2026-08-22): the OpenCode plugin API
+ * puts the tool's call arguments in different places depending on the
+ * hook: for "tool.execute.before" they live on the SECOND parameter
+ * (conventionally named `output` in the official examples, confusingly,
+ * since at "before" time nothing has executed yet — it really means
+ * "the pre-execution tool-call info"). For "tool.execute.after" they are
+ * on the FIRST parameter (`input.args`), alongside `input.tool`. Getting
+ * this backwards means `args` is silently `undefined` and every early
+ * return fires before any record is ever written — exactly what happened
+ * originally, producing zero "started" records for hours. getArgs() below
+ * checks both locations so this plugin keeps working even if OpenCode
+ * ever standardizes the two hooks to match one shape.
  */
 
 const STALE_MS = 10 * 60 * 1000 // 10 minutes with no "completed" match = assume interrupted
@@ -43,6 +56,15 @@ const MODEL_NAMES: Record<string, string> = {
   coder: "Qwen3.8-27B (Coder, via llama-swap)",
   fixer: "Qwen3.6-35B-A3B (Fixer, via llama-swap)",
   reviewer: "Qwen3.6-35B-A3B (Reviewer, via llama-swap)",
+}
+
+/** Reads tool-call args from whichever of the two hook parameters actually has them. */
+function getArgs(input: any, second: any): Record<string, unknown> | undefined {
+  return (input && input.args) || (second && second.args) || undefined
+}
+
+function getToolName(input: any, second: any): string | undefined {
+  return (input && input.tool) || (second && second.tool) || undefined
 }
 
 function extractVerdict(text: string): string | null {
@@ -126,9 +148,11 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
   const logPath = join(reportsDir, "task-stats.jsonl")
 
   return {
-    "tool.execute.before": async (input) => {
-      if (input.tool !== "task") return
-      const subagent = (input as any).args?.subagent_type as string | undefined
+    "tool.execute.before": async (input: any, second: any) => {
+      const tool = getToolName(input, second)
+      if (tool !== "task") return
+      const args = getArgs(input, second)
+      const subagent = args?.subagent_type as string | undefined
       if (!subagent || !MODEL_NAMES[subagent]) return
 
       // Best-effort cleanup of any orphaned calls from a previous
@@ -139,7 +163,7 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
       const startedAt = Date.now()
       ;(pendingStarts[subagent] ??= []).push({ callId, startedAt })
 
-      const promptText = ((input as any).args?.prompt as string | undefined) ?? ""
+      const promptText = (args?.prompt as string | undefined) ?? ""
 
       appendRecord(logPath, reportsDir, {
         ts: new Date().toISOString(),
@@ -152,15 +176,20 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
       })
     },
 
-    "tool.execute.after": async (input, output) => {
-      if (input.tool !== "task") return
-      const subagent = (input as any).args?.subagent_type as string | undefined
+    "tool.execute.after": async (input: any, second: any) => {
+      const tool = getToolName(input, second)
+      if (tool !== "task") return
+      const args = getArgs(input, second)
+      const subagent = args?.subagent_type as string | undefined
       if (!subagent || !MODEL_NAMES[subagent]) return
 
       const started = pendingStarts[subagent]?.shift()
       const durationSec = started ? Math.round((Date.now() - started.startedAt) / 100) / 10 : null
 
-      const outputText = (output && typeof output === "object" ? (output as any).output : "") ?? ""
+      const outputText =
+        (second && typeof second === "object" && (second as any).output) ||
+        (input && typeof input === "object" && (input as any).output) ||
+        ""
 
       const record: Record<string, unknown> = {
         ts: new Date().toISOString(),
