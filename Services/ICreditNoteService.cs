@@ -20,6 +20,14 @@ namespace NordicBeesERP.Services
         Task<List<InvoiceLineDto>> GetInvoiceLinesAsync(int invoiceId);
 
         // =====================================================
+        // CREDITED QUANTITY AGGREGATION
+        // =====================================================
+
+        Task<Dictionary<int, decimal>> GetCreditedQuantitiesByInvoiceLineAsync(int invoiceId);
+
+        Task<List<CreditNoteListDto>> GetCreditNotesForInvoiceAsync(int invoiceId);
+
+        // =====================================================
         // INVOICE SELECTION FOR APPLYING
         // =====================================================
 

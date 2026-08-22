@@ -56,6 +56,54 @@ namespace NordicBeesERP.Services
         }
 
         // =====================================================
+        // CREDITED QUANTITIES PER INVOICE LINE (all statuses incl. Draft)
+        // =====================================================
+
+        public async Task<Dictionary<int, decimal>> GetCreditedQuantitiesByInvoiceLineAsync(int invoiceId)
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            var creditedLines = await context.CreditNoteLines
+                .AsNoTracking()
+                .Where(l => l.InvoiceLineId != null && l.InvoiceLine!.InvoiceId == invoiceId)
+                .Select(l => new { InvoiceLineId = l.InvoiceLineId!.Value, l.Quantity })
+                .ToListAsync();
+
+            return creditedLines
+                .GroupBy(l => l.InvoiceLineId)
+                .ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
+        }
+
+        // =====================================================
+        // CREDIT NOTES FOR A SPECIFIC INVOICE
+        // =====================================================
+
+        public async Task<List<CreditNoteListDto>> GetCreditNotesForInvoiceAsync(int invoiceId)
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            return await context.CreditNotes
+                .AsNoTracking()
+                .Include(cn => cn.Customer)
+                .Include(cn => cn.OriginalInvoice)
+                .Include(cn => cn.AppliedInvoice)
+                .Where(cn => cn.OriginalInvoiceId == invoiceId)
+                .OrderByDescending(cn => cn.CreditDate)
+                .Select(cn => new CreditNoteListDto
+                {
+                    Id = cn.Id,
+                    CreditNoteNumber = cn.CreditNoteNumber,
+                    OriginalInvoiceNumber = cn.OriginalInvoice != null ? cn.OriginalInvoice.InvoiceNumber : string.Empty,
+                    AppliedInvoiceNumber = cn.AppliedInvoice != null ? cn.AppliedInvoice.InvoiceNumber : string.Empty,
+                    CustomerName = cn.Customer != null ? cn.Customer.Name : string.Empty,
+                    CreditDate = cn.CreditDate,
+                    TotalInclVat = cn.TotalInclVat,
+                    Status = cn.Status
+                })
+                .ToListAsync();
+        }
+
+        // =====================================================
         // INVOICE SELECTION FOR APPLYING
         // =====================================================
 

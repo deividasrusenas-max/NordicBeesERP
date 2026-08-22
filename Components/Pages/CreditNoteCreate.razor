@@ -20,8 +20,8 @@
             <MudText Typo="Typo.body1" Color="Color.Secondary">Nauja kreditinė sąskaita</MudText>
         </div>
         <div class="d-flex gap-2">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveCreditNote">Išsaugoti</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">Išsaugoti + PDF</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveCreditNote" Disabled="@_invoiceFullyCredited">Išsaugoti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf" Disabled="@_invoiceFullyCredited">Išsaugoti + PDF</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
         </div>
     </MudContainer>
@@ -32,6 +32,19 @@
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
         <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
+    }
+
+    @if (_selectedInvoice != null && _invoiceFullyCredited)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-3">
+            Ši sąskaita jau yra visiškai sucreditinta. Negalima sukurti naujos kreditinės sąskaitos.
+        </MudAlert>
+    }
+    else if (_selectedInvoice != null && _lines.Any(l => l.AlreadyCredited > 0))
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-3">
+            Ši sąskaita yra dalinai sucreditinta. Rodomas likęs kiekis, kuris dar gali būti creditintas.
+        </MudAlert>
     }
 
     <!-- PAGRINDINĖ INFORMACIJA section -->
@@ -78,8 +91,9 @@
         <MudTable T="CreditNoteLineModel" Items="@_lines" Hover="true" Dense="true" Bordered="true">
             <HeaderContent>
                 <MudTh Style="width: 5%;">Nr.</MudTh>
-                <MudTh Style="width: 35%;">Aprašymas</MudTh>
-                <MudTh Style="width: 10%;">Orig.kiekis</MudTh>
+                <MudTh Style="width: 30%;">Aprašymas</MudTh>
+                <MudTh Style="width: 9%;">Orig.kiekis</MudTh>
+                <MudTh Style="width: 10%;">Jau kredituota</MudTh>
                 <MudTh Style="width: 12%;">Kreditinis kiekis</MudTh>
                 <MudTh Style="width: 12%;">Kaina (be PVM)</MudTh>
                 <MudTh Style="width: 8%;">PVM %</MudTh>
@@ -94,10 +108,13 @@
                 <MudTd DataLabel="Orig.kiekis">
                     <MudText>@(line.OriginalQuantity % 1 == 0 ? ((int)line.OriginalQuantity).ToString() : line.OriginalQuantity.ToString("F2"))</MudText>
                 </MudTd>
+                <MudTd DataLabel="Jau kredituota">
+                    <MudText>@(line.AlreadyCredited % 1 == 0 ? ((int)line.AlreadyCredited).ToString() : line.AlreadyCredited.ToString("F2"))</MudText>
+                </MudTd>
                 <MudTd DataLabel="Kreditinis kiekis">
                     <MudNumericField T="decimal" Value="@line.CreditQuantity" Variant="Variant.Outlined"
-                                     Margin="Margin.Dense" Min="0" Step="0.001M" Format="@(line.CreditQuantity % 1 == 0 ? "F0" : "F2")"
-                                     ValueChanged="@((decimal val) => { line.CreditQuantity = val; line.IsChecked = val > 0; CalculateLine(line); })" />
+                                      Margin="Margin.Dense" Min="0" Max="@line.RemainingQuantity" Step="0.001M" Format="F2"
+                                     ValueChanged="@((decimal val) => { line.CreditQuantity = Math.Min(val, line.RemainingQuantity); line.IsChecked = line.CreditQuantity > 0; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Kaina (be PVM)">
                     <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined"
@@ -154,6 +171,7 @@
     private decimal _totalInclVat;
     
     private string? _errorMessage;
+    private bool _invoiceFullyCredited;
 
     [SupplyParameterFromQuery(Name = "invoiceId")]
     public int? InvoiceId { get; set; }
@@ -235,17 +253,27 @@
         
         // Get invoice lines
         var lines = await _creditNoteService.GetInvoiceLinesAsync(invoice.Id);
-        _lines = lines.Select(l => new CreditNoteLineModel
+        var creditedQuantities = await _creditNoteService.GetCreditedQuantitiesByInvoiceLineAsync(invoice.Id);
+
+        _lines = lines.Select(l =>
         {
-            InvoiceLineId = l.Id,
-            Description = l.Description,
-            OriginalQuantity = l.Quantity,
-            CreditQuantity = l.Quantity,
-            PriceExclVat = l.PriceExclVat,
-            VatRate = l.VatRate,
-            LineTotal = l.LineTotal,
-            IsChecked = true
+            var alreadyCredited = creditedQuantities.TryGetValue(l.Id, out var qty) ? qty : 0m;
+            var remaining = Math.Max(0m, l.Quantity - alreadyCredited);
+            return new CreditNoteLineModel
+            {
+                InvoiceLineId = l.Id,
+                Description = l.Description,
+                OriginalQuantity = l.Quantity,
+                AlreadyCredited = alreadyCredited,
+                CreditQuantity = remaining,
+                PriceExclVat = l.PriceExclVat,
+                VatRate = l.VatRate,
+                LineTotal = l.LineTotal,
+                IsChecked = remaining > 0
+            };
         }).ToList();
+
+        _invoiceFullyCredited = _lines.All(l => l.RemainingQuantity <= 0);
 
         CalculateTotals();
 
@@ -374,10 +402,13 @@
         public int InvoiceLineId { get; set; }
         public string Description { get; set; } = string.Empty;
         public decimal OriginalQuantity { get; set; }
+        public decimal AlreadyCredited { get; set; }
         public decimal CreditQuantity { get; set; }
         public decimal PriceExclVat { get; set; }
         public decimal VatRate { get; set; }
         public decimal LineTotal { get; set; }
         public bool IsChecked { get; set; } = true;
+
+        public decimal RemainingQuantity => Math.Max(0m, OriginalQuantity - AlreadyCredited);
     }
 }

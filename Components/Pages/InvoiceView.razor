@@ -8,6 +8,7 @@
    ===================================================== *@
 @inject IInvoiceService InvoiceService
 @inject IPaymentService PaymentService
+@inject ICreditNoteService CreditNoteService
 @inject IDialogService DialogService
 @inject IAuthService AuthService
 @using NordicBeesERP.Services.Dtos
@@ -28,6 +29,10 @@
             @if (_invoice is not null)
             {
                 <MudChip T="string" Color="StatusDisplayHelper.GetColor(_invoice.Status.ToString(), _statusDisplay)" Variant="Variant.Outlined">@StatusDisplayHelper.GetLabel(_invoice.Status.ToString(), _statusDisplay)</MudChip>
+            }
+            @if (GetCreditBadge().Show)
+            {
+                <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">@GetCreditBadge().Label</MudChip>
             }
         </div>
         
@@ -369,6 +374,31 @@
                 </MudAlert>
             }
         </MudPaper>
+
+        @if (_creditNotes.Any())
+        {
+            <MudPaper Elevation="0" Rounded Square Class="mt-4 pa-3" Style="background:#f8fafc; border-radius:8px;">
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Kreditinės sąskaitos</MudText>
+                <MudTable T="CreditNoteListDto" Items="@_creditNotes" Dense="true" Hover="true" Striped="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Numeris</MudTh>
+                        <MudTh>Data</MudTh>
+                        <MudTh Class="text-right">Suma (€)</MudTh>
+                        <MudTh>Būsena</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="cn">
+                        <MudTr @onclick="@(() => NavigateToCreditNote(cn.Id))" Style="cursor:pointer;">
+                            <MudTd>@cn.CreditNoteNumber</MudTd>
+                            <MudTd>@cn.CreditDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd Class="text-right">-@cn.TotalInclVat.ToString("N2")</MudTd>
+                            <MudTd>
+                                <MudChip T="string" Color="@GetCreditStatusColor(cn.Status)" Variant="Variant.Outlined">@GetCreditStatusLabel(cn.Status)</MudChip>
+                            </MudTd>
+                        </MudTr>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
     }
     else
     {
@@ -392,11 +422,14 @@
 
     private Invoice? _invoice;
     private List<InvoiceLine> _invoiceLines = new List<InvoiceLine>();
+    private List<CreditNoteListDto> _creditNotes = new();
+    private Dictionary<int, decimal> _creditedQuantitiesByLine = new();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadInvoiceAsync();
         await LoadPaymentHistoryAsync();
+        await LoadCreditNotesAsync();
     }
 
     private async Task LoadInvoiceAsync()
@@ -406,6 +439,46 @@
         {
             _invoiceLines = _invoice.Lines.ToList();
         }
+    }
+
+    private async Task LoadCreditNotesAsync()
+    {
+        _creditNotes = await CreditNoteService.GetCreditNotesForInvoiceAsync(Id);
+        _creditedQuantitiesByLine = await CreditNoteService.GetCreditedQuantitiesByInvoiceLineAsync(Id);
+    }
+
+    private static readonly Dictionary<CreditNoteStatus, (string Label, Color Color)> _creditNoteStatusDisplay = new()
+    {
+        { CreditNoteStatus.Draft, ("Juodraštas", Color.Warning) },
+        { CreditNoteStatus.Printed, ("Atspausdinta", Color.Primary) },
+        { CreditNoteStatus.Disputed, ("Kontroversija", Color.Error) }
+    };
+
+    private string GetCreditStatusLabel(CreditNoteStatus status) => _creditNoteStatusDisplay[status].Label;
+    private Color GetCreditStatusColor(CreditNoteStatus status) => _creditNoteStatusDisplay[status].Color;
+
+    private void NavigateToCreditNote(int creditNoteId)
+    {
+        Navigation.NavigateTo($"/credit-notes/{creditNoteId}?returnUrl={Uri.EscapeDataString($"/invoices/{Id}")}");
+    }
+
+    private (string? Label, bool Show) GetCreditBadge()
+    {
+        if (_invoice is null || _invoiceLines.Count == 0 || _creditedQuantitiesByLine.Count == 0)
+            return (null, false);
+
+        var allCredited = true;
+        foreach (var line in _invoiceLines)
+        {
+            var credited = _creditedQuantitiesByLine.GetValueOrDefault(line.Id, 0m);
+            if (credited < line.Quantity - 0.0001m)
+            {
+                allCredited = false;
+                break;
+            }
+        }
+
+        return allCredited ? ("Pilnai kredituota", true) : ("Dalinai kredituota", true);
     }
 
     private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
