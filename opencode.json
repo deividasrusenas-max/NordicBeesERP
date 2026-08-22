@@ -430,10 +430,11 @@
       "command": [
         "npx",
         "@playwright/mcp@latest",
+        "--headless",
         "--timeout-action",
         "15000",
         "--timeout-navigation",
-        "45000"
+        "60000"
       ],
       "enabled": true,
       "type": "local"
