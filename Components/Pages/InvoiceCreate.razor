@@ -18,8 +18,8 @@
 <PageTitle>@(_isPurchase ? "Nauja pirkimo sąskaita (ULAK)" : "Naujas pardavimas (LAK)")</PageTitle>
 
 <!-- HEADER (sticky, outside MudContainer) -->
-<div style="position:sticky; top:64px; z-index:100; background:#ffffff; padding:12px 24px; border-bottom:1px solid #e2e8f0;">
-    <div class="d-flex justify-space-between align-center" style="max-width:1600px; margin:0 auto;">
+<div style="position:sticky; top:64px; z-index:100; background:#ffffff; padding:12px 0; border-bottom:1px solid #e2e8f0;">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="d-flex justify-space-between align-center">
         <div>
             <MudText Typo="Typo.h5" Style="font-weight:600">@_nextInvoiceNumber</MudText>
             <MudText Typo="Typo.body1" Color="Color.Secondary">@(_isPurchase ? "Nauja pirkimo sąskaita (ULAK)" : "Nauja pardavimo sąskaita (LAK)")</MudText>
@@ -29,7 +29,7 @@
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">Išsaugoti + PDF</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
         </div>
-    </div>
+    </MudContainer>
 </div>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
@@ -278,9 +278,8 @@
     {
         if (firstRender && !_isPurchase && _clientAutocomplete is not null)
         {
-            await _clientAutocomplete.FocusAsync();
-            await _clientAutocomplete.OpenMenuAsync();
-        }
+    await _clientAutocomplete.FocusAsync();
+}
     }
 
     private async Task OnSupplierSelected(int? supplierId)
