@@ -435,17 +435,31 @@
 
     private async Task LoadInvoiceAsync()
     {
-        _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
-        if (_invoice is not null)
+        try
         {
-            _invoiceLines = _invoice.Lines.ToList();
+            _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+            if (_invoice is not null)
+            {
+                _invoiceLines = _invoice.Lines.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
     private async Task LoadCreditNotesAsync()
     {
-        _creditNotes = await CreditNoteService.GetCreditNotesForInvoiceAsync(Id);
-        _creditedQuantitiesByLine = await CreditNoteService.GetCreditedQuantitiesByInvoiceLineAsync(Id);
+        try
+        {
+            _creditNotes = await CreditNoteService.GetCreditNotesForInvoiceAsync(Id);
+            _creditedQuantitiesByLine = await CreditNoteService.GetCreditedQuantitiesByInvoiceLineAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private static readonly Dictionary<CreditNoteStatus, (string Label, Color Color)> _creditNoteStatusDisplay = new()
@@ -551,79 +565,107 @@
 
     private async Task LoadPaymentHistoryAsync()
     {
-        if (_invoice is not null)
+        try
         {
-            _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(_invoice.Id);
+            if (_invoice is not null)
+            {
+                _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(_invoice.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
     private async Task OpenEditPayment(PaymentHistoryItem p)
     {
-        var parameters = new DialogParameters
+        try
         {
-            ["PaymentId"] = p.PaymentId,
-            ["CurrentAmount"] = p.Amount,
-            ["CurrentDate"] = p.Date,
-            ["CurrentMethod"] = p.Method
-        };
-        var dialog = await DialogService.ShowAsync<EditPaymentDialog>(
-            "Redaguoti mokėjimą", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-        var result = await dialog.Result;
-        if (result != null && !result.Canceled)
+            var parameters = new DialogParameters
+            {
+                ["PaymentId"] = p.PaymentId,
+                ["CurrentAmount"] = p.Amount,
+                ["CurrentDate"] = p.Date,
+                ["CurrentMethod"] = p.Method
+            };
+            var dialog = await DialogService.ShowAsync<EditPaymentDialog>(
+                "Redaguoti mokėjimą", parameters,
+                new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+            var result = await dialog.Result;
+            if (result != null && !result.Canceled)
+            {
+                _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
+                _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
         {
-            _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
-            _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
-            await InvokeAsync(StateHasChanged);
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
     private async Task DeletePayment(int paymentId)
     {
-        var payment = _paymentHistory.FirstOrDefault(p => p.PaymentId == paymentId);
-        if (payment == null) return;
+        try
+        {
+            var payment = _paymentHistory.FirstOrDefault(p => p.PaymentId == paymentId);
+            if (payment == null) return;
 
-        var confirmed = await ConfirmDialog.ShowAsync(
-            DialogService,
-            "Ištrinti mokėjimą",
-            $"Ar tikrai norite ištrinti mokėjimą {payment.Amount:F2} €?",
-            "Ištrinti");
+            var confirmed = await ConfirmDialog.ShowAsync(
+                DialogService,
+                "Ištrinti mokėjimą",
+                $"Ar tikrai norite ištrinti mokėjimą {payment.Amount:F2} €?",
+                "Ištrinti");
 
-        if (!confirmed) return;
+            if (!confirmed) return;
 
-        var userId = await AuthService.GetUserIdAsync();
-        await PaymentService.DeletePaymentAsync(paymentId, userId!.Value);
-        _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
-        _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
-        await InvokeAsync(StateHasChanged);
+            var userId = await AuthService.GetUserIdAsync();
+            await PaymentService.DeletePaymentAsync(paymentId, userId!.Value);
+            _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
+            _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private async Task RegisterPayment()
     {
-        if (_invoice is null) return;
-
-        // Calculate fresh RemainingAmount from current invoice state
-        var remainingAmount = _invoice.TotalInclVat - _invoice.PaidAmount;
-
-        var parameters = new DialogParameters
+        try
         {
-            ["InvoiceId"] = _invoice.Id,
-            ["InvoiceNumber"] = _invoice.InvoiceNumber,
-            ["RemainingAmount"] = remainingAmount,
-            ["ExistingPayments"] = _paymentHistory
-        };
+            if (_invoice is null) return;
 
-        var dialog = await DialogService.ShowAsync<PaymentDialog>(
-              "Registruoti mokėjimą", parameters,
-              new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+            // Calculate fresh RemainingAmount from current invoice state
+            var remainingAmount = _invoice.TotalInclVat - _invoice.PaidAmount;
 
-        var result = await dialog.Result;
-        if (result != null && !result.Canceled)
+            var parameters = new DialogParameters
+            {
+                ["InvoiceId"] = _invoice.Id,
+                ["InvoiceNumber"] = _invoice.InvoiceNumber,
+                ["RemainingAmount"] = remainingAmount,
+                ["ExistingPayments"] = _paymentHistory
+            };
+
+            var dialog = await DialogService.ShowAsync<PaymentDialog>(
+                  "Registruoti mokėjimą", parameters,
+                  new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+
+            var result = await dialog.Result;
+            if (result != null && !result.Canceled)
+            {
+                // Reload invoice and payment history after successful payment registration
+                _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+                _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
         {
-            // Reload invoice and payment history after successful payment registration
-            _invoice = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
-            _paymentHistory = await PaymentService.GetPaymentsByInvoiceAsync(Id);
-            await InvokeAsync(StateHasChanged);
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
@@ -665,37 +707,44 @@
 
     private async Task HandleCopy()
     {
-        var source = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
-        if (source == null) return;
-        
-        var newInvoice = new Invoice
+        try
         {
-            InvoiceNumber = await InvoiceService.GenerateNextInvoiceNumberAsync(DateTime.Now, source.InvoiceType),
-            InvoiceDate = DateTime.Now,
-            PaymentTermDays = source.PaymentTermDays,
-            PaymentDueDate = DateTime.Now.AddDays(source.PaymentTermDays),
-            Status = InvoiceStatus.Draft,
-            CustomerId = source.CustomerId,
-            InvoiceType = source.InvoiceType,
-            Language = source.Language,
-            ReverseCharge = source.ReverseCharge,
-            Lines = source.Lines.Select(l => new InvoiceLine
+            var source = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
+            if (source == null) return;
+            
+            var newInvoice = new Invoice
             {
-                Description = l.Description,
-                ProductCode = l.ProductCode,
-                ProductId = l.ProductId,
-                Quantity = l.Quantity,
-                Unit = l.Unit,
-                PriceExclVat = l.PriceExclVat,
-                VatRate = l.VatRate,
-                LineSubtotal = l.LineSubtotal,
-                VatAmount = l.VatAmount,
-                LineTotal = l.LineTotal
-            }).ToList()
-        };
-        
-        var newId = await InvoiceService.CreateInvoiceAsync(newInvoice);
-        Navigation.NavigateTo($"/invoices/edit/{newId}");
+                InvoiceNumber = await InvoiceService.GenerateNextInvoiceNumberAsync(DateTime.Now, source.InvoiceType),
+                InvoiceDate = DateTime.Now,
+                PaymentTermDays = source.PaymentTermDays,
+                PaymentDueDate = DateTime.Now.AddDays(source.PaymentTermDays),
+                Status = InvoiceStatus.Draft,
+                CustomerId = source.CustomerId,
+                InvoiceType = source.InvoiceType,
+                Language = source.Language,
+                ReverseCharge = source.ReverseCharge,
+                Lines = source.Lines.Select(l => new InvoiceLine
+                {
+                    Description = l.Description,
+                    ProductCode = l.ProductCode,
+                    ProductId = l.ProductId,
+                    Quantity = l.Quantity,
+                    Unit = l.Unit,
+                    PriceExclVat = l.PriceExclVat,
+                    VatRate = l.VatRate,
+                    LineSubtotal = l.LineSubtotal,
+                    VatAmount = l.VatAmount,
+                    LineTotal = l.LineTotal
+                }).ToList()
+            };
+            
+            var newId = await InvoiceService.CreateInvoiceAsync(newInvoice);
+            Navigation.NavigateTo($"/invoices/edit/{newId}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private void HandleCreditNote()
