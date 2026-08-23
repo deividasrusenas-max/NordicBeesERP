@@ -375,7 +375,22 @@
             Snackbar.Add("Prašome pridėti bent vieną eilutę!", Severity.Error);
             return false;
         }
-        
+
+        // Reject a credit-note line with a non-empty description but a non-positive price (data-integrity guard)
+        var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat <= 0);
+        if (badPriceLine is not null)
+        {
+            Snackbar.Add($"Kreditinės sąskaitos eilutė '{badPriceLine.Description}' turi nulinę/kieta i neigiyā kainā.", Severity.Error);
+            return false;
+        }
+
+        // Reject a credit note that has lines but an overall zero total (data-integrity guard)
+        if (_lines.Any(l => !string.IsNullOrEmpty(l.Description)) && _totalInclVat == 0)
+        {
+            Snackbar.Add("Kreditinės sąskaitos bendra suma ygi nuiui, norsk eiluńtiu var. Patikrinkite linioruinuoye us.", Severity.Error);
+            return false;
+        }
+
         return true;
     }
 
