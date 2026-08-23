@@ -342,7 +342,7 @@ namespace NordicBeesERP.Services
                 lineCount > 0)
             {
                 throw new InvalidOperationException(
-                    "Invoice has lines but total is zero. Please check invoice lines before confirming.");
+                    "Sąskaita turi eilučių, bet bendra suma lygi nuliui. Patikrinkite sąskaitos eilutes prieš tvirtindami.");
             }
 
             // Calculate payment due date when confirming if not set
