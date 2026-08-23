@@ -11,13 +11,17 @@ The harness was consolidated from a messy 4-tool-era setup (Kilo Code +
 Cline + OpenCode + agent-guardrails, scattered across `.kilo/`,
 `.clinerules/`, `.agent-guardrails/`) into a single, git-tracked
 `.opencode/` structure. It is now **v1: stable and in active use**. A
-full backup exists (see §7). We are CURRENTLY in a **deliberate pause**:
-collecting baseline performance statistics on the OLD harness (with two
-manual tweaks — increased KV cache, orchestrator model switched from
-Hy3 to Nemotron Ultra) BEFORE building a NEW harness architecture
-(merging coder+fixer into the orchestrator's own session, Codex/Claude-
-Code style). **Do not start the new-harness rewrite until the user
-explicitly says the baseline collection period is over.**
+full backup was PLANNED via git tag/branch but never confirmed executed
+(see §7 — still needs verification). We are CURRENTLY in a **deliberate
+pause**: collecting baseline performance statistics on the OLD harness
+(coder+fixer as separate subagents, orchestrator on
+openrouter/nemotron-3-ultra free tier, `coder` model's KV cache CONFIRMED
+WORKING at ctx-size 131072/128K as of 2026-08-23 — see §11) BEFORE
+building a NEW harness architecture (merging coder+fixer into the
+orchestrator's own session, Codex/Claude-Code style, §8). **Do not start
+the new-harness rewrite until the user explicitly says the baseline
+collection period is over.** See §11 for everything that happened in the
+second working day (2026-08-23) on top of this original doc.
 
 ---
 
@@ -427,3 +431,112 @@ restructuring until the user says the baseline period is over.**
   whether it's truly repeating (same file, same conclusion, no new
   info) versus just a single large-but-legitimate step — don't assume
   either way without looking.
+
+---
+
+## 11. Day 2 (2026-08-23) — what happened on top of the above
+
+**BUGLOG.md retrofitted with Error class/Status** (§6's plan executed):
+all 11 historical entries + 2 new harness-bug entries now tagged. Key
+finding from retrofit: **5 error classes are currently `Status: N/A`
+(unguarded)** — these are the highest-priority candidates for an actual
+guardrail next: `status-transition-incomplete-allowlist`,
+`schema-drift-unverified-column-mapping`,
+`blazor-forceload-fullreload-auth-redirect`,
+`layout-lifecycle-unguarded-db-call`,
+`mudblazor-autocomplete-tab-value-commit`.
+
+**Orchestrator attempted direct `write`/`edit` on source files TWICE**
+today (`InvoiceEdit.razor`, both times), despite an explicit prompt rule
+saying not to. Both times the `opencode.json` permission config
+correctly DENIED the attempt (confirms the config-level block works),
+but real time (2+ minutes each) was wasted reasoning toward/attempting
+something guaranteed to fail before falling back to delegating to
+`coder`. Strengthened `orchestrator.md`'s wording at the exact
+analysis→implementation transition point after the first incident — the
+SECOND incident happened anyway (likely because that session had
+already loaded the OLD prompt text into its context before the fix was
+committed — prompt files load at session start, not live). Investigated
+whether OpenCode's `tools: {edit: false}` agent-level field could fully
+remove the temptation (not just deny at call time) — **rejected**: that
+field is all-or-nothing per agent, but orchestrator has LEGITIMATE
+narrow edit access (`Docs/BUGLOG.md`, `.opencode/reports/`,
+`.opencode/planning/`, `.agent-guardrails/evidence/`) that would break
+too. The current path-scoped `permission` config remains the only clean
+mechanism for this mixed legitimate/illegitimate case. Conclusion: this
+recurring waste is an ADDITIONAL argument for the §8 architecture change
+(if orchestrator legitimately gets edit permission via the merge, the
+"attempt gets denied" failure class disappears structurally rather than
+needing prevention) — noted as supporting evidence, not a decision to
+act on yet.
+
+**Mandatory upfront task decomposition added to `orchestrator.md`**: the
+user wants to paste ONE large multi-file task description (not manually
+pre-split into "Prompt 1/2, 2/2") and have the orchestrator decompose it
+automatically — both per-file AND per-distinct-part-within-a-file (>3
+distinct changes in one file triggers a mandatory pre-split into
+multiple rounds), via a `todowrite` planning pass BEFORE any Task tool
+call. Real incident: a 7-file task was correctly split one-todo-per-file,
+but the most complex single file (5 distinct sub-changes) was delegated
+to `coder` as ONE call that ran 45 minutes and hit ~90K prompt_chars
+(exceeding the 65536-token context). Not yet tested against a fresh
+multi-file prompt — verify this actually produces fine-grained todos
+next time a big task is given.
+
+**`AGENTS.md` found stale, fixed**: its "Final work report" section
+still pointed agents at the OLD, deleted `.agent-reports/` path (from
+before the harness consolidation) instead of the current
+`.opencode/reports/`. An orchestrator session correctly caught the
+inconsistency (AGENTS.md vs actual opencode.json permissions) but
+proposed the WRONG fix direction (re-add `.agent-reports/` to the
+whitelist, resurrecting the old structure) — corrected AGENTS.md instead
+to match the new, intentional structure. Lesson: when a subagent/
+orchestrator reports "config X and doc Y disagree", always check WHICH
+one is the stale one before applying its suggested fix — don't assume
+the newer-looking config is wrong just because an inconsistency was
+found.
+
+**`llama-swap` `coder` model crashed and was recovered** — root cause
+was this morning's manual KV-cache increase (made outside the git-
+tracked harness, directly in `/home/asus/AI/llama-swap-config.yaml` on
+`local-llm`) pushing VRAM past a safe margin, causing
+`llama-server` to exit prematurely on load (`journalctl` showed clean
+operation until 11:50, then repeated "upstream command exited
+prematurely" for the `coder` model specifically). Recovery: reverted to
+a KNOWN-SAFE value, then carefully re-tested at **`--ctx-size 131072`
+(128K)`, CONFIRMED WORKING** — `curl http://localhost:9292/v1/models`
+shows `coder` reaching `"status":"loaded"` cleanly, and
+`nvidia-smi` shows coder (GPU0+1) using ~39GB/49GB (17312+21676 MiB) —
+a safe margin, not maxed out. **This 128K value is the new confirmed-
+working baseline for `coder`'s ctx-size** — do not casually increase
+further without the same careful backup+direct-launch+nvidia-smi-watch
+protocol used to find this value. The 4-GPU/180-190K estimate in §4 was
+NOT re-validated with real hardware today (still just arithmetic) —
+128K/2-GPU is the only number with real empirical confirmation as of
+this writing.
+
+**KV cache quantization research (NOT yet acted on, queued for after
+the current task finishes)**: TurboQuant is confirmed a dead end for
+this project — its mainline PR (#21089) is now CLOSED (rejected, not
+just pending), and a very recent (6-days-old as of 2026-08-23)
+`ggml-org/llama.cpp` discussion (#23470) reports that even where tested,
+TurboQuant "neither rescued the collapsing model" for a sensitive case.
+HOWEVER, the same discussion has genuinely useful, MODEL-SPECIFIC data:
+switching KV cache from the current `q8_0` to `q4_0` was tested on
+`Qwen3.8-27B` (this project's exact `coder` model) with only **3/500**
+answers changed, and `Qwen3.6-27B` (same family) at **2/500** — both
+near-zero degradation, versus some other model families collapsing
+badly at `q4_0` (e.g. Qwen2.5-7B: 375/500, worse than random). Since
+`q4_0` KV roughly halves memory versus the current `q8_0`, this could
+plausibly let `coder` reach ~256K context (the user's original target)
+on the SAME 2-GPU allocation, or free real VRAM margin at the current
+128K. **User explicitly decided: do not touch this today, revisit after
+the current OpenCode task finishes**, using the same careful protocol
+that found the 128K value (backup config first, direct `llama-server`
+launch to see real errors before trusting `llama-swap`'s opaque "exited
+prematurely", watch `nvidia-smi` during load, confirm via
+`curl .../v1/models` reaching `"loaded"` before declaring success).
+
+**Open item carried forward, still not done**: the git tag/branch
+backup from §7 is still unconfirmed — check `git tag -l` and
+`git branch -a` before assuming `harness-v1-2026-08-22` exists.
