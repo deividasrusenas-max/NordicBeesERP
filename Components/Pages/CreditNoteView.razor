@@ -15,200 +15,209 @@
 
 <PageTitle>Sąskaitos peržiūra</PageTitle>
 
-<MudPaper Elevation="2" Class="mb-4">
-    <!-- TOP BAR: Credit Note number + status chip LEFT, action buttons RIGHT -->
-    <div class="d-flex flex-wrap justify-space-between align-center pa-4">
-        <div class="d-flex flex-column gap-1">
-            <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Primary">Kreditinė sąskaita</MudText>
+<MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-4">
+    <!-- HEADER SECTION -->
+    <div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+        <div class="d-flex flex-column gap-3">
+            <!-- One line: credit note number (Typo.h5, Color.Primary, font-weight:600) + status chip inline -->
+            <div class="d-flex align-center gap-2 flex-wrap">
+                <MudText Typo="Typo.h5" Style="font-weight:600" Color="Color.Primary">@_creditNote?.CreditNoteNumber</MudText>
+                @if (_creditNote is not null)
+                {
+                    <MudChip T="string" Color="StatusDisplayHelper.GetColor(_creditNote.Status.ToString(), _statusDisplay)" Variant="Variant.Outlined">@StatusDisplayHelper.GetLabel(_creditNote.Status.ToString(), _statusDisplay)</MudChip>
+                }
+            </div>
+
+            <!-- Second line: customer name (Typo.body1, Color.Secondary) -->
             @if (_creditNote is not null)
             {
-                <div class="d-flex align-center gap-2">
-                    <MudText Typo="Typo.h3" Class="font-weight-bold" Style="font-size: 2rem !important;" Color="Color.Primary">@_creditNote.CreditNoteNumber</MudText>
-                    <MudChip Color="StatusDisplayHelper.GetColor(_creditNote.Status.ToString(), _statusDisplay)" T="string">@StatusDisplayHelper.GetLabel(_creditNote.Status.ToString(), _statusDisplay)</MudChip>
-                </div>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Klientas: @_creditNote.CustomerName</MudText>
             }
-        </div>
-          <div class="d-flex gap-2 mt-2 mt-md-0 flex-wrap">
-              <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleBack">
-                  <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-2" />
-                  Atgal
-              </MudButton>
-              @if (_creditNote?.Status == CreditNoteStatus.Draft)
-             {
-                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@NavigateToEditCreditNote">
-                     <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
-                     Redaguoti
-                 </MudButton>
-                 <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@HandleDeleteCreditNote" StartIcon="@Icons.Material.Filled.Delete">
-                     Trinti
-                 </MudButton>
-             }
 
-             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@NavigateToPdf" StartIcon="@Icons.Material.Filled.Print">
-                 Spausdinti
-             </MudButton>
-             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" StartIcon="@Icons.Material.Filled.ContentCopy">
-                 Kopijuoti
-             </MudButton>
-          </div>
+            <!-- Action buttons row -->
+            <div class="d-flex flex-wrap gap-2 align-center">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleBack" Style="text-transform:none">
+                    Atgal
+                </MudButton>
+                @if (_creditNote?.Status == CreditNoteStatus.Draft)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@NavigateToEditCreditNote" Style="text-transform:none">
+                        Redaguoti
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@HandleDeleteCreditNote" StartIcon="@Icons.Material.Filled.Delete" Style="text-transform:none">
+                        Trinti
+                    </MudButton>
+                }
+
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@NavigateToPdf" StartIcon="@Icons.Material.Filled.Print" Style="text-transform:none">
+                    Spausdinti
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" StartIcon="@Icons.Material.Filled.ContentCopy" Style="text-transform:none">
+                    Kopijuoti
+                </MudButton>
+            </div>
+        </div>
     </div>
 
     @if (_creditNote is not null)
     {
-        <!-- TWO COLUMN GRID -->
-        <MudContainer Class="pa-4">
-            <MudGrid Class="mb-4">
-                <!-- LEFT COLUMN: Customer Information -->
-                <MudItem xs="12" md="6">
-                    <MudPaper Elevation="1" Class="pa-4 h-100">
-                         <MudText Typo="Typo.h6" Class="font-weight-bold mb-3 d-flex align-center">
-                             <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
-                             Klientas
-                         </MudText>
-                         <div class="d-flex flex-column gap-2">
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">Klientas:</span>
-                                 <MudText Typo="Typo.body2">@(_creditNote?.CustomerName ?? "")</MudText>
-                             </MudText>
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">El. paštas:</span>
-                                 <MudText Typo="Typo.body2">@(_creditNote?.CustomerEmail ?? "")</MudText>
-                             </MudText>
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.Phone" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">Telefonas:</span>
-                                 <MudText Typo="Typo.body2">@(_creditNote?.CustomerPhone ?? "")</MudText>
-                             </MudText>
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.Home" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">Adresas:</span>
-                                 <MudText Typo="Typo.body2">@(_creditNote?.CustomerAddress ?? "")</MudText>
-                             </MudText>
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">Mokėjimo sąlygos:</span>
-                                 <MudText Typo="Typo.body2">@((_creditNote?.PaymentTermDays ?? 0) > 0 ? $"{_creditNote?.PaymentTermDays} dienų" : "-")</MudText>
-                             </MudText>
-                        </div>
-                    </MudPaper>
-                </MudItem>
+        <!-- INFO CARDS -->
+        <MudGrid Class="mt-4" Spacing="3" Style="align-items:stretch;">
+            <!-- Left card: Customer Information -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-4"
+                          Style="background:#eff6ff; border-radius:8px; border-left:4px solid #2563eb; padding:16px; height:100%;">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3" Style="font-weight:600">Klientas</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Klientas:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@(_creditNote?.CustomerName ?? "")</MudText>
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">El. paštas:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@(_creditNote?.CustomerEmail ?? "")</MudText>
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Telefonas:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@(_creditNote?.CustomerPhone ?? "")</MudText>
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Adresas:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@(_creditNote?.CustomerAddress ?? "")</MudText>
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo sąlygos:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@((_creditNote?.PaymentTermDays ?? 0) > 0 ? $"{_creditNote?.PaymentTermDays} dienų" : "-")</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
 
-                <!-- RIGHT COLUMN: Credit Note Details -->
-                <MudItem xs="12" md="6">
-                    <MudPaper Elevation="1" Class="pa-4 h-100">
-                         <MudText Typo="Typo.h6" Class="font-weight-bold mb-3 d-flex align-center">
-                             <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" />
-                             Sąskaitos informacija
-                         </MudText>
-                        <div class="d-flex flex-column gap-2">
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">Kreditinės sąskaitos data:</span>
-                                 <MudText Typo="Typo.body2">@(_creditNote?.CreditDate.ToString("yyyy-MM-dd") ?? "")</MudText>
-                             </MudText>
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">Kredituojama sąskaita:</span>
-                                 <MudText Typo="Typo.body2">@(_creditNote?.OriginalInvoiceNumber ?? "")</MudText>
-                             </MudText>
-                            <MudText Class="d-flex flex-row align-center gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.CurrencyExchange" Class="mr-2" Size="Size.Small" />
-                                <span class="font-weight-bold">Valiuta:</span>
-                                <MudText Typo="Typo.body2">EUR</MudText>
-                            </MudText>
-                             <MudText Class="d-flex flex-row align-center gap-2">
-                                 <MudIcon Icon="@Icons.Material.Filled.Percent" Class="mr-2" Size="Size.Small" />
-                                 <span class="font-weight-bold">PVM reverse charge:</span>
-                                 <MudText Typo="Typo.body2">@((_creditNote?.ReverseCharge ?? false) ? "Taikoma" : "Ne")</MudText>
-                             </MudText>
-                        </div>
-                    </MudPaper>
-                </MudItem>
-            </MudGrid>
+            <!-- Right card: Credit Note Details -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-4"
+                          Style="background:#f5f3ff; border-radius:8px; border-left:4px solid #7c3aed; padding:16px; height:100%;">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3" Style="font-weight:600">Kreditinės sąskaitos duomenys</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Kreditinės sąskaitos data:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@(_creditNote?.CreditDate.ToString("yyyy-MM-dd") ?? "")</MudText>
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Kredituojama sąskaita:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@(_creditNote?.OriginalInvoiceNumber ?? "")</MudText>
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Valiuta:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">EUR</MudText>
+                        </MudItem>
+                        <MudItem xs="5">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">PVM reverse charge:</MudText>
+                        </MudItem>
+                        <MudItem xs="7">
+                            <MudText Typo="Typo.body1">@((_creditNote?.ReverseCharge ?? false) ? "Taikoma" : "Ne")</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
 
-            <!-- CREDIT NOTE LINES TABLE -->
-            <MudPaper Elevation="1" Class="mb-4">
-                <div class="pa-3 border-bottom">
-                    <MudText Typo="Typo.h6" Class="font-weight-bold">Prekių sąrašas</MudText>
+        <!-- CREDIT NOTE LINES TABLE -->
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-3 pa-3"
+                  Style="background:#f8fafc; border-radius:8px;">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Prekių sąrašas</MudText>
+
+            @if (_creditNoteLines is not null && _creditNoteLines.Any())
+            {
+                <MudTable T="CreditNoteLineDto" Items="@_creditNoteLines" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Nr</MudTh>
+                        <MudTh>Aprašymas</MudTh>
+                        <MudTh Class="text-center">Kiekis</MudTh>
+                        <MudTh Class="text-center">Vnt</MudTh>
+                        <MudTh Class="text-right">Kaina</MudTh>
+                        <MudTh Class="text-center">PVM%</MudTh>
+                        <MudTh Class="text-right">Suma</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="line">
+                         <MudTd>@line.LineNumber</MudTd>
+                        <MudTd>
+                             @(line?.Description ?? line?.ProductCode ?? "")
+                        </MudTd>
+                         <MudTd Class="text-center">@(line?.Quantity ?? 0)</MudTd>
+                         <MudTd Class="text-center">@(line?.Unit ?? "")</MudTd>
+                         <MudTd Class="text-right">@((line?.PriceExclVat ?? 0m).ToString("C2"))</MudTd>
+                         <MudTd Class="text-center">@((line?.VatRate ?? 0m).ToString("F1"))%</MudTd>
+                         <MudTd Class="text-right">@((line?.LineTotal ?? 0m).ToString("C2"))</MudTd>
+                    </RowTemplate>
+                </MudTable>
+                <div class="d-flex flex-column align-end pa-4" style="gap:4px;">
+                    <div class="d-flex gap-4">
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">Suma be PVM:</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.SubtotalExclVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
+                    </div>
+                    <div class="d-flex gap-4">
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">PVM:</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.TotalVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
+                    </div>
+                     <MudDivider Class="my-1" Style="width:250px;" />
+                     <div class="d-flex gap-4">
+                         <MudText Typo="Typo.h6" Class="font-weight-bold">Iš viso:</MudText>
+                         <MudText Typo="Typo.h6" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.TotalInclVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
+                     </div>
                 </div>
-                @if (_creditNoteLines is not null && _creditNoteLines.Any())
-                {
-                    <MudTable T="CreditNoteLineDto" Items="@_creditNoteLines" Hover="true" Elevation="0">
-                        <HeaderContent>
-                            <MudTh>Nr</MudTh>
-                            <MudTh>Aprašymas</MudTh>
-                            <MudTh Class="text-center">Kiekis</MudTh>
-                            <MudTh Class="text-center">Vnt</MudTh>
-                            <MudTh Class="text-right">Kaina</MudTh>
-                            <MudTh Class="text-center">PVM%</MudTh>
-                            <MudTh Class="text-right">Suma</MudTh>
-                        </HeaderContent>
-                        <RowTemplate Context="line">
-                             <MudTd>@line.LineNumber</MudTd>
-                            <MudTd>
-                                 @(line?.Description ?? line?.ProductCode ?? "")
-                            </MudTd>
-                             <MudTd Class="text-center">@(line?.Quantity ?? 0)</MudTd>
-                             <MudTd Class="text-center">@(line?.Unit ?? "")</MudTd>
-                             <MudTd Class="text-right">@((line?.PriceExclVat ?? 0m).ToString("C2"))</MudTd>
-                             <MudTd Class="text-center">@((line?.VatRate ?? 0m).ToString("F1"))%</MudTd>
-                             <MudTd Class="text-right">@((line?.LineTotal ?? 0m).ToString("C2"))</MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                    <div class="d-flex flex-column align-end pa-4" style="gap:4px;">
-                        <div class="d-flex gap-4">
-                            <MudText Typo="Typo.body2" Class="font-weight-bold">Suma be PVM:</MudText>
-                            <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.SubtotalExclVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
-                        </div>
-                        <div class="d-flex gap-4">
-                            <MudText Typo="Typo.body2" Class="font-weight-bold">PVM:</MudText>
-                            <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.TotalVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
-                        </div>
-                         <MudDivider Class="my-1" Style="width:250px;" />
-                         <div class="d-flex gap-4">
-                             <MudText Typo="Typo.h6" Class="font-weight-bold">Iš viso:</MudText>
-                             <MudText Typo="Typo.h6" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.TotalInclVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
-                         </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="pa-4 text-center">
-                        <MudText Color="Color.Secondary">Prekių sąrašas yra tuščias</MudText>
-                    </div>
-                }
-            </MudPaper>
+            }
+            else
+            {
+                <div class="pa-4 text-center">
+                    <MudText Color="Color.Secondary">Prekių sąrašas yra tuščias</MudText>
+                </div>
+            }
+        </MudPaper>
 
-            <!-- Payment Information Section -->
-            <MudPaper Elevation="1" Class="pa-4">
-                <MudText Typo="Typo.h6" Class="font-weight-bold mb-3 d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.Money" Class="mr-2" />
-                    Mokėjimo informacija
-                </MudText>
-                <MudGrid>
-                    <MudItem xs="12" sm="4">
-                        <MudPaper Elevation="0" Class="pa-3" Style="background:#f5f5f5; border-radius:8px; height:80px; display:flex; flex-direction:column; justify-content:center">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Kreditinės sąskaitos būsena</MudText>
-                            <MudChip Color="GetPaymentStatusColor()" T="string" Size="Size.Small" Class="mt-1">@GetPaymentStatusText()</MudChip>
-                        </MudPaper>
-                    </MudItem>
-                     <MudItem xs="12" sm="4">
-                         <MudPaper Elevation="0" Class="pa-3" Style="background:#f5f5f5; border-radius:8px; height:80px; display:flex; flex-direction:column; justify-content:center">
-                             <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo sąlygos</MudText>
-                             <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@((_creditNote?.PaymentTermDays ?? 0) > 0 ? $"{_creditNote?.PaymentTermDays} dienų" : "-")</MudText>
-                         </MudPaper>
-                     </MudItem>
-                     <MudItem xs="12" sm="4">
-                         <MudPaper Elevation="0" Class="pa-3" Style="background:#f5f5f5; border-radius:8px; height:80px; display:flex; flex-direction:column; justify-content:center">
-                             <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėti iki</MudText>
-                             <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@((_creditNote?.PaymentDueDate)?.ToString("yyyy-MM-dd") ?? "-")</MudText>
-                         </MudPaper>
-                     </MudItem>
-                </MudGrid>
-            </MudPaper>
-        </MudContainer>
+        <!-- Payment Information Section -->
+        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-3"
+                  Style="background:#f8fafc; border-radius:8px;">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Mokėjimo informacija</MudText>
+
+            <!-- Payment Status Cards -->
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudPaper Elevation="0" Class="pa-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Kreditinės sąskaitos būsena</MudText>
+                        <MudChip Color="GetPaymentStatusColor()" T="string" Size="Size.Small" Class="mt-1">@GetPaymentStatusText()</MudChip>
+                    </MudPaper>
+                </MudItem>
+                 <MudItem xs="12" sm="4">
+                     <MudPaper Elevation="0" Class="pa-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
+                         <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo sąlygos</MudText>
+                         <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@((_creditNote?.PaymentTermDays ?? 0) > 0 ? $"{_creditNote?.PaymentTermDays} dienų" : "-")</MudText>
+                     </MudPaper>
+                 </MudItem>
+                 <MudItem xs="12" sm="4">
+                     <MudPaper Elevation="0" Class="pa-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
+                         <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėti iki</MudText>
+                         <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@((_creditNote?.PaymentDueDate)?.ToString("yyyy-MM-dd") ?? "-")</MudText>
+                     </MudPaper>
+                 </MudItem>
+            </MudGrid>
+        </MudPaper>
     }
     else
     {
