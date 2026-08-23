@@ -165,14 +165,60 @@ established, a symbol whose location you don't already know, etc.
   checks functionality/visuals himself manually, faster than a full
   verifier→visual-qa pass, for routine tasks.
 
-## Progress tracking (todo list)
+## Progress tracking (todo list) — MANDATORY DECOMPOSITION FIRST
 
-Before starting any task that involves more than one file or more than one
-delegation step, call `todowrite` to create a todo list breaking the work
-into concrete steps (one todo per file/delegation, matching the granularity
-of the "Workflow per file" section below — e.g. "Delegate InvoiceView.razor
-to coder", "Delegate InvoiceView.razor to fixer (build+commit)", not vague
-items like "fix invoices").
+Before issuing ANY Task tool call, read the user's ENTIRE request first
+and produce a fully decomposed `todowrite` list — this is not optional
+ceremony, it is the mechanism that prevents oversized single delegations.
+Decomposition happens at TWO levels, both mandatory:
+
+1. **Per file**: one todo group per file that needs changes (already
+   required below in "Workflow per file").
+2. **Per distinct part WITHIN each file**: for each file, count the
+   genuinely distinct changes it needs (a new field/property, a new
+   branch/conditional block, a new method, a markup section change, a
+   renamed parameter propagated to callers, etc. each count as one part).
+   If a single file has MORE than ~3 distinct parts, split that file's
+   own todo into multiple sequential sub-todos (round 1, round 2, round
+   3...), each becoming its own separate coder→reviewer→fixer cycle —
+   per the existing "SPLIT large multi-part single-file changes" rule
+   above. Do this splitting NOW, at planning time, for every file in the
+   request — do not wait to discover mid-delegation that one file's
+   change was too big.
+
+**Why this matters even for a single long user-provided prompt**: the
+user should be able to paste ONE large, detailed task description (all
+files, all requirements, in one message) and rely on YOU to decompose it
+into many small delegations automatically — they should never need to
+manually pre-split their own request into "Prompt 1/2, Prompt 2/2" or
+similar before giving it to you. If the user's message already came
+pre-split into multiple prompts, that's fine too, but don't treat that
+as the ONLY way sufficient decomposition happens — a single big prompt
+must decompose into the same granularity of todos as if the user had
+split it themselves.
+
+Real incident this rule exists because of (2026-08-22): a 7-file task
+description was correctly split one-todo-per-file, but the most complex
+single file (a `.razor` page needing: a new tab/chip, branched data-
+loading logic, a different table render mode, hiding several UI blocks,
+and reused pagination logic — five distinct parts) was delegated to
+`coder` as ONE monolithic call. That single call ran for 45 minutes and
+consumed enough prompt context to approach the model's limit, because
+nothing had explicitly counted and pre-split that file's five distinct
+parts into separate rounds the way the existing single-file-split rule
+already requires — the rule existed, but nothing forced applying it
+during initial planning rather than being noticed too late, if at all.
+
+Write todos with fine-grained titles reflecting this decomposition (e.g.
+"Invoices.razor round 1: add KLAK chip + verify SetInvoiceType",
+"Invoices.razor round 2: inject CreditNoteService + branch LoadDataAsync",
+"Invoices.razor round 3: KLAK table render + hide invoice-specific UI",
+"Invoices.razor round 4: pagination reuse for _creditNoteItems",
+"CreditNoteService.cs: rename+extend filterSearch", "NavMenu.razor: href
+update", "CreditNotes.razor: redirect stub", "CreditNoteView.razor:
+returnUrl priority", "CreditNoteCreate.razor: Cancel() fallback update")
+— NOT vague items like "fix invoices" or a single "Invoices.razor" todo
+covering all five parts at once.
 
 Update the todo list as you go:
 - Mark a todo in_progress right before you issue the Task tool call it
@@ -183,7 +229,7 @@ Update the todo list as you go:
 - If a step is blocked, leave it in_progress and add a new todo describing
   the blocker rather than marking it completed.
 
-For single-file, single-step requests, a todo list is optional — use
+For single-file, single-part requests, a todo list is optional — use
 judgment; don't add ceremony for a one-line fix.
 
 ## Workflow per file — STRICTLY SEQUENTIAL, NEVER PARALLEL
