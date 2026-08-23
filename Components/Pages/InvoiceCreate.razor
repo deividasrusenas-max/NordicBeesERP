@@ -168,8 +168,9 @@
                    </MudAutocomplete>
                 </MudTd>
                 <MudTd DataLabel="Kiekis">
-                    <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined" 
+                    <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined"
                                      Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M"
+                                     @key="(line, 0)"
                                      ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Vnt.">
@@ -177,8 +178,9 @@
                                   Margin="Margin.Dense" ReadOnly="true" />
                 </MudTd>
                 <MudTd DataLabel="Kaina">
-                    <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
+                    <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined"
                                      Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="0.01M"
+                                     @key="(line, 1)"
                                      ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="PVM %">
@@ -188,8 +190,8 @@
                                      ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Suma">
-                    <MudTextField T="string" Value="@(line.LineTotal % 1 == 0 ? line.LineTotal.ToString("N0") : line.LineTotal.ToString("N2"))" Variant="Variant.Outlined" 
-                                  Margin="Margin.Dense" ReadOnly="true" />
+                    <MudTextField T="string" Value="@(line.LineTotal % 1 == 0 ? line.LineTotal.ToString("N0") : line.LineTotal.ToString("N2"))" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" ReadOnly="true" @key="(line, 2)" />
                 </MudTd>
                 <MudTd DataLabel="">
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
