@@ -199,7 +199,12 @@
                     var dto = new InvoiceSelectDto
                     {
                         Id = invoice.Id,
-                        CustomerName = invoice.Customer?.Name ?? string.Empty
+                        InvoiceNumber = invoice.InvoiceNumber,
+                        InvoiceDate = invoice.InvoiceDate,
+                        TotalInclVat = invoice.TotalInclVat,
+                        RemainingBalance = invoice.TotalInclVat - invoice.PaidAmount,
+                        CustomerName = invoice.Customer?.Name ?? string.Empty,
+                        CustomerId = invoice.CustomerId
                     };
                     await OnInvoiceSelected(dto);
                 }
@@ -222,7 +227,7 @@
         {
             return new List<InvoiceSelectDto>();
         }
-        return await _creditNoteService.GetCustomerInvoicesForApplyingAsync(_selectedInvoice.Id, _selectedInvoice.Id);
+        return await _creditNoteService.GetCustomerInvoicesForApplyingAsync(_selectedInvoice.CustomerId, _selectedInvoice.Id);
     }
 
     private void OnAppliedInvoiceSelected(InvoiceSelectDto? invoice)
