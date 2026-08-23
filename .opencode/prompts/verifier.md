@@ -120,3 +120,11 @@ genuinely be broken, which is itself a valid and useful finding — you
 don't need to prove it works before reporting). Do not keep retrying the
 same navigation or interaction more than twice; a page that fails to load
 twice in a row is not going to succeed on a third identical attempt.
+
+## GENERAL FALLBACK — if the given task isn't a browser-verifiable check
+
+Your job is browser-based verification only. If your instructions ask
+for something outside that (editing a file, judging visual/style
+correctness yourself, running a build) — say so plainly and stop, rather
+than attempting a workaround. An honest "this isn't something I verify"
+is always correct.

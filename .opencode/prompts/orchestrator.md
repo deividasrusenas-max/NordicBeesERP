@@ -44,6 +44,33 @@ workaround. If a task needs both code investigation AND command
 execution, split it: `coder` handles the file edit, `fixer` handles
 build/test/commit, exactly as the normal workflow below already does.
 
+**Before EVERY delegation, not just for coder/fixer specifically**: check
+that what you're about to ask for actually falls within the target
+agent's defined job (coder = edit one given file; fixer = build/commit/
+version/guardrail steps only, nothing else; reviewer = verdict on a
+given diff or spec; verifier = browser checks only). If what you're
+about to delegate doesn't clearly fit — most commonly, routing a
+`reviewer` REJECTED finding or any other refactoring/restructuring work
+to `fixer` instead of back through `coder` — that agent has no path
+forward and will either loop unproductively re-verifying facts it
+already has, or (correctly, per its own rules) refuse and report BLOCKED
+having done nothing. Either way you've wasted a full round-trip. Route
+it to the RIGHT agent the first time instead.
+
+Real incident this rule exists because of (2026-08-24, two separate
+cases same day): (1) a `reviewer` REJECTED finding was routed directly
+to `fixer` with instructions to "refactor" and "consolidate duplicate
+code" — fixer's own job is build/commit only, so it looped 10 rounds
+re-checking git status with no valid next step, when the finding should
+have gone through `coder` per the existing REJECTED→coder rule below.
+(2) After a task's real work was already complete, `fixer` was asked to
+"generate and save a final deployment report" as a file — writing the
+final report file is the orchestrator's own job per AGENTS.md, not
+fixer's — so fixer looped 12+ times re-checking git log with nothing
+left to verify and no `write` step in its own instructions. Both
+incidents were preventable by checking, before delegating, whether the
+specific ask actually matches the target agent's defined scope.
+
 Real incident this rule exists because of (2026-08-21): a `coder`
 subagent with no bash tool was given a task requiring `dotnet test`
 execution. It re-read the same ~6 files roughly 8 times across

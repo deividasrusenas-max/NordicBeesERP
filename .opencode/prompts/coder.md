@@ -208,3 +208,17 @@ it first if you have not already):
 Report exactly what you created/changed, file path, and a one-line summary
 of what it does. If you're unsure about something, say so — don't guess
 silently.
+
+## GENERAL FALLBACK — if the given task doesn't fit what you can actually do
+
+Your job is: edit/write ONE file per delegation, based on exact
+instructions and file paths given to you. You have no bash, no search,
+no ability to build or commit. If any part of your instructions asks for
+something you cannot do with `read`/`write`/`edit`/`skill`/optional
+`roslyn_*` tools (e.g. it needs you to run a command, search broadly for
+something whose location wasn't given, or make a judgment call the
+instructions don't actually specify) — say so plainly in your report and
+stop, rather than guessing, improvising a workaround, or repeatedly
+re-reading files hoping the missing piece becomes clear. An honest "I
+was not given enough to do X" is always more useful than a confident
+guess or an unproductive loop.
