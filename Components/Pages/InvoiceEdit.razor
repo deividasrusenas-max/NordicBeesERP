@@ -15,9 +15,9 @@
 
 <PageTitle>Redaguoti sąskaitą</PageTitle>
 
-<MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-4">
-    <!-- HEADER SECTION -->
-    <div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+<!-- HEADER (sticky, full-bleed background bar; only its CONTENT is width-constrained) -->
+<div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge">
         <div class="d-flex flex-column gap-3">
             <!-- One line: invoice number (Typo.h5, Color.Primary, font-weight:600) + status chip inline -->
             <div class="d-flex align-center gap-2 flex-wrap">
@@ -47,8 +47,10 @@
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@Cancel" Style="text-transform:none">Atšaukti</MudButton>
             </div>
         </div>
-    </div>
+    </MudContainer>
+</div>
 
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <!-- INFO CARDS -->
     <MudGrid Class="mt-4" Spacing="3" Style="align-items:stretch;">
         <!-- Left card: counterparty / main info -->
@@ -195,9 +197,9 @@
         <MudTextField T="string" @bind-Value="_notes"
                       Label="Komentaras (rodomas spausdinant)"
                       Variant="Variant.Outlined"
-                      Lines="3" Margin="Margin.Dense" />
+                       Lines="3" Margin="Margin.Dense" />
     </MudPaper>
-</MudPaper>
+</MudContainer>
 
 @code {
     private DialogOptions _stdOpt = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
