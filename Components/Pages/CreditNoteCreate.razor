@@ -118,7 +118,7 @@
                 </MudTd>
                 <MudTd DataLabel="Kaina (be PVM)">
                     <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined"
-                                     Margin="Margin.Dense" Min="0" Step="0.01M" Format="F2"
+                                      Margin="Margin.Dense" Step="0.01M" Format="F2"
                                      ValueChanged="@((decimal val) => { line.PriceExclVat = val; line.IsChecked = true; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="PVM %">
@@ -127,7 +127,7 @@
                                      ValueChanged="@((decimal val) => { line.VatRate = val; line.IsChecked = true; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Suma">
-                    <MudNumericField T="decimal" Value="@(-line.LineTotal)" Variant="Variant.Outlined"
+                    <MudNumericField T="decimal" Value="@line.LineTotal" Variant="Variant.Outlined"
                                      Margin="Margin.Dense" ReadOnly="true" Format="F2" />
                 </MudTd>
             </RowTemplate>
@@ -266,9 +266,9 @@
                 OriginalQuantity = l.Quantity,
                 AlreadyCredited = alreadyCredited,
                 CreditQuantity = remaining,
-                PriceExclVat = l.PriceExclVat,
+                PriceExclVat = -l.PriceExclVat,
                 VatRate = l.VatRate,
-                LineTotal = l.LineTotal,
+                LineTotal = -l.LineTotal,
                 IsChecked = remaining > 0
             };
         }).ToList();
@@ -294,8 +294,8 @@
 
     private void CalculateTotals()
     {
-        _subtotalExclVat = -_lines.Where(l => l.IsChecked).Sum(l => l.CreditQuantity * l.PriceExclVat);
-        _totalVat = -_lines.Where(l => l.IsChecked).Sum(l => l.CreditQuantity * l.PriceExclVat * (l.VatRate / 100m));
+        _subtotalExclVat = _lines.Where(l => l.IsChecked).Sum(l => l.CreditQuantity * l.PriceExclVat);
+        _totalVat = _lines.Where(l => l.IsChecked).Sum(l => l.CreditQuantity * l.PriceExclVat * (l.VatRate / 100m));
         _totalInclVat = _subtotalExclVat + _totalVat;
     }
 
