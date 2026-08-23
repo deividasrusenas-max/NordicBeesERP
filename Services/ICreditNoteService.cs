@@ -64,7 +64,7 @@ namespace NordicBeesERP.Services
         Task<(List<CreditNoteListDto> Items, int TotalCount)> GetCreditNotesAsync(
             int currentPage, 
             int itemsPerPage, 
-            string? filterCustomerName, 
+            string? filterSearch, 
             CreditNoteStatus? filterStatus, 
             DateTime? filterFromDate, 
             DateTime? filterToDate);

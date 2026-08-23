@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Helpers
 @using MudBlazor
 @using System.IO.Compression
@@ -11,6 +12,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IPdfGeneratorService PdfGeneratorService
+@inject ICreditNoteService CreditNoteService
 @inject IJSRuntime JS
 @inject IDialogService DialogService
 
@@ -42,13 +44,19 @@
                      Style="text-transform:none;min-width:180px;">
                 LAK — Pardavimai
             </MudChip>
-            <MudChip T="string" Value="@("ULAK")"
-                     Color="@(_invoiceType == "ULAK" ? Color.Primary : Color.Default)"
-                     Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
-                     Style="text-transform:none;min-width:180px;">
-                ULAK — Pirkimai
-            </MudChip>
-        </MudChipSet>
+        <MudChip T="string" Value="@("ULAK")"
+                 Color="@(_invoiceType == "ULAK" ? Color.Primary : Color.Default)"
+                 Variant="@(_invoiceType == "ULAK" ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;min-width:180px;">
+            ULAK — Atsakomosios sąskaitos
+        </MudChip>
+        <MudChip T="string" Value="@("KLAK")"
+                 Color="@(_invoiceType == "KLAK" ? Color.Primary : Color.Default)"
+                 Variant="@(_invoiceType == "KLAK" ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;min-width:180px;">
+            KLAK — Kreditinės sąskaitos
+        </MudChip>
+    </MudChipSet>
     </MudStack>
 
     <!-- Loading indicator -->
@@ -95,13 +103,15 @@
     </MudPaper>
 
     <!-- Unified quick-filter + status chip row -->
+    @if (_invoiceType != "KLAK")
+    {
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
         <MudChip T="string"
                  Color="@(_selectedTab == 0 ? Color.Primary : Color.Default)"
-                  Variant="@(_selectedTab == 0 ? Variant.Filled : Variant.Outlined)"
-                  Style="text-transform:none;"
-                  Size="Size.Small"
-                  OnClick="@(async () => { if (_selectedTab != 0) await OnTabChangedAsync(0); })">
+                 Variant="@(_selectedTab == 0 ? Variant.Filled : Variant.Outlined)"
+                 Style="text-transform:none;"
+                 Size="Size.Small"
+                 OnClick="@(async () => { if (_selectedTab != 0) await OnTabChangedAsync(0); })">
             Visos
         </MudChip>
         <MudChip T="string"
@@ -114,18 +124,18 @@
          </MudChip>
           <MudChip T="string"
                    Color="@(_selectedTab == 2 ? Color.Warning : Color.Default)"
-                    Variant="@(_selectedTab == 2 ? Variant.Filled : Variant.Outlined)"
-                    Style="text-transform:none;"
-                    Size="Size.Small"
-                    OnClick="@(async () => { if (_selectedTab != 2) await OnTabChangedAsync(2); })">
+                   Variant="@(_selectedTab == 2 ? Variant.Filled : Variant.Outlined)"
+                   Style="text-transform:none;"
+                   Size="Size.Small"
+                   OnClick="@(async () => { if (_selectedTab != 2) await OnTabChangedAsync(2); })">
              Vėluojančios
          </MudChip>
           <MudChip T="string"
                    Color="@(_selectedTab == 3 ? Color.Primary : Color.Default)"
-                    Variant="@(_selectedTab == 3 ? Variant.Filled : Variant.Outlined)"
-                    Style="text-transform:none;"
-                    Size="Size.Small"
-                    OnClick="@(async () => { if (_selectedTab != 3) await OnTabChangedAsync(3); })">
+                   Variant="@(_selectedTab == 3 ? Variant.Filled : Variant.Outlined)"
+                   Style="text-transform:none;"
+                   Size="Size.Small"
+                   OnClick="@(async () => { if (_selectedTab != 3) await OnTabChangedAsync(3); })">
              Šis mėnuo
          </MudChip>
 
@@ -147,9 +157,10 @@
             }
         }
     </div>
+    }
 
     <!-- Bulk actions bar -->
-    @if (_selectedInvoices.Count > 0)
+    @if (_selectedInvoices.Count > 0 && _invoiceType != "KLAK")
     {
         <MudPaper Elevation="0" Rounded="true" Square="false" Class="mb-2 pa-3 d-flex align-center justify-space-between"
                   Style="background:#e8f0fe; border-radius:8px;">
@@ -178,6 +189,8 @@
 
     <!-- Table -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        @if (_invoiceType != "KLAK")
+        {
         <MudTable Items="@PagedItems"
                   Dense="true"
                   Hover="true"
@@ -309,6 +322,94 @@
                 <MudText Class="text-center py-4">Įrašų nėra</MudText>
             </NoRecordsContent>
         </MudTable>
+        }
+        else
+        {
+        <MudTable Items="@PagedCreditNoteItems"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  Elevation="0"
+                  Style="cursor:pointer">
+            <HeaderContent>
+                <MudTh>Nr.</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Klientas</MudTh>
+                <MudTh>Kredituojama sąskaita</MudTh>
+                <MudTh>Suma</MudTh>
+                <MudTh>Būsena</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="creditNote">
+                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">@creditNote.CreditNoteNumber</MudTd>
+                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">@creditNote.CreditDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">@creditNote.CustomerName</MudTd>
+                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">@creditNote.OriginalInvoiceNumber</MudTd>
+                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer;text-align:right">@creditNote.TotalInclVat.ToString("N2") €</MudTd>
+                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">
+                    @{
+                        var statusString = creditNote.Status.ToString();
+                        var cnLabel = statusString switch {
+                            "Draft" => "Juodraštis",
+                            "Printed" => "Atspausdinta",
+                            "Disputed" => "Ginčijama",
+                            _ => statusString
+                        };
+                        var cnColor = statusString switch {
+                            "Draft" => Color.Default,
+                            "Printed" => Color.Primary,
+                            "Disputed" => Color.Error,
+                            _ => Color.Default
+                        };
+                    }
+                    <MudChip T="string" Color="@cnColor" Size="Size.Small" Style="text-transform:none">@cnLabel</MudChip>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                @if (_creditNoteItems.Count > PageSize)
+                {
+                    var totalPages = (int)Math.Ceiling((double)_creditNoteItems.Count / PageSize);
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="pa-2">
+                        <MudButton Variant="Variant.Outlined" 
+                                   Size="Size.Small"
+                                   Disabled="@(_currentPage <= 1)"
+                                   OnClick="@(() => NavigateToPage(_currentPage - 1))"
+                                   StartIcon="@Icons.Material.Filled.ChevronLeft">
+                            Ankstesnė
+                        </MudButton>
+                        
+                        @for (int i = 0; i < totalPages; i++)
+                        {
+                            var pageNum = i + 1;
+                            if (ShouldShowPage(pageNum, _currentPage, totalPages))
+                            {
+                                if (i > 0 && !ShouldShowPage(pageNum - 1, _currentPage, totalPages))
+                                {
+                                    <MudText Class="mx-1">...</MudText>
+                                }
+                                <MudButton Variant="@(pageNum == _currentPage ? Variant.Filled : Variant.Outlined)"
+                                           Color="@(pageNum == _currentPage ? Color.Primary : Color.Default)"
+                                           Size="Size.Small"
+                                           OnClick="@(() => NavigateToPage(pageNum))">
+                                    @pageNum
+                                </MudButton>
+                            }
+                        }
+                        
+                        <MudButton Variant="Variant.Outlined" 
+                                   Size="Size.Small"
+                                   Disabled="@(_currentPage >= totalPages)"
+                                   OnClick="@(() => NavigateToPage(_currentPage + 1))"
+                                   EndIcon="@Icons.Material.Filled.ChevronRight">
+                            Kitas
+                        </MudButton>
+                    </MudStack>
+                }
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Įrašų nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+        }
     </MudPaper>
 </MudContainer>
 
@@ -323,6 +424,7 @@
 
 @code {
     private List<Invoice> _items = new();
+    private List<CreditNoteListDto> _creditNoteItems = new();
     private bool _isLoading = false;
     private int _selectedTab = 0;
     private string _invoiceType = "LAK";
@@ -378,6 +480,15 @@
         }
     }
 
+    private List<CreditNoteListDto> PagedCreditNoteItems
+    {
+        get
+        {
+            int start = (_currentPage - 1) * PageSize;
+            return _creditNoteItems.Skip(start).Take(PageSize).ToList();
+        }
+    }
+
     // Lifecycle
     protected override async Task OnParametersSetAsync()
     {
@@ -405,14 +516,30 @@
 
         try
         {
-            
-            var invoices = await InvoiceService.GetInvoicesAsync(
-                fromDate: _dateRange?.Start,
-                toDate: _dateRange?.End,
-                searchTerm: _filterSearch,
-                type: _invoiceType == "LAK" ? "sales" : "purchase");
+            if (_invoiceType == "KLAK")
+            {
+                var notes = await CreditNoteService.GetCreditNotesAsync(
+                    currentPage: 1,
+                    itemsPerPage: int.MaxValue,
+                    filterSearch: _filterSearch,
+                    filterStatus: null,
+                    filterFromDate: _dateRange?.Start,
+                    filterToDate: _dateRange?.End);
 
-            _items = invoices;
+                _creditNoteItems = notes.Items;
+                _items = new List<Invoice>();
+            }
+            else
+            {
+                var invoices = await InvoiceService.GetInvoicesAsync(
+                    fromDate: _dateRange?.Start,
+                    toDate: _dateRange?.End,
+                    searchTerm: _filterSearch,
+                    type: _invoiceType == "LAK" ? "sales" : "purchase");
+
+                _items = invoices;
+                _creditNoteItems = new List<CreditNoteListDto>();
+            }
         }
         catch (Exception ex)
         {
@@ -564,6 +691,21 @@
             ("type", !string.IsNullOrEmpty(_invoiceType) && _invoiceType != "LAK" ? _invoiceType : null),
             ("page", _currentPage > 1 ? _currentPage.ToString() : null));
         var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/invoices/{invoiceId}", currentListUrl, Navigation.BaseUri);
+        Navigation.NavigateTo(detailUrl);
+    }
+
+    private void ViewCreditNote(CreditNoteListDto creditNote)
+    {
+        var basePath = Navigation.Uri.Split('?')[0];
+        var currentListUrl = FilterUrlBuilder.Build(basePath,
+            ("q", _filterSearch),
+            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+            ("status", FilterUrlBuilder.ToQueryValue(_selectedStatuses)),
+            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+            ("type", !string.IsNullOrEmpty(_invoiceType) && _invoiceType != "LAK" ? _invoiceType : null),
+            ("page", _currentPage > 1 ? _currentPage.ToString() : null));
+        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/credit-notes/{creditNote.Id}", currentListUrl, Navigation.BaseUri);
         Navigation.NavigateTo(detailUrl);
     }
 

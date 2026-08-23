@@ -223,7 +223,7 @@ namespace NordicBeesERP.Services
         public async Task<(List<CreditNoteListDto> Items, int TotalCount)> GetCreditNotesAsync(
             int currentPage, 
             int itemsPerPage, 
-            string? filterCustomerName, 
+            string? filterSearch, 
             CreditNoteStatus? filterStatus, 
             DateTime? filterFromDate, 
             DateTime? filterToDate)
@@ -236,10 +236,12 @@ namespace NordicBeesERP.Services
                 .Include(cn => cn.AppliedInvoice)
                 .AsQueryable();
             
-            // Filter by customer name
-            if (!string.IsNullOrEmpty(filterCustomerName))
+            // Filter by search (customer name, credit note number, or original invoice number)
+            if (!string.IsNullOrEmpty(filterSearch))
             {
-                query = query.Where(cn => cn.Customer.Name.Contains(filterCustomerName));
+                query = query.Where(cn => cn.Customer.Name.Contains(filterSearch) 
+                                       || cn.CreditNoteNumber.Contains(filterSearch)
+                                       || (cn.OriginalInvoice != null && cn.OriginalInvoice.InvoiceNumber.Contains(filterSearch)));
             }
             
             // Filter by status

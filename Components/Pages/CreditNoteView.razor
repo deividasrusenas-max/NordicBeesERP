@@ -216,7 +216,7 @@
             <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Color="Color.Error" />
             <MudText Class="mt-2" Typo="Typo.subtitle1">Kreditinė sąskaita nerasta</MudText>
             <MudText Color="Color.Secondary">Kreditinės sąskaitos su ID @(_creditNote?.Id ?? Id) neaptikta</MudText>
-            <MudButton OnClick="@HandleBack" Variant="Variant.Outlined" Color="Color.Default" Class="mt-3">
+            <MudButton OnClick='@(() => Navigation.NavigateTo("/invoices/sales?type=KLAK"))' Variant="Variant.Outlined" Color="Color.Default" Class="mt-3">
                 Grįžti į kreditines sąskaitas
             </MudButton>
         </div>
@@ -226,6 +226,9 @@
 @code {
     [Parameter]
     public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
 
     private CreditNoteDetailDto? _creditNote;
     private List<CreditNoteLineDto> _creditNoteLines = new List<CreditNoteLineDto>();
@@ -276,13 +279,17 @@
 
     private void HandleBack()
     {
-        if (_creditNote?.OriginalInvoiceId.HasValue == true)
+        if (!string.IsNullOrEmpty(ReturnUrl))
+        {
+            Navigation.NavigateTo(Uri.UnescapeDataString(ReturnUrl));
+        }
+        else if (_creditNote?.OriginalInvoiceId.HasValue == true)
         {
             Navigation.NavigateTo($"/invoices/{_creditNote.OriginalInvoiceId}");
         }
         else
         {
-            Navigation.NavigateTo("/credit-notes");
+            Navigation.NavigateTo("/invoices/sales?type=KLAK");
         }
     }
 
