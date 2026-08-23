@@ -16,6 +16,7 @@
 @using NordicBeesERP.Helpers
 @using Microsoft.AspNetCore.Components.Web
 @inject NavigationManager Navigation
+@inject ISnackbar Snackbar
 
 <PageTitle>Sąskaitos peržiūra</PageTitle>
 
@@ -629,8 +630,15 @@
     private async Task HandleConfirm()
     {
         if (_invoice is null) return;
-        await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, InvoiceStatus.Confirmed);
-        await LoadInvoiceAsync();
+        try
+        {
+            await InvoiceService.UpdateInvoiceStatusAsync(_invoice.Id, InvoiceStatus.Confirmed);
+            await LoadInvoiceAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private void HandleBack()
