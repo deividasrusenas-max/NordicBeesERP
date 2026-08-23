@@ -192,34 +192,6 @@
                 </div>
             }
         </MudPaper>
-
-        <!-- Payment Information Section -->
-        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-3"
-                  Style="background:#f8fafc; border-radius:8px;">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Mokėjimo informacija</MudText>
-
-            <!-- Payment Status Cards -->
-            <MudGrid>
-                <MudItem xs="12" sm="4">
-                    <MudPaper Elevation="0" Class="pa-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Kreditinės sąskaitos būsena</MudText>
-                        <MudChip Color="GetPaymentStatusColor()" T="string" Size="Size.Small" Class="mt-1">@GetPaymentStatusText()</MudChip>
-                    </MudPaper>
-                </MudItem>
-                 <MudItem xs="12" sm="4">
-                     <MudPaper Elevation="0" Class="pa-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
-                         <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo sąlygos</MudText>
-                         <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@((_creditNote?.PaymentTermDays ?? 0) > 0 ? $"{_creditNote?.PaymentTermDays} dienų" : "-")</MudText>
-                     </MudPaper>
-                 </MudItem>
-                 <MudItem xs="12" sm="4">
-                     <MudPaper Elevation="0" Class="pa-3" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2; height:100%;">
-                         <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėti iki</MudText>
-                         <MudText Typo="Typo.body1" Class="font-weight-bold mt-1">@((_creditNote?.PaymentDueDate)?.ToString("yyyy-MM-dd") ?? "-")</MudText>
-                     </MudPaper>
-                 </MudItem>
-            </MudGrid>
-        </MudPaper>
     }
     else
     {
@@ -263,30 +235,6 @@
         ["Draft"] = ("Juodraštis", Color.Default),
         ["Printed"] = ("Atspausdinta", Color.Primary)
     };
-
-    private string GetPaymentStatusText()
-    {
-        if (_creditNote is null) return "Neapmokėta";
-
-        var totalAmount = _creditNote.TotalInclVat;
-        var paidAmount = _creditNote.AppliedPayments?.Sum(p => p.Amount) ?? 0m;
-        
-        if (paidAmount >= totalAmount) return "Mokėta";
-        if (paidAmount > 0) return "Išmokėta dalis";
-        return "Neapmokėta";
-    }
-
-    private Color GetPaymentStatusColor()
-    {
-        if (_creditNote is null) return Color.Error;
-
-        var totalAmount = _creditNote.TotalInclVat;
-        var paidAmount = _creditNote.AppliedPayments?.Sum(p => p.Amount) ?? 0m;
-        
-        if (paidAmount >= totalAmount) return Color.Success;
-        if (paidAmount > 0) return Color.Secondary;
-        return Color.Warning;
-    }
 
     private void HandleBack()
     {
