@@ -157,12 +157,12 @@ The dev database is on a REMOTE host over Tailscale, NOT localhost:
 
 - At the end of EVERY task, write your complete final report (files changed, exact diff, build output, verification/test results, DDL statements requiring manual execution, anything the human needs to act on) to a file at:
 
-      .agent-reports/<short-task-name>-<YYYYMMDD-HHMM>.md
+      .opencode/reports/<short-task-name>-<YYYYMMDD-HHMM>.md
 
-- This directory (`.agent-reports/`) IS writable by agents. It exists specifically for this purpose and is listed in `.gitignore` (ephemeral working notes, never committed). If a write to this path fails, that is a REAL error to report verbatim — it is not a signal to fall back to `.planning/`, print the report inline only, or claim "permission blocked" without first attempting the write and showing the actual error.
-- Do NOT substitute `.planning/`, `.opencode/`, chat-only output, or any other location for this report. `.agent-reports/` is the only correct destination.
+- This directory (`.opencode/reports/`) IS writable by agents. It exists specifically for this purpose and is listed in `.gitignore` (ephemeral working notes, never committed). If a write to this path fails, that is a REAL error to report verbatim — it is not a signal to fall back to `.opencode/planning/`, print the report inline only, or claim "permission blocked" without first attempting the write and showing the actual error.
+- Do NOT substitute `.opencode/planning/`, `.agent-reports/` (this old path was retired 2026-08-22 when the harness was consolidated into `.opencode/` — it no longer exists and no longer has any write permission), chat-only output, or any other location for this report. `.opencode/reports/` is the only correct destination.
 - Printing the report in chat/terminal output only, without also writing the file, is a RULE VIOLATION — the human reads these reports via file access, not by scrolling terminal history.
-- If `.agent-reports/` genuinely does not exist for some reason, create it first (`mkdir -p .agent-reports`) — do not treat its absence as a blocker requiring human intervention.
+- If `.opencode/reports/` genuinely does not exist for some reason, create it first (`mkdir -p .opencode/reports`) — do not treat its absence as a blocker requiring human intervention.
 
 ### Reviewer verdict is MANDATORY — no orchestrator self-approval, ever
 
