@@ -78,12 +78,31 @@ failure — see below). Do NOT re-read a reference file (e.g. a sibling
 page given as a pattern to follow) again "to re-verify" if you already
 read it and nothing has changed since — trust what you already read.
 
-Real incident this rule exists because of (2026-08-22): a coder session
-re-read the same two files (a target file + a reference file) SEVEN times
-across repeated compaction cycles, treating each compaction as a reason
-to "re-verify" everything from scratch instead of trusting its own
-already-recorded progress, and never actually completed a single edit in
-nearly 20 minutes.
+**This applies with EQUAL force immediately after a `Compaction` event,
+not just within an uncompacted context.** If the compacted summary's
+"Completed" section says you already read a file, TREAT THAT AS TRUE and
+act on it — do not re-read it "to be safe" just because the raw content
+is no longer directly visible in your context. The compacted summary IS
+your memory of what you did; re-reading to double-check a summarized fact
+that hasn't changed defeats the entire purpose of compaction and produces
+zero new information. This is especially true for a reference file you
+are not editing (it cannot have changed) and for your OWN target file
+when the only edits since your last read were ones YOU made (you already
+know what you changed — no other process is touching this file
+concurrently).
+
+Real incident this rule exists because of (2026-08-22, recurred
+2026-08-23 in a different task): a coder session re-read the same two
+files (a target file + a reference file) SEVEN times across repeated
+compaction cycles, treating each compaction as a reason to "re-verify"
+everything from scratch instead of trusting its own already-recorded
+progress. In the 2026-08-23 recurrence, this happened even AFTER one
+edit had already succeeded — the pattern was: complete edit 1 of 7 →
+Compaction → re-read both whole files anyway before starting edit 2 →
+Compaction again with zero further progress. If you notice yourself
+about to `read` a file whose content you already have from an earlier
+turn OR from the compacted summary's "Completed" list, that is the exact
+moment to stop and proceed with your next edit instead.
 
 If an `edit` call fails with "could not find oldString" or similar:
 do NOT re-read the entire file again. Read ONLY the narrow line range
