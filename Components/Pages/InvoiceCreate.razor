@@ -534,6 +534,7 @@
         }
 
         _selectedCustomer = customer;
+        _clientSearchText = FormatCustomerDisplay(customer);
         _selectedCustomerId = customer.Id;
 
         if (!_dueDateManuallyEdited)
@@ -726,14 +727,14 @@
         var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat <= 0);
         if (badPriceLine is not null)
         {
-            _errorMessage = $"Eilutę '{badPriceLine.Description}' tunga nukulę i negambēk kiyu.";
+            _errorMessage = $"Eilutė '{badPriceLine.Description}' turi nulinę arba neigiamą kainą. Patikrinkite kainą prieš išsaugant.";
             return false;
         }
 
         // Reject an invoice that has lines but an overall zero total (data-integrity guard for the confirm crash)
         if (_lines.Any(l => !string.IsNullOrEmpty(l.Description)) && _totalInclVat == 0)
         {
-            _errorMessage = "Kasuski bend be ma ygi nujus i norvaty us. Typty саus račars kaią siog.";
+            _errorMessage = "Sąskaitos bendra suma lygi nuliui, nors eilučių yra. Patikrinkite kainas ir kiekius prieš išsaugant.";
             return false;
         }
 
