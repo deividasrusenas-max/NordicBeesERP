@@ -17,56 +17,76 @@
 
 <PageTitle>Redaguoti kreditinę sąskaitą</PageTitle>
 
-<!-- HEADER (sticky, outside MudContainer) -->
-<div style="position:sticky; top:64px; z-index:100; background:#ffffff; padding:12px 0; border-bottom:1px solid #e2e8f0;">
-    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="d-flex justify-space-between align-center">
-        <div>
-            <MudText Typo="Typo.h5" Style="font-weight:600">@_creditNoteNumber</MudText>
-            <MudText Typo="Typo.body1" Color="Color.Secondary">Redaguoti kreditinę sąskaitą</MudText>
-        </div>
-        <div class="d-flex gap-2">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveCreditNote">Išsaugoti</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">Išsaugoti + PDF</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
-        </div>
-    </MudContainer>
-</div>
+<MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-4">
+    <!-- HEADER SECTION -->
+    <div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+        <div class="d-flex flex-column gap-3">
+            <!-- One line: credit note number (Typo.h5, Color.Primary, font-weight:600) -->
+            <div class="d-flex align-center gap-2 flex-wrap">
+                <MudText Typo="Typo.h5" Style="font-weight:600" Color="Color.Primary">@_creditNoteNumber</MudText>
+            </div>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+            <!-- Second line: counterparty name (Typo.body1, Color.Secondary) -->
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Klientas: @_selectedClientDisplay</MudText>
 
-    <!-- PAGRINDINĖ INFORMACIJA section -->
-    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
-        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
-        <MudGrid>
-            <MudItem xs="12" sm="3">
-                <MudTextField T="string" Label="Kreditinės sąskaitos numeris *" @bind-Value="_creditNoteNumber" 
-                              ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            </MudItem>
-            <MudItem xs="12" sm="3">
-                <MudDatePicker Label="Data *" @bind-Date="_creditDate" Editable="true" DateFormat="yyyy-MM-dd"
-                               Variant="Variant.Outlined" Required="true" Margin="Margin.Dense" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay" 
-                              Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense"
-                              Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
-                              OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" />
-            </MudItem>
-            <MudItem xs="12" sm="3">
-                <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined" Margin="Margin.Dense">
-                    <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("EN")">EN</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="3">
-                <MudTextField T="string" Label="PVM" @bind-Value="_reverseChargeDisplay" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
+            <!-- Action buttons row -->
+            <div class="d-flex flex-wrap gap-2 align-center">
+                <MudButton Variant="Variant.Filled" Color="Color.Success" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveCreditNote">Išsaugoti</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="@SaveAndGeneratePdf">Išsaugoti + PDF</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO CARDS -->
+    <MudGrid Class="mt-4" Spacing="3" Style="align-items:stretch;">
+        <!-- Left card: main info / counterparty -->
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="0" Class="pa-4"
+                      Style="background:#eff6ff; border-radius:8px; border-left:4px solid #2563eb; padding:16px; height:100%;">
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3" Style="font-weight:600">Pagrindinė informacija</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12">
+                        <MudTextField T="string" Label="Klientas *" @bind-Value="_selectedClientDisplay"
+                                      Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense"
+                                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                      OnAdornmentClick="@OpenClientDialog" @ondblclick="@OpenClientDialog" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudDatePicker Label="Data *" @bind-Date="_creditDate" Editable="true" DateFormat="yyyy-MM-dd"
+                                       Variant="Variant.Outlined" Required="true" Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Right card: credit note details -->
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="0" Class="pa-4"
+                      Style="background:#f5f3ff; border-radius:8px; border-left:4px solid #7c3aed; padding:16px; height:100%;">
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-3" Style="font-weight:600">Kreditinės sąskaitos duomenys</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12">
+                        <MudTextField T="string" Label="Kreditinės sąskaitos numeris *" @bind-Value="_creditNoteNumber"
+                                      ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("EN")">EN</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField T="string" Label="PVM" @bind-Value="_reverseChargeDisplay" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 
     <!-- EILUČIŲ LENTELĖ section -->
-    <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
-        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Eilutės</MudText>
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-3 pa-3" Style="background:#f8fafc; border-radius:8px;">
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-1" Style="font-weight:600">Eilutės</MudText>
         <MudTable T="CreditNoteLineInput" Items="@_lines" Hover="true" Dense="true" Bordered="true">
             <HeaderContent>
                 <MudTh Style="width: 5%;">Nr.</MudTh>
@@ -122,28 +142,27 @@
                     StartIcon="@Icons.Material.Filled.Add" OnClick="@AddLine">
             Pridėti eilutę
         </MudButton>
-    </MudPaper>
 
-    <!-- TOTALS section -->
-    <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-        <div style="background:#eff6ff; border-radius:8px; padding:16px; min-width:280px;">
-            <div class="d-flex justify-space-between gap-4">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Suma be PVM:</MudText>
-                <MudText Typo="Typo.body2">@_totalExclVat.ToString("N2") €</MudText>
-            </div>
-            <div class="d-flex justify-space-between gap-4 mt-1">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">PVM:</MudText>
-                <MudText Typo="Typo.body2">@_totalVat.ToString("N2") €</MudText>
-            </div>
-            <MudDivider Class="my-2" />
-            <div class="d-flex justify-space-between gap-4">
-                <MudText Typo="Typo.body1" Style="font-weight:600">Iš viso:</MudText>
-                <MudText Typo="Typo.body1" Style="font-weight:600">@_totalInclVat.ToString("N2") €</MudText>
+        <!-- TOTALS section -->
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+            <div style="background:#eff6ff; border-radius:8px; padding:16px; min-width:280px;">
+                <div class="d-flex justify-space-between gap-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Suma be PVM:</MudText>
+                    <MudText Typo="Typo.body2">@_totalExclVat.ToString("N2") €</MudText>
+                </div>
+                <div class="d-flex justify-space-between gap-4 mt-1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">PVM:</MudText>
+                    <MudText Typo="Typo.body2">@_totalVat.ToString("N2") €</MudText>
+                </div>
+                <MudDivider Class="my-2" />
+                <div class="d-flex justify-space-between gap-4">
+                    <MudText Typo="Typo.body1" Style="font-weight:600">Iš viso:</MudText>
+                    <MudText Typo="Typo.body1" Style="font-weight:600">@_totalInclVat.ToString("N2") €</MudText>
+                </div>
             </div>
         </div>
-    </div>
-
-</MudContainer>
+    </MudPaper>
+</MudPaper>
 
 @code {
     private DialogOptions _stdOpt = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
