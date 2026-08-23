@@ -11,29 +11,25 @@
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
 @inject IRawMaterialTypeService RawMaterialTypeService
+@inject ISnackbar Snackbar
 
 <PageTitle>Redaguoti sąskaitą</PageTitle>
 
-<!-- STICKY HEADER - outside MudContainer for proper positioning -->
-<div style="position:sticky; top:64px; z-index:100; background:#ffffff; padding:12px 24px; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
-    <div class="d-flex justify-space-between align-center" style="max-width:1600px; margin:0 auto;">
+<!-- HEADER (sticky, outside MudContainer) -->
+<div style="position:sticky; top:64px; z-index:100; background:#ffffff; padding:12px 0; border-bottom:1px solid #e2e8f0;">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="d-flex justify-space-between align-center">
         <div>
-            <MudText Typo="Typo.h5">@_invoiceNumber</MudText>
-            <MudText Typo="Typo.body1" Color="Color.Secondary">@(_isPurchase ? "Redaguoti pirkimo sąskaitą" : "Redaguoti pardavimo sąskaitą")</MudText>
+            <MudText Typo="Typo.h5" Style="font-weight:600">@_invoiceNumber</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">@(_isPurchase ? "Redaguoti pirkimo sąskaitą (ULAK)" : "Redaguoti pardavimo sąskaitą (LAK)")</MudText>
         </div>
         <div class="d-flex gap-2">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SaveInvoice">Išsaugoti</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
         </div>
-    </div>
+    </MudContainer>
 </div>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    @if (!string.IsNullOrEmpty(_errorMessage))
-    {
-        <MudAlert Severity="Severity.Error" Class="mb-3">@(_errorMessage ?? "")</MudAlert>
-    }
-
     <!-- WARNING BANNER FOR CONFIRMED/PAID INVOICES -->
     @if (_status == InvoiceStatus.Confirmed || _status == InvoiceStatus.Paid)
     {
@@ -49,8 +45,8 @@
     }
 
     <!-- PAGRINDINĖ INFORMACIJA -->
-    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
     <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">Pagrindinė informacija</MudText>
         <MudGrid>
             <MudItem xs="12" sm="3">
                 <MudTextField T="string" Label="Sąskaitos numeris *" @bind-Value="_invoiceNumber" 
@@ -98,9 +94,9 @@
     </MudPaper>
 
     <!-- PREKĖS -->
-    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">@(_isPurchase ? "Žaliavos" : "Prekės")</MudText>
     <MudPaper Elevation="0" Style="background:#f8fafc; border-radius:8px; padding:16px" Class="mb-4">
-            <MudTable T="InvoiceLineInput" Items="@_lines" Hover="true" Dense="true" Bordered="true">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-2">@(_isPurchase ? "Žaliavos" : "Prekės")</MudText>
+        <MudTable T="InvoiceLineInput" Items="@_lines" Hover="true" Dense="true" Bordered="true">
                 <HeaderContent>
                     <MudTh Style="width: 5%;">Nr.</MudTh>
                     <MudTh Style="width: 35%;">@(_isPurchase ? "Žaliava *" : "Prekė *")</MudTh>
@@ -119,16 +115,11 @@
                                       Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
                                       OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })" />
                     </MudTd>
-                     <MudTd DataLabel="Kiekis">
-                         <MudNumericField T="decimal" 
-                             Value="@line.Quantity" 
-                             Variant="Variant.Outlined"
-                             Format="G29"
-                             Culture="@(new System.Globalization.CultureInfo("lt-LT"))"
-                             HideSpinButtons="true"
-                             Margin="Margin.Dense" Min="0" Step="0.001M"
-                             ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
-                     </MudTd>
+                      <MudTd DataLabel="Kiekis">
+                          <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Min="0" Step="0.001M"
+                              ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
+                      </MudTd>
                     <MudTd DataLabel="Vnt.">
                         <MudTextField T="string" @bind-Value="line.Unit" Variant="Variant.Outlined" 
                                       Margin="Margin.Dense" ReadOnly="true" />
@@ -214,7 +205,6 @@
     private decimal _totalVat = 0;
     private decimal _totalInclVat = 0;
     
-    private string? _errorMessage;
     private bool _isPurchase = false;
     private string _notes = string.Empty;
 
@@ -230,7 +220,7 @@
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Klaida kraunant duomenis: {ex.Message}";
+            Snackbar.Add($"Klaida kraunant duomenis: {ex.Message}", Severity.Error);
         }
     }
 
@@ -466,17 +456,16 @@
     {
         if (_selectedCustomerId == 0)
         {
-            _errorMessage = "Prašome pasirinkti klientą!";
+            Snackbar.Add("Prašome pasirinkti klientą!", Severity.Error);
             return false;
         }
         
         if (!_lines.Any(l => !string.IsNullOrEmpty(l.Description)))
         {
-            _errorMessage = "Prašome pridėti bent vieną prekę!";
+            Snackbar.Add(_isPurchase ? "Prašome pridėti bent vieną žaliavą!" : "Prašome pridėti bent vieną prekę!", Severity.Error);
             return false;
         }
         
-        _errorMessage = null;
         return true;
     }
 
