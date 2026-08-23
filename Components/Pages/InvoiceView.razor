@@ -20,9 +20,9 @@
 
 <PageTitle>Sąskaitos peržiūra</PageTitle>
 
-<MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-4">
-    <!-- HEADER SECTION -->
-    <div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+<!-- HEADER (sticky, full-bleed background bar; only its CONTENT is width-constrained) -->
+<div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge">
         <div class="d-flex flex-column gap-3">
         <!-- One line: invoice number (Typo.h5, Color.Primary, font-weight:600) + status chip inline -->
         <div class="d-flex align-center gap-2 flex-wrap">
@@ -82,8 +82,10 @@
             }
         </div>
         </div>
-    </div>
+    </MudContainer>
+</div>
 
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     @if (_invoice is not null)
     {
         <!-- INFO CARDS -->
@@ -412,7 +414,7 @@
             </MudButton>
         </div>
     }
-</MudPaper>
+</MudContainer>
 
 @code {
     [Parameter]
