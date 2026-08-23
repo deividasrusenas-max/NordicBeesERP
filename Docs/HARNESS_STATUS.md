@@ -10,18 +10,51 @@ everything from scratch or performing worse than this session did.)
 The harness was consolidated from a messy 4-tool-era setup (Kilo Code +
 Cline + OpenCode + agent-guardrails, scattered across `.kilo/`,
 `.clinerules/`, `.agent-guardrails/`) into a single, git-tracked
-`.opencode/` structure. It is now **v1: stable and in active use**. A
-full backup was PLANNED via git tag/branch but never confirmed executed
-(see §7 — still needs verification). We are CURRENTLY in a **deliberate
-pause**: collecting baseline performance statistics on the OLD harness
-(coder+fixer as separate subagents, orchestrator on
-openrouter/nemotron-3-ultra free tier, `coder` model's KV cache CONFIRMED
-WORKING at ctx-size 131072/128K as of 2026-08-23 — see §11) BEFORE
-building a NEW harness architecture (merging coder+fixer into the
-orchestrator's own session, Codex/Claude-Code style, §8). **Do not start
-the new-harness rewrite until the user explicitly says the baseline
-collection period is over.** See §11 for everything that happened in the
-second working day (2026-08-23) on top of this original doc.
+`.opencode/` structure. It is now **v1: stable and in active use**, and
+has been through TWO further rounds of incident-driven hardening since
+(§11, §12). A full backup was PLANNED via git tag/branch but **still not
+confirmed executed** as of this writing (see §7 — check this FIRST on
+resume). We are CURRENTLY in a **deliberate pause**: collecting baseline
+performance statistics on the OLD harness (coder+fixer as separate
+subagents) BEFORE building a NEW harness architecture (merging
+coder+fixer into the orchestrator's own session, Codex/Claude-Code
+style, §8). **Do not start the new-harness rewrite until the user
+explicitly says the baseline collection period is over.**
+
+**Current confirmed-working GPU/context state (2026-08-24, see §12 for
+the full story)**: `coder` runs at `--ctx-size 262144` (256K) with
+`--cache-type-k q4_0 --cache-type-v q4_0` — this is a real, working
+config (confirmed via `llama-server`'s own prefill logs showing normal
+~1500-1600 tok/s processing), NOT just the 128K/q8_0 value from
+2026-08-23 which has since been superseded. **A critical, high-impact
+bug was found and fixed today**: `opencode.json`'s declared
+`coder.limit.context` was STILL hardcoded at the stale `65536` value
+this whole time, completely independent of whatever the real
+`llama-server` ctx-size actually was — meaning OpenCode had been
+triggering `Compaction` against the WRONG, much smaller limit
+ALL DAY YESTERDAY AND TODAY, regardless of any server-side context
+increase. Fixed to `262144` today (§12) — this may be the single highest-
+impact fix in the whole session, since it was silently capping every
+session's effective context far below what the hardware could actually
+handle.
+
+**Also as of today**: extensive further research into eval-driven
+harness development has been done and written to a SEPARATE file,
+`Docs/QUALITY_PLAN.md` (§12 links it) — read that file too when
+resuming, it has detailed, first-party methodology from Anthropic's own
+engineering blog plus current academic literature, and is NOT
+duplicated in full here.
+
+**Recommendation for whoever resumes**: this particular chat session
+(where most of §11-§13 happened) has grown extremely long, and every
+further message in it re-sends the entire day's history as context —
+genuinely expensive. For focused, mechanical harness/plugin EDITING work
+going forward (e.g. implementing the `n_toolcalls` tracking gap in
+§12), use **Claude Code** (terminal or desktop app) in a fresh, narrow
+session instead of continuing here — this was explicitly discussed and
+agreed with the user today (§12). Reserve long chat sessions like this
+one for research, planning, and multi-step diagnosis, not repetitive
+plugin/prompt editing.
 
 ---
 
@@ -540,3 +573,240 @@ prematurely", watch `nvidia-smi` during load, confirm via
 **Open item carried forward, still not done**: the git tag/branch
 backup from §7 is still unconfirmed — check `git tag -l` and
 `git branch -a` before assuming `harness-v1-2026-08-22` exists.
+
+---
+
+## 12. Day 3 (2026-08-24) — a very long research-and-hardening session
+
+### Two more scope-misrouting loop incidents, both fixed with a universal pattern
+
+1. A `reviewer` REJECTED finding (duplicate `@code` blocks in
+   `CreditNoteEdit.razor`) was routed by `orchestrator` DIRECTLY to
+   `fixer` with instructions to "refactor"/"consolidate" — this
+   violates an EXISTING rule (REJECTED must go back through `coder`,
+   never straight to `fixer`). `fixer`'s own steps have no refactoring
+   step, so it looped `git status`/`git log` 10 times with no valid next
+   action, never refusing.
+2. Separately, after a task's real work was already fully complete
+   (build passed, commit made, version bumped, guardrails passed),
+   `orchestrator` asked `fixer` to "generate and save the final
+   deployment report" as a file — file-report-writing is
+   `orchestrator`'s own job per `AGENTS.md`, not `fixer`'s. `fixer`
+   looped `git log --oneline -5` 12+ times, same unchanging info every
+   time, because "write a report file" was never one of its 10 defined
+   steps.
+
+**Root fix, deliberately made MINIMAL and ADDITIVE** (the user
+explicitly warned against another destabilizing rewrite like the one
+that caused problems previously — see §10): added a short, explicit
+"GENERAL FALLBACK" block to `coder.md`, `fixer.md`, `verifier.md` (each
+already had the SPECIFIC incident-driven rules; this generalizes the
+principle: "if a task doesn't match my defined scope, say so plainly and
+STOP — never loop re-verifying facts you already have hoping a path
+appears"). `reviewer.md`/`visual-qa.md`/`design-review.md` were checked
+and already had adequate structural protection (mandatory verdict
+requirement, single-shot design) — left unchanged. `orchestrator.md`
+got a NEW pre-delegation scope check: before every delegation, confirm
+the specific ask actually matches the target agent's defined job —
+catches exactly the two incidents above at the SOURCE, before wasting a
+round-trip.
+
+### A genuinely serious, different-in-kind incident: hallucinated garbled text in production error messages
+
+From a prior session's "zero-price/zero-total" validation task,
+`coder` had written syntactically-valid but semantically GARBLED,
+non-language text into actual `_errorMessage` string literals in
+`InvoiceCreate.razor` — e.g. `"Eilutę '{...}' tunga nukulė i negambēk
+kiyu."` — not real Lithuanian, not English, pure hallucinated word-salad.
+`reviewer` APPROVED this diff anyway (it was already committed and
+LIVE, would show this garbled text to real users on validation failure)
+— this is objectively, trivially checkable (unlike prior subjective
+review misses) and reviewer still missed it, which is more concerning
+than the earlier fabricated-citation incident.
+
+**Immediate action**: a separate fix task was started by the user
+(outside this harness-focused conversation) to correct the actual
+garbled strings — check `git log` for a subsequent commit addressing
+`InvoiceCreate.razor`'s `ValidateInvoice()` error messages; if none
+exists yet, this is still an ACTIVE, LIVE bug in production-facing text
+and should be prioritized.
+
+**Harness fix**: added an explicit check to `reviewer.md`'s Mode A
+checklist — item (e): any new/changed user-facing string literal must
+be coherent, real language text; REJECTED immediately if not, "no
+exceptions, this is not a judgment call" (deliberately worded to NOT be
+a soft/subjective check like the duplicate-logic one, since this
+specific failure mode is objectively detectable and should never again
+slip past a review).
+
+**Open hypothesis, NOT confirmed**: this incident happened the SAME DAY
+the `coder` model's KV cache was switched to `q4_0` quantization (see
+below). Benchmarks found earlier showed near-zero degradation for this
+exact model family (`Qwen3.8-27B`, 3/500 answers changed) — but that
+benchmark was for factual QA-style correctness, not necessarily for
+generating clean natural-language string content under complex coding-
+task conditions. **If garbled/hallucinated text appears again in a
+future session, treat this as real evidence and revert `coder`'s KV
+cache from `q4_0` back to `q8_0`**, accepting the smaller context in
+exchange for correctness — this has NOT recurred yet as of this
+writing, so it remains an open, unconfirmed hypothesis, not a decided
+action.
+
+### The GPU/context saga, continued and mostly resolved
+
+Starting state this morning: `coder` running at the 128K/q8_0 value
+confirmed working in §11, but with KV cache manually increased further
+at some point without being carefully validated.
+
+1. **`llama-swap` crashed** — `coder` failed to load with
+   `"upstream command exited prematurely"`, confirmed via
+   `journalctl -u llama-swap`: clean operation until ~11:50, then
+   repeated failures specifically for `coder`. Root cause: this
+   morning's further manual KV-cache increase (made directly in
+   `/home/asus/AI/llama-swap-config.yaml`, OUTSIDE git, per usual for
+   this kind of GPU tuning) pushed VRAM past a safe margin.
+2. **Recovery attempted at 128K again** — confirmed working via
+   `curl http://localhost:9292/v1/models` reaching `"status":"loaded"`.
+3. **User then deliberately tried 256K (`--ctx-size 262144`)** — this
+   loaded but logged a real warning during compute-buffer allocation:
+   `cudaMalloc failed: out of memory` on GPU1, followed by an automatic
+   fallback (`retrying without pipeline parallelism`) that DID succeed.
+   `nvidia-smi` showed GPU1 at `23318MiB / 24576MiB` — only ~1.2GB free,
+   uncomfortably tight margin, not a confident safe state.
+4. **User independently also switched `--cache-type-k`/`-v` to `q4_0`**
+   (halves KV cache memory vs the prior `q8_0`) to give real headroom at
+   256K. **This combination (256K + q4_0) is CONFIRMED WORKING** — a
+   real `coder` invocation processed a genuine prompt with normal
+   prefill throughput (~1500-1600 tokens/sec, matching earlier healthy
+   baselines) and no further OOM warnings reported.
+5. **THE CRITICAL FIND**: `opencode.json`'s own
+   `provider.llama-swap.models.coder.limit.context` field was STILL
+   `65536` this entire time — a value OpenCode itself uses to decide
+   when to trigger `Compaction`, completely independent of whatever the
+   real `llama-server` could actually handle. This means from
+   2026-08-23 through most of 2026-08-24, EVERY context increase made
+   on the server side was silently ineffective from OpenCode's own
+   perspective — sessions were still being compacted against the
+   stale, much-smaller 65536 ceiling regardless. **Fixed today**: set to
+   `262144` to match the real current server config.
+6. **Also enabled**: `"compaction": {"auto": true, "prune": true,
+   "reserved": 10000}` at the top level of `opencode.json` (previously
+   `prune` was absent/false — OpenCode defaults to `prune: false`).
+   Per OpenCode's own architecture (confirmed via official docs/source
+   description), `prune` performs cheap, non-LLM tool-output hiding
+   (timestamp-based, not physical deletion) BEFORE falling back to the
+   expensive, lossy LLM-summarization `Compaction` — should reduce how
+   often the expensive/signal-destroying summarization path triggers at
+   all.
+
+**Current state, confirmed working as of this writing**: `coder` at
+256K context, `q4_0` KV cache, `opencode.json` declaring the matching
+`262144` limit, `prune: true` enabled. **NOT yet re-tested across a full
+multi-file task** to confirm compaction frequency actually dropped in
+practice — this is the natural next thing to observe when resuming.
+
+**Still NOT done, explicitly deferred by the user earlier**: no
+decision yet on the 4-6 GPU expansion plan from §4/§8 (merging
+coder+fixer, giving the merged role 4 GPUs) — that remains paused behind
+the baseline-stats collection period, unaffected by today's q4_0/256K
+work (which was a tuning improvement to the EXISTING 2-GPU `coder`
+allocation, not the bigger architectural merge).
+
+### The `.agent-reports/` vs `.opencode/reports/` mystery — solved, and it was Claude's own fault
+
+A recurring, several-times-repeated confusion this session: agents kept
+citing a stale `.agent-reports/` path (the pre-consolidation location,
+deleted back on 2026-08-22) instead of `.opencode/reports/`. After
+`AGENTS.md` was already confirmed fixed (§11), this KEPT recurring.
+Root cause, finally identified: **the actual TASK PROMPTS being pasted
+to the orchestrator were themselves written by Claude (this assistant,
+in earlier turns of this same session)**, and those prompt-writing turns
+kept including a stale `"REPORTING: ... .agent-reports/..."` line out
+of habit, predating the consolidation. This was NOT a harness bug at
+all — every `.opencode/` config/prompt file was already correct. Fixed
+going forward: this assistant now uses `.opencode/reports/` when writing
+any future task-prompt "REPORTING:" section. If a NEW session sees this
+confusion resurface, check whether it's coming from a freshly-written
+task prompt (a Claude mistake, fixable by just writing it correctly next
+time) rather than assuming it's a harness config issue again.
+
+### Deep research phase — eval-driven harness development
+
+Extensive research was done (see the full detail in the separate file
+`Docs/QUALITY_PLAN.md`, NOT duplicated here) into how to move beyond
+purely reactive prompt-patching. Headline findings, condensed:
+
+- **Anthropic's own Claude Code team had a real, documented incident**
+  (public postmortem, April 2026): shipped a system-prompt change that
+  passed their internal eval suite, found a 3% regression later with a
+  BROADER eval set, had to revert, and committed to running "a broad
+  suite of per-model evals for every system prompt change" going
+  forward. This directly validates (and tempers expectations about) the
+  eval-suite direction — even Anthropic's own team gets this wrong
+  sometimes; it's an ongoing discipline, not a one-time fix.
+- **Anthropic's own official methodology post** ("Demystifying evals for
+  AI agents", Jan 2026) provides detailed, directly-actionable guidance:
+  exact terminology (task/trial/grader/transcript/outcome), three
+  grader types (code-based/model-based/human, prefer code-based where
+  possible), capability-vs-regression eval distinction, and an 8-step
+  practical roadmap starting from just 20-50 tasks drawn from REAL past
+  failures — this project's `Docs/BUGLOG.md` (~15 entries) is EXACTLY
+  this raw material already.
+- Confirmed this project's own reactive-then-systematize pattern
+  (BUGLOG → Error class/Status → escalation) matches Claude Code's own
+  documented evolution: "Claude Code started with fast iteration...
+  Later, we added evals — first for narrow areas... then more complex
+  behaviors" — i.e. today's frustration ("we keep patching reactively")
+  is a NORMAL, expected stage, not a sign of doing it wrong; the plan
+  (`QUALITY_PLAN.md`) is the documented next stage.
+- Existing tooling found, not yet adopted: `promptfoo` (has direct
+  OpenCode SDK support), `Judge Reliability Harness` (arxiv 2603.05399,
+  directly relevant to testing whether `reviewer` reliably catches
+  known-bad cases like garbled text or fabricated findings).
+- Academic taxonomy found, not yet applied: `AgentAtlas` (arxiv
+  2605.20530) formalizes a six-state agent control-decision model
+  (Act/Ask/Refuse/Stop/Confirm/Recover) — a more rigorous framework than
+  today's ad-hoc "GENERAL FALLBACK" prose; worth revisiting the
+  fallback rules through this lens later.
+
+**`Docs/QUALITY_PLAN.md` created today** with the full 3-phase plan
+(proactive BUGLOG risk audit → build mechanical checks for the highest-
+priority gaps → eventual eval suite) plus a dedicated §7 documenting
+concrete gaps in the existing `nordicbees-quality-monitor.ts` stats
+plugin, found by comparing it against Anthropic's own tracked-metrics
+example:
+
+1. **`n_toolcalls` is completely missing** — the plugin only observes
+   `task`-tool start/end, with zero visibility into how many internal
+   `read`/`edit`/`grep` calls happened inside a single `coder`/`fixer`
+   delegation. This is EXACTLY the signal that would have flagged
+   today's (and yesterday's) repeated-file-read loop incidents
+   automatically and in real time, rather than only via manual
+   transcript reading or after-the-fact interruption detection.
+2. **`prompt_chars` is a rough character-count proxy, not real tokens**
+   — worth checking whether the OpenCode plugin hook exposes the raw
+   API `usage: {prompt_tokens, completion_tokens}` object, and using
+   that instead if so.
+3. **Prefill vs. decode time are not separated** — `llama-server`'s own
+   logs already report prefill throughput precisely; cross-referencing
+   this with the plugin's wall-clock duration would let a future session
+   directly test whether `Compaction` events cause expensive
+   prefix-cache-busting re-prefill (a real, research-backed concern
+   found today — LMCache paper reported prefix-cache-hit-rate collapsing
+   from ~85% to ~45% under context truncation in one measured case) with
+   real numbers, not just inference from papers.
+
+None of these three are implemented yet — recommended path (per the
+user's own agreement today) is to do this focused editing work via
+**Claude Code**, not a continuation of this long chat session.
+
+### Statistics collection status
+
+`task-stats.jsonl` (see §5) continues accumulating correctly —
+`duration_sec` and the disk-based interruption detection are both
+confirmed working from yesterday's fixes. **`guardrail_score` extraction
+was fixed yesterday but its correctness was never re-confirmed with a
+fresh post-fix `fixer` call** — this is still an open item, same as
+noted in §9, not yet resolved today either. Check the tail of
+`task-stats.jsonl` for a recent `fixer` entry with a non-null
+`guardrail_score` to confirm.
