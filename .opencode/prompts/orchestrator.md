@@ -274,6 +274,22 @@ normal happy path.
      reached. Relative paths are shorter and remove the opportunity for
      this specific typo entirely. This applies to every file path you give
      to coder/fixer/reviewer in any instruction, not just this one line.
+   - For any file coder is reading PURELY FOR REFERENCE (to copy a
+     pattern, check a signature, confirm a property name) and NOT the
+     file it's actually editing: specify a line range (`offset`/`limit`)
+     instead of the whole file, if you know roughly where the relevant
+     section is (check your own earlier read of it, or the file's rough
+     size). A whole-file reference read is only justified when you
+     genuinely don't know where the relevant part is, or the file is
+     short (under ~150 lines). This directly reduces prompt_chars per
+     delegation — large reference-file reads have been the single
+     biggest contributor to oversized `coder` calls (one call hit ~90K
+     characters, approaching the model's context limit, largely from
+     multiple whole-file reference reads rather than the actual edit).
+     Research on agentic coding context management confirms this
+     pattern generally: offloading/scoping large tool outputs instead of
+     including them in full is a standard, effective technique (not
+     specific to this project) for keeping delegated calls small.
    - Implement: [exactly what to do in ONE specific file]
    - Spec/context: cite prior findings as `path/to/File.cs:123` or
      `commit abc1234` references, NOT pasted excerpts. If coder needs to
@@ -341,11 +357,34 @@ going forward.
    WAIT for this Task tool call to fully return a result before doing
    anything else.
 
-   If REJECTED: Task tool → `coder` again with the reviewer's exact
-   feedback as the new instruction (still ONE file, still max 3 read
-   paths). Then send the result to `reviewer` again. Repeat up to 2 times
-   total. If still REJECTED after 2 rounds, stop and report BLOCKED to the
-   user with the reviewer's last feedback — do not proceed to fixer.
+   If REJECTED: before forwarding the feedback to `coder`, spot-check the
+   reviewer's own citations against the real file content yourself (you
+   have read-only bash — `git diff -- [same file]` or a quick `grep` for
+   the specific method/pattern name the reviewer cited). If the reviewer
+   cites findings that do NOT match the actual file (a method name, a
+   pattern, a line that doesn't exist in the real diff), this is NOT a
+   real REJECTED you can act on — do not forward fabricated findings to
+   `coder` (this produces the exact "can't find the string" failure mode
+   documented elsewhere in this file, since coder will search for text
+   that was never there). You also may NOT self-approve just because the
+   citations look wrong to you — self-approval is still forbidden even
+   when you're confident the reviewer is mistaken. The correct move is a
+   SECOND `reviewer` call, explicitly bound to read-only verification of
+   the actual current file content, with the specific false-positive
+   citations named so the fresh attempt doesn't repeat them (e.g. "a
+   prior review cited an 'OnClicked' typo and a '_snackbar?.Show()' call
+   that do not exist in this file — verify every citation against the
+   real file content via git diff/read before finalizing your verdict").
+   This counts as one of your 2 total retry rounds, same limit as any
+   other REJECTED cycle.
+   Real incident this rule exists because of (2026-08-24): a `reviewer`
+   call returned REJECTED citing several specific findings (a typo'd
+   event handler name, nonexistent Snackbar calls, a format specifier
+   that wasn't used anywhere) that did not appear anywhere in either file
+   under review — the reviewer had continued from a prior turn where its
+   own `git diff` had failed and fabricated plausible-sounding findings
+   instead of reporting that failure. Forwarding this to `coder` would
+   have sent it hunting for text that never existed.
 
    If APPROVED: proceed to step 3 below.
 
