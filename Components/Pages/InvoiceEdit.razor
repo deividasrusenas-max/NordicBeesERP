@@ -481,10 +481,25 @@
         
         if (!_lines.Any(l => !string.IsNullOrEmpty(l.Description)))
         {
-            Snackbar.Add(_isPurchase ? "Prašome pridėti bent vieną žaliavą!" : "Prašome pridėti bent vieną prekę!", Severity.Error);
+            Snackbar.Add(_isPurchase ? "Prašome pridėti bent vieną žaliavā!" : "Prašome pridėti bent vieną prekę!", Severity.Error);
             return false;
         }
-        
+
+        // Reject a line with a non-empty description but a non-positive price (the most common zero-total cause)
+        var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat <= 0);
+        if (badPriceLine is not null)
+        {
+            Snackbar.Add($"Eilutė '{badPriceLine.Description}' turi nulinīnę arba neigiamā kainā.", Severity.Error);
+            return false;
+        }
+
+        // Reject an invoice that has lines but an overall zero total (data-integrity guard for the confirm crash)
+        if (_lines.Any(l => !string.IsNullOrEmpty(l.Description)) && _totalInclVat == 0)
+        {
+            Snackbar.Add("Saskaitos gum tramo atžvilgi su lygi nulliui, nhoįs espèces yra. Tyrenkojn säoas ir s u a i kükius prej izasou.", Severity.Error);
+            return false;
+        }
+
         return true;
     }
 
