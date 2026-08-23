@@ -17,9 +17,9 @@
 
 <PageTitle>Redaguoti kreditinę sąskaitą</PageTitle>
 
-<MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-4 pa-4">
-    <!-- HEADER SECTION -->
-    <div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+<!-- HEADER SECTION -->
+<div style="position:sticky; top:0; z-index:100; background:#ffffff; padding:16px 0 12px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge">
         <div class="d-flex flex-column gap-3">
             <!-- One line: credit note number (Typo.h5, Color.Primary, font-weight:600) -->
             <div class="d-flex align-center gap-2 flex-wrap">
@@ -36,8 +36,10 @@
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@Cancel">Atšaukti</MudButton>
             </div>
         </div>
-    </div>
+    </MudContainer>
+</div>
 
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <!-- INFO CARDS -->
     <MudGrid Class="mt-4" Spacing="3" Style="align-items:stretch;">
         <!-- Left card: main info / counterparty -->
@@ -162,7 +164,7 @@
             </div>
         </div>
     </MudPaper>
-</MudPaper>
+</MudContainer>
 
 @code {
     private DialogOptions _stdOpt = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true };
