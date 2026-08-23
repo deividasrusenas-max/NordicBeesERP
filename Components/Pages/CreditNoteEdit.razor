@@ -382,14 +382,14 @@
         var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat <= 0);
         if (badPriceLine is not null)
         {
-            Snackbar.Add($"Kreditinės sąskaitos eilutė '{badPriceLine.Description}' turi nulinę/kieta i neigiyā kainā.", Severity.Error);
+            Snackbar.Add($"Kreditinės sąskaitos eilutė '{badPriceLine.Description}' turi nulinę arba neigiamą kainą. Patikrinkite kainą prieš išsaugant.", Severity.Error);
             return false;
         }
 
         // Reject a credit note that has lines but an overall zero total (data-integrity guard)
         if (_lines.Any(l => !string.IsNullOrEmpty(l.Description)) && _totalInclVat == 0)
         {
-            Snackbar.Add("Kreditinės sąskaitos bendra suma ygi nuiui, norsk eiluńtiu var. Patikrinkite linioruinuoye us.", Severity.Error);
+            Snackbar.Add("Kreditinės sąskaitos bendra suma lygi nuliui, nors eilučių yra. Patikrinkite kainas ir kiekius prieš išsaugant.", Severity.Error);
             return false;
         }
 
