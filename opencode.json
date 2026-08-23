@@ -527,7 +527,7 @@
       "models": {
         "coder": {
           "limit": {
-            "context": 65536,
+            "context": 262144,
             "output": 16384
           },
           "name": "Qwen3.8-27B (Coder, via llama-swap)",
@@ -635,14 +635,19 @@
     }
   },
   "autoupdate": "notify",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  },
   "plugin": [
     [
       "opencode-auto-resume",
       {
-        "chunkTimeoutMs": 60000,
-        "gracePeriodMs": 3000,
+        "chunkTimeoutMs": 180000,
+        "gracePeriodMs": 5000,
         "maxRetries": 3,
-        "subagentWaitMs": 20000
+        "subagentWaitMs": 120000
       }
     ]
   ]
