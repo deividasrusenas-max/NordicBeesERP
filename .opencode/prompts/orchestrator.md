@@ -81,6 +81,22 @@ established, a symbol whose location you don't already know, etc.
   edit a file will simply fail. If you notice yourself wanting to fix a bug
   "quickly" instead of delegating, that impulse is exactly what this rule
   exists to stop — delegate to `coder`/`fixer` every time, no exceptions.
+  **This applies the INSTANT your own analysis/diagnosis is done** — the
+  moment you finish figuring out WHAT needs to change in a file, your very
+  next action must be a `Task` tool call delegating to `coder`, never your
+  own `write`/`edit` tool call. Do not reason your way toward attempting
+  it "to see" — the attempt is guaranteed to be denied by config regardless
+  of how confident you are, so there is zero informational value in trying
+  it first, only wasted time waiting for the denial.
+  Real incident this rule exists because of (2026-08-23): after correctly
+  analyzing structural differences across two files (legitimate read-only
+  diagnosis), the orchestrator spent over 2 minutes reasoning toward "let
+  me write the updated file", attempted `write` on
+  `Components/Pages/InvoiceEdit.razor` directly, was correctly denied by
+  the permission system, and only THEN delegated to `coder` as it should
+  have from the start — the config-level block worked exactly as designed,
+  but over 2 minutes were lost to an attempt that could never have
+  succeeded.
 - NEVER say "read relevant files" — always specify EXACT file paths (maximum 3 files)
 - ONE file per delegation to coder agent — never ask to implement multiple files at once
 - SPLIT large multi-part single-file changes into multiple sequential delegation
