@@ -10,17 +10,65 @@
         </div>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="_lotNumber"
-                      Label="Partijos Nr."
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense" />
-        <MudDatePicker Date="_expiryDate"
-                       DateChanged="@((DateTime? d) => _expiryDate = d)"
-                       Label="Galiojimo data"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                       FirstDayOfWeek="DayOfWeek.Monday"
-                       Format="yyyy-MM-dd" />
+        @if (!BatchesMode)
+        {
+            <MudTextField @bind-Value="_lotNumber"
+                          Label="Partijos Nr."
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+            <MudDatePicker Date="_expiryDate"
+                           DateChanged="@((DateTime? d) => _expiryDate = d)"
+                           Label="Galiojimo data"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           FirstDayOfWeek="DayOfWeek.Monday"
+                           Format="yyyy-MM-dd" />
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">Kiekis: @Line.Quantity</MudText>
+            <MudStack Spacing="4">
+                @foreach (var batch in _batches)
+                {
+                    <MudStack Row="@true" Spacing="8" AlignItems="AlignItems.Center">
+                        <MudTextField @bind-Value="batch.LotNumber"
+                                      Label="Partijos Nr."
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                        <MudDatePicker Date="batch.ExpiryDate"
+                                       DateChanged="@((DateTime? d) => batch.ExpiryDate = d)"
+                                       Label="Galiojimo data"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       FirstDayOfWeek="DayOfWeek.Monday"
+                                       Format="yyyy-MM-dd" />
+                        <MudNumericField T="decimal?"
+                                         @bind-Value="batch.Quantity"
+                                         Label="Kiekis"
+                                         Min="0"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" />
+                        @if (_batches.Count > 1)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           OnClick="@(() => RemoveBatch(batch))" />
+                        }
+                    </MudStack>
+                }
+            </MudStack>
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Text="Pridėti partiją"
+                       Style="text-transform:none"
+                       OnClick="@AddBatch" />
+            @if (BatchesSumMismatch)
+            {
+                <MudAlert Severity="Severity.Warning" Dense>
+                    Suma (@_batches.Sum(b => b.Quantity ?? 0)) nesutampa su eilutės kiekiu (@Line.Quantity). Galite tęsti.
+                </MudAlert>
+            }
+        }
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined"
@@ -30,6 +78,7 @@
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    Style="text-transform:none"
+                   Disabled="@(BatchesMode && BatchesInvalid)"
                    OnClick="@Confirm">Patvirtinti</MudButton>
     </DialogActions>
 </MudDialog>
@@ -37,21 +86,60 @@
 @code {
     [Parameter] public OrderLine Line { get; set; } = default!;
     [Parameter] public string ProductName { get; set; } = string.Empty;
+    [Parameter] public bool BatchesMode { get; set; }
 
     [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
 
     private string _lotNumber = string.Empty;
     private DateTime? _expiryDate;
 
+    private List<BatchEntry> _batches = new();
+
+    protected override void OnInitialized()
+    {
+        if (BatchesMode)
+            _batches.Add(new BatchEntry());
+    }
+
+    private bool BatchesInvalid =>
+        BatchesMode && _batches.Any(b => string.IsNullOrWhiteSpace(b.LotNumber) || b.ExpiryDate is null || b.Quantity <= 0);
+
+    private bool BatchesSumMismatch =>
+        BatchesMode && Math.Abs(_batches.Sum(b => b.Quantity ?? 0) - Line.Quantity) != 0;
+
+    private void AddBatch() => _batches.Add(new BatchEntry());
+
+    private void RemoveBatch(BatchEntry batch)
+    {
+        if (_batches.Count > 1)
+            _batches.Remove(batch);
+    }
+
     private void Cancel() => MudDialog.Cancel();
 
     private void Confirm()
     {
+        if (BatchesMode)
+        {
+            MudDialog.Close(DialogResult.Ok(new PackBatchesResult
+            {
+                Batches = _batches.ToList()
+            }));
+            return;
+        }
+
         MudDialog.Close(DialogResult.Ok(new PackLineResult
         {
             LotNumber = _lotNumber,
             ExpiryDate = _expiryDate
         }));
+    }
+
+    public class BatchEntry
+    {
+        public string LotNumber { get; set; } = "";
+        public DateTime? ExpiryDate { get; set; }
+        public decimal? Quantity { get; set; }
     }
 
     public class PackLineResult
@@ -72,6 +160,27 @@
             if (result == null || result.Canceled)
                 return null;
             return result.Data as PackLineResult;
+        }
+    }
+
+    public class PackBatchesResult
+    {
+        public List<BatchEntry> Batches { get; init; } = new();
+
+        public static async Task<List<BatchEntry>?> ShowBatchesAsync(IDialogService dialogService, OrderLine line, string productName)
+        {
+            var parameters = new DialogParameters<PackLineDialog>
+            {
+                [nameof(Line)] = line,
+                [nameof(ProductName)] = productName,
+                [nameof(BatchesMode)] = true
+            };
+            var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+            var dialog = await dialogService.ShowAsync<PackLineDialog>("Pakuoti eilut&#237;", parameters, options);
+            var result = await dialog.Result;
+            if (result == null || result.Canceled)
+                return null;
+            return (result.Data as PackBatchesResult)?.Batches;
         }
     }
 }
