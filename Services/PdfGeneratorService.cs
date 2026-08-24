@@ -398,6 +398,7 @@ namespace NordicBeesERP.Services
         
         private record LocalizationLabels(
             string DocumentTitle,
+            string CreditNoteTitle,
             string NumberLabel,
             string Seller,
             string Buyer,
@@ -429,6 +430,7 @@ namespace NordicBeesERP.Services
             {
                 return new LocalizationLabels(
                     DocumentTitle: "INVOICE",
+                    CreditNoteTitle: "CREDIT NOTE",
                     NumberLabel: "No.",
                     Seller: isReverseCharge6 ? "Buyer" : "Seller",
                     Buyer: isReverseCharge6 ? "Seller" : "Buyer",
@@ -457,6 +459,7 @@ namespace NordicBeesERP.Services
             
             return new LocalizationLabels(
                 DocumentTitle: "PVM SĄSKAITA FAKTŪRA",
+                CreditNoteTitle: "KREDITINĖ SĄSKAITA FAKTŪRA",
                 NumberLabel: "Nr.",
                 Seller: isReverseCharge6 ? "Pirkėjas" : "Pardavėjas",
                 Buyer: isReverseCharge6 ? "Tiekėjas" : "Pirkėjas",
@@ -758,13 +761,13 @@ namespace NordicBeesERP.Services
                         column.Item().PaddingTop(20).AlignCenter().Column(col =>
                         {
                             // Kreditinės sąskaitos antraštė
-                            col.Item().AlignCenter().Text("KREDITINĖ SĄSKAITA FAKTŪRA").FontSize(14).Bold();
+                            col.Item().AlignCenter().Text(labels.CreditNoteTitle).FontSize(14).Bold();
                             
                             // Kreditinės sąskaitos numeris
                             col.Item().AlignCenter().PaddingTop(5).Text($"{labels.NumberLabel} {creditNote.CreditNoteNumber}").FontSize(14).Bold();
                             
                             // Data
-                            col.Item().AlignCenter().PaddingTop(5).Text(creditNote.CreditDate.ToString("yyyy-MM-dd")).FontSize(11);
+                            col.Item().AlignCenter().PaddingTop(5).Text(creditNote.CreditDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)).FontSize(11);
                         });
                         
                         // Credit invoice info - combined into one line
@@ -773,7 +776,7 @@ namespace NordicBeesERP.Services
                             string invoiceInfoLine;
                             if (creditNote.Language?.ToUpper() == "EN")
                             {
-                                invoiceInfoLine = $"Credit invoice: {originalInvoiceNumber}    Doc. date: {originalInvoiceDate?.ToString("yyyy-MM-dd")}";
+                                invoiceInfoLine = $"Credited invoice: {originalInvoiceNumber}    Doc. date: {originalInvoiceDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}";
                             }
                             else
                             {
