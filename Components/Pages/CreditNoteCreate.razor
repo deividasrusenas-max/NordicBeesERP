@@ -112,8 +112,7 @@
                 </MudTd>
                 <MudTd DataLabel="Kaina (be PVM)">
                     <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined"
-                                      Margin="Margin.Dense" Step="0.01M" Format="0.####"
-                                     ValueChanged="@((decimal val) => { line.PriceExclVat = val; line.IsChecked = true; CalculateLine(line); })" />
+                                      Margin="Margin.Dense" Step="0.01M" Format="0.####" ReadOnly="true" />
                 </MudTd>
                 <MudTd DataLabel="PVM %">
                     <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined"
