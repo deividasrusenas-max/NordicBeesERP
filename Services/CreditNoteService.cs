@@ -568,7 +568,7 @@ namespace NordicBeesERP.Services
 
             // Update basic fields
             creditNote.CreditDate = request.CreditDate;
-            creditNote.OriginalInvoiceId = request.OriginalInvoiceId;
+            creditNote.OriginalInvoiceId = request.OriginalInvoiceId ?? creditNote.OriginalInvoiceId;
             creditNote.AppliedInvoiceId = request.AppliedInvoiceId ?? creditNote.AppliedInvoiceId;
             creditNote.Language = request.Language;
             creditNote.ReverseCharge = request.ReverseCharge;
