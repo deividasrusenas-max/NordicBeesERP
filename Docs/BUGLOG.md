@@ -200,6 +200,76 @@ re-labeling the symptom.
   `n_toolcalls`/cycle-detection circuit-breaker, since it is structurally
   unreachable by any prompt-text fix aimed at the agent's own behavior.
 
+### 2026-08-24 — SYNTHESIS: four loop types same day share one root pattern (plan-without-execution gap)
+- **Symptom**: A fourth loop (same day, after all three fixes above were
+  applied/committed): all preconditions for `git commit` were already
+  satisfied (file staged, BUCKET_GROUP check passed, no blocker), yet
+  `fixer` never executed the `git commit` call itself — each cycle it
+  re-ran `git status`/`git log` (already-confirmed facts), re-wrote an
+  identical "Next Move: 1. Run git commit..." text block, and stopped
+  short of the actual tool call. At least one cycle's output was a bare
+  `(1):` with no content, consistent with generation being cut off at
+  exactly the plan-to-action boundary.
+- **Pattern across all four 2026-08-24 entries** (this one,
+  `post-completion-continue-loop`, `deadlock-constraint-conflict`,
+  `idle-no-input-loop`): three of the four (this entry,
+  `post-completion-continue-loop`, `deadlock-constraint-conflict`) share
+  the SAME underlying shape — the model correctly ARTICULATES the right
+  next step in text (a completion claim, a commit plan, a "Next Move"
+  block) but never CROSSES from describing the action to actually
+  invoking the corresponding tool call. Only `idle-no-input-loop` is a
+  pure harness-level issue independent of this pattern (there the model's
+  text was already correct and final — nothing to "execute").
+- **Root cause hypothesis** (plausible, not yet proven): `fixer.md` grew
+  by pure incident-driven accretion over 2026-08-21 through 2026-08-24
+  (7 separate "Real incident this rule exists because of" narratives,
+  ~290 lines total) without ever being restructured. It now contains
+  FIVE separate, overlapping "what to do when stuck/verifying"
+  mechanisms (Scope Check, General Fallback, Position-Verify-Before-
+  Every-Step, Blocked-Report-Once-and-Stop, and the newest
+  task_complete-tool-call rule) layered on top of each other, including
+  at least one direct tension: "verify your position before EVERY step"
+  (re-check state) vs. "once BLOCKED, do NOT re-check" (stop checking) —
+  the model must correctly classify its own state to know which of these
+  applies, a meta-cognitive judgment call a smaller local model (Qwen3.6-
+  35B-A3B) may not reliably make. The heavy verification/narration
+  emphasis throughout the file may be consuming generation "budget" such
+  that turns end after articulating the right next step but before
+  emitting the actual tool call for it.
+- **Explicitly NOT the fix attempted today**: no fifth prompt-text patch
+  was added live in this session for this pattern — four incidents in
+  one day is itself evidence that incremental prompt patching has
+  stopped being a net positive for `fixer.md` specifically, and may now
+  be part of the problem (longer prompt → more internal rules to weigh
+  → more opportunities for exactly this kind of turn-ending-before-
+  action gap).
+- **Fix direction (deferred to a focused Claude Code session, NOT
+  attempted live)**: restructure `fixer.md` rather than extend it —
+  move all "Real incident..." narratives out of the prompt into
+  `BUGLOG.md`-only (they already live there; the prompt only needs a
+  short reference, not the full paragraph), and collapse the five
+  overlapping stuck-state mechanisms into one single, unambiguous state
+  sequence (e.g. a plain Act → Blocked → Report → Stop chain) so the
+  model has fewer, clearer rules to weigh per turn instead of more,
+  longer ones. Goal: a SHORTER file with fewer but clearer rules, not a
+  longer one with another rule appended.
+- **Guardrail added**: none — this entry is a synthesis/diagnosis, not a
+  fix.
+- **Category**: infra
+- **Error class**: `plan-without-execution-gap` (new tag — covers this
+  entry and, on reflection, describes the shared mechanism in
+  `post-completion-continue-loop` and `deadlock-constraint-conflict`
+  more precisely than either of their original tags; those two entries'
+  tags are left as-is since they were already filed, but a future
+  periodic BUGLOG review should treat all three as one family when
+  evaluating whether the Tier-1 circuit-breaker and/or the `fixer.md`
+  restructure actually resolved them)
+- **Status**: N/A — no guardrail exists; this is now the primary
+  evidence base for BOTH planned fixes (Tier-1 `n_toolcalls` circuit-
+  breaker AND the `fixer.md` structural rewrite), and neither should be
+  considered validated until re-tested against a real `fixer` task after
+  both are in place.
+
 ### 2026-07-17 — Order status stuck on draft after packing
 - **Symptom**: All lines packed, but order header status never advanced.
 - **Root cause**: `MarkReadyForPickupCheckAsync` WHERE clause excluded 'draft' from the allowed source statuses.
