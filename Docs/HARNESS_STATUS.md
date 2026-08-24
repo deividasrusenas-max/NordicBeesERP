@@ -842,3 +842,48 @@ been silently reset/lost from this file at least twice today, likely by
 a concurrent process touching `Docs/` during the loop incidents. Content
 still exists in this chat's history if needed to reconstruct; not
 re-added here to avoid a third conflict during an already unstable day.
+
+## 2026-08-24 (later still) — opencode-auto-resume RE-ENABLED, pinned to
+   known-good v1.1.3
+
+Confirmed via GitHub issues (Mte90/opencode-auto-resume#19, opened TODAY
+by an unrelated user; #18, opened 2026-08-20) that v1.1.10 has an actual
+race-condition bug: `userCancelled` latch only sets if session is still
+"busy" at error-processing time, but `session.status` usually flips to
+"idle" FIRST, so the latch is silently never set — ESC/ genuine
+completion doesn't reliably stop resume prompts. Also: the documented
+"3+ continues in 10 min" hallucination-loop guard only covers the
+stall-watchdog path, NOT the streaming-failure-recovery path — a second,
+separate way the loop-breaker can be bypassed entirely. Separately,
+OpenCode CORE itself has an open bug (anomalyco/opencode#15533, filed
+2026-03-01, still unfixed) where auto-compaction unconditionally injects
+a synthetic "Continue..." even when the assistant naturally ended its
+turn (`finish === "stop""`) — relevant since `opencode.json` has
+`compaction.auto: true`.
+
+`.opencode/node_modules/opencode-auto-resume/package.json` (installed
+2026-07-17, the day the plugin was first added) pins to **v1.1.3** — this
+is the version that ran stably for over a month with zero loop incidents
+until today. The plugin was configured with NO version pin
+(`"opencode-auto-resume"`, no `@version`), so OpenCode's plugin loader
+was silently re-fetching `@latest` from npm on every startup via
+`~/.cache/opencode/packages/` — confirmed a newer cached copy exists
+there than the local `.opencode/node_modules` one. Today's instability
+is most plausibly explained by the cache having picked up something at
+or near v1.1.10 (the exact version named in issue #19) at some point
+between yesterday and today, entirely outside this repo's own commits.
+
+**Action**: re-enabled with an EXPLICIT version pin —
+`"opencode-auto-resume@1.1.3"` in `opencode.json`. Old unpinned config
+still preserved under `_plugin_disabled_2026-08-24` key for reference.
+User instructed to `rm -rf ~/.cache/opencode/packages/opencode-auto-resume*`
+before next restart so the stale newer cache doesn't override the pin.
+
+**Standing rule going forward**: ANY future plugin added to
+`opencode.json` must have an explicit `@version` pin, never bare
+`"plugin-name"`. An unpinned `latest`-tag dependency in this harness is a
+standing risk on its own, independent of any specific plugin's quality —
+this is the second time today an unpinned-version assumption caused a
+real incident (see also the GPU/context config discussion in §13.1's
+§8.1 infra-noise section, a related but distinct "config drifted
+unnoticed" class of problem).
