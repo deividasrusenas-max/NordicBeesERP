@@ -256,6 +256,13 @@
 
     private Order? _order;
     private List<OrderPalletInfo> _pallets = new();
+
+    // Shipment creation state
+    private HashSet<int> _selectedBatchIds = new();
+    private DateTime? _shipmentDate = DateTime.Today;
+    private string? _courierName;
+    private string? _shipmentNotes;
+    private bool _pendingShipmentsDirty;
     private Invoice? _linkedInvoice;
     private bool _isLoading = true;
     private bool _isActioning = false;
@@ -400,6 +407,58 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Klaida žymint išsiųstą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isActioning = false;
+            StateHasChanged();
+        }
+    }
+
+    // --- Create Shipment ---
+    private void ToggleBatchSelection(int batchId)
+    {
+        if (!_selectedBatchIds.Remove(batchId))
+            _selectedBatchIds.Add(batchId);
+    }
+
+    private bool CanConfirmShipment => _selectedBatchIds.Count > 0 && _shipmentDate.HasValue && !_isActioning;
+
+    private async Task ConfirmShipmentAsync()
+    {
+        if (_order == null) return;
+
+        if (_selectedBatchIds.Count == 0)
+        {
+            Snackbar.Add("Pasirinkite bent vieną padėklą.", Severity.Warning);
+            return;
+        }
+
+        _isActioning = true;
+        StateHasChanged();
+
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (userId == null)
+            {
+                Snackbar.Add("Nėra prisijungusio naudotojo.", Severity.Error);
+                return;
+            }
+
+            await OrderService.CreateShipmentAsync(_order.Id, _shipmentDate!.Value, _courierName, _shipmentNotes, userId.Value, _selectedBatchIds.ToList());
+            Snackbar.Add("Siunta įrašyta.", Severity.Success);
+
+            _selectedBatchIds.Clear();
+            _courierName = null;
+            _shipmentNotes = null;
+            _shipmentDate = DateTime.Today;
+
+            await LoadOrderAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida kuriant siuntą: {ex.Message}", Severity.Error);
         }
         finally
         {
