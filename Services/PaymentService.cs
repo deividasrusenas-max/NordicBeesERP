@@ -248,8 +248,7 @@ namespace NordicBeesERP.Services
             var invoiceQuery = context.Invoices
                 .Where(i => i.Status != InvoiceStatus.Disputed
                     && EF.Functions.Like(i.InvoiceNumber.ToUpper(), "LAK%")
-                    && !EF.Functions.Like(i.InvoiceNumber.ToUpper(), "ULAK%")
-                    && (i.TotalInclVat - i.PaidAmount) > 0);
+                    && !EF.Functions.Like(i.InvoiceNumber.ToUpper(), "ULAK%"));
 
             if (customerId.HasValue)
             {
@@ -289,23 +288,34 @@ namespace NordicBeesERP.Services
 
             var customerNameLookup = customers.ToDictionary(c => c.Id, c => c.Name);
 
-            // Step 3: Combine in memory
-            return invoices.Select(i => new InvoiceWithPaymentInfo
+            // Step 3: Combine in memory (remaining now also accounts for credit notes)
+            var credits = await GetCreditedAmountsByInvoiceAsync(context, invoices.Select(i => i.Id).ToList());
+
+            var result = new List<InvoiceWithPaymentInfo>();
+            foreach (var i in invoices)
             {
-                Id = i.Id,
-                InvoiceNumber = i.InvoiceNumber,
-                InvoiceDate = i.InvoiceDate,
-                DueDate = i.DueDate,
-                CustomerId = i.CustomerId,
-                CustomerName = customerNameLookup.TryGetValue(i.CustomerId, out var name) ? name : string.Empty,
-                TotalInclVat = i.TotalInclVat,
-                SubtotalExclVat = i.SubtotalExclVat,
-                TotalVat = i.TotalVat,
-                PaidAmount = i.PaidAmount,
-                RemainingAmount = i.TotalInclVat - i.PaidAmount,
-                PaymentStatus = i.PaymentStatus,
-                LastPaymentDate = i.LastPaymentDate
-            }).ToList();
+                var remaining = i.TotalInclVat - i.PaidAmount - (credits.TryGetValue(i.Id, out var credited) ? credited : 0m);
+                if (remaining <= 0) continue;
+
+                result.Add(new InvoiceWithPaymentInfo
+                {
+                    Id = i.Id,
+                    InvoiceNumber = i.InvoiceNumber,
+                    InvoiceDate = i.InvoiceDate,
+                    DueDate = i.DueDate,
+                    CustomerId = i.CustomerId,
+                    CustomerName = customerNameLookup.TryGetValue(i.CustomerId, out var name) ? name : string.Empty,
+                    TotalInclVat = i.TotalInclVat,
+                    SubtotalExclVat = i.SubtotalExclVat,
+                    TotalVat = i.TotalVat,
+                    PaidAmount = i.PaidAmount,
+                    RemainingAmount = remaining,
+                    PaymentStatus = i.PaymentStatus,
+                    LastPaymentDate = i.LastPaymentDate
+                });
+            }
+
+            return result;
         }
 
         // =====================================================
@@ -345,10 +355,19 @@ namespace NordicBeesERP.Services
                                           (i.CustomerName != null && i.CustomerName.ToLower().Contains(term)));
             }
 
-            return await query
+            var results = await query
                 .OrderByDescending(i => i.InvoiceDate)
                 .Take(limit)
                 .ToListAsync();
+
+            var credits = await GetCreditedAmountsByInvoiceAsync(context, results.Select(r => r.Id).ToList());
+            foreach (var r in results)
+            {
+                var credited = credits.TryGetValue(r.Id, out var c) ? c : 0m;
+                r.RemainingAmount = r.TotalInclVat - r.PaidAmount - credited;
+            }
+
+            return results;
         }
 
         public async Task<InvoiceWithPaymentInfo?> GetInvoiceByIdAsync(int id)
@@ -377,6 +396,12 @@ namespace NordicBeesERP.Services
                                     Status = i.Status.ToString()
                                 })
                                 .FirstOrDefaultAsync();
+
+            if (result == null) return null;
+
+            var creditsForInvoice = await GetCreditedAmountsByInvoiceAsync(context, new List<int> { result.Id });
+            var creditedAmount = creditsForInvoice.TryGetValue(result.Id, out var credited) ? credited : 0m;
+            result.RemainingAmount = result.TotalInclVat - result.PaidAmount - creditedAmount;
 
             return result;
         }
