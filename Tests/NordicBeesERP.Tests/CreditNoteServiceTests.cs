@@ -234,8 +234,8 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 
         // 4. Insert an invoice line for that invoice (the line the credit note will fully cover)
         await setupContext.Database.ExecuteSqlRawAsync(
-            "INSERT INTO invoice_lines (invoice_id, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
-            invoiceId, "Test product for settlement", 1m, "vnt", 100m, 21m, 100m, 21m, 121m, now);
+            "INSERT INTO invoice_lines (invoice_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
+            invoiceId, 1, "Test product for settlement", 1m, "vnt", 100m, 21m, 100m, 21m, 121m, now);
 
         var invoiceLineId = await setupContext.InvoiceLines
             .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
