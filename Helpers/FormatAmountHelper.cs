@@ -13,4 +13,20 @@ public static class FormatAmountHelper
 {
     public static string FormatAmount(decimal value)
         => value.ToString("0.####", CultureInfo.GetCultureInfo("lt-LT"));
+
+    /// <summary>
+    /// Formats an amount that is stored POSITIVE but must be displayed NEGATIVE
+    /// (credit-note line/total values), suppressing the minus sign when the
+    /// magnitude is zero so it never renders as "-0".
+    /// </summary>
+    public static string FormatNegatedAmount(decimal value)
+        => FormatAmount(value == 0m ? 0m : -value);
+
+    /// <summary>
+    /// Formats an ALREADY-SIGNED amount for display, suppressing a leading minus
+    /// sign on zero (e.g. a client-side credit model that already carried a
+    /// negative value) so it never renders as "-0".
+    /// </summary>
+    public static string FormatSignedAmount(decimal value)
+        => FormatAmount(value == 0m ? 0m : value);
 }
