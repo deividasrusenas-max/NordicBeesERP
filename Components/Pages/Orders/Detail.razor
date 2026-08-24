@@ -331,11 +331,10 @@
     private async Task OpenPackDialog(OrderLine line)
     {
         var productName = GetProductName(line.ProductId);
-        var result = await PackLineDialog.PackLineResult.ShowAsync(DialogService, line, productName);
+        List<PackLineDialog.BatchEntry>? result = await PackLineDialog.PackBatchesResult.ShowBatchesAsync(DialogService, line, productName);
 
         if (result != null)
         {
-            Snackbar.Add($"DEBUG ExpiryDate={result.ExpiryDate}", Severity.Info);
             _isActioning = true;
             StateHasChanged();
 
@@ -348,7 +347,15 @@
                     return;
                 }
 
-                await OrderService.PackLineAsync(line.Id, result.LotNumber, result.ExpiryDate, userId.Value);
+                var batches = result.Select(b => new OrderLineBatch
+                {
+                    OrderLineId = line.Id,
+                    LotNumber = b.LotNumber,
+                    ExpiryDate = b.ExpiryDate!.Value,
+                    Quantity = b.Quantity!.Value
+                }).ToList();
+
+                await OrderService.SaveLineBatchesAsync(line.Id, batches, userId.Value);
                 Snackbar.Add("Eilutė sėkmingai pakuota.", Severity.Success);
                 await LoadOrderAsync();
             }
