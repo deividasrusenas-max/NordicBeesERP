@@ -92,37 +92,38 @@
                     <MudTh Style="width:40px">#</MudTh>
                     <MudTh>Produkto pavadinimas</MudTh>
                     <MudTh Style="width:120px">Kiekis paletėmis</MudTh>
-                    <MudTh Style="width:150px">Partijos Nr.</MudTh>
-                    <MudTh Style="width:150px">Galiojimo data</MudTh>
+                    <MudTh Style="width:280px">Partijos (kiekis)</MudTh>
                     <MudTh Style="width:100px">Būsena</MudTh>
                     <MudTh Style="width:160px"></MudTh>
                 </HeaderContent>
                 <RowTemplate Context="line">
+                    @{
+                        var lineBatches = _pallets.Where(p => p.OrderLineId == line.Id).ToList();
+                    }
                     <MudTd>@line.LineNumber</MudTd>
                     <MudTd>@GetProductName(line.ProductId)</MudTd>
                     <MudTd>@line.Quantity.ToString("N0")</MudTd>
                     <MudTd>
-                        @if (!string.IsNullOrEmpty(line.LotNumber))
-                        {
-                            <MudText Typo="Typo.body2">@line.LotNumber</MudText>
-                        }
-                        else
+                        @if (lineBatches.Count == 0)
                         {
                             <MudText Typo="Typo.body2" Color="Color.Secondary">–</MudText>
                         }
-                    </MudTd>
-                    <MudTd>
-                        @if (line.ExpiryDate.HasValue)
-                        {
-                            <MudText Typo="Typo.body2">@line.ExpiryDate.Value.ToString("yyyy-MM-dd")</MudText>
-                        }
                         else
                         {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">–</MudText>
+                            <div class="d-flex flex-column gap-1">
+                                @foreach (var b in lineBatches)
+                                {
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(b.IsShipped ? Color.Success : Color.Default)"
+                                             Style="text-transform:none">
+                                        @b.LotNumber · @b.Quantity.ToString("N0")@(b.IsShipped ? " ✓" : "")
+                                    </MudChip>
+                                }
+                            </div>
                         }
                     </MudTd>
                     <MudTd>
-                        @if (line.PackedAt.HasValue)
+                        @if (lineBatches.Count > 0)
                         {
                             <MudChip T="string" Color="Color.Success" Size="Size.Small" Style="text-transform:none">
                                 ✓ Pakuota
@@ -136,7 +137,7 @@
                         }
                     </MudTd>
                     <MudTd>
-                        @if (line.PackedAt == null)
+                        @if (lineBatches.Count == 0)
                         {
                             <MudButton Size="Size.Small"
                                         Variant="Variant.Outlined"
@@ -254,6 +255,7 @@
     public Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
     private Order? _order;
+    private List<OrderPalletInfo> _pallets = new();
     private Invoice? _linkedInvoice;
     private bool _isLoading = true;
     private bool _isActioning = false;
@@ -299,6 +301,9 @@
         try
         {
             _order = await OrderService.GetOrderByIdAsync(OrderId);
+
+            try { _pallets = await OrderService.GetOrderPalletsAsync(OrderId); }
+            catch { _pallets = new List<OrderPalletInfo>(); }
 
             if (_order != null)
             {
