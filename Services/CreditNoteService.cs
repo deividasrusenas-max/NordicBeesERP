@@ -477,7 +477,8 @@ namespace NordicBeesERP.Services
                     TotalInclVat = i.TotalInclVat,
                     RemainingBalance = i.TotalInclVat - i.PaidAmount,
                     CustomerName = i.Customer.Name,
-                    CustomerId = i.CustomerId
+                    CustomerId = i.CustomerId,
+                    CustomerDefaultLanguage = i.Customer.DefaultLanguage
                 })
                 .ToListAsync(cancellationToken);
         }
@@ -640,7 +641,9 @@ namespace NordicBeesERP.Services
             var originalInvoiceDate = creditNote.OriginalInvoice?.InvoiceDate;
             var appliedInvoiceNumber = creditNote.AppliedInvoice?.InvoiceNumber;
             var createdByName = "";
-            
+            if (creditNote.Customer != null && !string.IsNullOrEmpty(creditNote.Customer.DefaultLanguage))
+                creditNote.Language = creditNote.Customer.DefaultLanguage;
+
             return await _pdfGeneratorService.GenerateCreditNotePdfAsync(
                 creditNote, 
                 lines, 
