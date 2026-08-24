@@ -10,6 +10,7 @@ public static class StatusDisplayHelper
         { "confirmed", ("Patvirtintas", Color.Info) },
         { "packing", ("Pakuojamas", Color.Warning) },
         { "ready_for_pickup", ("Pasiruošęs", Color.Success) },
+        { "partially_shipped", ("Dalis išsiųsta", Color.Warning) },
         { "shipped", ("Išsiųstas", Color.Primary) }
     };
 
