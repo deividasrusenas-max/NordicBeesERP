@@ -450,9 +450,16 @@ namespace NordicBeesERP.Services
                                            PaidAmount = inv.PaidAmount,
                                            RemainingAmount = inv.TotalInclVat - inv.PaidAmount,
                                           PaymentStatus = inv.PaymentStatus,
-                                          LastPaymentDate = inv.LastPaymentDate
-                                      })
-                                      .ToListAsync();
+                                           LastPaymentDate = inv.LastPaymentDate
+                                       })
+                                       .ToListAsync();
+
+                var weekCredits = await GetCreditedAmountsByInvoiceAsync(context, invoices.Select(i => i.Id).ToList());
+                foreach (var invoice in invoices)
+                {
+                    var credited = weekCredits.TryGetValue(invoice.Id, out var c) ? c : 0m;
+                    invoice.RemainingAmount = invoice.TotalInclVat - invoice.PaidAmount - credited;
+                }
 
                 result.Add(new CashFlowWeek
                 {
@@ -488,9 +495,8 @@ namespace NordicBeesERP.Services
                                         from bp in bpGroup.DefaultIfEmpty()
                                         where EF.Functions.Like(i.InvoiceNumber, "LAK%") &&
                                               !EF.Functions.Like(i.InvoiceNumber, "ULAK%") &&
-                                              i.PaymentStatus != "paid" &&
-                                              (i.TotalInclVat - i.PaidAmount) > 0 &&
-                                              i.Status != InvoiceStatus.Disputed
+                                               i.PaymentStatus != "paid" &&
+                                               i.Status != InvoiceStatus.Disputed
                                         select new InvoiceWithPaymentInfo
                                         {
                                             Id = i.Id,
@@ -505,9 +511,23 @@ namespace NordicBeesERP.Services
                                             PaidAmount = i.PaidAmount,
                                             RemainingAmount = i.TotalInclVat - i.PaidAmount,
                                             PaymentStatus = i.PaymentStatus,
-                                            LastPaymentDate = i.LastPaymentDate
-                                        })
-                                        .ToListAsync();
+                                             LastPaymentDate = i.LastPaymentDate
+                                         })
+                                         .ToListAsync();
+
+            var credits = await GetCreditedAmountsByInvoiceAsync(context, unpaidInvoices.Select(i => i.Id).ToList());
+            var remainingUnpaid = new List<InvoiceWithPaymentInfo>();
+            foreach (var inv in unpaidInvoices)
+            {
+                var credited = credits.TryGetValue(inv.Id, out var c) ? c : 0m;
+                var remaining = inv.TotalInclVat - inv.PaidAmount - credited;
+                if (remaining > 0)
+                {
+                    inv.RemainingAmount = remaining;
+                    remainingUnpaid.Add(inv);
+                }
+            }
+            unpaidInvoices = remainingUnpaid;
 
             // Classify overdue invoices into buckets (only invoices past due date)
             var overdueInvoices = unpaidInvoices.Where(i => i.DueDate.HasValue && i.DueDate.Value < today).ToList();
