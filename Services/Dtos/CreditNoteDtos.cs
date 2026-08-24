@@ -77,6 +77,7 @@ namespace NordicBeesERP.Services.Dtos
         public decimal RemainingBalance { get; set; }
         public string? CustomerName { get; set; }
         public int CustomerId { get; set; }
+        public string? CustomerDefaultLanguage { get; set; }
     }
 
     public class InvoiceModel
