@@ -191,6 +191,110 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Fact]
+    public async Task CreateCreditNoteAsync_FullyCreditedInvoice_BecomesPaidWhilePaidAmountStaysCashOnly()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNSETTLE-{now.Ticks}";
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer Settle {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL: fully unpaid (paid_amount = 0), total_incl_vat = 121
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id, subtotal_excl_vat, total_vat, total_incl_vat, paid_amount, payment_status) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+            invoiceNumber, now.Date, bpId, 100m, 21m, 121m, 0m, "unpaid");
+
+        var invoiceId = await setupContext.Invoices
+            .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+
+        // 4. Insert an invoice line for that invoice (the line the credit note will fully cover)
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoice_lines (invoice_id, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
+            invoiceId, "Test product for settlement", 1m, "vnt", 100m, 21m, 100m, 21m, 121m, now);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // 5. Act: build the service with a REAL payment backend so the
+            //    RecalculateInvoiceStatusAsync call actually runs against the test DB.
+            var realPaymentService = new PaymentService(_fixture.Factory);
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService(realPaymentService));
+
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 1 } }
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // 6. Assert: read the ORIGINAL invoice back with a BRAND NEW DbContext —
+            //    payment_status must be "paid" (fully credited) while paid_amount stays 0
+            //    (real cash only, no allocations).
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await verifyContext.Invoices
+                .FromSqlRaw("SELECT payment_status, paid_amount FROM invoices WHERE id = {0}", invoiceId)
+                .Select(i => new { i.PaymentStatus, i.PaidAmount })
+                .FirstOrDefaultAsync();
+
+            Assert.NotNull(stored);
+            Assert.Equal("paid", stored!.PaymentStatus);
+            Assert.Equal(0m, stored.PaidAmount);
+        }
+        finally
+        {
+            // 7. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        }
+    }
+
     // --- Minimal stub implementations for CreditNoteService constructor dependencies ---
 
     private sealed class TestCreditNoteNumberGenerator : ICreditNoteNumberGenerator
@@ -219,12 +323,28 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 
     private sealed class TestPaymentService : IPaymentService
     {
+        // When a real IPaymentService is supplied, route the recalculation
+        // calls to it so the test exercises the actual DB write path. All
+        // other methods stay no-op stubs.
+        private readonly IPaymentService? _real;
+
+        public TestPaymentService(IPaymentService? real = null)
+        {
+            _real = real;
+        }
+
         public Task<int> RegisterPaymentAsync(List<int> invoiceIds, decimal amount, DateTime paymentDate, string method, string? reference, string? notes, int userId)
             => Task.FromResult(0);
         public Task RecalculateInvoiceStatusAsync(int invoiceId)
-            => Task.CompletedTask;
+        {
+            if (_real != null) return _real.RecalculateInvoiceStatusAsync(invoiceId);
+            return Task.CompletedTask;
+        }
         public Task RecalculateInvoiceStatusAsync(List<int> invoiceIds)
-            => Task.CompletedTask;
+        {
+            if (_real != null) return _real.RecalculateInvoiceStatusAsync(invoiceIds);
+            return Task.CompletedTask;
+        }
         public Task<List<InvoiceWithPaymentInfo>> GetUnpaidInvoicesAsync(int? customerId = null, string? status = null, DateTime? fromDate = null, DateTime? toDate = null)
             => Task.FromResult(new List<InvoiceWithPaymentInfo>());
         public Task<List<CashFlowWeek>> GetCashFlowForecastAsync(int weeks = 8)
