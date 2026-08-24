@@ -33,7 +33,6 @@
 
     <!-- Two-level Tabs: Level 1 - Type tabs (top, prominent) -->
     <MudStack Row="true" Class="mb-3" AlignItems="AlignItems.Center">
-        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:8px;">Tipas:</MudText>
         <MudChipSet T="string"
                     SelectedValue="_invoiceType"
                     SelectedValueChanged="@(async (val) => { if (val != null && val != _invoiceType) await SetInvoiceType(val); })"
@@ -275,6 +274,10 @@
                         };
                     }
                     <MudChip T="string" Color="@payColor" Size="Size.Small" Style="text-transform:none">@payLabel</MudChip>
+                    @if (_invoiceIdsWithCreditNote.Contains(invoice.Id))
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Receipt" Size="Size.Small" Color="Color.Error" Style="margin-left:8px;vertical-align:middle;" Title="Yra kreditinė sąskaita" />
+                    }
                 </MudTd>
             </RowTemplate>
             <PagerContent>
@@ -424,6 +427,7 @@
 
 @code {
     private List<Invoice> _items = new();
+    private HashSet<int> _invoiceIdsWithCreditNote = new();
     private List<CreditNoteListDto> _creditNoteItems = new();
     private bool _isLoading = false;
     private int _selectedTab = 0;
@@ -528,6 +532,7 @@
 
                 _creditNoteItems = notes.Items;
                 _items = new List<Invoice>();
+                _invoiceIdsWithCreditNote = new HashSet<int>();
             }
             else
             {
@@ -539,6 +544,11 @@
 
                 _items = invoices;
                 _creditNoteItems = new List<CreditNoteListDto>();
+
+                var invoiceIds = _items.Select(i => i.Id).ToList();
+                _invoiceIdsWithCreditNote = invoiceIds.Count > 0
+                    ? await CreditNoteService.GetInvoiceIdsWithCreditNotesAsync(invoiceIds)
+                    : new HashSet<int>();
             }
         }
         catch (Exception ex)
