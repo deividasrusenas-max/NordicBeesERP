@@ -156,22 +156,81 @@
             </MudTable>
         </MudPaper>
 
-        <!-- Kurjeris paėmė button (only when ready_for_pickup) -->
-        @if (_order.Status == "ready_for_pickup")
+        <!-- Shipment section (partial shipments) -->
+        @if (_order.Status is "confirmed" or "packing" or "ready_for_pickup" or "partially_shipped"
+             && _pallets.Any(p => !p.IsShipped))
         {
             <MudPaper Elevation="0" Rounded="true" Square="false" Class="pa-3 mb-4">
-                <div class="d-flex justify-space-between align-center">
-                    <MudText Typo="Typo.body1">
-                        Visos eilutės pakuotos – užsakymas pasiruošęs kurjeriui paėmti.
+                <div class="d-flex justify-space-between align-center mb-3">
+                    <MudText Typo="Typo.h6">Siuntimas (dalimis)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Neprikelti padėklai: @_pallets.Count(p => !p.IsShipped) iš @_pallets.Count
                     </MudText>
+                </div>
+
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0" Class="mb-3">
+                    <thead>
+                        <tr>
+                            <th style="width:50px"></th>
+                            <th>Eilutė</th>
+                            <th>Produktas</th>
+                            <th>Partija</th>
+                            <th style="width:100px">Kiekis</th>
+                            <th style="width:120px">Galiojimo data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _pallets.Where(p => !p.IsShipped))
+                        {
+                            <tr>
+                                <td class="text-center">
+                                    <MudCheckBox T="int"
+                                                 Value="@p.BatchId"
+                                                 Checked="@_selectedBatchIds.Contains(p.BatchId)"
+                                                  CheckedChanged="@((int v) => ToggleBatchSelection(p.BatchId))" />
+                                </td>
+                                <td>@p.LineNumber</td>
+                                <td>@GetProductName(p.ProductId)</td>
+                                <td>@p.LotNumber</td>
+                                <td>@p.Quantity.ToString("N0")</td>
+                                <td>@p.ExpiryDate.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                <MudGrid Class="mb-2">
+                    <MudItem xs="12" sm="4">
+                        <MudDatePicker @bind-Date="_shipmentDate"
+                                       Label="Siuntos data"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       FirstDayOfWeek="DayOfWeek.Monday"
+                                       Format="yyyy-MM-dd" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="_courierName"
+                                      Label="Kurjeris"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @bind-Value="_shipmentNotes"
+                                      Label="Pastabos"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+
+                <div class="d-flex justify-end">
                     <MudButton Size="Size.Large"
                                Variant="Variant.Filled"
                                Color="Color.Success"
                                StartIcon="@Icons.Material.Filled.LocalShipping"
-                               OnClick="@MarkShippedAsync"
-                               Disabled="@_isActioning"
+                               OnClick="@ConfirmShipmentAsync"
+                               Disabled="@(!CanConfirmShipment)"
                                Style="text-transform:none">
-                        Kurjeris paėmė
+                        Patvirtinti siuntą (@_selectedBatchIds.Count)
                     </MudButton>
                 </div>
             </MudPaper>
