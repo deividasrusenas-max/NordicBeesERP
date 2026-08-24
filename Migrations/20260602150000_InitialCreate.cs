@@ -1238,11 +1238,65 @@ namespace NordicBeesERP.Migrations
             ADD COLUMN IF NOT EXISTS `invoiced_by_user_id` INT NULL;
     ");
 
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `order_line_batches` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `order_line_id` INT NOT NULL,
+    `lot_number` VARCHAR(100) NOT NULL,
+    `expiry_date` DATE NOT NULL,
+    `quantity` DECIMAL(10,3) NOT NULL,
+    `packed_at` DATETIME NULL,
+    `packed_by_user_id` INT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`order_line_id`) REFERENCES `order_lines`(`id`)
+);
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `order_shipments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `order_id` INT NOT NULL,
+    `shipment_date` DATE NOT NULL,
+    `courier_name` VARCHAR(200) NULL,
+    `notes` TEXT NULL,
+    `created_by_user_id` INT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`)
+);
+            ");
+
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS `order_shipment_pallets` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `shipment_id` INT NOT NULL,
+    `order_line_batch_id` INT NOT NULL,
+    `shipped_at` DATETIME NOT NULL,
+    FOREIGN KEY (`shipment_id`) REFERENCES `order_shipments`(`id`),
+    FOREIGN KEY (`order_line_batch_id`) REFERENCES `order_line_batches`(`id`)
+);
+            ");
+
+            migrationBuilder.Sql(@"
+                ALTER TABLE `orders` MODIFY COLUMN `status`
+                    ENUM('draft','confirmed','packing','ready_for_pickup','partially_shipped','shipped','cancelled')
+                    DEFAULT 'draft';
+            ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql(@"
+                ALTER TABLE `orders` MODIFY COLUMN `status`
+                    ENUM('draft','confirmed','packing','ready_for_pickup','shipped','cancelled')
+                    DEFAULT 'draft';
+            ");
+
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `order_shipment_pallets`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `order_shipments`");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS `order_line_batches`");
+
             migrationBuilder.Sql("DROP TABLE IF EXISTS `AspNetRoleClaims`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `AspNetRoles`");
             migrationBuilder.Sql("DROP TABLE IF EXISTS `AspNetUserClaims`");
