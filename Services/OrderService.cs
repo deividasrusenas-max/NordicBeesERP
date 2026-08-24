@@ -306,12 +306,77 @@ public class OrderService : IOrderService
             userId, orderId);
     }
 
+    public async Task CreateShipmentAsync(int orderId, DateTime shipmentDate, string? courierName, string? notes, int userId, List<int> batchIds)
+    {
+        if (batchIds == null || batchIds.Count == 0)
+            throw new ArgumentException("BatchIds list cannot be empty", nameof(batchIds));
+
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        // Multi-statement write: INSERT shipment + per-pallet links + status recompute,
+        // all on one connection/transaction so LAST_INSERT_ID() and the counts are consistent.
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO order_shipments (order_id, shipment_date, courier_name, notes, created_by_user_id) " +
+                "VALUES ({0}, {1}, {2}, {3}, {4})",
+                orderId, shipmentDate, courierName, notes, userId);
+
+            var newShipmentId = await context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() AS Value").FirstAsync();
+
+            foreach (var batchId in batchIds)
+            {
+                // Guards: the batch belongs to this order AND is not already part of a shipment.
+                await context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO order_shipment_pallets (shipment_id, order_line_batch_id, shipped_at) " +
+                    "SELECT {0}, {1}, NOW() WHERE EXISTS (" +
+                    "  SELECT 1 FROM order_line_batches b INNER JOIN order_lines ol ON ol.id = b.order_line_id " +
+                    "  WHERE b.id = {2} AND ol.order_id = {3}" +
+                    ") AND NOT EXISTS (SELECT 1 FROM order_shipment_pallets WHERE order_line_batch_id = {4})",
+                    newShipmentId, batchId, batchId, orderId, batchId);
+            }
+
+            var totalBatches = await context.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS Value FROM order_line_batches b INNER JOIN order_lines ol ON ol.id = b.order_line_id WHERE ol.order_id = {0}",
+                orderId).FirstAsync();
+
+            var shippedBatches = await context.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS Value FROM order_line_batches b " +
+                "INNER JOIN order_lines ol ON ol.id = b.order_line_id " +
+                "INNER JOIN order_shipment_pallets osp ON osp.order_line_batch_id = b.id " +
+                "WHERE ol.order_id = {0}",
+                orderId).FirstAsync();
+
+            if (shippedBatches > 0 && shippedBatches < totalBatches)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE orders SET status = 'partially_shipped', updated_at = NOW() WHERE id = {0} AND status IN ('ready_for_pickup', 'partially_shipped', 'confirmed', 'packing')",
+                    orderId);
+            }
+            else if (shippedBatches >= totalBatches && totalBatches > 0)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE orders SET status = 'shipped', shipped_at = NOW(), shipped_by_user_id = {0}, updated_at = NOW() WHERE id = {1} AND status IN ('ready_for_pickup', 'partially_shipped')",
+                    userId, orderId);
+            }
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     public async Task LinkInvoiceAsync(int orderId, int invoiceId, int userId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
+        // Invoices can only be linked once the order is fully shipped.
         await context.Database.ExecuteSqlRawAsync(
-            "UPDATE orders SET invoice_id = {0}, invoiced_at = NOW(), invoiced_by_user_id = {1} WHERE id = {2}",
+            "UPDATE orders SET invoice_id = {0}, invoiced_at = NOW(), invoiced_by_user_id = {1} WHERE id = {2} AND status = 'shipped'",
             invoiceId, userId, orderId);
     }
 

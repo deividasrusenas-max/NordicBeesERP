@@ -21,6 +21,9 @@ public interface IOrderService
     /// Mark an order as shipped (auto-checks if all lines packed → ready for pickup).
     Task MarkShippedAsync(int orderId, int userId);
 
+    /// Create a partial shipment for selected pallets and recompute order status.
+    Task CreateShipmentAsync(int orderId, DateTime shipmentDate, string? courierName, string? notes, int userId, List<int> batchIds);
+
     /// Link an external invoice ID to a shipped order.
     Task LinkInvoiceAsync(int orderId, int invoiceId, int userId);
 
