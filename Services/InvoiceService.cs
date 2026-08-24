@@ -564,14 +564,15 @@ namespace NordicBeesERP.Services
             using var context = await _contextFactory.CreateDbContextAsync();
             
             var query = context.Invoices
-                .Include(i => i.Customer)
+                .AsNoTracking()
                 .Where(i => i.CustomerId == customerId && i.Status != InvoiceStatus.Cancelled);
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
+                var pattern = $"%{searchTerm}%";
                 query = query.Where(i => 
-                    i.InvoiceNumber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    i.Customer.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+                    EF.Functions.Like(i.InvoiceNumber, pattern) ||
+                    EF.Functions.Like(i.Customer.Name, pattern));
             }
 
             return await query
