@@ -102,12 +102,99 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Fact]
+    public async Task CreateCreditNoteAsync_NullAppliedInvoiceId_PersistsOriginalInvoiceId()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNCREATE-{now.Ticks}";
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer Create {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id) VALUES ({0}, {1}, {2})",
+            invoiceNumber, now.Date, bpId);
+
+        var invoiceId = await setupContext.Invoices
+            .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // 4. Act: call the REAL service create path WITHOUT setting AppliedInvoiceId
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService());
+
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest>()
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // 5. Assert: round-trip read with a BRAND NEW DbContext — both id columns must equal the original invoice id
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await verifyContext.CreditNotes
+                .FromSqlRaw("SELECT id, original_invoice_id, applied_invoice_id FROM credit_notes WHERE credit_note_number = {0}", creditNote.CreditNoteNumber)
+                .Select(cn => new { cn.OriginalInvoiceId, cn.AppliedInvoiceId })
+                .FirstOrDefaultAsync();
+
+            Assert.NotNull(stored);
+            Assert.Equal(invoiceId, stored!.OriginalInvoiceId);
+            Assert.Equal(invoiceId, stored.AppliedInvoiceId);
+        }
+        finally
+        {
+            // 6. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        }
+    }
+
     // --- Minimal stub implementations for CreditNoteService constructor dependencies ---
 
     private sealed class TestCreditNoteNumberGenerator : ICreditNoteNumberGenerator
     {
         public Task<string> GenerateNextNumberAsync(DateTime creditDate, IDbContextTransaction? transaction = null)
-            => Task.FromResult("CN-TEST");
+            => Task.FromResult($"CN-TEST-{DateTime.UtcNow.Ticks}");
     }
 
     private sealed class TestCompanySettingsService : ICompanySettingsService

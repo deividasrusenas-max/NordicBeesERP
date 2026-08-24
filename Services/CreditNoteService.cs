@@ -140,7 +140,7 @@ namespace NordicBeesERP.Services
                 CreditNoteNumber = creditNoteNumber,
                 CreditDate = request.CreditDate,
                 OriginalInvoiceId = request.OriginalInvoiceId,
-                AppliedInvoiceId = request.AppliedInvoiceId,
+                AppliedInvoiceId = request.AppliedInvoiceId ?? request.OriginalInvoiceId,
                 CustomerId = request.OriginalInvoiceId > 0 
                     ? context.Invoices.Find(request.OriginalInvoiceId)?.CustomerId ?? 0 
                     : 0,
@@ -504,7 +504,7 @@ namespace NordicBeesERP.Services
             // Update basic fields
             creditNote.CreditDate = request.CreditDate;
             creditNote.OriginalInvoiceId = request.OriginalInvoiceId;
-            creditNote.AppliedInvoiceId = request.AppliedInvoiceId;
+            creditNote.AppliedInvoiceId = request.AppliedInvoiceId ?? creditNote.AppliedInvoiceId;
             creditNote.Language = request.Language;
             creditNote.ReverseCharge = request.ReverseCharge;
             creditNote.Notes = request.Notes;
