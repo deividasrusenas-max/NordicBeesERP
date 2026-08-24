@@ -192,6 +192,100 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task UpdateCreditNoteAsync_NullOriginalInvoiceId_PreservesExistingInvoiceId()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNUPD-{now.Ticks}";
+        var creditNoteNumber = $"CN-UPD-{now.Ticks}";
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer Update {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id) VALUES ({0}, {1}, {2})",
+            invoiceNumber, now.Date, bpId);
+
+        var invoiceId = await setupContext.Invoices
+            .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+
+        // 4. Insert a DRAFT credit note linked to that invoice via raw SQL,
+        //    with original_invoice_id set (the value the fallback must preserve)
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, (SELECT id FROM invoices WHERE invoice_number = {2}), (SELECT id FROM invoices WHERE invoice_number = {3}), {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            creditNoteNumber, now, invoiceNumber, invoiceNumber, bpId, "TST", "LT", false, 0m, 0m, 0m, "draft", 1, now, now);
+
+        var creditNoteId = await setupContext.CreditNotes
+            .FromSqlRaw("SELECT id FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber)
+            .Select(cn => cn.Id)
+            .FirstOrDefaultAsync();
+
+        try
+        {
+            // 5. Act: call the REAL service update path WITHOUT setting OriginalInvoiceId,
+            //    so request.OriginalInvoiceId is null and the defensive fallback must kick in
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            await service.UpdateCreditNoteAsync(new UpdateCreditNoteRequest
+            {
+                Id = creditNoteId,
+                CreditDate = now,
+                Language = "LT"
+                // NOTE: OriginalInvoiceId is deliberately NOT set -> stays null (int?)
+            }, 1);
+
+            // 6. Assert: read back with a BRAND NEW DbContext — original_invoice_id must
+            //    still point at the original invoice (non-null preserved, not overwritten)
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await verifyContext.CreditNotes
+                .FromSqlRaw("SELECT original_invoice_id FROM credit_notes WHERE id = {0}", creditNoteId)
+                .Select(cn => cn.OriginalInvoiceId)
+                .FirstOrDefaultAsync();
+
+            Assert.NotNull(stored);
+            Assert.Equal(invoiceId, stored);
+        }
+        finally
+        {
+            // 7. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        }
+    }
+
+    [Fact]
     public async Task CreateCreditNoteAsync_FullyCreditedInvoice_BecomesPaidWhilePaidAmountStaysCashOnly()
     {
         var now = DateTime.UtcNow;
