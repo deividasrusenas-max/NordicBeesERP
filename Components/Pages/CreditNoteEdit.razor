@@ -112,7 +112,7 @@
                     <MudNumericField T="decimal" 
                         Value="@line.Quantity" 
                         Variant="Variant.Outlined"
-                        Margin="Margin.Dense" Min="0" Step="1M"
+                        Margin="Margin.Dense" Min="0" Step="1M" Format="0.####" HideSpinButtons="true"
                         ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Vnt.">
