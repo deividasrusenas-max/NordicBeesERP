@@ -164,11 +164,11 @@
                         <MudTd>
                              @(line?.Description ?? line?.ProductCode ?? "")
                         </MudTd>
-                         <MudTd Class="text-center">@(line?.Quantity ?? 0)</MudTd>
+                          <MudTd Class="text-center">@((line?.Quantity ?? 0m) % 1 == 0 ? ((int)(line?.Quantity ?? 0m)).ToString() : (line?.Quantity ?? 0m).ToString("F2"))</MudTd>
                          <MudTd Class="text-center">@(line?.Unit ?? "")</MudTd>
-                          <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(line?.PriceExclVat ?? 0m)</MudTd>
+                           <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(-(line?.PriceExclVat ?? 0m))</MudTd>
                          <MudTd Class="text-center">@((line?.VatRate ?? 0m).ToString("F1"))%</MudTd>
-                          <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(line?.LineTotal ?? 0m)</MudTd>
+                           <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(-(line?.LineTotal ?? 0m))</MudTd>
                     </RowTemplate>
                 </MudTable>
                 <div class="d-flex flex-column align-end pa-4" style="gap:4px;">
