@@ -53,6 +53,58 @@ re-labeling the symptom.
 
 ## Entries
 
+### 2026-08-24 — Fixer stuck in Compaction→re-summarize loop after real completion
+- **Symptom**: Task genuinely finished (v0.11.242, `FormatAmountHelper.cs`
+  commit, tag pushed, `agent-guardrails` score 90/100), but the session
+  then entered ~15-20 back-to-back cycles of Compaction → Fixer
+  re-generating a near-identical "Objective/Important Details/Work
+  State" summary → a `task_complete({})`-looking line → Compaction again.
+  No further file changes occurred during the loop. User manually
+  interrupted it after noticing "unrecognizable garbled output"
+  accompanying the cycling.
+- **Root cause**: the harness's `opencode-auto-resume` npm plugin
+  (v1.1.3, `.opencode/node_modules/opencode-auto-resume`) documents a
+  real, structured `task_complete` tool that, when genuinely invoked,
+  stops the plugin's auto-"continue" behavior deterministically. Fixer's
+  own prompt (`fixer.md`) never told the model this tool existed or that
+  it needed to be called as a real structured tool call — only that a
+  plain-text ✅ DONE/❌ BLOCKED report was expected. The `task_complete({})`
+  line visible in the transcript is consistent with the model (Qwen3.6-
+  35B-A3B) printing this as plain text/pseudo-tool-call rather than
+  issuing a real tool invocation — a failure mode the SAME plugin's own
+  README documents separately ("Tool calls as raw text"). Without a real
+  tool call, the plugin never received the deterministic completion
+  signal, so it kept treating the idle session as stalled/needing a
+  "continue", and fixer's own compaction-recovery instructions ("verify
+  your position before every step") caused it to re-generate the same
+  state summary each time it was resumed.
+- **Investigated and explicitly ruled out**: fixer's small context limit
+  (65536, vs coder's 262144) was initially suspected as a contributing
+  factor (more frequent compaction → more loop iterations) and a config
+  bump to 262144 was drafted but NOT applied — user confirmed fixer's
+  context is intentionally small due to single-GPU-card VRAM allocation
+  in the 4x RTX 3090 setup, not an oversight. Do not revisit this as a
+  "fix" without an explicit VRAM-budget conversation first.
+- **Fix**: added a new mandatory section to `fixer.md` ("after writing
+  your DONE/BLOCKED report, signal completion via the real tool")
+  instructing the model to make a REAL structured `task_complete` tool
+  call (if present in its tool list) as its final action, and explicitly
+  telling it that typing the tool name as text is not equivalent to
+  calling it.
+- **Guardrail added**: none yet — this is a prompt-text mitigation only
+  (Tier 3). Status below reflects this is unverified against a real
+  re-exposure.
+- **Category**: infra
+- **Error class**: `post-completion-continue-loop`
+- **Status**: monitoring (guardrail just added, no re-exposure yet).
+  If this recurs after this fix, `Status: escalated` is warranted and
+  the next step would be a deterministic Tier-1 check (e.g. the
+  `nordicbees-quality-monitor.ts` plugin detecting N consecutive
+  Compaction→Fixer cycles with zero new tool calls between them and
+  forcing a BLOCKED stop) rather than another prompt-text attempt, since
+  a prompt-text fix depends on a small local model reliably following a
+  new instruction it may not weight consistently.
+
 ### 2026-07-17 — Order status stuck on draft after packing
 - **Symptom**: All lines packed, but order header status never advanced.
 - **Root cause**: `MarkReadyForPickupCheckAsync` WHERE clause excluded 'draft' from the allowed source statuses.

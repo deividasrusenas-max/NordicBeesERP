@@ -254,3 +254,29 @@ if needed rather than losing the whole task to a retry loop.
 
 ✅ DONE — zero errors, version bumped to X.X.X, committed, guardrail score: X/100 [+ one-line note if not 100]
 ❌ BLOCKED — cannot fix: [error list]
+
+## MANDATORY: after writing your DONE/BLOCKED report, signal completion via the real tool — never just describe it
+
+If a `task_complete` tool is present in your available tools list (it is
+an OpenCode harness-level tool, separate from your normal edit/bash/git
+tools — check your actual tool list, don't guess whether it exists),
+your very last action after writing the ✅ DONE or ❌ BLOCKED report above
+must be a REAL, structured call to that tool. Do NOT type `task_complete`,
+`task_complete({})`, or any similar text into your response as plain
+text/prose — that is not the same thing as calling it and the harness
+cannot detect a textual mention, only an actual tool invocation. If your
+tools list does not contain a `task_complete` tool at all, your DONE/
+BLOCKED report above is already your complete final action — do not
+invent a fake tool call for one that doesn't exist.
+
+Real incident this rule exists because of (2026-08-24): after all real
+work was genuinely finished (build passed, commit made, tag pushed,
+guardrail score 90/100), the session entered a ~15-20 cycle
+Compaction→re-summarize loop, printing the same "Objective/Important
+Details/Work State" block and a `task_complete({})`-looking line each
+time, never actually stopping. The harness's own auto-resume plugin
+documents `task_complete` as a real, structured tool specifically
+designed to stop this exact pattern deterministically — but nothing in
+this file ever told you it existed or that you needed to call it for
+real, so the completion signal likely stayed inside plain text instead
+of becoming an actual tool call the harness could detect.
