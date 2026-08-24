@@ -78,6 +78,27 @@ namespace NordicBeesERP.Services
         }
 
         // =====================================================
+        // CREDITED AMOUNTS PER INVOICE LINE (excludes Disputed credit notes)
+        // =====================================================
+
+        public async Task<Dictionary<int, decimal>> GetCreditedAmountsByInvoiceLineAsync(int invoiceId)
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            var creditedRows = await context.CreditNoteLines
+                .AsNoTracking()
+                .Where(l => l.InvoiceLineId != null
+                            && l.CreditNote!.Status != CreditNoteStatus.Disputed
+                            && l.InvoiceLine!.InvoiceId == invoiceId)
+                .Select(l => new { InvoiceLineId = l.InvoiceLineId!.Value, l.LineTotal })
+                .ToListAsync();
+
+            return creditedRows
+                .GroupBy(l => l.InvoiceLineId)
+                .ToDictionary(g => g.Key, g => g.Sum(l => l.LineTotal));
+        }
+
+        // =====================================================
         // CREDIT NOTES FOR A SPECIFIC INVOICE
         // =====================================================
 
@@ -167,7 +188,11 @@ namespace NordicBeesERP.Services
             decimal subtotalExclVat = 0;
             decimal totalVat = 0;
             int lineNumber = 1;
-            
+
+            // SERVER-SIDE amount guard input: already-credited MONEY per invoice line.
+            // This credit note is brand new, so it has no lines yet — nothing to exclude.
+            var creditedAmountsByLine = await GetCreditedAmountsByInvoiceLineAsync(request.OriginalInvoiceId);
+
             foreach (var lineRequest in request.Lines)
             {
                 var invoiceLine = await context.InvoiceLines
@@ -180,11 +205,18 @@ namespace NordicBeesERP.Services
                 
                 if (lineQuantity <= 0)
                     continue;
-                
-                var lineSubtotal = Math.Round(lineQuantity * invoiceLine.PriceExclVat, 2);
+
+                var unitPrice = lineRequest.PriceExclVat > 0m ? lineRequest.PriceExclVat : invoiceLine.PriceExclVat;
+                var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2);
                 var vatAmount = Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
                 var lineTotal = lineSubtotal + vatAmount;
-                
+
+                // HARD amount guard: a line can never be credited for more than remains owed on it.
+                var alreadyCredited = creditedAmountsByLine.TryGetValue(invoiceLine.Id, out var creditedSoFar) ? creditedSoFar : 0m;
+                var remainingLineTotal = Math.Max(0m, invoiceLine.LineTotal - alreadyCredited);
+                if (lineTotal > remainingLineTotal + 0.005m)
+                    throw new InvalidOperationException($"Eilutės '{invoiceLine.Description}' bendra kredituojama suma viršytų sąskaitos eilutės sumą.");
+
                 var line = new CreditNoteLine
                 {
                     CreditNoteId = creditNote.Id,
@@ -194,7 +226,7 @@ namespace NordicBeesERP.Services
                     Description = invoiceLine.Description,
                     Quantity = lineQuantity,
                     Unit = invoiceLine.Unit,
-                    PriceExclVat = invoiceLine.PriceExclVat,
+                    PriceExclVat = unitPrice,
                     VatRate = invoiceLine.VatRate,
                     LineSubtotal = lineSubtotal,
                     VatAmount = vatAmount,
@@ -559,7 +591,17 @@ namespace NordicBeesERP.Services
             decimal newSubtotalExclVat = 0;
             decimal newTotalVat = 0;
             int newLineNumber = 1;
-            
+
+            // SERVER-SIDE amount guardrail input: already-credited MONEY per invoice line,
+            // EXCLUDING this very credit note's own existing lines (they're being replaced, not added).
+            var creditedAmountsByLine = await GetCreditedAmountsByInvoiceLineAsync(request.OriginalInvoiceId ?? 0);
+            foreach (var existingLine in creditNote.Lines)
+            {
+                if (existingLine.InvoiceLineId == null) continue;
+                var currentTotal = creditedAmountsByLine.TryGetValue(existingLine.InvoiceLineId.Value, out var curVal) ? curVal : existingLine.LineTotal;
+                creditedAmountsByLine[existingLine.InvoiceLineId.Value] = Math.Max(0m, currentTotal - existingLine.LineTotal);
+            }
+
             foreach (var lineRequest in request.Lines)
             {
                 var invoiceLine = await context.InvoiceLines
@@ -573,11 +615,18 @@ namespace NordicBeesERP.Services
                 
                 if (lineQuantity <= 0)
                     continue;
-                
-                var lineSubtotal = Math.Round(lineQuantity * invoiceLine.PriceExclVat, 2);
+
+                var unitPrice = lineRequest.PriceExclVat > 0m ? lineRequest.PriceExclVat : invoiceLine.PriceExclVat;
+                var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2);
                 var vatAmount = Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
                 var lineTotal = lineSubtotal + vatAmount;
-                
+
+                // HARD amount guard: a line can never be credited for more than remains owed on it.
+                var alreadyCredited = creditedAmountsByLine.TryGetValue(invoiceLine.Id, out var creditedSoFar) ? creditedSoFar : 0m;
+                var remainingLineTotal = Math.Max(0m, invoiceLine.LineTotal - alreadyCredited);
+                if (lineTotal > remainingLineTotal + 0.005m)
+                    throw new InvalidOperationException($"Eilutės '{invoiceLine.Description}' bendra kredituojama suma viršytų sąskaitos eilutės sumą.");
+
                 var line = new CreditNoteLine
                 {
                     CreditNoteId = creditNote.Id,
@@ -587,7 +636,7 @@ namespace NordicBeesERP.Services
                     Description = invoiceLine.Description,
                     Quantity = lineQuantity,
                     Unit = invoiceLine.Unit,
-                    PriceExclVat = invoiceLine.PriceExclVat,
+                    PriceExclVat = unitPrice,
                     VatRate = invoiceLine.VatRate,
                     LineSubtotal = lineSubtotal,
                     VatAmount = vatAmount,

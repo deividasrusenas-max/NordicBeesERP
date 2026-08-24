@@ -112,7 +112,8 @@
                 </MudTd>
                 <MudTd DataLabel="Kaina (be PVM)">
                     <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined"
-                                      Margin="Margin.Dense" Step="0.01M" Format="0.####" ReadOnly="true" />
+                                     Margin="Margin.Dense" Step="0.01M" Format="0.####"
+                                     ValueChanged="@((decimal val) => { line.PriceExclVat = val; line.IsChecked = true; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="PVM %">
                     <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined"
@@ -236,6 +237,7 @@
         // Get invoice lines
         var lines = await _creditNoteService.GetInvoiceLinesAsync(invoice.Id);
         var creditedQuantities = await _creditNoteService.GetCreditedQuantitiesByInvoiceLineAsync(invoice.Id);
+        var creditedAmounts = await _creditNoteService.GetCreditedAmountsByInvoiceLineAsync(invoice.Id);
 
         _lines = lines.Select(l =>
         {
@@ -248,6 +250,8 @@
                 OriginalQuantity = l.Quantity,
                 AlreadyCredited = alreadyCredited,
                 CreditQuantity = remaining,
+                OriginalLineTotal = l.LineTotal,
+                AlreadyCreditedAmount = creditedAmounts.TryGetValue(l.Id, out var amountCredited) ? amountCredited : 0m,
                 PriceExclVat = l.PriceExclVat == 0m ? 0m : -l.PriceExclVat,
                 VatRate = l.VatRate,
                 LineTotal = l.LineTotal == 0m ? 0m : -l.LineTotal,
@@ -278,6 +282,15 @@
         _totalInclVat = _subtotalExclVat + _totalVat;
     }
 
+    private bool ValidateCreditAmounts()
+    {
+        var offender = _lines.FirstOrDefault(l => l.IsChecked && Math.Abs(l.LineTotal) > l.RemainingAmount);
+        if (offender == null)
+            return true;
+        _errorMessage = $"Eilutės '{offender.Description}' kreditas viršija likusią galimą kredituoti sumą ({offender.RemainingAmount:F2}€). Paliekite kainas ar kiekius prieš išsaugant.";
+        return false;
+    }
+
     private async Task SaveCreditNote()
     {
         if (_selectedInvoice == null)
@@ -292,6 +305,9 @@
             return;
         }
 
+        if (!ValidateCreditAmounts())
+            return;
+
         var request = new CreateCreditNoteRequest
         {
             OriginalInvoiceId = _selectedInvoice.Id,
@@ -300,7 +316,8 @@
             Lines = _lines.Where(l => l.IsChecked).Select(l => new CreditNoteLineRequest
             {
                 InvoiceLineId = l.InvoiceLineId,
-                Quantity = l.CreditQuantity
+                Quantity = l.CreditQuantity,
+                PriceExclVat = -l.PriceExclVat
             }).ToList()
         };
 
@@ -331,6 +348,9 @@
             return;
         }
 
+        if (!ValidateCreditAmounts())
+            return;
+
         var request = new CreateCreditNoteRequest
         {
             OriginalInvoiceId = _selectedInvoice.Id,
@@ -339,7 +359,8 @@
             Lines = _lines.Where(l => l.IsChecked).Select(l => new CreditNoteLineRequest
             {
                 InvoiceLineId = l.InvoiceLineId,
-                Quantity = l.CreditQuantity
+                Quantity = l.CreditQuantity,
+                PriceExclVat = -l.PriceExclVat
             }).ToList()
         };
 
@@ -381,11 +402,14 @@
         public decimal OriginalQuantity { get; set; }
         public decimal AlreadyCredited { get; set; }
         public decimal CreditQuantity { get; set; }
+        public decimal OriginalLineTotal { get; set; }
+        public decimal AlreadyCreditedAmount { get; set; }
         public decimal PriceExclVat { get; set; }
         public decimal VatRate { get; set; }
         public decimal LineTotal { get; set; }
         public bool IsChecked { get; set; } = true;
 
         public decimal RemainingQuantity => Math.Max(0m, OriginalQuantity - AlreadyCredited);
+        public decimal RemainingAmount => Math.Max(0m, OriginalLineTotal - AlreadyCreditedAmount);
     }
 }
