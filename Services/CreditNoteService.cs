@@ -18,17 +18,20 @@ namespace NordicBeesERP.Services
         private readonly ICreditNoteNumberGenerator _numberGenerator;
         private readonly ICompanySettingsService _companySettings;
         private readonly IPdfGeneratorService _pdfGeneratorService;
+        private readonly IPaymentService _paymentService;
 
         public CreditNoteService(
             IDbContextFactory<NordicBeesERPContext> contextFactory,
             ICreditNoteNumberGenerator numberGenerator,
             ICompanySettingsService companySettings,
-            IPdfGeneratorService pdfGeneratorService)
+            IPdfGeneratorService pdfGeneratorService,
+            IPaymentService paymentService)
         {
             _contextFactory = contextFactory;
             _numberGenerator = numberGenerator;
             _companySettings = companySettings;
             _pdfGeneratorService = pdfGeneratorService;
+            _paymentService = paymentService;
         }
 
         // =====================================================
@@ -212,7 +215,10 @@ namespace NordicBeesERP.Services
             creditNote.UpdatedAt = DateTime.UtcNow;
             
             await context.SaveChangesAsync();
-            
+
+            if (creditNote.OriginalInvoiceId != null)
+                await _paymentService.RecalculateInvoiceStatusAsync(creditNote.OriginalInvoiceId.Value);
+
             return creditNote;
         }
 
@@ -299,6 +305,31 @@ namespace NordicBeesERP.Services
                 .Distinct()
                 .ToListAsync();
             return ids.ToHashSet();
+        }
+
+        public async Task<decimal> GetTotalCreditedAmountAsync(int invoiceId)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            return await context.CreditNotes
+                .AsNoTracking()
+                .Where(cn => cn.OriginalInvoiceId == invoiceId && cn.Status != CreditNoteStatus.Disputed)
+                .SumAsync(cn => (decimal?)cn.TotalInclVat) ?? 0m;
+        }
+
+        public async Task<Dictionary<int, decimal>> GetTotalCreditedAmountsAsync(IEnumerable<int> invoiceIds)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var idList = invoiceIds.ToList();
+            if (idList.Count == 0) return new Dictionary<int, decimal>();
+            var rows = await context.CreditNotes
+                .AsNoTracking()
+                .Where(cr => cr.OriginalInvoiceId != null && idList.Contains(cr.OriginalInvoiceId.Value) && cr.Status != CreditNoteStatus.Disputed)
+                .Select(cr => new { InvoiceId = cr.OriginalInvoiceId!.Value, Amount = cr.TotalInclVat })
+                .ToListAsync();
+            var map = new Dictionary<int, decimal>();
+            foreach (var r in rows)
+                map[r.InvoiceId] = (map.TryGetValue(r.InvoiceId, out var existing) ? existing : 0m) + r.Amount;
+            return map;
         }
 
         public async Task<CreditNoteDetailDto> GetCreditNoteAsync(int id)
@@ -501,6 +532,8 @@ namespace NordicBeesERP.Services
             if (creditNote.Status != CreditNoteStatus.Draft)
                 throw new InvalidOperationException("Only draft credit notes can be edited.");
             
+            var previousOriginalInvoiceId = creditNote.OriginalInvoiceId;
+
             // Update basic fields
             creditNote.CreditDate = request.CreditDate;
             creditNote.OriginalInvoiceId = request.OriginalInvoiceId;
@@ -589,6 +622,11 @@ namespace NordicBeesERP.Services
                 creditNote.CustomerId, creditNote.CurrencyId,
                 newSubtotalExclVat, newTotalVat, newTotalInclVat,
                 newUpdatedAt, creditNote.Id);
+
+            if (creditNote.OriginalInvoiceId != null)
+                await _paymentService.RecalculateInvoiceStatusAsync(creditNote.OriginalInvoiceId.Value);
+            if (previousOriginalInvoiceId.HasValue && creditNote.OriginalInvoiceId != null && previousOriginalInvoiceId.Value != creditNote.OriginalInvoiceId.Value)
+                await _paymentService.RecalculateInvoiceStatusAsync(previousOriginalInvoiceId.Value);
         }
 
         // =====================================================
@@ -672,11 +710,16 @@ namespace NordicBeesERP.Services
             
             if (creditNote.Status != CreditNoteStatus.Draft)
                 throw new InvalidOperationException("Only draft credit notes can be deleted.");
-            
+
+            var originalInvoiceId = creditNote.OriginalInvoiceId;
+
             context.CreditNoteLines.RemoveRange(creditNote.Lines);
             context.CreditNotes.Remove(creditNote);
             
             await context.SaveChangesAsync();
+
+            if (originalInvoiceId != null)
+                await _paymentService.RecalculateInvoiceStatusAsync(originalInvoiceId.Value);
         }
 
     }

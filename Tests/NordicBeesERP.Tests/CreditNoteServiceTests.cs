@@ -79,7 +79,8 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
                 _fixture.Factory,
                 new TestCreditNoteNumberGenerator(),
                 new TestCompanySettingsService(),
-                new TestPdfGeneratorService());
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
             await service.SetPrintedAsync(creditNoteId);
 
             // 6. Assert: read status back via raw SQL (string enum value in DB)
@@ -152,7 +153,8 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
                 _fixture.Factory,
                 new TestCreditNoteNumberGenerator(),
                 new TestCompanySettingsService(),
-                new TestPdfGeneratorService());
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
 
             var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
             {
@@ -213,5 +215,53 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             => Task.FromResult(Array.Empty<byte>());
         public string GetPdfPath(string creditNoteNumber) => "/tmp/test.pdf";
         public Task<byte[]> GenerateMultipleInvoicesPdfAsync(List<int> invoiceIds) => Task.FromResult(Array.Empty<byte>());
+    }
+
+    private sealed class TestPaymentService : IPaymentService
+    {
+        public Task<int> RegisterPaymentAsync(List<int> invoiceIds, decimal amount, DateTime paymentDate, string method, string? reference, string? notes, int userId)
+            => Task.FromResult(0);
+        public Task RecalculateInvoiceStatusAsync(int invoiceId)
+            => Task.CompletedTask;
+        public Task RecalculateInvoiceStatusAsync(List<int> invoiceIds)
+            => Task.CompletedTask;
+        public Task<List<InvoiceWithPaymentInfo>> GetUnpaidInvoicesAsync(int? customerId = null, string? status = null, DateTime? fromDate = null, DateTime? toDate = null)
+            => Task.FromResult(new List<InvoiceWithPaymentInfo>());
+        public Task<List<CashFlowWeek>> GetCashFlowForecastAsync(int weeks = 8)
+            => Task.FromResult(new List<CashFlowWeek>());
+        public Task<AgingReport> GetAgingReportAsync()
+            => Task.FromResult(new AgingReport());
+        public Task<PaymentHistoryResult> GetPaymentHistoryAsync(int? customerId = null, DateTime? fromDate = null, DateTime? toDate = null, string? paymentMethod = null, string? source = null, string? searchTerm = null, string? sortBy = null, string? sortDirection = null, int take = 50, int skip = 0)
+            => Task.FromResult(new PaymentHistoryResult());
+        public Task<PaymentWithDetails?> GetPaymentDetailAsync(int paymentId)
+            => Task.FromResult<PaymentWithDetails?>(null);
+        public Task<bool> DeletePaymentAsync(int paymentId, int userId)
+            => Task.FromResult(false);
+        public Task<bool> UpdatePaymentAsync(int paymentId, decimal amount, DateTime date, string method, string? reference, string? notes, int userId)
+            => Task.FromResult(false);
+        public Task<List<BankImportRow>> GetUnmatchedBankImportRowsAsync(int bankImportId)
+            => Task.FromResult(new List<BankImportRow>());
+        public Task<BankImportRow> MatchBankImportRowAsync(int bankImportRowId, int invoiceId, int userId)
+            => Task.FromResult<BankImportRow>(null!);
+        public Task<int> CreatePaymentFromBankImportAsync(int bankImportRowId, int userId)
+            => Task.FromResult(0);
+        public Task<List<BankImport>> GetBankImportsAsync(string? status = null, int take = 50, int skip = 0)
+            => Task.FromResult(new List<BankImport>());
+        public Task<int> CreateBankImportAsync(string fileName, string fileHash, int totalRows, int userId)
+            => Task.FromResult(0);
+        public Task UpdateBankImportAsync(int importId, int totalRows)
+            => Task.CompletedTask;
+        public Task<BankImport?> GetBankImportWithRowsAsync(int bankImportId)
+            => Task.FromResult<BankImport?>(null);
+        public Task<InvoiceWithPaymentInfoResult> GetSalesInvoicesAsync(int take = 50, int skip = 0, DateTime? fromDate = null, DateTime? toDate = null, string? searchTerm = null, InvoiceStatus? status = null)
+            => Task.FromResult(new InvoiceWithPaymentInfoResult());
+        public Task<List<PaymentHistoryItem>> GetPaymentsByInvoiceAsync(int invoiceId)
+            => Task.FromResult(new List<PaymentHistoryItem>());
+        public Task<List<InvoiceWithPaymentInfo>> SearchAllInvoicesAsync(string searchTerm, int limit = 20)
+            => Task.FromResult(new List<InvoiceWithPaymentInfo>());
+        public Task<InvoiceWithPaymentInfo?> GetInvoiceByIdAsync(int id)
+            => Task.FromResult<InvoiceWithPaymentInfo?>(null);
+        public Task<PaymentsDashboardKpi> GetPaymentsDashboardKpiAsync()
+            => Task.FromResult(new PaymentsDashboardKpi());
     }
 }

@@ -25,6 +25,10 @@ namespace NordicBeesERP.Services
 
         Task<Dictionary<int, decimal>> GetCreditedQuantitiesByInvoiceLineAsync(int invoiceId);
 
+        Task<decimal> GetTotalCreditedAmountAsync(int invoiceId);
+
+        Task<Dictionary<int, decimal>> GetTotalCreditedAmountsAsync(IEnumerable<int> invoiceIds);
+
         Task<List<CreditNoteListDto>> GetCreditNotesForInvoiceAsync(int invoiceId);
 
         // =====================================================
