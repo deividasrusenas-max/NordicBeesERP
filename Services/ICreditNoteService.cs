@@ -73,6 +73,8 @@ namespace NordicBeesERP.Services
         // CREDIT NOTE RETRIEVAL
         // =====================================================
 
+        Task<HashSet<int>> GetInvoiceIdsWithCreditNotesAsync(IEnumerable<int> invoiceIds);
+
         Task<CreditNoteDetailDto> GetCreditNoteAsync(int id);
 
         // =====================================================
