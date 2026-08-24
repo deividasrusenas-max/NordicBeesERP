@@ -113,7 +113,7 @@
                 </MudTd>
                 <MudTd DataLabel="Kreditinis kiekis">
                     <MudNumericField T="decimal" Value="@line.CreditQuantity" Variant="Variant.Outlined"
-                                      Margin="Margin.Dense" Min="0" Max="@line.RemainingQuantity" Step="0.001M" Format="F2"
+                                      Margin="Margin.Dense" Min="0" Max="@line.RemainingQuantity" Step="0.001M" Format="0.####" HideSpinButtons="true"
                                      ValueChanged="@((decimal val) => { line.CreditQuantity = Math.Min(val, line.RemainingQuantity); line.IsChecked = line.CreditQuantity > 0; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Kaina (be PVM)">
@@ -203,7 +203,8 @@
                         TotalInclVat = invoice.TotalInclVat,
                         RemainingBalance = invoice.TotalInclVat - invoice.PaidAmount,
                         CustomerName = invoice.Customer?.Name ?? string.Empty,
-                        CustomerId = invoice.CustomerId
+                        CustomerId = invoice.CustomerId,
+                        CustomerDefaultLanguage = invoice.Customer?.DefaultLanguage
                     };
                     await OnInvoiceSelected(dto);
                 }
@@ -252,6 +253,12 @@
 
         _selectedInvoice = invoice;
         _customerName = invoice.CustomerName ?? string.Empty;
+        // Auto-select credit note language from customer default (mirrors InvoiceCreate.razor OnClientSelected)
+        var lang = invoice.CustomerDefaultLanguage?.Trim().ToUpperInvariant();
+        if (lang is "LT" or "EN")
+        {
+            _language = lang;
+        }
         // Auto-fill Taikoma sąskaita with the same invoice
         _appliedInvoice = invoice;
         
