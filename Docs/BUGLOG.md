@@ -96,14 +96,65 @@ re-labeling the symptom.
   re-exposure.
 - **Category**: infra
 - **Error class**: `post-completion-continue-loop`
-- **Status**: monitoring (guardrail just added, no re-exposure yet).
-  If this recurs after this fix, `Status: escalated` is warranted and
-  the next step would be a deterministic Tier-1 check (e.g. the
-  `nordicbees-quality-monitor.ts` plugin detecting N consecutive
-  Compaction→Fixer cycles with zero new tool calls between them and
-  forcing a BLOCKED stop) rather than another prompt-text attempt, since
-  a prompt-text fix depends on a small local model reliably following a
-  new instruction it may not weight consistently.
+- **Status**: escalated — user re-ran the same task after the `fixer.md`
+  prompt fix was applied AND (later) after the fix itself was committed
+  to git, and the Compaction→re-summarize loop recurred both times. This
+  is objective evidence the Tier-3 prompt-text mitigation is
+  insufficient for this local model under this failure mode — do not
+  attempt a third prompt-text variant. Per the escalation rule at the
+  top of this file, the next step must be a Tier-1 mechanical check:
+  the `nordicbees-quality-monitor.ts` plugin detecting N (e.g. 3)
+  consecutive Compaction→Fixer (or any agent) cycles with zero new
+  tool calls between them, and forcing a hard BLOCKED stop
+  deterministically — not dependent on the model reading/following any
+  prompt sentence. This is now the same underlying mechanical gap
+  identified separately in the `deadlock-constraint-conflict` entry
+  below and in `harness-blocked-state-not-terminated` (2026-08-22) —
+  three separate incidents now point to the same missing Tier-1
+  circuit-breaker as the real fix, not another prompt edit.
+
+### 2026-08-24 — Fixer deadlock: generates a plan violating its own constraint, never executes or escalates
+- **Symptom**: A `fixer` run hit `./bump-version.sh patch` refusing to
+  run because `.opencode/prompts/fixer.md` and `Docs/BUGLOG.md` were
+  modified but uncommitted (a side effect of Claude's own direct file
+  edits via filesystem MCP being left uncommitted). Fixer correctly
+  identified the blocker, but instead of following the ALREADY-EXISTING
+  "unrelated files block bump-version.sh -> report BLOCKED once and
+  stop" rule (see `harness-blocked-state-not-terminated`, 2026-08-22),
+  it formulated a NEW plan each cycle ("commit these two files with a
+  generic message"), never executed that plan, and never reported
+  BLOCKED -- ~8 identical cycles, each re-running `git status`,
+  re-discovering the same two files, re-writing the same unexecuted
+  "Next Move" plan.
+- **Root cause**: a genuine decision deadlock, not a compaction
+  artifact. This task's CRITICAL CONSTRAINTS block explicitly said the
+  two files "must NOT be staged or committed" (correct — they weren't
+  part of this task). The model then proposed committing them anyway
+  (contradicting its own stated constraint), never executed the
+  contradiction, and never fell back to the existing, directly-
+  applicable "unrelated files -> BLOCKED, stop" rule — likely because
+  that rule's wording doesn't explicitly address the case where the
+  blocking files are ones a task-specific constraint forbids touching.
+- **Fix**: strengthened the existing "unrelated files block
+  bump-version.sh" rule in `fixer.md` to name this exact case: if the
+  blocking files are ones you were told NOT to touch, report BLOCKED
+  with the exact file names and STOP, same as any other unrelated-file
+  blocker. Do NOT invent a workaround (committing anyway, `git stash`)
+  unless a human explicitly instructs one.
+- **Guardrail added**: none yet — prompt-text only (Tier 3). Given the
+  sibling entry above (`post-completion-continue-loop`) already showed
+  a prompt-text fix failing to hold for a related class of "agent
+  should stop but doesn't" failure, this entry's prompt-text fix should
+  be treated with the same skepticism until a real re-exposure confirms
+  or denies it.
+- **Category**: infra
+- **Error class**: `deadlock-constraint-conflict`
+- **Status**: monitoring — but see the note above: this Error class and
+  `post-completion-continue-loop` are both instances of the same deeper
+  gap (no Tier-1 mechanical stop-loop circuit-breaker exists yet), and
+  should be re-evaluated together, not independently, once the
+  `n_toolcalls`-based circuit-breaker (see `HARNESS_STATUS.md` §13
+  Etapas 0) is built.
 
 ### 2026-07-17 — Order status stuck on draft after packing
 - **Symptom**: All lines packed, but order header status never advanced.
