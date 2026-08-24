@@ -2,6 +2,7 @@
 
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Helpers
+@using NordicBeesERP.Components.Dialogs
 
 @* =====================================================
    NORDIC BEES ERP - VIEW CREDIT NOTE PAGE
@@ -12,6 +13,7 @@
 @inject IAuthService _authService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
 
 <PageTitle>Sąskaitos peržiūra</PageTitle>
 
@@ -255,6 +257,16 @@
 
     private async Task HandleDeleteCreditNote()
     {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Ar tikrai norite ištrinti šią kreditinę sąskaitą? Veiksmo atšaukti negalima." },
+            { x => x.ButtonText, "Ištrinti" },
+            { x => x.Color, Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Patvirtinimas", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
         await CreditNoteService.DeleteCreditNoteAsync(Id);
         Snackbar.Add("Kreditinė sąskaita pašalinta", Severity.Success);
         Navigation.NavigateTo("/credit-notes");
