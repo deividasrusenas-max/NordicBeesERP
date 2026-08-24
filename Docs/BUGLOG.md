@@ -438,3 +438,12 @@ re-labeling the symptom.
 - **Category**: UI-form (display formatting / negative-zero)
 - **Error class**: `negative-zero-display-format`
 - **Status**: monitoring — the fix is a mechanical zero-guard at every site, so recurrence requires someone to add a NEW unguarded negation site (possible but unlikely); the helper-extraction pattern is the soft sponsor.
+
+### 2026-08-25 — Invoice picker on order page returned zero results (RECURRENCE)
+- **Symptom**: Invoice assignment autocomplete on `/orders/{id}` (`SearchInvoicesAsync`) silently showed no results; exceptions were swallowed by the caller's catch-all.
+- **Root cause**: Same mechanism as the 2026-07-17 entry — `Contains(searchTerm, StringComparison.OrdinalIgnoreCase)` inside a LINQ query (`InvoiceService.SearchInvoicesAsync`, lines 572-574), untranslatable by the MariaDB provider. The code shipped AFTER the semgrep rule `nordicbees-stringcomparison-in-linq` existed, meaning the rule was never run against this file (or misses this call-shape variant).
+- **Fix**: commit `a509d03` (v0.11.263) — replaced both Contains calls with `EF.Functions.Like(col, pattern)`, removed banned `.Include(i => i.Customer)`, added `.AsNoTracking()`.
+- **Guardrail added**: none new. Existing mechanical guardrail FAILED to prevent this recurrence.
+- **Category**: EF-core
+- **Error class**: `ef-linq-untranslatable-stringcomparison`
+- **Status**: escalated — SECOND incident in this class (2026-07-17 invoice search, this one 2026-08-25 order-page invoice picker). Post-fix semgrep verification (2026-08-25) showed the `nordicbees-stringcomparison-in-linq` rule DOES still match this pattern family — it flagged two sibling sites in InvoiceService.cs immediately when run via CLI (`semgrep scan --config .agent-guardrails/nordicbees-rules.yaml`). Conclusion refined: the rule's pattern coverage is fine; what failed was ENFORCEMENT WIRING — nothing ran it against changed files before commit. Escalation proposal stands: wire the existing config into a pre-commit hook or CI step that runs `semgrep scan --config .agent-guardrails/nordicbees-rules.yaml` on every changed `.cs` file. Note also: the rule currently flags in-memory LINQ-to-Objects filtering as false positives (it cannot distinguish EF queryables from materialized lists) — consider adding a guard/annotation so real findings aren't drowned by noise.
