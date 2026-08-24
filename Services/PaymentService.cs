@@ -1293,6 +1293,13 @@ namespace NordicBeesERP.Services
                 .Take(take)
                 .ToListAsync();
 
+            var credits = await GetCreditedAmountsByInvoiceAsync(context, invoices.Select(i => i.Id).ToList());
+            foreach (var inv in invoices)
+            {
+                var credited = credits.TryGetValue(inv.Id, out var c) ? c : 0m;
+                inv.RemainingAmount = inv.TotalInclVat - inv.PaidAmount - credited;
+            }
+
             return new InvoiceWithPaymentInfoResult
             {
                 Invoices = invoices,
@@ -1353,13 +1360,15 @@ namespace NordicBeesERP.Services
             // Card 2: Nepilnai sumokėti (partial payments remaining) - invoices with partial status
             var partialInvoices = await context.Invoices
                 .Where(i => EF.Functions.Like(i.InvoiceNumber, "LAK%") && !EF.Functions.Like(i.InvoiceNumber, "ULAK%") && i.PaymentStatus == "partial")
-                .Select(i => new { i.TotalInclVat, i.PaidAmount, i.SubtotalExclVat, i.TotalVat })
+                .Select(i => new { i.Id, i.TotalInclVat, i.PaidAmount, i.SubtotalExclVat, i.TotalVat })
                 .ToListAsync();
 
+            var partialCredits = await GetCreditedAmountsByInvoiceAsync(context, partialInvoices.Select(i => i.Id).ToList());
+
             // Partial = remaining amount (TotalInclVat - PaidAmount) calculated proportionally
-            var partialRemainingInclVat = partialInvoices.Sum(i => i.TotalInclVat - i.PaidAmount);
+            var partialRemainingInclVat = partialInvoices.Sum(i => i.TotalInclVat - i.PaidAmount - (partialCredits.TryGetValue(i.Id, out var c) ? c : 0m));
             var partialRemainingVat = partialInvoices.Sum(i => i.TotalInclVat > 0 
-                ? i.TotalVat * (i.TotalInclVat - i.PaidAmount) / i.TotalInclVat 
+                ? (i.TotalInclVat - i.PaidAmount - (partialCredits.TryGetValue(i.Id, out var c2) ? c2 : 0m)) * i.TotalVat / i.TotalInclVat 
                 : 0);
             kpi.PartialAmount = partialRemainingInclVat - partialRemainingVat;
             kpi.PartialVat = partialRemainingVat;
@@ -1389,13 +1398,15 @@ namespace NordicBeesERP.Services
             // Card 4: Skolos (debts) - unpaid invoices
             var unpaidInvoices = await context.Invoices
                 .Where(i => EF.Functions.Like(i.InvoiceNumber, "LAK%") && !EF.Functions.Like(i.InvoiceNumber, "ULAK%") && i.PaymentStatus == "unpaid")
-                .Select(i => new { i.TotalInclVat, i.PaidAmount, i.SubtotalExclVat, i.TotalVat })
+                .Select(i => new { i.Id, i.TotalInclVat, i.PaidAmount, i.SubtotalExclVat, i.TotalVat })
                 .ToListAsync();
 
-            // BUG 1 FIX: Proportional SubtotalExclVat based on RemainingAmount
-            kpi.TotalDebtExclVat = unpaidInvoices.Sum(i => i.TotalInclVat > 0 ? (i.TotalInclVat - i.PaidAmount) * i.SubtotalExclVat / i.TotalInclVat : 0);
-            kpi.TotalDebtVat = unpaidInvoices.Sum(i => i.TotalInclVat > 0 ? (i.TotalInclVat - i.PaidAmount) * i.TotalVat / i.TotalInclVat : 0);
-            kpi.TotalDebt = unpaidInvoices.Sum(i => i.TotalInclVat - i.PaidAmount);
+            var unpaidCredits = await GetCreditedAmountsByInvoiceAsync(context, unpaidInvoices.Select(i => i.Id).ToList());
+
+            // BUG 1 FIX: Proportional SubtotalExclVat based on RemainingAmount (credit-aware)
+            kpi.TotalDebtExclVat = unpaidInvoices.Sum(i => i.TotalInclVat > 0 ? (i.TotalInclVat - i.PaidAmount - (unpaidCredits.TryGetValue(i.Id, out var c) ? c : 0m)) * i.SubtotalExclVat / i.TotalInclVat : 0);
+            kpi.TotalDebtVat = unpaidInvoices.Sum(i => i.TotalInclVat > 0 ? (i.TotalInclVat - i.PaidAmount - (unpaidCredits.TryGetValue(i.Id, out var c2) ? c2 : 0m)) * i.TotalVat / i.TotalInclVat : 0);
+            kpi.TotalDebt = unpaidInvoices.Sum(i => i.TotalInclVat - i.PaidAmount - (unpaidCredits.TryGetValue(i.Id, out var c3) ? c3 : 0m));
 
             return kpi;
         }
