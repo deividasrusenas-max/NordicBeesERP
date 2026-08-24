@@ -8,6 +8,7 @@ using NordicBeesERP.Data;
 using NordicBeesERP.Models;
 using NordicBeesERP.Services.Dtos;
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Globalization;
 
@@ -170,8 +171,14 @@ namespace NordicBeesERP.Services
                 .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
 
-            var status = totalAllocated == 0 ? "unpaid"
-                : totalAllocated >= invoice.TotalInclVat ? "paid"
+            var totalCredited = await context.CreditNotes
+                .Where(cn => cn.OriginalInvoiceId != null && cn.OriginalInvoiceId == invoiceId && cn.Status != CreditNoteStatus.Disputed)
+                .SumAsync(cn => (decimal?)cn.TotalInclVat) ?? 0m;
+
+            var totalSettled = totalAllocated + totalCredited;
+
+            var status = totalSettled == 0 ? "unpaid"
+                : totalSettled >= invoice.TotalInclVat ? "paid"
                 : "partial";
 
             var currentInvoiceStatus = invoice.Status;
@@ -1070,6 +1077,23 @@ namespace NordicBeesERP.Services
         // =====================================================
         // HELPER METHODS
         // =====================================================
+
+        private async Task<Dictionary<int, decimal>> GetCreditedAmountsByInvoiceAsync(NordicBeesERPContext context, IEnumerable<int> invoiceIds)
+        {
+            var idList = invoiceIds.ToList();
+            if (idList.Count == 0) return new Dictionary<int, decimal>();
+
+            var rows = await context.CreditNotes
+                .AsNoTracking()
+                .Where(cn => cn.OriginalInvoiceId != null && idList.Contains(cn.OriginalInvoiceId.Value) && cn.Status != CreditNoteStatus.Disputed)
+                .Select(cn => new { InvoiceId = cn.OriginalInvoiceId!.Value, Amount = cn.TotalInclVat })
+                .ToListAsync();
+
+            var map = new Dictionary<int, decimal>();
+            foreach (var row in rows)
+                map[row.InvoiceId] = (map.TryGetValue(row.InvoiceId, out var existing) ? existing : 0m) + row.Amount;
+            return map;
+        }
 
         private async Task LogAuditEntryAsync(
             NordicBeesERPContext context,
