@@ -53,6 +53,16 @@ re-labeling the symptom.
 
 ## Entries
 
+### 2026-08-24 — Credit-note edit save fails: Column 'original_invoice_id' cannot be null
+- **Symptom**: Saving an edited credit note via CreditNoteEdit.razor threw `Column 'original_invoice_id' cannot be null` (both Save and Save+PDF buttons).
+- **Root cause**: RECURRENCE of `schema-drift-unverified-column-mapping` (first logged 2026-07-17 for Delivery.cs; sibling incident logged earlier on 2026-08-24 for `applied_invoice_id`). The edit page loaded `OriginalInvoiceId` but never stored it in a page field, so `BuildCreditNoteRequest()` built the update request WITHOUT setting `OriginalInvoiceId`; `UpdateCreditNoteAsync` line 571 then assigned `request.OriginalInvoiceId` (null) into the entity, and the raw UPDATE (line ~663, `original_invoice_id = {1}`) wrote NULL into the NOT NULL `credit_notes.original_invoice_id` column. The earlier applied_invoice_id entry explicitly flagged this same latent path in `UpdateCreditNoteAsync`; its `?? creditNote.AppliedInvoiceId` guard did not extend to the sibling `OriginalInvoiceId` column.
+- **Fix**: commits 1557945 + f6cdce8 + 2a689e4 (v0.11.260-262) — (a) CreditNoteEdit preserves `OriginalInvoiceId` through the round-trip; (b) service line 571 now `request.OriginalInvoiceId ?? creditNote.OriginalInvoiceId` (defense-in-depth); (c) xUnit test `UpdateCreditNoteAsync_NullOriginalInvoiceId_PreservesExistingInvoiceId` drives the real service against `nordic_bees_erp_test` and round-trip-reads `original_invoice_id` preserved. No schema change.
+- **Verified**: dotnet build 0 errors each round; `dotnet test` — `Passed: 20, Failed: 0`; reviewer APPROVED every diff.
+- **Guardrail added**: none new mechanical — the `?? existing` service default now covers both `AppliedInvoiceId` AND `OriginalInvoiceId`, but the mechanism that silently wrote NULL was missed once for each column.
+- **Category**: EF-core
+- **Error class**: `schema-drift-unverified-column-mapping`
+- **Status**: escalated — THIRD incident in this error class (Delivery.cs 2026-07-17, applied_invoice_id 2026-08-24, original_invoice_id this entry). Multiple prompt/skill sentences have not prevented it. Recommend a MECHANICAL check as proposed in the applied_invoice_id entry: a semgrep / `agent-guardrails` rule (or `DESCRIBE`-based nullability audit) that flags any DB-NOT-NULL column written from a `??`-able request field without a guaranteed non-null fallback, so it cannot be skipped by an agent.
+
 ### 2026-08-24 — Fixer stuck in Compaction→re-summarize loop after real completion
 - **Symptom**: Task genuinely finished (v0.11.242, `FormatAmountHelper.cs`
   commit, tag pushed, `agent-guardrails` score 90/100), but the session
