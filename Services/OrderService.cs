@@ -246,6 +246,57 @@ public class OrderService : IOrderService
         await MarkReadyForPickupCheckAsync(context, orderId);
     }
 
+    public async Task SaveLineBatchesAsync(int orderLineId, List<OrderLineBatch> batches, int userId)
+    {
+        if (batches == null || batches.Count == 0)
+            throw new ArgumentException("Batches list cannot be empty", nameof(batches));
+
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        // Multi-statement write: delete unshipped old batches + insert new ones + stamp the line,
+        // all on one connection so LAST_INSERT_ID()/the readiness check see consistent state.
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            // Delete only UNshipped existing batches for this line (batches referenced by
+            // order_shipment_pallets are already part of a shipment and must be kept).
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM order_line_batches WHERE order_line_id = {0} AND id NOT IN (SELECT order_line_batch_id FROM order_shipment_pallets)",
+                orderLineId);
+
+            foreach (var batch in batches)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO order_line_batches (order_line_id, lot_number, expiry_date, quantity, packed_at, packed_by_user_id) " +
+                    "VALUES ({0}, {1}, {2}, {3}, NOW(), {4})",
+                    orderLineId,
+                    batch.LotNumber,
+                    batch.ExpiryDate,
+                    batch.Quantity,
+                    userId);
+            }
+
+            // Stamp the parent line as packed (deliberately NOT touching lot_number/expiry_date —
+            // those are per-batch now, see order_line_batches).
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE order_lines SET packed_at = NOW(), packed_by_user_id = {0} WHERE id = {1}",
+                userId, orderLineId);
+
+            var orderId = await context.Database.SqlQueryRaw<int>(
+                "SELECT order_id AS Value FROM order_lines WHERE id = {0}", orderLineId).FirstAsync();
+
+            // Check if all lines are now packed → auto-transition to ready_for_pickup
+            await MarkReadyForPickupCheckAsync(context, orderId);
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     public async Task MarkShippedAsync(int orderId, int userId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();

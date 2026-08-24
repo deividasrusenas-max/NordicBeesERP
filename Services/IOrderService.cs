@@ -29,4 +29,8 @@ public interface IOrderService
 
     /// Get total pallet/quantity count for an order (sum of order_lines.quantity).
     Task<decimal> GetOrderPalletCountAsync(int orderId);
+
+    /// Replace the packing batches for one order line (multi-pallet packing).
+    /// Deletes unshipped existing batches for the line, inserts the given ones with packed_at NOW().
+    Task SaveLineBatchesAsync(int orderLineId, List<OrderLineBatch> batches, int userId);
 }
