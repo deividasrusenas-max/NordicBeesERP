@@ -123,3 +123,12 @@
 - Patvirtinimo veiksmas: Color.Primary
 - Dydis: MaxWidth.ExtraSmall
 - DRAUDŽIAMA: caps lock mygtukuose
+
+---
+
+### Money amount display (read-only) — `FormatAmountHelper`
+
+- Display read-only monetary amounts (line "Suma" column, totals "Suma be PVM:", "PVM:", "Iš viso:", list-amount cells) via the shared helper **`FormatAmountHelper.FormatAmount(decimal)`** in `Helpers/FormatAmountHelper.cs` (globally available via `_Imports.razor`).
+- It formats as `value.ToString("0.####", CultureInfo.GetCultureInfo("lt-LT"))`: trims trailing zeros, comma decimal separator — e.g. `100.00m → "100"`, `3.40m → "3,4"`, `412.61m → "412,61"`.
+- This is for READ-ONLY display ONLY. NEVER use inside an editable numeric input — editable `MudNumericField`s keep their native `Value`/`ValueChanged` numeric binding.
+- Example: `@FormatAmountHelper.FormatAmount(_invoice.TotalInclVat) €`
