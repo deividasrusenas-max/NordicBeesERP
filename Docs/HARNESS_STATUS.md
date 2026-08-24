@@ -887,3 +887,26 @@ this is the second time today an unpinned-version assumption caused a
 real incident (see also the GPU/context config discussion in §13.1's
 §8.1 infra-noise section, a related but distinct "config drifted
 unnoticed" class of problem).
+
+## 2026-08-24 (end of day) - confirmed stable for the rest of the day
+
+After the opencode-auto-resume@1.1.3 version pin (above) plus the
+earlier same-day fixes (scope-check fallbacks, coder.limit.context
+stale-value fix, prune:true, q4_0+256K, reviewer garbled-text check),
+the user confirmed the harness ran well for the remainder of the
+working day - multiple real tasks completed and logged in
+Docs/BUGLOG.md (original_invoice_id/applied_invoice_id schema-drift
+fixes, negative-zero display fix, PDF locale-title fix), no further
+loop incidents reported after the auto-resume version pin.
+
+Given how many DIFFERENT root causes contributed to today's instability
+(scope-misrouting, a stale context-limit config, an unpinned npm plugin
+dependency silently drifting to a buggy version), it's plausible the
+unpinned-plugin issue was the dominant cause of the day's worst loops -
+but this was never isolated/proven in a controlled way. Treat today's
+smooth end-of-day run as encouraging signal for the baseline-stats
+comparison, not as proof of which specific fix mattered most. Known open
+items remain open regardless (git tag/branch backup unconfirmed,
+guardrail_score extraction unverified post-fix, n_toolcalls/exact-token/
+prefill-decode stats gaps, and fixer.md's own structural-rewrite
+candidacy per the BUGLOG plan-without-execution-gap synthesis entry).
