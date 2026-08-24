@@ -287,6 +287,20 @@ namespace NordicBeesERP.Services
         // CREDIT NOTE RETRIEVAL
         // =====================================================
 
+        public async Task<HashSet<int>> GetInvoiceIdsWithCreditNotesAsync(IEnumerable<int> invoiceIds)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var idList = invoiceIds.ToList();
+            if (idList.Count == 0) return new HashSet<int>();
+            var ids = await context.CreditNotes
+                .AsNoTracking()
+                .Where(cn => cn.OriginalInvoiceId != null && idList.Contains(cn.OriginalInvoiceId.Value))
+                .Select(cn => cn.OriginalInvoiceId!.Value)
+                .Distinct()
+                .ToListAsync();
+            return ids.ToHashSet();
+        }
+
         public async Task<CreditNoteDetailDto> GetCreditNoteAsync(int id)
         {
             using var context = _contextFactory.CreateDbContext();
@@ -346,6 +360,9 @@ namespace NordicBeesERP.Services
                 AppliedInvoiceNumber = creditNote.AppliedInvoice != null ? creditNote.AppliedInvoice.InvoiceNumber : string.Empty,
                 CustomerId = creditNote.CustomerId,
                 CustomerName = creditNote.Customer != null ? creditNote.Customer.Name : string.Empty,
+                CustomerEmail = creditNote.Customer != null ? creditNote.Customer.Email : null,
+                CustomerPhone = creditNote.Customer != null ? creditNote.Customer.Phone : null,
+                CustomerAddress = creditNote.Customer != null ? creditNote.Customer.Address : null,
                 CurrencyId = creditNote.CurrencyId,
                 CurrencyCode = creditNote.Currency != null ? creditNote.Currency.Code : string.Empty,
                 Language = creditNote.Language,
