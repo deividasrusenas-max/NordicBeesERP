@@ -810,3 +810,35 @@ fresh post-fix `fixer` call** — this is still an open item, same as
 noted in §9, not yet resolved today either. Check the tail of
 `task-stats.jsonl` for a recent `fixer` entry with a non-null
 `guardrail_score` to confirm.
+
+---
+
+## 2026-08-24 (later) — opencode-auto-resume disabled; root cause of
+   today's instability found: unpinned plugin version
+
+After 4 distinct `fixer` loop incidents today (see BUGLOG.md), found that
+`~/.cache/opencode/packages/opencode-auto-resume@latest` is NEWER than
+`.opencode/node_modules/opencode-auto-resume` (installed 2026-07-17).
+OpenCode's own plugin loader fetches npm plugins fresh via the `@latest`
+tag on startup when no version is pinned in `opencode.json` (the config
+had `"opencode-auto-resume"`, no `@version`). This means the plugin's
+behavior could have silently changed between yesterday (stable) and
+today (4 loop types) due to an upstream npm publish, with ZERO changes
+made in this repo — explains "nothing we changed, but it broke" cleanly.
+
+**Action taken**: `opencode.json` `"plugin": []` (disabled). Old config
+preserved under key `"_plugin_disabled_2026-08-24"` for easy restore.
+
+**If re-enabling later**: MUST pin an exact version
+(`"opencode-auto-resume@1.1.3"` or whatever is current/tested), never
+leave it unpinned — this applies to ANY future plugin added to this
+harness, not just this one. An unpinned `latest`-tag dependency in a
+production-adjacent harness is itself a standing risk, independent of
+this specific plugin's quality.
+
+**Also noted**: `Docs/HARNESS_STATUS.md` §13/§13.1 (baseline-week
+sequencing + harness-core extraction plan, written earlier today) have
+been silently reset/lost from this file at least twice today, likely by
+a concurrent process touching `Docs/` during the loop incidents. Content
+still exists in this chat's history if needed to reconstruct; not
+re-added here to avoid a third conflict during an already unstable day.

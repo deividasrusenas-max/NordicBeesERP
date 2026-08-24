@@ -640,7 +640,8 @@
     "prune": true,
     "reserved": 10000
   },
-  "plugin": [
+  "plugin": [],
+  "_plugin_disabled_2026-08-24": [
     [
       "opencode-auto-resume",
       {
