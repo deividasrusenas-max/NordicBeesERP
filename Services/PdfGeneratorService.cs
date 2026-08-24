@@ -497,6 +497,9 @@ namespace NordicBeesERP.Services
             return qty.ToString("G29");
         }
 
+        private static string FormatNegativeAmount(decimal value)
+            => value == 0m ? "0.00" : "-" + value.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+
         // =====================================================
         // LITUOMIŠKŲ ŽODŽIŲ KONVERTAVIMO METODAS
         // =====================================================
@@ -829,10 +832,10 @@ namespace NordicBeesERP.Services
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(line.Unit ?? "").FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatQuantity(line.Quantity)).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"-{totalExclVat:N2}").FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(totalExclVat)).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"{displayVatRate:N0}%").FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"-{vatAmount:N2}").FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"-{totalInclVat:N2}").FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(vatAmount)).FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(totalInclVat)).FontSize(8);
                             }
                         });
                         
@@ -842,17 +845,17 @@ namespace NordicBeesERP.Services
                             col.Item().Row(row =>
                             {
                                 row.ConstantItem(150).Text(labels.TotalExclVatLabel).FontSize(9);
-                                row.ConstantItem(80).AlignRight().Text($"-{subtotalExclVat:N2} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
+                                row.ConstantItem(80).AlignRight().Text($"{FormatNegativeAmount(subtotalExclVat)} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
                             });
                             col.Item().Row(row =>
                             {
                                 row.ConstantItem(150).Text(labels.VatAmountLabel).FontSize(9);
-                                row.ConstantItem(80).AlignRight().Text($"-{totalVat:N2} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
+                                row.ConstantItem(80).AlignRight().Text($"{FormatNegativeAmount(totalVat)} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
                             });
                             col.Item().BorderTop(1).BorderColor(Colors.Grey.Medium).PaddingTop(5).Row(row =>
                             {
                                 row.ConstantItem(150).Text(labels.TotalInclVatLabel).FontSize(10).Bold();
-                                row.ConstantItem(80).AlignRight().Text($"-{totalInclVat:N2} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(10).Bold();
+                                row.ConstantItem(80).AlignRight().Text($"{FormatNegativeAmount(totalInclVat)} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(10).Bold();
                             });
                         });
                         
