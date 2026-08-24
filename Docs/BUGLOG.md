@@ -156,6 +156,50 @@ re-labeling the symptom.
   `n_toolcalls`-based circuit-breaker (see `HARNESS_STATUS.md` §13
   Etapas 0) is built.
 
+### 2026-08-24 — Orchestrator re-invokes agent cycle indefinitely on genuinely idle state (no new user input)
+- **Symptom**: A third, distinct loop type in the same session. Unlike
+  the two entries above, the agent's own response was CORRECT each
+  cycle: "Active: (none) / Blocked: (none)", i.e. no work pending, no
+  error, genuinely waiting for a new directive. Despite this, the
+  Compaction→Fixer cycle continued indefinitely anyway — each
+  iteration re-loading the same 4 skills (mudblazor, verify-before-done,
+  url-filter-persistence, dotnet-efcore) as if starting a brand-new
+  task, with no new user message and no new task content anywhere in
+  the loop.
+- **Root cause**: NOT a model/prompt problem — the agent answered
+  correctly every time. This is a harness/loop-control gap: the
+  orchestration loop (`opencode-auto-resume` and/or the core OpenCode
+  session driver) has no "await new user input and pause" terminal
+  state distinct from "keep iterating". A correct "nothing to do,
+  waiting" report doesn't stop the loop, because the loop's continuation
+  condition is apparently keyed to a completion SIGNAL (task_complete,
+  discussed in the entry above) rather than to "is there a new,
+  unprocessed user message queued". Skill re-injection firing every
+  cycle confirms the harness is treating each empty iteration as a new
+  task start, not recognizing it's re-entering the same idle state.
+- **Why this is more dangerous than the other two**: the other two loop
+  types eventually surface a signal an agent COULD act on (an unexecuted
+  plan, a stuck completion report) that a stronger prompt rule might
+  catch. This one never will, by design — the agent is behaving
+  correctly every single cycle, so no prompt-text rule aimed at agent
+  behavior can fix it. It can silently burn context/inference (every
+  cycle is a real llama-swap call, ~5-7s + KV-cache cost) indefinitely
+  with nothing resembling an error to trigger any existing rule.
+- **Fix**: NOT YET APPLIED — no safe prompt-text mitigation exists for a
+  harness/loop-control-level gap; this needs a real code-level fix in
+  the orchestration driver (or `nordicbees-quality-monitor.ts`
+  detecting "N consecutive cycles with identical skill-injection set and
+  zero new user-message content" and forcing a hard pause) — deferred to
+  a focused Claude Code session, not attempted live in this already-long
+  chat session.
+- **Guardrail added**: none yet.
+- **Category**: infra
+- **Error class**: `idle-no-input-loop`
+- **Status**: N/A — no guardrail exists yet; this is the highest-priority
+  of the three 2026-08-24 loop entries for the planned Tier-1
+  `n_toolcalls`/cycle-detection circuit-breaker, since it is structurally
+  unreachable by any prompt-text fix aimed at the agent's own behavior.
+
 ### 2026-07-17 — Order status stuck on draft after packing
 - **Symptom**: All lines packed, but order header status never advanced.
 - **Root cause**: `MarkReadyForPickupCheckAsync` WHERE clause excluded 'draft' from the allowed source statuses.
