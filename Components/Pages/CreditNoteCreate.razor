@@ -70,12 +70,6 @@
                 <MudTextField T="string" Label="Klientas" @bind-Value="_customerName"
                               Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" />
             </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudAutocomplete T="InvoiceSelectDto" Label="Taikoma sąskaita" Value="@_appliedInvoice"
-                                 SearchFunc="@SearchAppliedInvoices" ToStringFunc="@(i => i == null ? "" : i.InvoiceNumber)"
-                                 ValueChanged="@OnAppliedInvoiceSelected"
-                                 Variant="Variant.Outlined" Clearable="true" Placeholder="Pasirinkite sąskaitą" Margin="Margin.Dense" />
-            </MudItem>
             <MudItem xs="12" sm="3">
                 <MudSelect T="string" Label="Kalba" @bind-Value="_language" Variant="Variant.Outlined" Margin="Margin.Dense">
                     <MudSelectItem T="string" Value="@("LT")">LT</MudSelectItem>
@@ -156,14 +150,12 @@
 
 @code {
     private List<InvoiceSelectDto> _invoices = new();
-    private List<InvoiceSelectDto> _customerInvoices = new();
     private List<CreditNoteLineModel> _lines = new();
     
     private string _creditNoteNumber = string.Empty;
     private DateTime _creditDate = DateTime.Today;
     private InvoiceSelectDto? _selectedInvoice;
     private string _customerName = string.Empty;
-    private InvoiceSelectDto? _appliedInvoice;
     private string _language = "LT";
     private decimal _subtotalExclVat;
     private decimal _totalVat;
@@ -221,21 +213,6 @@
         return await _creditNoteService.SearchInvoicesForCreditNoteAsync(term, 0, 20, cancellationToken);
     }
 
-    private async Task<IEnumerable<InvoiceSelectDto>> SearchAppliedInvoices(string term, CancellationToken cancellationToken)
-    {
-        if (_selectedInvoice == null)
-        {
-            return new List<InvoiceSelectDto>();
-        }
-        return await _creditNoteService.GetCustomerInvoicesForApplyingAsync(_selectedInvoice.CustomerId, _selectedInvoice.Id);
-    }
-
-    private void OnAppliedInvoiceSelected(InvoiceSelectDto? invoice)
-    {
-        _appliedInvoice = invoice;
-        StateHasChanged();
-    }
-
     private async Task OnInvoiceSelected(InvoiceSelectDto? invoice)
     {
         if (invoice == null)
@@ -244,9 +221,7 @@
             _subtotalExclVat = 0;
             _totalVat = 0;
             _totalInclVat = 0;
-            _customerInvoices.Clear();
             _customerName = string.Empty;
-            _appliedInvoice = null;
             StateHasChanged();
             return;
         }
@@ -259,9 +234,6 @@
         {
             _language = lang;
         }
-        // Auto-fill Taikoma sąskaita with the same invoice
-        _appliedInvoice = invoice;
-        
         // Get invoice lines
         var lines = await _creditNoteService.GetInvoiceLinesAsync(invoice.Id);
         var creditedQuantities = await _creditNoteService.GetCreditedQuantitiesByInvoiceLineAsync(invoice.Id);
@@ -288,9 +260,6 @@
 
         CalculateTotals();
 
-        // Load customer invoices for applying (excluding current invoice)
-        _customerInvoices = await _creditNoteService.GetCustomerInvoicesForApplyingAsync(invoice.Id, invoice.Id);
-        
         StateHasChanged();
     }
 
@@ -327,7 +296,6 @@
         var request = new CreateCreditNoteRequest
         {
             OriginalInvoiceId = _selectedInvoice.Id,
-            AppliedInvoiceId = _appliedInvoice?.Id,
             CreditDate = _creditDate,
             Language = _language,
             Lines = _lines.Where(l => l.IsChecked).Select(l => new CreditNoteLineRequest
@@ -367,7 +335,6 @@
         var request = new CreateCreditNoteRequest
         {
             OriginalInvoiceId = _selectedInvoice.Id,
-            AppliedInvoiceId = _appliedInvoice?.Id,
             CreditDate = _creditDate,
             Language = _language,
             Lines = _lines.Where(l => l.IsChecked).Select(l => new CreditNoteLineRequest
