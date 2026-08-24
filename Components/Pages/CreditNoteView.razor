@@ -164,24 +164,24 @@
                         </MudTd>
                          <MudTd Class="text-center">@(line?.Quantity ?? 0)</MudTd>
                          <MudTd Class="text-center">@(line?.Unit ?? "")</MudTd>
-                         <MudTd Class="text-right">@((line?.PriceExclVat ?? 0m).ToString("C2"))</MudTd>
+                          <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(line?.PriceExclVat ?? 0m)</MudTd>
                          <MudTd Class="text-center">@((line?.VatRate ?? 0m).ToString("F1"))%</MudTd>
-                         <MudTd Class="text-right">@((line?.LineTotal ?? 0m).ToString("C2"))</MudTd>
+                          <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(line?.LineTotal ?? 0m)</MudTd>
                     </RowTemplate>
                 </MudTable>
                 <div class="d-flex flex-column align-end pa-4" style="gap:4px;">
                     <div class="d-flex gap-4">
                         <MudText Typo="Typo.body2" Class="font-weight-bold">Suma be PVM:</MudText>
-                        <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.SubtotalExclVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@FormatAmountHelper.FormatAmount(-(_creditNote?.SubtotalExclVat ?? 0m)) €</MudText>
                     </div>
                     <div class="d-flex gap-4">
                         <MudText Typo="Typo.body2" Class="font-weight-bold">PVM:</MudText>
-                        <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.TotalVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@FormatAmountHelper.FormatAmount(-(_creditNote?.TotalVat ?? 0m)) €</MudText>
                     </div>
                      <MudDivider Class="my-1" Style="width:250px;" />
                      <div class="d-flex gap-4">
                          <MudText Typo="Typo.h6" Class="font-weight-bold">Iš viso:</MudText>
-                         <MudText Typo="Typo.h6" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@((-_creditNote?.TotalInclVat ?? 0m).ToString("N2", new System.Globalization.CultureInfo("lt-LT"))) €</MudText>
+                         <MudText Typo="Typo.h6" Class="font-weight-bold" Style="min-width:100px; text-align:right;">@FormatAmountHelper.FormatAmount(-(_creditNote?.TotalInclVat ?? 0m)) €</MudText>
                      </div>
                 </div>
             }
