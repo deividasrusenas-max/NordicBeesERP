@@ -33,4 +33,7 @@ public interface IOrderService
     /// Replace the packing batches for one order line (multi-pallet packing).
     /// Deletes unshipped existing batches for the line, inserts the given ones with packed_at NOW().
     Task SaveLineBatchesAsync(int orderLineId, List<OrderLineBatch> batches, int userId);
+
+    /// Get all packed pallets (batches) for an order with their shipment status.
+    Task<List<OrderPalletInfo>> GetOrderPalletsAsync(int orderId);
 }

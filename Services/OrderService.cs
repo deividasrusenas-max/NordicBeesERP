@@ -374,6 +374,60 @@ public class OrderService : IOrderService
         return count;
     }
 
+    public async Task<List<OrderPalletInfo>> GetOrderPalletsAsync(int orderId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var sql = @"SELECT b.id AS BatchId,
+                   b.order_line_id AS OrderLineId,
+                   ol.line_number AS LineNumber,
+                   ol.product_id AS ProductId,
+                   COALESCE(p.name, '') AS ProductName,
+                   b.lot_number AS LotNumber,
+                   b.expiry_date AS ExpiryDate,
+                   b.quantity AS Quantity,
+                   CASE WHEN osp.id IS NULL THEN 0 ELSE 1 END AS IsShipped,
+                   osp.shipped_at AS ShippedAt
+                   FROM order_line_batches b
+                   INNER JOIN order_lines ol ON ol.id = b.order_line_id
+                   LEFT JOIN products p ON p.id = ol.product_id
+                   LEFT JOIN order_shipment_pallets osp ON osp.order_line_batch_id = b.id
+                   WHERE ol.order_id = @orderId
+                   ORDER BY ol.line_number, b.id";
+
+        var conn = context.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open)
+            await conn.OpenAsync();
+
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        var orderIdParam = cmd.CreateParameter();
+        orderIdParam.ParameterName = "@orderId";
+        orderIdParam.Value = orderId;
+        cmd.Parameters.Add(orderIdParam);
+
+        var pallets = new List<OrderPalletInfo>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            pallets.Add(new OrderPalletInfo
+            {
+                BatchId = reader.GetInt32(reader.GetOrdinal("BatchId")),
+                OrderLineId = reader.GetInt32(reader.GetOrdinal("OrderLineId")),
+                LineNumber = reader.GetInt32(reader.GetOrdinal("LineNumber")),
+                ProductId = reader.GetInt32(reader.GetOrdinal("ProductId")),
+                ProductName = reader.GetString(reader.GetOrdinal("ProductName")),
+                LotNumber = reader.GetString(reader.GetOrdinal("LotNumber")),
+                ExpiryDate = reader.GetDateTime(reader.GetOrdinal("ExpiryDate")),
+                Quantity = reader.GetDecimal(reader.GetOrdinal("Quantity")),
+                IsShipped = reader.GetInt32(reader.GetOrdinal("IsShipped")) == 1,
+                ShippedAt = ReadNullableDateTime(reader, "ShippedAt")
+            });
+        }
+
+        return pallets;
+    }
+
     // =====================================================
     // PRIVATE HELPERS
     // =====================================================
