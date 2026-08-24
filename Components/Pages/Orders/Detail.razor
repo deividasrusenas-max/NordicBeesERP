@@ -184,10 +184,10 @@
                         {
                             <tr>
                                 <td class="text-center">
-                                    <MudCheckBox T="int"
-                                                 Value="@p.BatchId"
-                                                 Checked="@_selectedBatchIds.Contains(p.BatchId)"
-                                                  CheckedChanged="@((int v) => ToggleBatchSelection(p.BatchId))" />
+                                    <MudCheckBox T="bool"
+                                                 Dense="true"
+                                                 Checked="_selectedBatchIds.Contains(p.BatchId)"
+                                                  CheckedChanged="@((bool val) => ToggleBatchSelection(p.BatchId, val))" />
                                 </td>
                                 <td>@p.LineNumber</td>
                                 <td>@GetProductName(p.ProductId)</td>
@@ -206,11 +206,13 @@
                                        Variant="Variant.Outlined"
                                        Margin="Margin.Dense"
                                        FirstDayOfWeek="DayOfWeek.Monday"
-                                       Format="yyyy-MM-dd" />
+                                       Editable="true"
+                                       DateFormat="yyyy-MM-dd" />
                     </MudItem>
                     <MudItem xs="12" sm="4">
                         <MudTextField @bind-Value="_courierName"
                                       Label="Kurjeris"
+                                      Placeholder="pvz. Venipak, DPD, vairuotojo vardas"
                                       Variant="Variant.Outlined"
                                       Margin="Margin.Dense" />
                     </MudItem>
@@ -475,10 +477,12 @@
     }
 
     // --- Create Shipment ---
-    private void ToggleBatchSelection(int batchId)
+    private void ToggleBatchSelection(int batchId, bool isChecked)
     {
-        if (!_selectedBatchIds.Remove(batchId))
+        if (isChecked)
             _selectedBatchIds.Add(batchId);
+        else
+            _selectedBatchIds.Remove(batchId);
     }
 
     private bool CanConfirmShipment => _selectedBatchIds.Count > 0 && _shipmentDate.HasValue && !_isActioning;

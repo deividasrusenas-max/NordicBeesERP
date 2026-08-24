@@ -58,7 +58,8 @@
                                Label="Užsakymo data *"
                                Date="@_orderDate"
                                 DateChanged="@(date => _orderDate = date ?? DateTime.Today)"
-                               Variant="Variant.Outlined"
+                                Editable="true"
+                                Variant="Variant.Outlined"
                                Required="true"
                                Margin="Margin.Dense" />
             </MudItem>
@@ -66,8 +67,9 @@
                 <MudDatePicker T="DateTime?"
                                Label="Pristatymo data"
                                Date="@_deliveryDate"
-                               DateChanged="@(date => _deliveryDate = date)"
-                               Variant="Variant.Outlined"
+                                DateChanged="@(date => _deliveryDate = date)"
+                                Editable="true"
+                                Variant="Variant.Outlined"
                                Margin="Margin.Dense" />
             </MudItem>
             <MudItem xs="12">

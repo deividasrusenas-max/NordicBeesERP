@@ -22,11 +22,12 @@
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense"
                            FirstDayOfWeek="DayOfWeek.Monday"
-                           Format="yyyy-MM-dd" />
+                           Editable="true"
+                           DateFormat="yyyy-MM-dd" />
         }
         else
         {
-            <MudText Typo="Typo.body2">Kiekis: @Line.Quantity</MudText>
+            <MudText Typo="Typo.body2">Kiekis: @Line.Quantity.ToString("N0")</MudText>
             <MudStack Spacing="4">
                 @foreach (var batch in _batches)
                 {
@@ -41,7 +42,8 @@
                                        Variant="Variant.Outlined"
                                        Margin="Margin.Dense"
                                        FirstDayOfWeek="DayOfWeek.Monday"
-                                       Format="yyyy-MM-dd" />
+                                       Editable="true"
+                                       DateFormat="yyyy-MM-dd" />
                         <MudNumericField T="decimal?"
                                          @bind-Value="batch.Quantity"
                                          Label="Kiekis"
@@ -65,7 +67,7 @@
             @if (BatchesSumMismatch)
             {
                 <MudAlert Severity="Severity.Warning" Dense>
-                    Suma (@_batches.Sum(b => b.Quantity ?? 0)) nesutampa su eilutės kiekiu (@Line.Quantity). Galite tęsti.
+                    Suma (@_batches.Sum(b => b.Quantity ?? 0).ToString("N0")) nesutampa su eilutės kiekiu (@Line.Quantity.ToString("N0")). Galite tęsti.
                 </MudAlert>
             }
         }
