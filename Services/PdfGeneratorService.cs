@@ -664,6 +664,48 @@ namespace NordicBeesERP.Services
                             {
                                 col.Item().Text(labels.Seller).FontSize(9).Bold();
                                 
+                                // Įmonės duomenys
+                                col.Item().Text(buyer?.CompanyName ?? "").FontSize(10).Bold();
+                                col.Item().Text(text =>
+                                {
+                                    text.Span(labels.CompanyCodeLabel).FontSize(9);
+                                    text.Span(buyer?.CompanyCode ?? "").FontSize(9);
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span(labels.AddressLabel).FontSize(9);
+                                    text.Span(buyer?.Address ?? "").FontSize(9);
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span(labels.VatCodeLabel).FontSize(9);
+                                    text.Span(buyer?.VatCode ?? "").FontSize(9);
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span(labels.BankLabel).FontSize(9);
+                                    text.Span(buyer?.BankName ?? "").FontSize(9);
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span(labels.IbanLabel).FontSize(9);
+                                    text.Span(buyer?.BankIban ?? "").FontSize(9);
+                                });
+                                col.Item().Text(text =>
+                                {
+                                    text.Span(labels.SwiftLabel).FontSize(9);
+                                    text.Span(buyer?.BankSwift ?? "").FontSize(9);
+                                });
+                            });
+                            
+                            // LOGO (viduryje)
+                            row.ConstantItem(100).AlignCenter().AlignMiddle().Image(Path.Combine(_webHostEnvironment.WebRootPath, "logo.png")).FitWidth();
+                            
+                            // BUYER (dešinėje)
+                            row.RelativeItem().PaddingLeft(40).Column(col =>
+                            {
+                                col.Item().Text(labels.Buyer).FontSize(9).Bold();
+                                
                                 // Kliento duomenys
                                 col.Item().Text(seller?.Name ?? "").FontSize(10).Bold();
                                 if (isReverseCharge6)
@@ -709,48 +751,6 @@ namespace NordicBeesERP.Services
                                         text.Span(seller.VatCode).FontSize(9);
                                     });
                                 }
-                            });
-                            
-                            // LOGO (viduryje)
-                            row.ConstantItem(100).AlignCenter().AlignMiddle().Image(Path.Combine(_webHostEnvironment.WebRootPath, "logo.png")).FitWidth();
-                            
-                            // BUYER (dešinėje)
-                            row.RelativeItem().PaddingLeft(40).Column(col =>
-                            {
-                                col.Item().Text(labels.Buyer).FontSize(9).Bold();
-                                
-                                // Įmonės duomenys
-                                col.Item().Text(buyer?.CompanyName ?? "").FontSize(10).Bold();
-                                col.Item().Text(text =>
-                                {
-                                    text.Span(labels.CompanyCodeLabel).FontSize(9);
-                                    text.Span(buyer?.CompanyCode ?? "").FontSize(9);
-                                });
-                                col.Item().Text(text =>
-                                {
-                                    text.Span(labels.AddressLabel).FontSize(9);
-                                    text.Span(buyer?.Address ?? "").FontSize(9);
-                                });
-                                col.Item().Text(text =>
-                                {
-                                    text.Span(labels.VatCodeLabel).FontSize(9);
-                                    text.Span(buyer?.VatCode ?? "").FontSize(9);
-                                });
-                                col.Item().Text(text =>
-                                {
-                                    text.Span(labels.BankLabel).FontSize(9);
-                                    text.Span(buyer?.BankName ?? "").FontSize(9);
-                                });
-                                col.Item().Text(text =>
-                                {
-                                    text.Span(labels.IbanLabel).FontSize(9);
-                                    text.Span(buyer?.BankIban ?? "").FontSize(9);
-                                });
-                                col.Item().Text(text =>
-                                {
-                                    text.Span(labels.SwiftLabel).FontSize(9);
-                                    text.Span(buyer?.BankSwift ?? "").FontSize(9);
-                                });
                             });
                         });
                         
