@@ -36,7 +36,7 @@
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#e8f5e9; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Success">Iš viso išleista</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Success">@_totalSpent.ToString("0.00") €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Success">@FormatAmountHelper.Trim(_totalSpent, 2) €</MudText>
                             </MudPaper>
                         </MudItem>
                         <MudItem xs="12" sm="4">
@@ -48,7 +48,7 @@
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#fff3e0; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Warning">Vidutinė suma</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Warning">@_averageAmount.ToString("0.00") €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Warning">@FormatAmountHelper.Trim(_averageAmount, 2) €</MudText>
                             </MudPaper>
                         </MudItem>
                     </MudGrid>
@@ -72,7 +72,7 @@
                                 <MudText>@invoice.InvoiceNumber</MudText>
                             </MudTd>
                             <MudTd>
-                                <MudText>@invoice.AmountInclVat.ToString("0.00") €</MudText>
+                                <MudText>@FormatAmountHelper.Trim(invoice.AmountInclVat, 2) €</MudText>
                             </MudTd>
                             <MudTd>
                                 <MudChip T="string" Color="@GetStatusColor(invoice.Status)" Size="Size.Small">
