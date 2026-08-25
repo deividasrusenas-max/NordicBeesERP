@@ -322,8 +322,8 @@
                     </MudItem>
                 </MudGrid>
                 <MudText Typo="Typo.body1" Class="mt-2">
-                    Netto: <strong>@(Math.Max(0, _bucketUniformGross - _customBucketTare).ToString("F2")) kg</strong> × @_bucketCount =
-                    <strong>@((Math.Max(0, _bucketUniformGross - _customBucketTare) * _bucketCount).ToString("F2")) kg</strong>
+                    Netto: <strong>@FormatAmountHelper.Trim(Math.Max(0, _bucketUniformGross - _customBucketTare), 1) kg</strong> × @_bucketCount =
+                    <strong>@FormatAmountHelper.Trim(Math.Max(0, _bucketUniformGross - _customBucketTare) * _bucketCount, 1) kg</strong>
                 </MudText>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
                     OnClick="AddUniformBuckets" FullWidth="@true" Style="min-height:56px"
@@ -366,7 +366,7 @@
             <MudNumericField T="decimal" @bind-Value="_currentBucketGross" Label="Brutto (kg)" Variant="Variant.Outlined"
                 Style="font-size:1.5rem; font-weight:bold" Format="F2" Immediate="true" />
             <MudText Typo="Typo.h6" Align="Align.Center" Class="mt-2">
-                Netto: @(Math.Max(0, _currentBucketGross - _customBucketTare).ToString("F2")) kg
+                Netto: @FormatAmountHelper.Trim(Math.Max(0, _currentBucketGross - _customBucketTare), 1) kg
             </MudText>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
                 OnClick="SaveCurrentBucketAndNext" FullWidth="@true" Style="min-height:64px; font-size:1.3rem"
