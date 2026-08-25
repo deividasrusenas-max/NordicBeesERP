@@ -1,5 +1,6 @@
 @using NordicBeesERP.Models
 @using MudBlazor
+@using NordicBeesERP.Helpers
 @namespace NordicBeesERP.Components.Dialogs
 
 <MudDialog>
@@ -36,7 +37,7 @@
                 <MudTd>@context.Code</MudTd>
                 <MudTd>@context.Name</MudTd>
                 <MudTd>@context.Unit</MudTd>
-                <MudTd>@context.SalePrice.ToString("N2") €</MudTd>
+                <MudTd>@FormatAmountHelper.Trim(context.SalePrice, 2) €</MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Color="Color.Secondary">Produktų nerasta</MudText>
