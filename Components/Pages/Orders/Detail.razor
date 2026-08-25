@@ -182,12 +182,14 @@
                     <tbody>
                         @foreach (var p in _pallets.Where(p => !p.IsShipped))
                         {
+                            var batchId = p.BatchId; // Local capture for proper closure
+                            var isChecked = _selectedBatchIds.Contains(batchId);
                             <tr>
                                 <td class="text-center">
-                                    <MudCheckBox T="bool"
-                                                 Dense="true"
-                                                 Checked="_selectedBatchIds.Contains(p.BatchId)"
-                                                  CheckedChanged="@((bool val) => ToggleBatchSelection(p.BatchId, val))" />
+                                    <input type="checkbox"
+                                           class="form-check-input"
+                                           checked="@isChecked"
+                                           @onchange="@((ChangeEventArgs e) => SetBatchSelected(batchId, (bool)e.Value))" />
                                 </td>
                                 <td>@p.LineNumber</td>
                                 <td>@GetProductName(p.ProductId)</td>
@@ -477,12 +479,13 @@
     }
 
     // --- Create Shipment ---
-    private void ToggleBatchSelection(int batchId, bool isChecked)
+    private void SetBatchSelected(int batchId, bool value)
     {
-        if (isChecked)
+        if (value)
             _selectedBatchIds.Add(batchId);
         else
             _selectedBatchIds.Remove(batchId);
+        StateHasChanged();
     }
 
     private bool CanConfirmShipment => _selectedBatchIds.Count > 0 && _shipmentDate.HasValue && !_isActioning;
