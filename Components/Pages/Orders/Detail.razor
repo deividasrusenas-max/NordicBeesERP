@@ -114,9 +114,9 @@
                                 @foreach (var b in lineBatches)
                                 {
                                     <MudChip T="string" Size="Size.Small"
-                                             Color="@(b.IsShipped ? Color.Success : Color.Default)"
+                                             Color="@GetBatchChipColor(b)"
                                              Style="text-transform:none">
-                                        @b.LotNumber · @b.Quantity.ToString("N0")@(b.IsShipped ? " ✓" : "")
+                                        @b.LotNumber · @GetBatchChipLabel(b)
                                     </MudChip>
                                 }
                             </div>
@@ -164,7 +164,7 @@
                 <div class="d-flex justify-space-between align-center mb-3">
                     <MudText Typo="Typo.h6">Siuntimas (dalimis)</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Neprikelti padėklai: @_pallets.Count(p => !p.IsShipped) iš @_pallets.Count
+                        Neišsiųstos partijos: @_pallets.Count(p => !p.IsShipped) iš @_pallets.Count
                     </MudText>
                 </div>
 
@@ -629,6 +629,16 @@
     {
         return _productNames.TryGetValue(productId, out var name) ? name : "Nežinomas";
     }
+
+    private Color GetBatchChipColor(OrderPalletInfo b)
+        => b.IsShipped ? Color.Success : (b.ShippedQuantity > 0 ? Color.Warning : Color.Default);
+
+    private string GetBatchChipLabel(OrderPalletInfo b)
+        => b.IsShipped
+            ? $"{b.Quantity.ToString("N0")} ✓"
+            : b.ShippedQuantity > 0
+                ? $"{b.ShippedQuantity.ToString("N0")}/{b.Quantity.ToString("N0")} išvežta"
+                : b.Quantity.ToString("N0");
 
     private static readonly IReadOnlyDictionary<string, (string Label, Color Color)> _statusDisplay = StatusDisplayHelper.OrderStatusMap;
 }
