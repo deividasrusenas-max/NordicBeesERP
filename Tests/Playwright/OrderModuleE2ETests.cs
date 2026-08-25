@@ -218,19 +218,19 @@ public class OrderModuleE2ETests : IAsyncLifetime
         await TakeScreenshot("step3_line_packed.png");
 
         // Verify "Pakuota" chip is visible in the table (Detail.razor line 126-128)
-        var packedChip = await _page.Locator("text=✓ Pakuota").CountAsync();
-        Assert.True(packedChip > 0, "Packed line should show '✓ Pakuota' chip");
+        var packedChip = await _page.Locator("text=✓ Supakuota").CountAsync();
+        Assert.True(packedChip > 0, "Packed line should show '✓ Supakuota' chip");
 
-        // Verify status changed to "Pasiruošęs" (ready_for_pickup)
-        // Detail.razor line 45-47: MudChip with GetStatusLabel → "Pasiruošęs"
-        var readyStatus = await _page.Locator("text=Pasiruošęs").CountAsync();
+        // Verify status changed to "Paruošta" (ready_for_pickup)
+        // Detail.razor line 45-47: MudChip with GetStatusLabel → "Paruošta"
+        var readyStatus = await _page.Locator("text=Paruošta").CountAsync();
         if (readyStatus > 0)
         {
-            _output.WriteLine("Order status auto-transitioned to 'ready_for_pickup' (Pasiruošęs)");
+            _output.WriteLine("Order status auto-transitioned to 'ready_for_pickup' (Paruošta)");
         }
         else
         {
-            _output.WriteLine("WARN: 'Pasiruošęs' status chip not found — status may still be 'draft' or 'packing'");
+            _output.WriteLine("WARN: 'Paruošta' status chip not found — status may still be 'draft' or 'packing'");
         }
 
         await SaveConsoleLog("step3_console.txt");
