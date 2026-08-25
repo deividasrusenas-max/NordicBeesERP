@@ -306,14 +306,20 @@ public class OrderService : IOrderService
             userId, orderId);
     }
 
-    public async Task CreateShipmentAsync(int orderId, DateTime shipmentDate, string? courierName, string? notes, int userId, List<int> batchIds)
+    public async Task CreateShipmentAsync(int orderId, DateTime shipmentDate, string? courierName, string? notes, int userId, List<(int BatchId, decimal Quantity)> batchQuantities)
     {
-        if (batchIds == null || batchIds.Count == 0)
-            throw new ArgumentException("BatchIds list cannot be empty", nameof(batchIds));
+        if (batchQuantities == null || batchQuantities.Count == 0)
+            throw new ArgumentException("Batch quantities list cannot be empty", nameof(batchQuantities));
+
+        foreach (var (_, quantity) in batchQuantities)
+        {
+            if (quantity <= 0)
+                throw new ArgumentException("Shipment quantity must be greater than zero");
+        }
 
         await using var context = await _contextFactory.CreateDbContextAsync();
 
-        // Multi-statement write: INSERT shipment + per-pallet links + status recompute,
+        // Multi-statement write: INSERT shipment + per-batch shipped-quantity rows + status recompute,
         // all on one connection/transaction so LAST_INSERT_ID() and the counts are consistent.
         await using var transaction = await context.Database.BeginTransactionAsync();
         try
@@ -325,40 +331,55 @@ public class OrderService : IOrderService
 
             var newShipmentId = await context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() AS Value").FirstAsync();
 
-            foreach (var batchId in batchIds)
+            foreach (var (batchId, quantity) in batchQuantities)
             {
-                // Guards: the batch belongs to this order AND is not already part of a shipment.
+                // Server-side re-validation against fresh DB state inside the transaction:
+                // remaining = batch.quantity - already shipped for this batch.
+                var remaining = await context.Database.SqlQueryRaw<decimal>(
+                    "SELECT b.quantity - COALESCE((SELECT SUM(osp.quantity_shipped) FROM order_shipment_pallets osp WHERE osp.order_line_batch_id = b.id), 0) AS Value " +
+                    "FROM order_line_batches b INNER JOIN order_lines ol ON ol.id = b.order_line_id " +
+                    "WHERE b.id = {0} AND ol.order_id = {1}",
+                    batchId, orderId).FirstOrDefaultAsync();
+
+                if (remaining == null)
+                    throw new InvalidOperationException($"Partija #{batchId} nerasta šiame užsakyme arba ji nebeegzistuoja.");
+
+                if (remaining <= 0)
+                    throw new InvalidOperationException($"Partijos #{batchId} kiekis jau yra visiškai išsiųstas – likęs kiekis: 0.");
+
+                if (quantity > remaining)
+                    throw new InvalidOperationException($"Nurodytas kiekis ({quantity}) viršija partijos #{batchId} likusį kiekį ({remaining}).");
+
+                // Deliberately NO one-row-per-batch guard: multiple rows per batch across
+                // different shipments must be allowed (partial shipments accumulate).
                 await context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO order_shipment_pallets (shipment_id, order_line_batch_id, shipped_at) " +
-                    "SELECT {0}, {1}, NOW() WHERE EXISTS (" +
-                    "  SELECT 1 FROM order_line_batches b INNER JOIN order_lines ol ON ol.id = b.order_line_id " +
-                    "  WHERE b.id = {2} AND ol.order_id = {3}" +
-                    ") AND NOT EXISTS (SELECT 1 FROM order_shipment_pallets WHERE order_line_batch_id = {4})",
-                    newShipmentId, batchId, batchId, orderId, batchId);
+                    "INSERT INTO order_shipment_pallets (shipment_id, order_line_batch_id, quantity_shipped, shipped_at) " +
+                    "VALUES ({0}, {1}, {2}, NOW())",
+                    newShipmentId, batchId, quantity);
             }
 
             var totalBatches = await context.Database.SqlQueryRaw<int>(
                 "SELECT COUNT(*) AS Value FROM order_line_batches b INNER JOIN order_lines ol ON ol.id = b.order_line_id WHERE ol.order_id = {0}",
                 orderId).FirstAsync();
 
-            var shippedBatches = await context.Database.SqlQueryRaw<int>(
+            var notFullyShippedBatches = await context.Database.SqlQueryRaw<int>(
                 "SELECT COUNT(*) AS Value FROM order_line_batches b " +
                 "INNER JOIN order_lines ol ON ol.id = b.order_line_id " +
-                "INNER JOIN order_shipment_pallets osp ON osp.order_line_batch_id = b.id " +
-                "WHERE ol.order_id = {0}",
+                "WHERE COALESCE((SELECT SUM(osp.quantity_shipped) FROM order_shipment_pallets osp WHERE osp.order_line_batch_id = b.id), 0) < b.quantity " +
+                "AND ol.order_id = {0}",
                 orderId).FirstAsync();
 
-            if (shippedBatches > 0 && shippedBatches < totalBatches)
-            {
-                await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE orders SET status = 'partially_shipped', updated_at = NOW() WHERE id = {0} AND status IN ('ready_for_pickup', 'partially_shipped', 'confirmed', 'packing')",
-                    orderId);
-            }
-            else if (shippedBatches >= totalBatches && totalBatches > 0)
+            if (totalBatches > 0 && notFullyShippedBatches == 0)
             {
                 await context.Database.ExecuteSqlRawAsync(
                     "UPDATE orders SET status = 'shipped', shipped_at = NOW(), shipped_by_user_id = {0}, updated_at = NOW() WHERE id = {1} AND status IN ('ready_for_pickup', 'partially_shipped')",
                     userId, orderId);
+            }
+            else if (totalBatches > 0)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE orders SET status = 'partially_shipped', updated_at = NOW() WHERE id = {0} AND status IN ('ready_for_pickup', 'partially_shipped', 'confirmed', 'packing')",
+                    orderId);
             }
 
             await transaction.CommitAsync();
@@ -444,21 +465,29 @@ public class OrderService : IOrderService
         await using var context = await _contextFactory.CreateDbContextAsync();
 
         var sql = @"SELECT b.id AS BatchId,
-                   b.order_line_id AS OrderLineId,
-                   ol.line_number AS LineNumber,
-                   ol.product_id AS ProductId,
-                   COALESCE(p.name, '') AS ProductName,
-                   b.lot_number AS LotNumber,
-                   b.expiry_date AS ExpiryDate,
-                   b.quantity AS Quantity,
-                   CASE WHEN osp.id IS NULL THEN 0 ELSE 1 END AS IsShipped,
-                   osp.shipped_at AS ShippedAt
-                   FROM order_line_batches b
-                   INNER JOIN order_lines ol ON ol.id = b.order_line_id
-                   LEFT JOIN products p ON p.id = ol.product_id
-                   LEFT JOIN order_shipment_pallets osp ON osp.order_line_batch_id = b.id
-                   WHERE ol.order_id = @orderId
-                   ORDER BY ol.line_number, b.id";
+                    b.order_line_id AS OrderLineId,
+                    ol.line_number AS LineNumber,
+                    ol.product_id AS ProductId,
+                    COALESCE(p.name, '') AS ProductName,
+                    b.lot_number AS LotNumber,
+                    b.expiry_date AS ExpiryDate,
+                    b.quantity AS Quantity,
+                    COALESCE(osp_agg.shipped_sum, 0) AS ShippedQuantity,
+                    GREATEST(b.quantity - COALESCE(osp_agg.shipped_sum, 0), 0) AS RemainingQuantity,
+                    (GREATEST(b.quantity - COALESCE(osp_agg.shipped_sum, 0), 0) <= 0) AS IsShipped,
+                    osp_agg.last_shipped_at AS ShippedAt
+                    FROM order_line_batches b
+                    INNER JOIN order_lines ol ON ol.id = b.order_line_id
+                    LEFT JOIN products p ON p.id = ol.product_id
+                    LEFT JOIN (
+                        SELECT order_line_batch_id,
+                               SUM(quantity_shipped) AS shipped_sum,
+                               MAX(shipped_at) AS last_shipped_at
+                        FROM order_shipment_pallets
+                        GROUP BY order_line_batch_id
+                    ) osp_agg ON osp_agg.order_line_batch_id = b.id
+                    WHERE ol.order_id = @orderId
+                    ORDER BY ol.line_number, b.id";
 
         var conn = context.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open)
@@ -485,6 +514,8 @@ public class OrderService : IOrderService
                 LotNumber = reader.GetString(reader.GetOrdinal("LotNumber")),
                 ExpiryDate = reader.GetDateTime(reader.GetOrdinal("ExpiryDate")),
                 Quantity = reader.GetDecimal(reader.GetOrdinal("Quantity")),
+                ShippedQuantity = reader.GetDecimal(reader.GetOrdinal("ShippedQuantity")),
+                RemainingQuantity = reader.GetDecimal(reader.GetOrdinal("RemainingQuantity")),
                 IsShipped = reader.GetInt32(reader.GetOrdinal("IsShipped")) == 1,
                 ShippedAt = ReadNullableDateTime(reader, "ShippedAt")
             });

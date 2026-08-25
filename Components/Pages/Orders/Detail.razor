@@ -171,11 +171,11 @@
                 <MudSimpleTable Dense="true" Hover="true" Elevation="0" Class="mb-3">
                     <thead>
                         <tr>
-                            <th style="width:50px"></th>
+                            <th style="width:140px">Siunčiama</th>
                             <th>Eilutė</th>
                             <th>Produktas</th>
                             <th>Partija</th>
-                            <th style="width:100px">Kiekis</th>
+                            <th style="width:100px">Likutis</th>
                             <th style="width:120px">Galiojimo data</th>
                         </tr>
                     </thead>
@@ -183,18 +183,28 @@
                         @foreach (var p in _pallets.Where(p => !p.IsShipped))
                         {
                             var batchId = p.BatchId; // Local capture for proper closure
-                            var isChecked = _selectedBatchIds.Contains(batchId);
                             <tr>
-                                <td class="text-center">
-                                    <input type="checkbox"
-                                           class="form-check-input"
-                                           checked="@isChecked"
-                                           @onchange="@((ChangeEventArgs e) => SetBatchSelected(batchId, (bool)e.Value))" />
+                                <td>
+                                    <MudNumericField T="decimal"
+                                                     Value="@GetShipmentQuantity(batchId)"
+                                                     ValueChanged="@(v => SetShipmentQuantity(batchId, v))"
+                                                     Min="0"
+                                                     Max="@p.RemainingQuantity"
+                                                     Format="N0"
+                                                     Margin="Margin.Dense"
+                                                     Variant="Variant.Outlined"
+                                                     Style="width:120px" />
                                 </td>
                                 <td>@p.LineNumber</td>
                                 <td>@GetProductName(p.ProductId)</td>
                                 <td>@p.LotNumber</td>
-                                <td>@p.Quantity.ToString("N0")</td>
+                                <td>
+                                    <div>@p.RemainingQuantity.ToString("N0")</div>
+                                    @if (p.ShippedQuantity > 0)
+                                    {
+                                        <div style="font-size:0.8em; color:#6b7280">iš viso: @p.Quantity.ToString("N0")</div>
+                                    }
+                                </td>
                                 <td>@p.ExpiryDate.ToString("yyyy-MM-dd")</td>
                             </tr>
                         }
@@ -234,7 +244,7 @@
                                OnClick="@ConfirmShipmentAsync"
                                Disabled="@(!CanConfirmShipment)"
                                Style="text-transform:none">
-                        Patvirtinti siuntą (@_selectedBatchIds.Count)
+                         Patvirtinti siuntą (@TotalShipmentQuantity.ToString("N0") vnt.)
                     </MudButton>
                 </div>
             </MudPaper>
@@ -321,7 +331,7 @@
     private List<OrderPalletInfo> _pallets = new();
 
     // Shipment creation state
-    private HashSet<int> _selectedBatchIds = new();
+    private Dictionary<int, decimal> _shipmentQuantities = new();
     private DateTime? _shipmentDate = DateTime.Today;
     private string? _courierName;
     private string? _shipmentNotes;
@@ -374,6 +384,8 @@
 
             try { _pallets = await OrderService.GetOrderPalletsAsync(OrderId); }
             catch { _pallets = new List<OrderPalletInfo>(); }
+
+            _shipmentQuantities = _pallets.Where(p => !p.IsShipped).ToDictionary(p => p.BatchId, p => p.RemainingQuantity);
 
             if (_order != null)
             {
@@ -479,24 +491,34 @@
     }
 
     // --- Create Shipment ---
-    private void SetBatchSelected(int batchId, bool value)
+    private decimal GetShipmentQuantity(int batchId)
     {
-        if (value)
-            _selectedBatchIds.Add(batchId);
-        else
-            _selectedBatchIds.Remove(batchId);
+        return _shipmentQuantities.TryGetValue(batchId, out var q) ? q : 0;
+    }
+
+    private void SetShipmentQuantity(int batchId, decimal value)
+    {
+        _shipmentQuantities[batchId] = value;
         StateHasChanged();
     }
 
-    private bool CanConfirmShipment => _selectedBatchIds.Count > 0 && _shipmentDate.HasValue && !_isActioning;
+    private bool CanConfirmShipment => _shipmentQuantities.Any(kv => kv.Value > 0) && _shipmentDate.HasValue && !_isActioning;
+
+    private int SelectedShipmentCount => _shipmentQuantities.Count(kv => kv.Value > 0);
+
+    private decimal TotalShipmentQuantity => _shipmentQuantities.Values.Sum();
 
     private async Task ConfirmShipmentAsync()
     {
         if (_order == null) return;
 
-        if (_selectedBatchIds.Count == 0)
+        var batchQuantities = _shipmentQuantities
+            .Where(kv => kv.Value > 0)
+            .Select(kv => (kv.Key, kv.Value))
+            .ToList();
+        if (batchQuantities.Count == 0)
         {
-            Snackbar.Add("Pasirinkite bent vieną padėklą.", Severity.Warning);
+            Snackbar.Add("Įveskite bent vienos partijos kiekį.", Severity.Warning);
             return;
         }
 
@@ -512,10 +534,10 @@
                 return;
             }
 
-            await OrderService.CreateShipmentAsync(_order.Id, _shipmentDate!.Value, _courierName, _shipmentNotes, userId.Value, _selectedBatchIds.ToList());
+            await OrderService.CreateShipmentAsync(_order.Id, _shipmentDate!.Value, _courierName, _shipmentNotes, userId.Value, batchQuantities);
             Snackbar.Add("Siunta įrašyta.", Severity.Success);
 
-            _selectedBatchIds.Clear();
+            _shipmentQuantities.Clear();
             _courierName = null;
             _shipmentNotes = null;
             _shipmentDate = DateTime.Today;

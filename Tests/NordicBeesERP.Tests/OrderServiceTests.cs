@@ -287,8 +287,8 @@ public class OrderServiceTests : IClassFixture<DbTestFixture>
             var batchIds = await GetBatchIdsForLineAsync(fixture.LineId);
             Assert.Equal(2, batchIds.Count);
 
-            // Ship only the FIRST batch, with notes left null (must persist as SQL NULL).
-            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<int> { batchIds[0] });
+            // Ship only the FIRST batch (full quantity of 2), with notes left null (must persist as SQL NULL).
+            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchIds[0], 2m) });
 
             await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
 
@@ -305,11 +305,16 @@ public class OrderServiceTests : IClassFixture<DbTestFixture>
                 .FirstAsync();
             Assert.Equal(1, courierAndNotesNull);
 
-            // Exactly one pallet link, pointing at the first batch, with shipped_at NOT NULL.
+            // Exactly one pallet link, pointing at the first batch, with shipped_at NOT NULL and quantity_shipped persisted.
             var palletCount = await verifyContext.Database
                 .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipment_pallets WHERE order_line_batch_id = {0}", batchIds[0])
                 .FirstAsync();
             Assert.Equal(1, palletCount);
+
+            var palletQuantity = await verifyContext.Database
+                .SqlQueryRaw<decimal>("SELECT quantity_shipped AS Value FROM order_shipment_pallets WHERE order_line_batch_id = {0}", batchIds[0])
+                .FirstAsync();
+            Assert.Equal(2m, palletQuantity);
 
             var secondBatchPalletCount = await verifyContext.Database
                 .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipment_pallets WHERE order_line_batch_id = {0}", batchIds[1])
@@ -357,11 +362,11 @@ public class OrderServiceTests : IClassFixture<DbTestFixture>
             var batchIds = await GetBatchIdsForLineAsync(fixture.LineId);
             Assert.Equal(2, batchIds.Count);
 
-            // Ship the first batch → partially_shipped (same state as the partial test).
-            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<int> { batchIds[0] });
+            // Ship the first batch (full quantity) → partially_shipped (same state as the partial test).
+            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchIds[0], 2m) });
 
             // Ship the remaining batch → all batches shipped → fully shipped.
-            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<int> { batchIds[1] });
+            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchIds[1], 2m) });
 
             await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
 
@@ -374,6 +379,211 @@ public class OrderServiceTests : IClassFixture<DbTestFixture>
                 .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM orders WHERE id = {0} AND shipped_at IS NULL", fixture.OrderId)
                 .FirstAsync();
             Assert.Equal(0, shippedAtNullCount);
+        }
+        finally
+        {
+            await CleanupOrderFixtureAsync(fixture);
+        }
+    }
+
+    [Fact]
+    public async Task CreateShipmentAsync_PartialQuantity_SameBatchAccumulatesAcrossShipments()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var fixture = await CreateOrderFixtureAsync(suffix);
+        try
+        {
+            var service = new OrderService(_fixture.Factory);
+
+            // One batch of quantity 4 on the single line.
+            var expiry = DateTime.Today.AddDays(365);
+            await service.SaveLineBatchesAsync(fixture.LineId, new List<OrderLineBatch>
+            {
+                new() { LotNumber = $"LOT-ACC-{suffix}", ExpiryDate = expiry, Quantity = 4m }
+            }, userId: 1);
+
+            var batchIds = await GetBatchIdsForLineAsync(fixture.LineId);
+            Assert.Single(batchIds);
+            var batchId = batchIds[0];
+
+            // Ship 2 of the 4 → partially shipped.
+            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchId, 2m) });
+
+            // Ship the remaining 2 on a SECOND shipment day → same batch gets a second pallet row.
+            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today.AddDays(1), "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchId, 2m) });
+
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            // Two shipments, two pallet rows for the SAME batch — accumulation across days must be allowed.
+            var shipmentCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipments WHERE order_id = {0}", fixture.OrderId)
+                .FirstAsync();
+            Assert.Equal(2, shipmentCount);
+
+            var palletRowsForBatch = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipment_pallets WHERE order_line_batch_id = {0}", batchId)
+                .FirstAsync();
+            Assert.Equal(2, palletRowsForBatch);
+
+            var totalShippedQuantity = await verifyContext.Database
+                .SqlQueryRaw<decimal>(
+                    "SELECT COALESCE(SUM(quantity_shipped), 0) AS Value FROM order_shipment_pallets WHERE order_line_batch_id = {0}", batchId)
+                .FirstAsync();
+            Assert.Equal(4m, totalShippedQuantity);
+
+            // Batch is now fully shipped → order must be 'shipped' with shipped_at set.
+            var orderStatus = await verifyContext.Database
+                .SqlQueryRaw<string>("SELECT status AS Value FROM orders WHERE id = {0}", fixture.OrderId)
+                .FirstAsync();
+            Assert.Equal("shipped", orderStatus);
+
+            var shippedAtNullCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM orders WHERE id = {0} AND shipped_at IS NULL", fixture.OrderId)
+                .FirstAsync();
+            Assert.Equal(0, shippedAtNullCount);
+        }
+        finally
+        {
+            await CleanupOrderFixtureAsync(fixture);
+        }
+    }
+
+    [Fact]
+    public async Task CreateShipmentAsync_QuantityExceedsRemaining_ThrowsAndRollsBack()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var fixture = await CreateOrderFixtureAsync(suffix);
+        try
+        {
+            var service = new OrderService(_fixture.Factory);
+
+            var expiry = DateTime.Today.AddDays(365);
+            await service.SaveLineBatchesAsync(fixture.LineId, new List<OrderLineBatch>
+            {
+                new() { LotNumber = $"LOT-OVER-{suffix}", ExpiryDate = expiry, Quantity = 2m }
+            }, userId: 1);
+
+            var batchIds = await GetBatchIdsForLineAsync(fixture.LineId);
+            Assert.Single(batchIds);
+            var batchId = batchIds[0];
+
+            // Requesting 5 of a remaining 2 must be refused server-side.
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchId, 5m) }));
+
+            // The failed call must have rolled back completely: no shipment row, no pallet row.
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            var shipmentCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipments WHERE order_id = {0}", fixture.OrderId)
+                .FirstAsync();
+            Assert.Equal(0, shipmentCount);
+
+            var palletCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipment_pallets WHERE order_line_batch_id = {0}", batchId)
+                .FirstAsync();
+            Assert.Equal(0, palletCount);
+        }
+        finally
+        {
+            await CleanupOrderFixtureAsync(fixture);
+        }
+    }
+
+    [Fact]
+    public async Task CreateShipmentAsync_FullyShippedBatch_Throws()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var fixture = await CreateOrderFixtureAsync(suffix);
+        try
+        {
+            var service = new OrderService(_fixture.Factory);
+
+            var expiry = DateTime.Today.AddDays(365);
+            await service.SaveLineBatchesAsync(fixture.LineId, new List<OrderLineBatch>
+            {
+                new() { LotNumber = $"LOT-EXH-{suffix}", ExpiryDate = expiry, Quantity = 2m }
+            }, userId: 1);
+
+            var batchIds = await GetBatchIdsForLineAsync(fixture.LineId);
+            Assert.Single(batchIds);
+            var batchId = batchIds[0];
+
+            // Ship everything first.
+            await service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchId, 2m) });
+
+            // Shipping the same batch again (remaining = 0) must be refused with a clear message.
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (batchId, 1m) }));
+            Assert.Contains("išsiųstas", ex.Message);
+
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            // Only the first shipment survived; the second attempt rolled back.
+            var shipmentCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipments WHERE order_id = {0}", fixture.OrderId)
+                .FirstAsync();
+            Assert.Equal(1, shipmentCount);
+
+            var palletCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipment_pallets WHERE order_line_batch_id = {0}", batchId)
+                .FirstAsync();
+            Assert.Equal(1, palletCount);
+        }
+        finally
+        {
+            await CleanupOrderFixtureAsync(fixture);
+        }
+    }
+
+    [Fact]
+    public async Task CreateShipmentAsync_UnknownBatchForOrder_Throws()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var fixture = await CreateOrderFixtureAsync(suffix);
+        try
+        {
+            var service = new OrderService(_fixture.Factory);
+
+            // A batch id that does not exist at all — the server-side check must refuse it.
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (999999, 1m) }));
+
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var shipmentCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipments WHERE order_id = {0}", fixture.OrderId)
+                .FirstAsync();
+            Assert.Equal(0, shipmentCount);
+        }
+        finally
+        {
+            await CleanupOrderFixtureAsync(fixture);
+        }
+    }
+
+    [Fact]
+    public async Task CreateShipmentAsync_EmptyListOrNonPositiveQuantity_ThrowsArgumentException()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var fixture = await CreateOrderFixtureAsync(suffix);
+        try
+        {
+            var service = new OrderService(_fixture.Factory);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)>()));
+
+            var batchIds = await GetBatchIdsForLineAsync(fixture.LineId); // none yet — but validation happens before any DB read
+            Assert.Empty(batchIds);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => service.CreateShipmentAsync(fixture.OrderId, DateTime.Today, "TestCourier", null, userId: 1, new List<(int BatchId, decimal Quantity)> { (1, 0m) }));
+
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var shipmentCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM order_shipments WHERE order_id = {0}", fixture.OrderId)
+                .FirstAsync();
+            Assert.Equal(0, shipmentCount);
         }
         finally
         {

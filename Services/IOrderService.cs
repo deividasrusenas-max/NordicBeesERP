@@ -22,7 +22,8 @@ public interface IOrderService
     Task MarkShippedAsync(int orderId, int userId);
 
     /// Create a partial shipment for selected pallets and recompute order status.
-    Task CreateShipmentAsync(int orderId, DateTime shipmentDate, string? courierName, string? notes, int userId, List<int> batchIds);
+    /// Each entry in <paramref name="batchQuantities"/> is a (BatchId, Quantity) pair identifying the packed batch to ship and how many units of it are being shipped.
+    Task CreateShipmentAsync(int orderId, DateTime shipmentDate, string? courierName, string? notes, int userId, List<(int BatchId, decimal Quantity)> batchQuantities);
 
     /// Link an external invoice ID to a shipped order.
     Task LinkInvoiceAsync(int orderId, int invoiceId, int userId);

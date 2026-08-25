@@ -44,6 +44,8 @@ public class OrderPalletInfo
     public string LotNumber { get; set; } = string.Empty;
     public DateTime ExpiryDate { get; set; }
     public decimal Quantity { get; set; }
+    public decimal ShippedQuantity { get; set; }
+    public decimal RemainingQuantity { get; set; }
     public bool IsShipped { get; set; }
     public DateTime? ShippedAt { get; set; }
 }
