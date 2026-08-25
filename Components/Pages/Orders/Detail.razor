@@ -58,6 +58,12 @@
                         <text>&nbsp;|&nbsp; Pristatymas: @_order.DeliveryDate.Value.ToString("yyyy-MM-dd")</text>
                     }
                 </MudText>
+                @if ((_order.Status == "partially_shipped" || _order.Lines.Count > 1) && _pallets.Any())
+                {
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small" Class="mt-1" Style="text-transform:none">
+                        Iš viso išvežta: @GetOrderShippedQuantity().ToString("N0") / @GetOrderTotalQuantity().ToString("N0")
+                    </MudChip>
+                }
             </div>
             <div class="d-flex gap-2">
                 <MudButton OnClick="@(() => HandleBack())"
@@ -102,7 +108,13 @@
                     }
                     <MudTd>@line.LineNumber</MudTd>
                     <MudTd>@GetProductName(line.ProductId)</MudTd>
-                    <MudTd>@line.Quantity.ToString("N0")</MudTd>
+                    <MudTd>
+                        <div>@line.Quantity.ToString("N0")</div>
+                        @if (GetLineShippedQuantity(lineBatches) > 0)
+                        {
+                            <div style="font-size:0.8em; color:#6b7280">@GetLineShippedQuantity(lineBatches).ToString("N0") / @line.Quantity.ToString("N0") išvežta</div>
+                        }
+                    </MudTd>
                     <MudTd>
                         @if (lineBatches.Count == 0)
                         {
@@ -639,6 +651,15 @@
             : b.ShippedQuantity > 0
                 ? $"{b.ShippedQuantity.ToString("N0")}/{b.Quantity.ToString("N0")} išvežta"
                 : b.Quantity.ToString("N0");
+
+    private static decimal GetLineShippedQuantity(List<OrderPalletInfo> batches)
+        => batches.Sum(b => b.ShippedQuantity);
+
+    private decimal GetOrderShippedQuantity()
+        => _pallets.Sum(p => p.ShippedQuantity);
+
+    private decimal GetOrderTotalQuantity()
+        => _pallets.Sum(p => p.Quantity);
 
     private static readonly IReadOnlyDictionary<string, (string Label, Color Color)> _statusDisplay = StatusDisplayHelper.OrderStatusMap;
 }
