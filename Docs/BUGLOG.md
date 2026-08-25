@@ -466,3 +466,21 @@ re-labeling the symptom.
 - **Category**: EF-core
 - **Error class**: `rawsql-reader-type-cast-mismatch`
 - **Status**: monitoring — new mechanism tag. Note the sibling family (`ef-dbnull-explicit-cast`) also concerns reader cast mismatches but is specifically DBNull-related; this is the computed-expression-vs-GetInt* variant.
+
+### 2026-08-25 — Customer autocomplete on /orders/create doesn't match diacritic names
+- **Symptom**: typing plain Latin letters in the customer autocomplete on `/orders/create` returned no suggestions for customers whose names contain Lithuanian (ą č ę ė į š ų ū ž) or German (ä ö ü ß) characters — e.g. typing "u" didn't match "ü", "a" didn't match "ą".
+- **Root cause**: `SearchCustomers` used `c.Name.ToLower().Contains(search)` — case-insensitive but NOT diacritic-insensitive, so base-Latin input could never match composed/diacritic names. No diacritic-folding helper existed anywhere in the codebase (`CompanyNameHelper.Normalize` only folds company-type abbreviations, not diacritics).
+- **Fix**: commits 5e9b7da + 1bec821 (v0.11.280-281) — new shared `Helpers/DiacriticHelper.Fold()` (NormalizationForm.FormD → strip combining marks → FormC re-compose, explicit `ß→ss`, lowercased); `SearchCustomers` now folds both the query and the customer name. UI polish task also renamed the header delivery-date label "Pristatymo data" → "Išsiuntimo data" in the same round.
+- **Guardrail added**: none mechanical. First occurrence of this mechanism. The shared helper is now a single reuse point, but nothing mechanical prevents a future inline `.ToLower().Contains(...)` search (in a NEW page, e.g. product search still uses it) from being written diacritic-insensitively again. Candidate: extend the existing `nordicbees-stringcomparison-in-linq` semgrep rule family with a pattern targeting plain `Contains` on name-like fields, or a skill note mandating `DiacriticHelper.Fold` for any user-facing text search.
+- **Category**: encoding
+- **Error class**: `search-not-diacritic-insensitive`
+- **Status**: monitoring — new mechanism tag, no prior guardrail.
+
+### 2026-08-25 — "Atgal į užsakymus" button on /orders/22 wraps to two lines
+- **Symptom**: the header back button on the order detail page wrapped its label onto two lines with an awkward gap between lines.
+- **Root cause**: MudButton's label defaults to `white-space: normal`; the flex header row (`justify-space-between`) squeezed the button to ~141px of content width while the label "← Atgal į užsakymus" needs ~139px of text plus flex layout — sitting exactly at the wrap threshold, so the label broke mid-text and the button inflated to 36.5px tall (Playwright-verified: scrollHeight 362 ≫ clientHeight 35, computed `white-space: normal`). `text-transform:none` was already present; `white-space: nowrap` was the missing piece, not text transformation.
+- **Fix**: commit c270429 (v0.11.285) — added `white-space:nowrap;` to the back button's `Style`. Same commit also updated the per-line packed chip label "✓ Pakuota" → "✓ Supakuota" (status-display consistency; the order-status map labels "packing"→"Supakuota" and "ready_for_pickup"→"Paruošta" landed in the same task round).
+- **Guardrail added**: none mechanical. Candidate soft note for the `mudblazor` skill: MudButton labels inside squeezed flex containers (e.g. header rows) need explicit `white-space:nowrap` — plain "set text-transform:none" is insufficient when the trigger is flex shrinking.
+- **Category**: UI-form
+- **Error class**: `mudblazor-button-label-wrap`
+- **Status**: monitoring — new mechanism tag, no prior guardrail. Distinct from the other MudBlazor bind/state-sync tags (`mudblazor-bind-value-commit-timing`, `mudblazor-checkbox-generic-value-binding`); this is a pure CSS/layout failure mode.
