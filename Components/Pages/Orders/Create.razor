@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
+@using NordicBeesERP.Helpers
 @using MudBlazor
 @inject IOrderService OrderService
 @inject ICustomerService CustomerService
@@ -65,7 +66,7 @@
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudDatePicker T="DateTime?"
-                               Label="Pristatymo data"
+                                Label="Išsiuntimo data"
                                Date="@_deliveryDate"
                                 DateChanged="@(date => _deliveryDate = date)"
                                 Editable="true"
@@ -220,8 +221,8 @@
         var results = _customers.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(value))
         {
-            var search = value!.ToLower();
-            results = results.Where(c => c.Name.ToLower().Contains(search));
+            var search = DiacriticHelper.Fold(value);
+            results = results.Where(c => DiacriticHelper.Fold(c.Name).Contains(search));
         }
         return Task.FromResult(results.Take(50).AsEnumerable());
     }
