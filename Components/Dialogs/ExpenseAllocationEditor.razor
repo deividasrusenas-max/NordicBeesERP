@@ -1,6 +1,7 @@
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Services
 @using MudBlazor
+@using NordicBeesERP.Helpers
 @namespace NordicBeesERP.Components.Dialogs
 
 <MudDialog>
@@ -29,7 +30,7 @@
                     </MudItem>
                     <MudItem xs="6" sm="3">
                         <MudText Typo="Typo.body2">Kaina (be PVM)</MudText>
-                        <MudText Typo="Typo.h6">@_invoiceLine?.AmountExclVat.ToString("0.00") €</MudText>
+                        <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_invoiceLine?.AmountExclVat, 2) €</MudText>
                     </MudItem>
                     <MudItem xs="6" sm="3">
                         <MudText Typo="Typo.body2">PVM (%)</MudText>
@@ -37,7 +38,7 @@
                     </MudItem>
                     <MudItem xs="6" sm="3">
                         <MudText Typo="Typo.body2">Suma (su PVM)</MudText>
-                        <MudText Typo="Typo.h5" Color="Color.Primary">@_invoiceLine?.AmountInclVat.ToString("0.00") €</MudText>
+                        <MudText Typo="Typo.h5" Color="Color.Primary">@FormatAmountHelper.Trim(_invoiceLine?.AmountInclVat, 2) €</MudText>
                     </MudItem>
                 </MudGrid>
             </MudPaper>
@@ -58,7 +59,7 @@
                     }
                     <MudTd>@allocation?.Category?.Name</MudTd>
                     <MudTd>@allocation?.CostCenter?.Name</MudTd>
-                    <MudTd>@allocation?.AllocatedAmount.ToString("0.00") €</MudTd>
+                    <MudTd>@FormatAmountHelper.Trim(allocation?.AllocatedAmount, 2) €</MudTd>
                     <MudTd>@allocation?.AllocatedPercent.ToString("0.00") %</MudTd>
                     <MudTd>
                         <MudButton Color="Color.Error" Variant="Variant.Text" OnClick="() => RemoveAllocation(allocation!.Id)">
@@ -108,12 +109,12 @@
                 <MudGrid>
                     <MudItem xs="6">
                         <MudText Typo="Typo.body2">Iš viso sumokėta</MudText>
-                        <MudText Typo="Typo.h6">@_totalAllocated.ToString("0.00") €</MudText>
+                        <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_totalAllocated, 2) €</MudText>
                     </MudItem>
                     <MudItem xs="6">
                         <MudText Typo="Typo.body2">Liko neallokuota</MudText>
                         <MudText Typo="Typo.h6" Color="@(RemainingAmount > 0 ? Color.Warning : Color.Success)">
-                            @RemainingAmount.ToString("0.00") €
+                            @FormatAmountHelper.Trim(RemainingAmount, 2) €
                         </MudText>
                     </MudItem>
                 </MudGrid>
