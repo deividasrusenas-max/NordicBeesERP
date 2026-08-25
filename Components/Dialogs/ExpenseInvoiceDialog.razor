@@ -40,19 +40,19 @@
                     <MudGrid>
                         <MudItem xs="6">
                             <MudText Typo="Typo.body2">Suma be PVM</MudText>
-                            <MudText Typo="Typo.h6">@_invoice.AmountExclVat.ToString("0.00") €</MudText>
+                            <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_invoice.AmountExclVat, 2) €</MudText>
                         </MudItem>
                         <MudItem xs="6">
                             <MudText Typo="Typo.body2">PVM (@(_invoice.VatRate.ToString("0.00"))%)</MudText>
-                            <MudText Typo="Typo.h6">@_invoice.VatAmount.ToString("0.00") €</MudText>
+                            <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_invoice.VatAmount, 2) €</MudText>
                         </MudItem>
                         <MudItem xs="6">
                             <MudText Typo="Typo.body2">Suma su PVM</MudText>
-                            <MudText Typo="Typo.h5" Color="Color.Primary">@_invoice.AmountInclVat.ToString("0.00") €</MudText>
+                            <MudText Typo="Typo.h5" Color="Color.Primary">@FormatAmountHelper.Trim(_invoice.AmountInclVat, 2) €</MudText>
                         </MudItem>
                         <MudItem xs="6">
                             <MudText Typo="Typo.body2">Sumokėta</MudText>
-                            <MudText Typo="Typo.h5" Color="Color.Success">@_invoice.PaidAmount.ToString("0.00") €</MudText>
+                            <MudText Typo="Typo.h5" Color="Color.Success">@FormatAmountHelper.Trim(_invoice.PaidAmount, 2) €</MudText>
                         </MudItem>
                     </MudGrid>
                 </MudPaper>
@@ -75,9 +75,9 @@
                         }
                         <MudTd>@line?.Id</MudTd>
                         <MudTd>@line?.Description</MudTd>
-                        <MudTd>@line?.AmountExclVat.ToString("0.00")</MudTd>
+                        <MudTd>@FormatAmountHelper.Trim(line?.AmountExclVat, 2)</MudTd>
                         <MudTd>@line?.VatRate.ToString("0.00")</MudTd>
-                        <MudTd>@line?.AmountInclVat.ToString("0.00")</MudTd>
+                        <MudTd>@FormatAmountHelper.Trim(line?.AmountInclVat, 2)</MudTd>
                         <MudTd>
                             @if (line?.ExpenseLineAllocations?.Count > 0)
                             {
@@ -110,7 +110,7 @@
                                 var payment = context as ExpensePayment;
                             }
                             <MudTd>@payment?.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
-                            <MudTd>@payment?.Amount.ToString("0.00") €</MudTd>
+                            <MudTd>@FormatAmountHelper.Trim(payment?.Amount, 2) €</MudTd>
                             <MudTd>@payment?.PaymentMethod</MudTd>
                             <MudTd>@payment?.Reference</MudTd>
                         </RowTemplate>
