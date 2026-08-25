@@ -232,8 +232,8 @@
         var results = _products.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(value))
         {
-            var search = value!.ToLower();
-            results = results.Where(p => p.Name.ToLower().Contains(search) || p.Code.ToLower().Contains(search));
+            var search = DiacriticHelper.Fold(value);
+            results = results.Where(p => DiacriticHelper.Fold(p.Name).Contains(search) || DiacriticHelper.Fold(p.Code).Contains(search));
         }
         return Task.FromResult(results.Take(50).AsEnumerable());
     }
