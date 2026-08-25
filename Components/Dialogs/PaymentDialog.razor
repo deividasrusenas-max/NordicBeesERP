@@ -1,6 +1,7 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services.Dtos
 @using MudBlazor
+@using NordicBeesERP.Helpers
 
 <MudDialog>
     <TitleContent>
@@ -19,7 +20,7 @@
                 </MudItem>
                 <MudItem xs="4">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Liko sumokėti</MudText>
-                    <MudText Typo="Typo.body1" Style="color:#dc2626; font-weight:600">@RemainingAmount.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.body1" Style="color:#dc2626; font-weight:600">@FormatAmountHelper.Trim(RemainingAmount, 2) €</MudText>
                 </MudItem>
             </MudGrid>
         </MudPaper>
@@ -68,7 +69,7 @@
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd DataLabel="Data">@context.Date.ToString("yyyy-MM-dd")</MudTd>
-                    <MudTd DataLabel="Suma">@context.Amount.ToString("N2") €</MudTd>
+                    <MudTd DataLabel="Suma">@FormatAmountHelper.Trim(context.Amount, 2) €</MudTd>
                     <MudTd DataLabel="Būdas">@GetPaymentMethodLabel(context.Method)</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
