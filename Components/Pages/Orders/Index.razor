@@ -165,12 +165,22 @@
                 <MudTd>@order.OrderNumber</MudTd>
                 <MudTd>@GetCustomerName(order.CustomerId)</MudTd>
                 <MudTd>@order.OrderDate.ToString("yyyy-MM-dd")</MudTd>
-                <MudTd>@GetPalletCount(order)</MudTd>
+                <MudTd>@order.TotalQuantity.ToString("N0")</MudTd>
                 <MudTd>
-                    <MudChip T="string" Color="@StatusDisplayHelper.GetColor(order.Status, _statusDisplay)" Size="Size.Small" Style="text-transform:none">@StatusDisplayHelper.GetLabel(order.Status, _statusDisplay)</MudChip>
+                    <MudChip T="string" Color="@StatusDisplayHelper.GetColor(order.Status, _statusDisplay)" Size="Size.Small" Style="text-transform:none">
+                        @StatusDisplayHelper.GetLabel(order.Status, _statusDisplay)@(order.Status == "partially_shipped" ? $" {order.ShippedQuantity.ToString("N0")}/{order.TotalQuantity.ToString("N0")}" : "")
+                    </MudChip>
                     @if (order.IsUninvoiced)
                     {
                         <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ml-1" Style="text-transform:none">Neišrašyta</MudChip>
+                    }
+                    @if (order.Status == "partially_shipped" && order.TotalQuantity > 0)
+                    {
+                        <MudProgressLinear Value="@GetShipmentProgress(order)"
+                                           Color="Color.Warning"
+                                           Size="Size.Small"
+                                           Class="mt-1"
+                                           Style="height:4px; border-radius:2px; width:120px" />
                     }
                 </MudTd>
             </RowTemplate>
@@ -189,7 +199,6 @@
     private bool _isLoading = false;
     private int _selectedTab = 0;
     private Dictionary<int, string> _customerNames = new();
-    private Dictionary<int, decimal> _palletCounts = new();
 
     // Filter state
     private string? _filterSearch = null;
@@ -260,21 +269,6 @@
         {
             var orders = await OrderService.GetOrdersAsync();
             _items = orders;
-
-            // Load pallet counts for all orders
-            _palletCounts.Clear();
-            foreach (var order in orders)
-            {
-                try
-                {
-                    var count = await OrderService.GetOrderPalletCountAsync(order.Id);
-                    _palletCounts[order.Id] = count;
-                }
-                catch
-                {
-                    _palletCounts[order.Id] = 0m;
-                }
-            }
         }
         catch (Exception ex)
         {
@@ -420,10 +414,8 @@
         return _customerNames.TryGetValue(customerId, out var name) ? name : "Nežinomas";
     }
 
-    private decimal GetPalletCount(Order order)
-    {
-        return _palletCounts.TryGetValue(order.Id, out var count) ? count : 0m;
-    }
+    private double GetShipmentProgress(Order order)
+        => order.TotalQuantity > 0 ? Math.Min(100, (double)order.ShippedQuantity / (double)order.TotalQuantity * 100) : 0;
 
     private static readonly IReadOnlyDictionary<string, (string Label, Color Color)> _statusDisplay = StatusDisplayHelper.OrderStatusMap;
 }
