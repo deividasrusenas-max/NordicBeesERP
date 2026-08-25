@@ -37,7 +37,10 @@ public static class FormatAmountHelper
     /// 5.500m with maxDecimals=3 -> "5,5".
     /// </summary>
     public static string Trim(decimal value, int maxDecimals = 3)
-        => value.ToString($"0.{new string('#', maxDecimals)}", CultureInfo.GetCultureInfo("lt-LT"));
+    {
+        var rounded = Math.Round(value, maxDecimals, MidpointRounding.AwayFromZero);
+        return rounded.ToString($"0.{new string('#', maxDecimals)}", CultureInfo.GetCultureInfo("lt-LT"));
+    }
 
     public static string Trim(decimal? value, int maxDecimals = 3)
         => value.HasValue ? Trim(value.Value, maxDecimals) : "";
