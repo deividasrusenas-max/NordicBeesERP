@@ -474,7 +474,7 @@ public class OrderService : IOrderService
                     b.quantity AS Quantity,
                     COALESCE(osp_agg.shipped_sum, 0) AS ShippedQuantity,
                     GREATEST(b.quantity - COALESCE(osp_agg.shipped_sum, 0), 0) AS RemainingQuantity,
-                    (GREATEST(b.quantity - COALESCE(osp_agg.shipped_sum, 0), 0) <= 0) AS IsShipped,
+                    CASE WHEN GREATEST(b.quantity - COALESCE(osp_agg.shipped_sum, 0), 0) <= 0 THEN 1 ELSE 0 END AS IsShipped,
                     osp_agg.last_shipped_at AS ShippedAt
                     FROM order_line_batches b
                     INNER JOIN order_lines ol ON ol.id = b.order_line_id
