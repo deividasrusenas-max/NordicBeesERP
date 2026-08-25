@@ -252,9 +252,9 @@
                         <span>-</span>
                     }
                 </MudTd>
-                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.TotalInclVat.ToString("N2") €</MudTd>
+                <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@FormatAmountHelper.Trim(invoice.TotalInclVat, 2) €</MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer;font-weight:bold;color:#1976d2">
-                    @((invoice.TotalInclVat - invoice.PaidAmount).ToString("N2")) €
+                    @FormatAmountHelper.Trim(invoice.TotalInclVat - invoice.PaidAmount, 2) €
                 </MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">
                     @{
@@ -347,7 +347,7 @@
                 <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">@creditNote.CreditDate.ToString("yyyy-MM-dd")</MudTd>
                 <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">@creditNote.CustomerName</MudTd>
                 <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">@creditNote.OriginalInvoiceNumber</MudTd>
-                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer;text-align:right">@creditNote.TotalInclVat.ToString("N2") €</MudTd>
+                <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer;text-align:right">@FormatAmountHelper.Trim(creditNote.TotalInclVat, 2) €</MudTd>
                 <MudTd @onclick="@(() => ViewCreditNote(creditNote))" Style="cursor:pointer">
                     @{
                         var statusString = creditNote.Status.ToString();
