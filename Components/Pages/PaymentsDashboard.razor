@@ -151,9 +151,9 @@
                         <MudTd Class="text-no-wrap">@invoice.InvoiceNumber</MudTd>
                         <MudTd>@invoice.CustomerName</MudTd>
                         <MudTd Class="text-right">@invoice.InvoiceDate.ToString("dd.MM.yyyy")</MudTd>
-                        <MudTd Class="text-right">@invoice.TotalInclVat.ToString("N2")</MudTd>
-                        <MudTd Class="text-right">@invoice.PaidAmount.ToString("N2")</MudTd>
-                        <MudTd Class="text-right">@invoice.RemainingAmount.ToString("N2")</MudTd>
+                        <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.TotalInclVat, 2)</MudTd>
+                        <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.PaidAmount, 2)</MudTd>
+                        <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.RemainingAmount, 2)</MudTd>
                         <MudTd Class="text-center">
                             @if (invoice.PaidAmount > invoice.TotalInclVat)
                             {
