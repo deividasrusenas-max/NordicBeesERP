@@ -336,7 +336,7 @@
                             }
                         </MudTd>
                         <MudTd>@payment.Date.ToString("yyyy-MM-dd")</MudTd>
-                        <MudTd Class="text-right">@payment.Amount.ToString("N2")</MudTd>
+                        <MudTd Class="text-right">@FormatAmountHelper.Trim(payment.Amount, 2)</MudTd>
                         <MudTd>@GetPaymentMethodLabel(payment.Method)</MudTd>
                         <MudTd Class="text-center">
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="() => OpenEditPayment(payment)" />
@@ -393,7 +393,7 @@
                         <MudTr @onclick="@(() => NavigateToCreditNote(cn.Id))" Style="cursor:pointer;">
                             <MudTd>@cn.CreditNoteNumber</MudTd>
                             <MudTd>@cn.CreditDate.ToString("yyyy-MM-dd")</MudTd>
-                            <MudTd Class="text-right">-@cn.TotalInclVat.ToString("N2")</MudTd>
+                            <MudTd Class="text-right">-@FormatAmountHelper.Trim(cn.TotalInclVat, 2)</MudTd>
                             <MudTd>
                                 <MudChip T="string" Color="@GetCreditStatusColor(cn.Status)" Variant="Variant.Outlined">@GetCreditStatusLabel(cn.Status)</MudChip>
                             </MudTd>
