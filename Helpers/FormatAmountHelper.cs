@@ -29,4 +29,16 @@ public static class FormatAmountHelper
     /// </summary>
     public static string FormatSignedAmount(decimal value)
         => FormatAmount(value == 0m ? 0m : value);
+
+    /// <summary>
+    /// Formats a decimal value by trimming trailing zeros while preserving up to
+    /// maxDecimals real decimal digits, using the app's lt-LT display culture.
+    /// 5.000m with maxDecimals=3 -> "5" | 5.250m with maxDecimals=3 -> "5,25" |
+    /// 5.500m with maxDecimals=3 -> "5,5".
+    /// </summary>
+    public static string Trim(decimal value, int maxDecimals = 3)
+        => value.ToString($"0.{new string('#', maxDecimals)}", CultureInfo.GetCultureInfo("lt-LT"));
+
+    public static string Trim(decimal? value, int maxDecimals = 3)
+        => value.HasValue ? Trim(value.Value, maxDecimals) : "";
 }
