@@ -79,8 +79,8 @@
                               @bind-Value="_notes"
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
-                              Lines="2"
-                              Multiline="true" />
+                               Lines="3"
+                               Multiline="true" />
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -108,9 +108,9 @@
                 <thead>
                     <tr>
                         <th style="width:40px">#</th>
-                        <th style="min-width:250px">Produkto pavadinimas *</th>
-                        <th style="width:120px">Kiekis paletėmis *</th>
-                        <th style="width:200px">Pastabos</th>
+                        <th style="min-width:320px; white-space:nowrap">Produkto pavadinimas *</th>
+                        <th style="width:150px; white-space:nowrap">Kiekis paletėmis *</th>
+                        <th style="width:280px">Pastabos</th>
                         <th style="width:60px"></th>
                     </tr>
                 </thead>
@@ -141,8 +141,8 @@
                                                  Margin="Margin.Dense"
                                                  Dense="true"
                                                   Min="0.01m"
-                                                 Step="1"
-                                                 Format="N2" />
+                                                  Step="1"
+                                                  Format="N0" />
                             </td>
                             <td>
                                 <MudTextField T="string"
