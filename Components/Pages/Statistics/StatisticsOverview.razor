@@ -32,13 +32,13 @@
             <MudItem xs="6" md="3">
                 <MudPaper Elevation="0" Class="pa-4" Style="background:#fef3c7; border-radius:12px">
                     <MudText Typo="Typo.caption">Suma (€)</MudText>
-                    <MudText Typo="Typo.h4" Style="font-weight:700">@_totalAmount.ToString("N2")</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700">@FormatAmountHelper.Trim(_totalAmount, 2)</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Elevation="0" Class="pa-4" Style="background:#fee2e2; border-radius:12px">
                     <MudText Typo="Typo.caption">Skola (€)</MudText>
-                    <MudText Typo="Typo.h4" Style="font-weight:700; color:#dc2626">@_totalDebt.ToString("N2")</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:700; color:#dc2626">@FormatAmountHelper.Trim(_totalDebt, 2)</MudText>
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -84,17 +84,17 @@
             <MudTd>@row.Month</MudTd>
             <MudTd Style="text-align:right">@row.Count</MudTd>
             <MudTd Style="text-align:right">@row.NetWeight.ToString("N1")</MudTd>
-            <MudTd Style="text-align:right">@row.Amount.ToString("N2")</MudTd>
-            <MudTd Style="text-align:right">@row.Paid.ToString("N2")</MudTd>
-            <MudTd Style="@GetDebtStyle(row.Debt)">@row.Debt.ToString("N2")</MudTd>
+            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(row.Amount, 2)</MudTd>
+            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(row.Paid, 2)</MudTd>
+            <MudTd Style="@GetDebtStyle(row.Debt)">@FormatAmountHelper.Trim(row.Debt, 2)</MudTd>
         </RowTemplate>
         <FooterContent>
             <MudTd><b>Iš viso</b></MudTd>
             <MudTd Style="text-align:right"><b>@_count</b></MudTd>
             <MudTd Style="text-align:right"><b>@_totalKg.ToString("N1")</b></MudTd>
-            <MudTd Style="text-align:right"><b>@_totalAmount.ToString("N2")</b></MudTd>
-            <MudTd Style="text-align:right"><b>@_monthly.Sum(r => r.Paid).ToString("N2")</b></MudTd>
-            <MudTd Style="@GetTotalDebtStyle"><b>@_totalDebt.ToString("N2")</b></MudTd>
+            <MudTd Style="text-align:right"><b>@FormatAmountHelper.Trim(_totalAmount, 2)</b></MudTd>
+            <MudTd Style="text-align:right"><b>@FormatAmountHelper.Trim(_monthly.Sum(r => r.Paid), 2)</b></MudTd>
+            <MudTd Style="@GetTotalDebtStyle"><b>@FormatAmountHelper.Trim(_totalDebt, 2)</b></MudTd>
         </FooterContent>
     </MudTable>
 
@@ -112,18 +112,18 @@
             <MudTd><strong>@row.Name</strong></MudTd>
             <MudTd Style="text-align:right">@row.Count</MudTd>
             <MudTd Style="text-align:right">@row.NetWeight.ToString("N1")</MudTd>
-            <MudTd Style="text-align:right">@row.Amount.ToString("N2")</MudTd>
-            <MudTd Style="@GetSupplierDebtStyle(row.Debt)">@row.Debt.ToString("N2")</MudTd>
-            <MudTd Style="text-align:right">@row.AvgPrice.ToString("N2")</MudTd>
+            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(row.Amount, 2)</MudTd>
+            <MudTd Style="@GetSupplierDebtStyle(row.Debt)">@FormatAmountHelper.Trim(row.Debt, 2)</MudTd>
+            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(row.AvgPrice, 2)</MudTd>
         </RowTemplate>
         <FooterContent>
             <MudTd><b>Iš viso</b></MudTd>
             <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.Count)</b></MudTd>
             <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.NetWeight).ToString("N1")</b></MudTd>
-            <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.Amount).ToString("N2")</b></MudTd>
-            <MudTd Style="text-align:right"><b>@_topSuppliers.Sum(r => r.Debt).ToString("N2")</b></MudTd>
+            <MudTd Style="text-align:right"><b>@FormatAmountHelper.Trim(_topSuppliers.Sum(r => r.Amount), 2)</b></MudTd>
+            <MudTd Style="text-align:right"><b>@FormatAmountHelper.Trim(_topSuppliers.Sum(r => r.Debt), 2)</b></MudTd>
             <MudTd Style="text-align:right">
-                <b>@(_totalKg > 0 ? (_totalAmount / _totalKg).ToString("N2") : "0,00")</b>
+                <b>@(_totalKg > 0 ? FormatAmountHelper.Trim(_totalAmount / _totalKg, 2) : "0,00")</b>
             </MudTd>
         </FooterContent>
     </MudTable>
