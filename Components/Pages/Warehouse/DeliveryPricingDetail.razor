@@ -88,7 +88,7 @@
                 <MudTd>@GetHoneyTypeName(line.HoneyTypeId)</MudTd>
                 <MudTd>@GetContainerTypeName(line.ContainerType)</MudTd>
                 <MudTd Style="text-align:right">@line.ContainerCount</MudTd>
-                <MudTd Style="text-align:right">@((line.TotalNetWeight ?? 0m).ToString("N2"))</MudTd>
+                <MudTd Style="text-align:right">@FormatAmountHelper.Trim((line.TotalNetWeight ?? 0m), 1)</MudTd>
                 <MudTd Style="text-align:right">
                 <MudNumericField T="decimal?" Value="@line.UnitPrice"
                     ValueChanged="@((decimal? val) => { line.UnitPrice = val; OnPriceChanged(); })"
@@ -105,7 +105,7 @@
             <FooterContent>
                 <MudTFootRow>
                     <MudTd colspan="4"></MudTd>
-                    <MudTd Style="text-align:right"><strong>@_lines.Sum(l => l.TotalNetWeight ?? 0m).ToString("N2")</strong></MudTd>
+                    <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => l.TotalNetWeight ?? 0m), 1)</strong></MudTd>
                     <MudTd></MudTd>
                     <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m)), 2) €</strong></MudTd>
                 </MudTFootRow>
