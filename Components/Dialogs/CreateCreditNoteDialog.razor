@@ -1,6 +1,7 @@
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Models
 @using MudBlazor
+@using NordicBeesERP.Helpers
 @inject ICreditNoteService CreditNoteService
 @inject ISnackbar Snackbar
 
@@ -47,8 +48,8 @@
                                          HideSpinButtons="true"
                                          Disabled="@(!context.IsSelected)" />
                     </MudTd>
-                    <MudTd DataLabel="Kaina" Style="text-align: right;">@context.Line.PriceExclVat.ToString("F2") €</MudTd>
-                    <MudTd DataLabel="Suma" Style="text-align: right;">@context.LineTotal.ToString("F2") €</MudTd>
+                    <MudTd DataLabel="Kaina" Style="text-align: right;">@FormatAmountHelper.Trim(context.Line.PriceExclVat, 2) €</MudTd>
+                    <MudTd DataLabel="Suma" Style="text-align: right;">@FormatAmountHelper.Trim(context.LineTotal, 2) €</MudTd>
                 </RowTemplate>
             </MudTable>
 
@@ -66,7 +67,7 @@
                                      FullWidth="@true" />
                 </MudItem>
                 <MudItem xs="12" sm="4">
-                    <MudTextField Value="@TotalAmount.ToString("F2")"
+                    <MudTextField Value="@FormatAmountHelper.Trim(TotalAmount, 2)"
                                   Label="Bendra suma (€)"
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
