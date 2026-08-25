@@ -204,7 +204,7 @@
                                             <MudGrid Spacing="2">
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">Suma be PVM</MudText>
-                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.AmountExclVat.ToString("N2") €</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Trim(_invoice.AmountExclVat, 2) €</MudText>
                                                 </MudItem>
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">PVM%</MudText>
@@ -212,11 +212,11 @@
                                                 </MudItem>
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">PVM suma</MudText>
-                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@_invoice.VatAmount.ToString("N2") €</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Trim(_invoice.VatAmount, 2) €</MudText>
                                                 </MudItem>
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">Suma su PVM</MudText>
-                                                    <MudText Typo="Typo.subtitle2" Style="font-weight:700; color:#1976d2">@_invoice.AmountInclVat.ToString("N2") €</MudText>
+                                                    <MudText Typo="Typo.subtitle2" Style="font-weight:700; color:#1976d2">@FormatAmountHelper.Trim(_invoice.AmountInclVat, 2) €</MudText>
                                                 </MudItem>
                                             </MudGrid>
                                         }
@@ -284,7 +284,7 @@
                                         }
                                         <MudDivider Class="my-2" />
                                         <MudText Typo="Typo.caption" Style="font-weight:600; color:#1976d2">
-                                            Sumokėta: @_invoice.PaidAmount.ToString("N2") € | Liko: @((_invoice.AmountInclVat - _invoice.PaidAmount).ToString("N2")) €
+                                            Sumokėta: @FormatAmountHelper.Trim(_invoice.PaidAmount, 2) € | Liko: @FormatAmountHelper.Trim((_invoice.AmountInclVat - _invoice.PaidAmount), 2) €
                                         </MudText>
                                     </MudPaper>
 
