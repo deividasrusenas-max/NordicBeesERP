@@ -135,7 +135,7 @@
                             <MudTd DataLabel="Sąskaita">@row.Id</MudTd>
                             <MudTd DataLabel="Data">@row.RowDate.ToString("yyyy-MM-dd")</MudTd>
                             <MudTd DataLabel="Tipas">@row.Description</MudTd>
-                            <MudTd DataLabel="Suma" Style="@(row.Amount > 0 ? "color:green;font-weight:bold" : "color:red;font-weight:bold")">@row.Amount.ToString("N2") €</MudTd>
+                            <MudTd DataLabel="Suma" Style="@(row.Amount > 0 ? "color:green;font-weight:bold" : "color:red;font-weight:bold")">@FormatAmountHelper.Trim(row.Amount, 2) €</MudTd>
                             <MudTd DataLabel="Aprašymas">@row.Description</MudTd>
                             <MudTd DataLabel="Referencė">@row.Reference</MudTd>
                             <MudTd DataLabel="Klientas">@row.PayerName</MudTd>
@@ -169,7 +169,7 @@
                             </HeaderContent>
                             <RowTemplate Context="expRow">
                                 <MudTd DataLabel="Data">@expRow.RowDate.ToString("yyyy-MM-dd")</MudTd>
-                                <MudTd DataLabel="Suma" Style="color:red;font-weight:bold">@expRow.Amount.ToString("N2") €</MudTd>
+                                <MudTd DataLabel="Suma" Style="color:red;font-weight:bold">@FormatAmountHelper.Trim(expRow.Amount, 2) €</MudTd>
                                 <MudTd DataLabel="Aprašymas">@expRow.Description</MudTd>
                                 <MudTd DataLabel="Referencė">@expRow.Reference</MudTd>
                                 <MudTd DataLabel="Gavėjas">@expRow.PayerName</MudTd>
@@ -270,7 +270,7 @@
                 <RowTemplate Context="row">
                     <MudTd DataLabel="Sąskaita">@row.Id</MudTd>
                     <MudTd DataLabel="Data">@row.RowDate.ToString("yyyy-MM-dd")</MudTd>
-                    <MudTd DataLabel="Suma">@row.Amount.ToString("N2") €</MudTd>
+                    <MudTd DataLabel="Suma">@FormatAmountHelper.Trim(row.Amount, 2) €</MudTd>
                     <MudTd DataLabel="Aprašymas">@(row.Description ?? "")</MudTd>
                     <MudTd DataLabel="Referencė">@(row.Reference ?? "")</MudTd>
                     <MudTd DataLabel="Klientas">@(row.PayerName ?? "")</MudTd>
