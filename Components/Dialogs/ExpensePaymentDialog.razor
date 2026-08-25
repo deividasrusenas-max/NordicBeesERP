@@ -40,11 +40,11 @@
         <MudGrid Spacing="2" Class="mb-3">
             <MudItem xs="3">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Suma su PVM</MudText>
-                <MudText Typo="Typo.body1" Style="font-weight:600">@_invoice.AmountInclVat.ToString("N2") €</MudText>
+                <MudText Typo="Typo.body1" Style="font-weight:600">@FormatAmountHelper.Trim(_invoice.AmountInclVat, 2) €</MudText>
             </MudItem>
             <MudItem xs="3">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Sumokėta</MudText>
-                <MudText Typo="Typo.body1" Style="color:#16a34a;font-weight:600">@_invoice.PaidAmount.ToString("N2") €</MudText>
+                <MudText Typo="Typo.body1" Style="color:#16a34a;font-weight:600">@FormatAmountHelper.Trim(_invoice.PaidAmount, 2) €</MudText>
             </MudItem>
             <MudItem xs="3">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Liko</MudText>
@@ -101,7 +101,7 @@
                             var payment = context as ExpensePayment;
                         }
                         <MudTd DataLabel="Data">@payment?.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
-                        <MudTd DataLabel="Suma">@payment?.Amount.ToString("N2") €</MudTd>
+                        <MudTd DataLabel="Suma">@FormatAmountHelper.Trim(payment?.Amount, 2) €</MudTd>
                         <MudTd DataLabel="Mokėjimo būdas">@payment?.PaymentMethod</MudTd>
                         <MudTd DataLabel="Referencė">@payment?.Reference</MudTd>
                         <MudTd DataLabel="Pastabos">@payment?.Notes</MudTd>
