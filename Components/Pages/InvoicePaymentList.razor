@@ -65,9 +65,9 @@
             <MudTd DataLabel="Klientas">@invoice.CustomerName</MudTd>
             <MudTd DataLabel="Data">@invoice.InvoiceDate.ToShortDateString()</MudTd>
             <MudTd DataLabel="Terminas">@invoice.DueDate?.ToShortDateString()</MudTd>
-            <MudTd DataLabel="Suma" Style="text-align:right">@invoice.TotalInclVat.ToString("N2")</MudTd>
-            <MudTd DataLabel="Sumokėta" Style="text-align:right">@invoice.PaidAmount.ToString("N2")</MudTd>
-            <MudTd DataLabel="Likęs mokėjimas" Style="text-align:right; font-weight:600">@invoice.RemainingAmount.ToString("N2")</MudTd>
+            <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Trim(invoice.TotalInclVat, 2)</MudTd>
+            <MudTd DataLabel="Sumokėta" Style="text-align:right">@FormatAmountHelper.Trim(invoice.PaidAmount, 2)</MudTd>
+            <MudTd DataLabel="Likęs mokėjimas" Style="text-align:right; font-weight:600">@FormatAmountHelper.Trim(invoice.RemainingAmount, 2)</MudTd>
             <MudTd DataLabel="Būsena">
                 <MudChip T="string" Color="@StatusDisplayHelper.GetColor(invoice.PaymentStatus, _statusDisplay)" Size="Size.Small">@invoice.PaymentStatus</MudChip>
             </MudTd>
