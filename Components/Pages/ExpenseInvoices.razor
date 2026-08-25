@@ -204,7 +204,7 @@
                         <span>—</span>
                     }
                 </MudTd>
-                <MudTd>@context.AmountInclVat.ToString("F2", CultureInfo.InvariantCulture) €</MudTd>
+                <MudTd>@FormatAmountHelper.Trim(context.AmountInclVat, 2) €</MudTd>
                 <MudTd>@GetRemainingAmount(context)</MudTd>
                 <MudTd>
                     <MudChip T="string" Size="Size.Small" Color="@ExpenseStatusHelper.GetColor(context.Status)">
@@ -590,7 +590,7 @@
         {
             return "–";
         }
-        return $"{remaining.ToString("F2", CultureInfo.InvariantCulture)} €";
+        return $"{FormatAmountHelper.Trim(remaining, 2)} €";
     }
 
     private async Task OpenAssignSupplierDialog(ExpenseInvoice invoice)
