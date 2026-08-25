@@ -34,4 +34,12 @@ public class Order
     // Transient — computed by GetOrdersAsync: true when shipped AND invoice_id IS NULL
     [NotMapped]
     public bool IsUninvoiced { get; set; }
+
+    // Transient — populated by GetOrdersAsync: shipped unit total across all lines/batches (partial-shipment progress display)
+    [NotMapped]
+    public decimal ShippedQuantity { get; set; }
+
+    // Transient — populated by GetOrdersAsync: total ordered units across all lines (partial-shipment progress display)
+    [NotMapped]
+    public decimal TotalQuantity { get; set; }
 }

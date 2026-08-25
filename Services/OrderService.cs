@@ -28,7 +28,12 @@ public class OrderService : IOrderService
                      status AS Status, notes AS Notes, 
                      shipped_at AS ShippedAt, shipped_by_user_id AS ShippedByUserId, 
                      invoice_id AS InvoiceId, invoiced_at AS InvoicedAt, invoiced_by_user_id AS InvoicedByUserId, 
-                     created_at AS CreatedAt, updated_at AS UpdatedAt 
+                     created_at AS CreatedAt, updated_at AS UpdatedAt, 
+                     (SELECT COALESCE(SUM(osp.quantity_shipped), 0) FROM order_shipment_pallets osp 
+                       INNER JOIN order_line_batches b ON b.id = osp.order_line_batch_id 
+                       INNER JOIN order_lines ol ON ol.id = b.order_line_id 
+                       WHERE ol.order_id = orders.id) AS ShippedQuantity, 
+                     (SELECT COALESCE(SUM(ol2.quantity), 0) FROM order_lines ol2 WHERE ol2.order_id = orders.id) AS TotalQuantity 
                      FROM orders";
 
         if (!string.IsNullOrEmpty(statusFilter))
@@ -73,6 +78,8 @@ public class OrderService : IOrderService
                 UpdatedAt = ReadNullableDateTime(reader, "UpdatedAt")
             };
             o.IsUninvoiced = o.Status == "shipped" && !o.InvoiceId.HasValue;
+            o.ShippedQuantity = reader.GetDecimal(reader.GetOrdinal("ShippedQuantity"));
+            o.TotalQuantity = reader.GetDecimal(reader.GetOrdinal("TotalQuantity"));
             orders.Add(o);
         }
 
