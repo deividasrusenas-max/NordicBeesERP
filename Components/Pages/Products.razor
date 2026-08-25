@@ -117,8 +117,8 @@
                     }
                 </MudTd>
                 <MudTd>@product.Unit</MudTd>
-                <MudTd>@product.CostPrice.ToString("N2") €</MudTd>
-                <MudTd><strong>@product.SalePrice.ToString("N2") €</strong></MudTd>
+                <MudTd>@FormatAmountHelper.Trim(product.CostPrice, 2) €</MudTd>
+                <MudTd><strong>@FormatAmountHelper.Trim(product.SalePrice, 2) €</strong></MudTd>
                 <MudTd>
                     <MudChip T="string" Size="Size.Small"
                              Color="@(product.IsActive ? Color.Success : Color.Default)"
