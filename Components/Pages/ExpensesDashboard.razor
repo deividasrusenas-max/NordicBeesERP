@@ -24,9 +24,9 @@
                 <MudPaper Elevation="0" Class="pa-4" Style="background:#dbeafe; border-radius:12px">
                     <MudText Typo="Typo.caption">Bendra suma</MudText>
                     <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
-                    <MudText Typo="Typo.h4" Style="font-weight:bold">@_totalExclVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#1e40af">PVM: @_totalVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#1e40af">Viso su PVM: @_totalInclVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:bold">@FormatAmountHelper.Trim(_totalExclVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#1e40af">PVM: @FormatAmountHelper.Trim(_totalVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#1e40af">Viso su PVM: @FormatAmountHelper.Trim(_totalInclVat, 2) €</MudText>
                     <MudText Typo="Typo.caption">@_totalCount vnt.</MudText>
                 </MudPaper>
             </MudItem>
@@ -35,9 +35,9 @@
                 <MudPaper Elevation="0" Class="pa-4" Style="background:#fef3c7; border-radius:12px">
                     <MudText Typo="Typo.caption">Nepilnai apmokėta</MudText>
                     <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
-                    <MudText Typo="Typo.h4" Style="font-weight:bold">@_partialExclVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#854d0e">PVM: @_partialVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#854d0e">Viso su PVM: @_partialInclVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:bold">@FormatAmountHelper.Trim(_partialExclVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#854d0e">PVM: @FormatAmountHelper.Trim(_partialVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#854d0e">Viso su PVM: @FormatAmountHelper.Trim(_partialInclVat, 2) €</MudText>
                     <MudText Typo="Typo.caption">@_partialCount vnt.</MudText>
                 </MudPaper>
             </MudItem>
@@ -46,9 +46,9 @@
                 <MudPaper Elevation="0" Class="pa-4" Style="background:#f5f3ff; border-radius:12px">
                     <MudText Typo="Typo.caption">Permokėjimai</MudText>
                     <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
-                    <MudText Typo="Typo.h4" Style="font-weight:bold">@_overpaidExclVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#5b21b6">PVM: @_overpaidVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#5b21b6">Viso su PVM: @_overpaidInclVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:bold">@FormatAmountHelper.Trim(_overpaidExclVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#5b21b6">PVM: @FormatAmountHelper.Trim(_overpaidVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#5b21b6">Viso su PVM: @FormatAmountHelper.Trim(_overpaidInclVat, 2) €</MudText>
                     <MudText Typo="Typo.caption">@_overpaidCount vnt.</MudText>
                 </MudPaper>
             </MudItem>
@@ -57,9 +57,9 @@
                 <MudPaper Elevation="0" Class="pa-4" Style="background:#fef2f2; border-radius:12px">
                     <MudText Typo="Typo.caption">Skolos tiekėjams</MudText>
                     <MudText Typo="Typo.subtitle2">@_yearSubtitle</MudText>
-                    <MudText Typo="Typo.h4" Style="font-weight:bold">@_debtExclVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#991b1b">PVM: @_debtVat.ToString("N2") €</MudText>
-                    <MudText Typo="Typo.caption" Style="color:#991b1b">Viso su PVM: @_debtInclVat.ToString("N2") €</MudText>
+                    <MudText Typo="Typo.h4" Style="font-weight:bold">@FormatAmountHelper.Trim(_debtExclVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#991b1b">PVM: @FormatAmountHelper.Trim(_debtVat, 2) €</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#991b1b">Viso su PVM: @FormatAmountHelper.Trim(_debtInclVat, 2) €</MudText>
                     <MudText Typo="Typo.caption">@_debtCount vnt.</MudText>
                 </MudPaper>
             </MudItem>
@@ -209,7 +209,7 @@
                         }
                         <MudText Style="@sty">@lbl</MudText>
                     </MudTd>
-                    <MudTd Class="text-right">@inv.AmountInclVat.ToString("N2") €</MudTd>
+                    <MudTd Class="text-right">@FormatAmountHelper.Trim(inv.AmountInclVat, 2) €</MudTd>
                     <MudTd Class="text-center">
                         <MudChip T="string" Color="@ExpenseStatusHelper.GetColor(inv.Status)" Size="Size.Small">
                             @ExpenseStatusHelper.GetLabel(inv.Status)
