@@ -101,12 +101,12 @@
                     }
                     <MudChip T="string" Size="Size.Small" Color="@badge.Color">@badge.Label</MudChip>
                 </MudTd>
-                <MudTd Style="text-align:right">@d.TotalAmount.ToString("N2")</MudTd>
-                <MudTd Style="text-align:right">@d.PaidAmount.ToString("N2")</MudTd>
+                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.TotalAmount, 2)</MudTd>
+                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.PaidAmount, 2)</MudTd>
                 <MudTd @attributes='new Dictionary<string, object> { 
                     { "style", $"text-align:right; {GetDebtStyle(d.TotalAmount - d.PaidAmount)}" } 
                 }'>
-                    @((d.TotalAmount - d.PaidAmount).ToString("N2"))
+                    @FormatAmountHelper.Trim(d.TotalAmount - d.PaidAmount, 2)
                 </MudTd>
             </RowTemplate>
         </MudTable>
