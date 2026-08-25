@@ -31,8 +31,8 @@
                 <MudTextField Value="@_filterSearch"
                                ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
                                Label="Paieška pagal Nr. arba klientą"
-                              Variant="Variant.Outlined"
-                              Immediate="true"
+                               Variant="Variant.Text"
+                               Immediate="true"
                               FullWidth="@true"
                               Clearable="true"
                               AdornmentIcon="@Icons.Material.Filled.Search"
@@ -42,9 +42,11 @@
                 <MudDateRangePicker DateRange="@_dateRange"
                                      DateRangeChanged="@(async (DateRange dr) => await UpdateDateRangeAsync(dr))"
                                      Label="Data (nuo / iki)"
-                                    Variant="Variant.Outlined"
-                                    FullWidth="@true"
-                                    Clearable="true" />
+                                     Variant="Variant.Text"
+                                     FullWidth="@true"
+                                     Clearable="true"
+                                     Editable="true"
+                                     DateFormat="yyyy-MM-dd" />
             </MudItem>
             @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null || _selectedStatuses.Any())
             {
