@@ -2,6 +2,7 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Models.Expenses
 @using MudBlazor
+@using NordicBeesERP.Helpers
 
 <MudDialog>
     <TitleContent>
@@ -33,7 +34,7 @@
                     </MudItem>
                     <MudItem xs="4">
                         <MudText Typo="Typo.caption" Color="Color.Secondary">Suma</MudText>
-                        <MudText Typo="Typo.body2" Style="font-weight:700; color:#1976d2">@_invoice.AmountInclVat.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:700; color:#1976d2">@FormatAmountHelper.Trim(_invoice.AmountInclVat, 2) €</MudText>
                     </MudItem>
                 </MudGrid>
             </MudPaper>
