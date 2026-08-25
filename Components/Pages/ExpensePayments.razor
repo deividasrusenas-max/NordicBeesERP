@@ -82,7 +82,7 @@
             <MudTd>@p.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
             <MudTd>@p.SupplierName</MudTd>
             <MudTd>@p.InvoiceNumber</MudTd>
-            <MudTd Class="text-right">@p.Amount.ToString("N2")</MudTd>
+            <MudTd Class="text-right">@FormatAmountHelper.Trim(p.Amount, 2)</MudTd>
             <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Secondary">@p.PaymentMethod</MudChip></MudTd>
             <MudTd>@p.Reference</MudTd>
             <MudTd>@p.Notes</MudTd>
