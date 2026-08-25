@@ -81,36 +81,36 @@
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("0-30"))">
                         <MudText Typo="Typo.caption" Style="color:#166534">0-30 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket0To30.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#166534">@_agingReport.Bucket0To30.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket0To30.TotalVatAmount.ToString("N2") €</MudText>
-                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket0To30.TotalAmount.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#166534">@FormatAmountHelper.Trim(_agingReport.Bucket0To30.TotalAmountExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_agingReport.Bucket0To30.TotalVatAmount, 2) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_agingReport.Bucket0To30.TotalAmount, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" md="3">
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fefce8; border:1px solid #fde047; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("31-60"))">
                         <MudText Typo="Typo.caption" Style="color:#854d0e">31-60 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket31To60.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#854d0e">@_agingReport.Bucket31To60.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket31To60.TotalVatAmount.ToString("N2") €</MudText>
-                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket31To60.TotalAmount.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#854d0e">@FormatAmountHelper.Trim(_agingReport.Bucket31To60.TotalAmountExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_agingReport.Bucket31To60.TotalVatAmount, 2) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_agingReport.Bucket31To60.TotalAmount, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" md="3">
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fff7ed; border:1px solid #fdba74; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("61-90"))">
                         <MudText Typo="Typo.caption" Style="color:#9a3412">61-90 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket61To90.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#9a3412">@_agingReport.Bucket61To90.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket61To90.TotalVatAmount.ToString("N2") €</MudText>
-                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket61To90.TotalAmount.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#9a3412">@FormatAmountHelper.Trim(_agingReport.Bucket61To90.TotalAmountExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_agingReport.Bucket61To90.TotalVatAmount, 2) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_agingReport.Bucket61To90.TotalAmount, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" md="3">
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; cursor:pointer;" @onclick="@(() => OpenAgingDetail("90+"))">
                         <MudText Typo="Typo.caption" Style="color:#991b1b">90+ dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_agingReport.Bucket90Plus.InvoiceCount sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@_agingReport.Bucket90Plus.TotalAmountExclVat.ToString("N2") € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @_agingReport.Bucket90Plus.TotalVatAmount.ToString("N2") €</MudText>
-                        <MudText Typo="Typo.caption">Su PVM: @_agingReport.Bucket90Plus.TotalAmount.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@FormatAmountHelper.Trim(_agingReport.Bucket90Plus.TotalAmountExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_agingReport.Bucket90Plus.TotalVatAmount, 2) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_agingReport.Bucket90Plus.TotalAmount, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
             </MudGrid>
@@ -119,9 +119,9 @@
                 <MudItem xs="6" md="3">
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fef2f2; border:1px solid #fca5a5; border-radius:8px">
                         <MudText Typo="Typo.caption" Style="color:#991b1b">Iš viso pradelstų skolų</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@_agingReport.TotalOverdueExclVat.ToString("N2") € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @_agingReport.TotalOverdueVat.ToString("N2") €</MudText>
-                        <MudText Typo="Typo.caption" Style="font-weight:700; color:#991b1b">Su PVM: @_agingReport.TotalOverdue.ToString("N2") €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#991b1b">@FormatAmountHelper.Trim(_agingReport.TotalOverdueExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_agingReport.TotalOverdueVat, 2) €</MudText>
+                        <MudText Typo="Typo.caption" Style="font-weight:700; color:#991b1b">Su PVM: @FormatAmountHelper.Trim(_agingReport.TotalOverdue, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
             </MudGrid>
