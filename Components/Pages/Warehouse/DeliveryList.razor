@@ -86,9 +86,9 @@
             <MudTd>@context.DeliveryNumber</MudTd>
             <MudTd>@GetSupplierName(context.SupplierId)</MudTd>
             <MudTd Style="text-align:right">@context.TotalNetWeight.ToString("N1")</MudTd>
-            <MudTd Style="text-align:right">@context.TotalAmount.ToString("N2")</MudTd>
-            <MudTd Style="text-align:right">@context.PaidAmount.ToString("N2")</MudTd>
-            <MudTd Style="text-align:right">@((context.TotalAmount - context.PaidAmount).ToString("N2"))</MudTd>
+            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(context.TotalAmount, 2)</MudTd>
+            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(context.PaidAmount, 2)</MudTd>
+            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(context.TotalAmount - context.PaidAmount, 2)</MudTd>
             <MudTd>
                 <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(context.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(context.Status, _statusDisplay)</MudChip>
             </MudTd>
