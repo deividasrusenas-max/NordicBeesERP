@@ -74,27 +74,27 @@
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px">
                         <MudText Typo="Typo.caption" Style="color:#166534">0-30 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_expenseAgingBucket0To30.Count sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#166534">@(_expenseAgingBucket0To30.ExclVat.ToString("N2")) € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @(_expenseAgingBucket0To30.Vat.ToString("N2")) €</MudText>
-                        <MudText Typo="Typo.caption">Su PVM: @(_expenseAgingBucket0To30.InclVat.ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#166534">@FormatAmountHelper.Trim(_expenseAgingBucket0To30.ExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_expenseAgingBucket0To30.Vat, 2) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_expenseAgingBucket0To30.InclVat, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" md="3">
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fefce8; border:1px solid #fde047; border-radius:8px">
                         <MudText Typo="Typo.caption" Style="color:#854d0e">31-60 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_expenseAgingBucket31To60.Count sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#854d0e">@(_expenseAgingBucket31To60.ExclVat.ToString("N2")) € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @(_expenseAgingBucket31To60.Vat.ToString("N2")) €</MudText>
-                        <MudText Typo="Typo.caption">Su PVM: @(_expenseAgingBucket31To60.InclVat.ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#854d0e">@FormatAmountHelper.Trim(_expenseAgingBucket31To60.ExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_expenseAgingBucket31To60.Vat, 2) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_expenseAgingBucket31To60.InclVat, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" md="3">
                     <MudPaper Elevation="0" Class="pa-3" Style="background:#fff7ed; border:1px solid #fdba74; border-radius:8px">
                         <MudText Typo="Typo.caption" Style="color:#9a3412">61-90 dienų</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:700">@_expenseAgingBucket61To90.Count sąskaitos</MudText>
-                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#9a3412">@(_expenseAgingBucket61To90.ExclVat.ToString("N2")) € (be PVM)</MudText>
-                        <MudText Typo="Typo.caption">PVM: @(_expenseAgingBucket61To90.Vat.ToString("N2")) €</MudText>
-                        <MudText Typo="Typo.caption">Su PVM: @(_expenseAgingBucket61To90.InclVat.ToString("N2")) €</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:700; color:#9a3412">@FormatAmountHelper.Trim(_expenseAgingBucket61To90.ExclVat, 2) € (be PVM)</MudText>
+                        <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_expenseAgingBucket61To90.Vat, 2) €</MudText>
+                        <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_expenseAgingBucket61To90.InclVat, 2) €</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="6" md="3">
