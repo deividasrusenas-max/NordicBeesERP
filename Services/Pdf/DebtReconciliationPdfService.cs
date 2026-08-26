@@ -36,6 +36,7 @@ public class DebtReconciliationPdfService
     {
         var settings = await _companySettingsService.GetSettingsAsync();
 
+        QuestPDF.Settings.License = LicenseType.Community;
         var document = new DebtReconciliationDocument(result, DebtReconciliationLabels.For(lang), settings, _brandedHeader, lang);
         return document.GeneratePdf();
     }

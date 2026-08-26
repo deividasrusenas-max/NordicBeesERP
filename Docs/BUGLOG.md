@@ -484,3 +484,12 @@ re-labeling the symptom.
 - **Category**: UI-form
 - **Error class**: `mudblazor-button-label-wrap`
 - **Status**: monitoring — new mechanism tag, no prior guardrail. Distinct from the other MudBlazor bind/state-sync tags (`mudblazor-bind-value-commit-timing`, `mudblazor-checkbox-generic-value-binding`); this is a pure CSS/layout failure mode.
+
+### 2026-08-26 — Debt reconciliation PDF ("skolų suderinimo aktas") throws unhandled license exception
+- **Symptom**: Generating the debt reconciliation PDF ("skolų suderinimo aktas") on `/reports/debt-reconciliation` threw an unhandled `System.Exception` from `QuestPDF.Drawing.DocumentGenerator.ValidateLicense()`; the PDF never downloaded.
+- **Root cause**: `DebtReconciliationPdfService.GeneratePdfAsync` called `document.GeneratePdf()` without first setting `QuestPDF.Settings.License = LicenseType.Community`. Every other PDF service in the repo (`DeliveryReceiptPdfService.cs:31`, `PdfGeneratorService.cs:63/113/615/895`) sets the Community license per-method before generating; the new service omitted it.
+- **Fix**: Added `QuestPDF.Settings.License = LicenseType.Community;` inside `GeneratePdfAsync`, immediately before `document.GeneratePdf()`.
+- **Guardrail added**: Any new QuestPDF-generating method must set the license before `GeneratePdf()` (matches the existing per-method pattern); consider a single global `QuestPDF.Settings.License` initialization in `Program.cs` to prevent recurrence.
+- **Category**: PDF generation / third-party license validation
+- **Error class**: `questpdf-license-not-set`
+- **Status**: monitoring
