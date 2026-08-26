@@ -141,7 +141,8 @@ app.MapGet("/artwork/download/{versionId:int}", async (int versionId,
     if (version == null) return Results.NotFound();
 
     var root = config["ArtworkStorage:StorageRoot"] ?? "/var/lib/nordicbees/artwork";
-    var fullPath = Path.Combine(root, version.FilePath.Replace('/', Path.DirectorySeparatorChar));
+    var relPath = (version.FilePath ?? "").TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar);
+    var fullPath = Path.Combine(root, relPath);
 
     if (!File.Exists(fullPath)) return Results.NotFound();
 
@@ -167,7 +168,7 @@ app.MapGet("/artwork/preview/{versionId:int}", async (int versionId,
     if (string.IsNullOrEmpty(version.ThumbnailPath)) return Results.NotFound();
 
     var root = config["ArtworkStorage:StorageRoot"] ?? "/var/lib/nordicbees/artwork";
-    var fullPath = Path.Combine(root, version.ThumbnailPath.TrimStart('/'));
+    var fullPath = Path.Combine(root, version.ThumbnailPath.TrimStart('/', '\\'));
 
     if (!File.Exists(fullPath)) return Results.NotFound();
 
@@ -187,7 +188,7 @@ app.MapGet("/artwork/preview/full/{versionId:int}", async (int versionId,
     if (string.IsNullOrEmpty(version.PreviewPath)) return Results.NotFound();
 
     var root = config["ArtworkStorage:StorageRoot"] ?? "/var/lib/nordicbees/artwork";
-    var fullPath = Path.Combine(root, version.PreviewPath.TrimStart('/'));
+    var fullPath = Path.Combine(root, version.PreviewPath.TrimStart('/', '\\'));
 
     if (!File.Exists(fullPath)) return Results.NotFound();
 
