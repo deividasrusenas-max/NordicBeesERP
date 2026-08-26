@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS artwork_files (
     id INT AUTO_INCREMENT PRIMARY KEY,
     asset_id INT NOT NULL,
     label_type VARCHAR(100) NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE UNIQUE INDEX uq_asset_label_type ON artwork_files (asset_id, label_type);

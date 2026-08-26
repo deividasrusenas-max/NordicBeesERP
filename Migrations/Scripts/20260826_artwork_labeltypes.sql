@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS artwork_label_types (
     name       VARCHAR(100) NOT NULL,
     sort_order INT          NOT NULL DEFAULT 0,
     is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE UNIQUE INDEX uq_artwork_label_types_name ON artwork_label_types (name);
