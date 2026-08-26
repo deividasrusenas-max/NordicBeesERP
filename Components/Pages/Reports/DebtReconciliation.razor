@@ -1,0 +1,115 @@
+@page "/reports/debt-reconciliation"
+@rendermode InteractiveServer
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Pdf
+@using NordicBeesERP.Services.Xlsx
+@using MudBlazor
+@inject DebtReconciliationService DebtReconciliationService
+@inject DebtReconciliationPdfService DebtReconciliationPdfService
+@inject DebtReconciliationXlsxService DebtReconciliationXlsxService
+@inject ICustomerService CustomerService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Skolų suderinimo aktas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Skolų suderinimo aktas</MudText>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudAutocomplete T="BusinessPartner" @bind-Value="_selectedPartner"
+                    Label="Partneris" Variant="Variant.Outlined" Required="true"
+                    SearchFunc="SearchPartners" ToStringFunc="@(p => p?.Name ?? string.Empty)"
+                    MinCharacters="0" CoerceText="false" CoerceValue="false"
+                    ResetValueOnEmptyText="true" Immediate="true" OpenOnFocus="true"
+                    ShowProgressIndicator="true" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="int" @bind-Value="_year" Label="Metai" Variant="Variant.Outlined">
+                    @foreach (var y in _years)
+                    {
+                        <MudSelectItem Value="@y">@y</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="int" @bind-Value="_month" Label="Mėnuo" Variant="Variant.Outlined">
+                    <MudSelectItem Value="0">Visi metai</MudSelectItem>
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        var monthNum = m;
+                        <MudSelectItem Value="@monthNum">@monthNum</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="ReportLanguage" @bind-Value="_language" Label="Kalba" Variant="Variant.Outlined">
+                    <MudSelectItem Value="ReportLanguage.LT">Lietuvių</MudSelectItem>
+                    <MudSelectItem Value="ReportLanguage.EN">English</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Class="mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GeneratePdf" Disabled="@(_selectedPartner == null)">Generuoti PDF</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="GenerateXlsx" Disabled="@(_selectedPartner == null)">Generuoti XLSX</MudButton>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private BusinessPartner? _selectedPartner;
+    private int _year = DateTime.Now.Year;
+    private int _month = 0; // 0 = all year
+    private ReportLanguage _language = ReportLanguage.LT;
+    private List<BusinessPartner> _partners = new();
+    private List<int> _years = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _partners = await CustomerService.GetAllBusinessPartnersAsync();
+        _years = Enumerable.Range(0, 4).Select(i => DateTime.Now.Year - i).ToList();
+    }
+
+    private async Task<IEnumerable<BusinessPartner>> SearchPartners(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return _partners;
+
+        var v = value.ToLowerInvariant();
+        return _partners.Where(p =>
+            (p.Name != null && p.Name.ToLowerInvariant().Contains(v)) ||
+            (p.CompanyCode != null && p.CompanyCode.ToLowerInvariant().Contains(v)));
+    }
+
+    private async Task GeneratePdf()
+    {
+        if (_selectedPartner == null)
+        {
+            Snackbar.Add("Pasirinkite partnerį", Severity.Warning);
+            return;
+        }
+
+        var result = await DebtReconciliationService.GetReconciliationAsync(_selectedPartner.Id, _year, _month == 0 ? null : _month);
+        var bytes = await DebtReconciliationPdfService.GeneratePdfAsync(result, _language);
+        await JS.InvokeVoidAsync("downloadFileFromBytes", $"skolu-suderinimo-aktas-{result.PartnerCode}-{_year}.pdf", "application/pdf", Convert.ToBase64String(bytes));
+        Snackbar.Add("PDF sugeneruotas", Severity.Success);
+    }
+
+    private async Task GenerateXlsx()
+    {
+        if (_selectedPartner == null)
+        {
+            Snackbar.Add("Pasirinkite partnerį", Severity.Warning);
+            return;
+        }
+
+        var result = await DebtReconciliationService.GetReconciliationAsync(_selectedPartner.Id, _year, _month == 0 ? null : _month);
+        var bytes = DebtReconciliationXlsxService.GenerateXlsx(result, _language); // sync, do NOT await
+        await JS.InvokeVoidAsync("downloadFileFromBytes", $"skolu-suderinimo-aktas-{result.PartnerCode}-{_year}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(bytes));
+        Snackbar.Add("XLSX sugeneruotas", Severity.Success);
+    }
+}
