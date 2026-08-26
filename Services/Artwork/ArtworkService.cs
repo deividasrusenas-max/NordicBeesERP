@@ -39,6 +39,17 @@ public class ArtworkService : IArtworkService
             .OrderByDescending(v => v.VersionNumber)
             .ToListAsync();
 
+        var filesById = await _context.ArtworkFiles
+            .Where(f => f.AssetId == assetId)
+            .ToDictionaryAsync(f => f.Id, f => f.LabelType);
+
+        foreach (var v in allVersions)
+        {
+            v.LabelType = v.ArtworkFileId.HasValue && filesById.TryGetValue(v.ArtworkFileId.Value, out var lt)
+                ? lt
+                : ArtworkLabelTypes.General;
+        }
+
         var actualVersion = allVersions.FirstOrDefault(v => v.Status == "approved");
         var pendingVersion = allVersions.FirstOrDefault(v => v.Status == "pending");
 
@@ -308,7 +319,7 @@ public class ArtworkService : IArtworkService
         return result;
     }
 
-    public async Task<ArtworkVersionUploadResult> UploadVersionAsync(int assetId, string changeDescription, string base64, string fileName, long fileSize, string fileType)
+    public async Task<ArtworkVersionUploadResult> UploadVersionAsync(int assetId, string changeDescription, string base64, string fileName, long fileSize, string fileType, string labelType)
     {
         // Validate change description
         if (string.IsNullOrWhiteSpace(changeDescription))
@@ -368,6 +379,28 @@ public class ArtworkService : IArtworkService
         if (brand == null)
             return new ArtworkVersionUploadResult { Success = false, Message = "Brand not found." };
 
+        // Resolve the label-set (artwork_files) row for this asset + label type (find-or-create).
+        if (string.IsNullOrWhiteSpace(labelType))
+            labelType = ArtworkLabelTypes.General;
+
+        var existingFile = await _context.ArtworkFiles
+            .Where(f => f.AssetId == assetId && f.LabelType == labelType)
+            .OrderBy(f => f.Id)
+            .FirstOrDefaultAsync();
+
+        int artworkFileId;
+        if (existingFile != null)
+        {
+            artworkFileId = existingFile.Id;
+        }
+        else
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO artwork_files (asset_id, label_type, created_at) VALUES (@p0, @p1, @p2)",
+                assetId, labelType, DateTime.UtcNow);
+            artworkFileId = await _context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
+        }
+
         // Save file to disk
         using var stream = new MemoryStream(fileBytes);
         var relativePath = await _storageService.SaveFileAsync(brand.Slug, assetId, nextVersionNumber, fileName, stream);
@@ -384,12 +417,13 @@ public class ArtworkService : IArtworkService
             FileSha256 = sha256,
             ChangeDescription = changeDescription,
             Status = "pending",
-            UploadedBy = userId.Value
+            UploadedBy = userId.Value,
+            ArtworkFileId = artworkFileId
         };
 
         await _context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO artwork_versions (asset_id, version_number, file_type, file_path, original_filename, file_size_bytes, file_sha256, change_description, status, uploaded_by, uploaded_at) VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, 'pending', @p8, @p9)",
-            assetId, nextVersionNumber, fileType, relativePath, fileName, fileSize, sha256, changeDescription, userId.Value, DateTime.UtcNow);
+            "INSERT INTO artwork_versions (asset_id, version_number, file_type, file_path, original_filename, file_size_bytes, file_sha256, change_description, status, uploaded_by, uploaded_at, artwork_file_id) VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, 'pending', @p8, @p9, @p10)",
+            assetId, nextVersionNumber, fileType, relativePath, fileName, fileSize, sha256, changeDescription, userId.Value, DateTime.UtcNow, artworkFileId);
 
         var versionId = await _context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
 
@@ -406,7 +440,8 @@ public class ArtworkService : IArtworkService
             ChangeDescription = changeDescription,
             Status = "pending",
             UploadedBy = userId.Value,
-            UploadedAt = DateTime.UtcNow
+            UploadedAt = DateTime.UtcNow,
+            ArtworkFileId = artworkFileId
         };
 
         return new ArtworkVersionUploadResult

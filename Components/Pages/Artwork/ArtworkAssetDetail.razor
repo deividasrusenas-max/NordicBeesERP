@@ -60,6 +60,7 @@
                     <div>
                         <MudText Typo="Typo.overline" Color="Color.Secondary">DABARINĖ VERSIJA</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:600">v@_currentVersion.VersionNumber</MudText>
+                        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Class="ml-2">@_currentVersion.LabelType</MudChip>
                     </div>
                     <MudButton StartIcon="@Icons.Material.Filled.Download" Variant="Variant.Filled" Color="Color.Primary" OnClick="DownloadCurrentVersion">
                         Atsisiųsti
@@ -136,6 +137,7 @@
                     <div>
                         <MudText Typo="Typo.overline" Color="Color.Secondary">LAUKIANCI PATVIRTINIMO</MudText>
                         <MudText Typo="Typo.h6" Style="font-weight:600">v@_pendingVersion.VersionNumber</MudText>
+                        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Class="ml-2">@_pendingVersion.LabelType</MudChip>
                     </div>
                     <div class="d-flex gap-2">
                         <MudButton StartIcon="@Icons.Material.Filled.CheckCircle" Variant="Variant.Filled" Color="Color.Success" OnClick="() => ApproveVersion(_pendingVersion.Id)">
@@ -208,6 +210,7 @@
                     <MudTh>Versija</MudTh>
                     <MudTh>Originalus failas</MudTh>
                     <MudTh>Statusas</MudTh>
+                    <MudTh>Etiketės tipas</MudTh>
                     <MudTh>Pakeitimas</MudTh>
                     <MudTh>Galioja nuo</MudTh>
                     <MudTh>Galioja iki</MudTh>
@@ -227,6 +230,9 @@
                                 Priežastis: @version.ReviewComment
                             </MudText>
                         }
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled">@version.LabelType</MudChip>
                     </MudTd>
                     <MudTd>
                         <MudText Typo="Typo.body2" NoWrap="true" Class="text-truncate">@GetChangeDescriptionDisplay(version.ChangeDescription)</MudText>

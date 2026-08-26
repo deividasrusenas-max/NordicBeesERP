@@ -5,6 +5,7 @@
 @using Microsoft.JSInterop
 @using MudBlazor
 @using NordicBeesERP.Services.Artwork
+@using NordicBeesERP.Models.Artwork
 @inject ISnackbar Snackbar
 @inject IArtworkService ArtworkService
 @inject IAuthService AuthService
@@ -68,6 +69,14 @@
             </MudText>
         </div>
 
+        <MudSelect T="string" @bind-Value="_labelType" Label="Etiketės tipas (label type)" Variant="Variant.Outlined" FullWidth="true" Class="mt-3">
+            <MudSelectItem T="string" Value="@ArtworkLabelTypes.General">@ArtworkLabelTypes.General</MudSelectItem>
+            @foreach (var lt in ArtworkLabelTypes.All)
+            {
+                <MudSelectItem T="string" Value="@lt">@lt</MudSelectItem>
+            }
+        </MudSelect>
+
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    Disabled="@(_uploading || string.IsNullOrWhiteSpace(ChangeDescription))"
                    OnClick="UploadFileAsync"
@@ -91,6 +100,7 @@
     private long _fileSizeBytes = 0;
     private int _fileKey = 0;
     private string ChangeDescription { get; set; } = "";
+    private string _labelType = ArtworkLabelTypes.General;
     private ArtworkVersionUploadResult? _result;
     private bool _focusRequested;
     private bool _hasFocusRequested;
@@ -227,7 +237,8 @@
                 base64,
                 _fileName,
                 _fileSizeBytes,
-                "print_ready"
+                "print_ready",
+                _labelType
             );
 
             if (_result?.Success == true)

@@ -47,4 +47,10 @@ public class ArtworkVersion
     public DateTime? EffectiveFrom { get; set; }
     [Column("effective_to")]
     public DateTime? EffectiveTo { get; set; }
+
+    [Column("artwork_file_id")]
+    public int? ArtworkFileId { get; set; }
+
+    [NotMapped]
+    public string LabelType { get; set; } = ArtworkLabelTypes.General;
 }
