@@ -232,12 +232,25 @@ public class ArtworkService : IArtworkService
 
     public async Task<int> CreateAssetAsync(int brandId, string name, string type, string? description, int userId)
     {
-        await _context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO artwork_assets (brand_id, name, asset_type, description, status, created_by, created_at) VALUES (@p0, @p1, @p2, @p3, 'active', @p4, NOW())",
-            brandId, name, type, description ?? "", userId);
+        // Hold the connection open across the INSERT and the LAST_INSERT_ID()
+        // read so both run on the same MySQL session. LAST_INSERT_ID() is
+        // connection-scoped; without this, EF Core connection pooling can serve
+        // the second statement on a different physical connection and return 0,
+        // which made asset creation navigate to /artwork/asset/0.
+        await _context.Database.OpenConnectionAsync();
+        try
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO artwork_assets (brand_id, name, asset_type, description, status, created_by, created_at) VALUES (@p0, @p1, @p2, @p3, 'active', @p4, NOW())",
+                brandId, name, type, description ?? "", userId);
 
-        var result = await _context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
-        return result;
+            var result = await _context.Database.SqlQueryRaw<int>("SELECT LAST_INSERT_ID() as Value").FirstAsync();
+            return result;
+        }
+        finally
+        {
+            await _context.Database.CloseConnectionAsync();
+        }
     }
 
     public async Task<List<ArtworkBrandWithCounts>> GetBrandsWithCountsAsync()
