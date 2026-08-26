@@ -68,12 +68,20 @@ internal class DebtReconciliationDocument : IDocument
         _lang = lang;
     }
 
+    private static readonly Color TableHeaderBg = Color.FromHex("#eef2f7");
+    private static readonly Color ZebraRowBg = Color.FromHex("#f8fafc");
+    private static readonly Color TotalsRowBg = Color.FromHex("#eef2f7");
+    private static readonly Color CardBg = Color.FromHex("#f8fafc");
+    private static readonly Color MutedText = Colors.Grey.Darken1;
+    private static readonly Color BrandPrimary = Color.FromHex("#4f7cac");
+
     public void Compose(IDocumentContainer container)
     {
         container.Page(page =>
         {
-            page.Margin(30);
+            page.Margin(32);
             page.Size(PageSizes.A4);
+            page.DefaultTextStyle(x => x.FontSize(9).FontColor(Colors.Black).LineHeight(1.15f));
             page.Header().Element(ComposeHeader);
             page.Content().Element(ComposeContent);
             page.Footer().Element(c => _brandedHeader.ComposeFooter(c));
@@ -91,128 +99,160 @@ internal class DebtReconciliationDocument : IDocument
 
     private void ComposeContent(IContainer container)
     {
-        container.PaddingTop(8).Column(column =>
+        container.PaddingTop(14).Column(column =>
         {
-            column.Spacing(6);
+            column.Spacing(16);
 
-            // a) Partner block — only emit lines that have content.
+            // a) Partner block — light card, only emitted if there is content.
             if (!string.IsNullOrWhiteSpace(_result.PartnerName) ||
                 !string.IsNullOrWhiteSpace(_result.PartnerCode) ||
                 !string.IsNullOrWhiteSpace(_result.PartnerAddress))
             {
-                column.Item().Column(partner =>
+                column.Item().Background(CardBg).Padding(10).Column(partner =>
                 {
-                    partner.Spacing(2);
+                    partner.Spacing(3);
 
                     if (!string.IsNullOrWhiteSpace(_result.PartnerName))
                         partner.Item().Text(text =>
                         {
-                            text.Span($"{_labels.PartnerLabel}: ").SemiBold();
-                            text.Span(_result.PartnerName);
+                            text.Span($"{_labels.PartnerLabel}: ").SemiBold().FontSize(9.5f);
+                            text.Span(_result.PartnerName).FontSize(9.5f);
                         });
 
                     if (!string.IsNullOrWhiteSpace(_result.PartnerCode))
                         partner.Item().Text(text =>
                         {
-                            text.Span($"{_labels.CompanyCodeLabel}: ").SemiBold();
-                            text.Span(_result.PartnerCode);
+                            text.Span($"{_labels.CompanyCodeLabel}: ").SemiBold().FontColor(MutedText);
+                            text.Span(_result.PartnerCode).FontColor(MutedText);
                         });
 
                     if (!string.IsNullOrWhiteSpace(_result.PartnerAddress))
                         partner.Item().Text(text =>
                         {
-                            text.Span($"{_labels.AddressLabel}: ").SemiBold();
-                            text.Span(_result.PartnerAddress);
+                            text.Span($"{_labels.AddressLabel}: ").SemiBold().FontColor(MutedText);
+                            text.Span(_result.PartnerAddress).FontColor(MutedText);
                         });
                 });
             }
 
-            // b) Opening balance.
-            column.Item().Text(text =>
+            // b) Opening balance — highlighted stat row, separate from the card above.
+            column.Item().Row(row =>
             {
-                text.Span($"{_labels.OpeningBalance}: ").SemiBold();
-                text.Span(FormatAmount(_result.OpeningBalance));
+                row.RelativeItem().Text(_labels.OpeningBalance).FontColor(MutedText);
+                row.RelativeItem().AlignRight().Text($"{FormatAmount(_result.OpeningBalance)} EUR").FontSize(11).Bold().FontColor(BrandPrimary);
             });
 
-            // c) Ledger table.
+            // c) Ledger table. Date columns narrowed, amount columns widened so
+            // figures like "820 848.91" never wrap onto a second line.
             column.Item().Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
-                    columns.RelativeColumn(1.2f); // Doc date
-                    columns.RelativeColumn(1.2f); // Due date
-                    columns.RelativeColumn(2f);   // Doc no
-                    columns.RelativeColumn(1.3f); // Debit
-                    columns.RelativeColumn(1.3f); // Credit
-                    columns.RelativeColumn(1.3f); // Balance
+                    columns.RelativeColumn(1.0f);  // Doc date
+                    columns.RelativeColumn(1.0f);  // Due date
+                    columns.RelativeColumn(1.5f);  // Doc no
+                    columns.RelativeColumn(1.55f); // Debit
+                    columns.RelativeColumn(1.55f); // Credit
+                    columns.RelativeColumn(1.65f); // Balance
                 });
 
                 table.Header(header =>
                 {
-                    header.Cell().Element(HeaderCellStyle).Text(_labels.DocDate);
-                    header.Cell().Element(HeaderCellStyle).Text(_labels.DueDate);
-                    header.Cell().Element(HeaderCellStyle).Text(_labels.DocNo);
-                    header.Cell().Element(HeaderCellStyle).AlignRight().Text(_labels.Debit);
-                    header.Cell().Element(HeaderCellStyle).AlignRight().Text(_labels.Credit);
-                    header.Cell().Element(HeaderCellStyle).AlignRight().Text(_labels.Balance);
+                    header.Cell().Element(c => HeaderCellStyle(c)).Text(_labels.DocDate);
+                    header.Cell().Element(c => HeaderCellStyle(c)).Text(_labels.DueDate);
+                    header.Cell().Element(c => HeaderCellStyle(c)).Text(_labels.DocNo);
+                    header.Cell().Element(c => HeaderCellStyle(c, right: true)).Text($"{_labels.Debit}, EUR");
+                    header.Cell().Element(c => HeaderCellStyle(c, right: true)).Text($"{_labels.Credit}, EUR");
+                    header.Cell().Element(c => HeaderCellStyle(c, right: true)).Text($"{_labels.Balance}, EUR");
 
-                    static IContainer HeaderCellStyle(IContainer c) =>
-                        c.DefaultTextStyle(x => x.SemiBold()).PaddingVertical(4).BorderBottom(1).BorderColor(Colors.Black);
+                    static IContainer HeaderCellStyle(IContainer c, bool right = false)
+                    {
+                        var styled = c.Background(TableHeaderBg)
+                            .PaddingVertical(6).PaddingHorizontal(6)
+                            .BorderBottom(1.25f).BorderColor(BrandPrimary)
+                            .DefaultTextStyle(x => x.SemiBold().FontSize(8.5f).FontColor(Colors.Grey.Darken3));
+                        return right ? styled.AlignRight() : styled;
+                    }
                 });
 
-                foreach (var line in _result.Lines)
+                for (var i = 0; i < _result.Lines.Count; i++)
                 {
-                    table.Cell().Element(CellStyle).Text(line.DocumentDate.ToShortDateString());
-                    table.Cell().Element(CellStyle).Text(line.DueDate?.ToShortDateString() ?? "");
-                    table.Cell().Element(CellStyle).Text(line.DocumentNumber);
-                    table.Cell().Element(CellStyle).AlignRight().Text(FormatAmount(line.Debit));
-                    table.Cell().Element(CellStyle).AlignRight().Text(FormatAmount(line.Credit));
-                    table.Cell().Element(CellStyle).AlignRight().Text(FormatAmount(line.RunningBalance));
+                    var line = _result.Lines[i];
+                    var zebra = i % 2 == 1;
 
-                    static IContainer CellStyle(IContainer c) =>
-                        c.PaddingVertical(3).BorderBottom(1).BorderColor(Colors.Grey.Lighten2);
+                    table.Cell().Element(c => CellStyle(c, zebra)).Text(line.DocumentDate.ToString("yyyy-MM-dd"));
+                    table.Cell().Element(c => CellStyle(c, zebra)).Text(line.DueDate?.ToString("yyyy-MM-dd") ?? "—").FontColor(line.DueDate.HasValue ? Colors.Black : Colors.Grey.Lighten1);
+                    table.Cell().Element(c => CellStyle(c, zebra)).Text(line.DocumentNumber).SemiBold();
+                    table.Cell().Element(c => CellStyle(c, zebra, right: true)).Text(line.Debit > 0 ? FormatAmount(line.Debit) : "—").FontColor(line.Debit > 0 ? Colors.Black : Colors.Grey.Lighten1);
+                    table.Cell().Element(c => CellStyle(c, zebra, right: true)).Text(line.Credit > 0 ? FormatAmount(line.Credit) : "—").FontColor(line.Credit > 0 ? Colors.Black : Colors.Grey.Lighten1);
+                    table.Cell().Element(c => CellStyle(c, zebra, right: true)).Text(FormatAmount(line.RunningBalance)).SemiBold();
+
+                    static IContainer CellStyle(IContainer c, bool zebra, bool right = false)
+                    {
+                        var styled = (zebra ? c.Background(ZebraRowBg) : c)
+                            .PaddingVertical(5).PaddingHorizontal(6)
+                            .BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2)
+                            .DefaultTextStyle(x => x.FontSize(8.5f));
+                        return right ? styled.AlignRight() : styled;
+                    }
                 }
 
-                // Totals row: label in the DocNo column, totals right-aligned.
-                table.Cell().Element(TotalsCellStyle).Text("");
-                table.Cell().Element(TotalsCellStyle).Text("");
-                table.Cell().Element(TotalsCellStyle).Text(_labels.Total).SemiBold();
-                table.Cell().Element(TotalsCellStyle).AlignRight().Text(FormatAmount(_result.TotalDebit)).SemiBold();
-                table.Cell().Element(TotalsCellStyle).AlignRight().Text(FormatAmount(_result.TotalCredit)).SemiBold();
-                table.Cell().Element(TotalsCellStyle).AlignRight().Text(FormatAmount(_result.ClosingBalance)).SemiBold();
+                // Totals row: label spans the first three (non-amount) columns so
+                // it reads as one clear row instead of a floating word.
+                table.Cell().ColumnSpan(3).Element(TotalsLabelStyle).Text(_labels.Total).SemiBold();
+                table.Cell().Element(c => TotalsAmountStyle(c)).AlignRight().Text(FormatAmount(_result.TotalDebit)).SemiBold();
+                table.Cell().Element(c => TotalsAmountStyle(c)).AlignRight().Text(FormatAmount(_result.TotalCredit)).SemiBold();
+                table.Cell().Element(c => TotalsAmountStyle(c)).AlignRight().Text(FormatAmount(_result.ClosingBalance)).SemiBold().FontColor(BrandPrimary);
 
-                static IContainer TotalsCellStyle(IContainer c) =>
-                    c.PaddingVertical(4).BorderTop(1).BorderColor(Colors.Black);
+                static IContainer TotalsLabelStyle(IContainer c) =>
+                    c.Background(TotalsRowBg).PaddingVertical(7).PaddingHorizontal(6).BorderTop(1.25f).BorderColor(BrandPrimary);
+
+                static IContainer TotalsAmountStyle(IContainer c) =>
+                    c.Background(TotalsRowBg).PaddingVertical(7).PaddingHorizontal(6).BorderTop(1.25f).BorderColor(BrandPrimary).DefaultTextStyle(x => x.FontSize(9.5f));
             });
 
-            // d) Amount in words for the closing balance.
+            // d) Amount in words for the closing balance — muted, italic caption style.
             var words = _lang == ReportLanguage.LT
                 ? NumberToWordsHelper.ConvertToLithuanianWords(Math.Abs(_result.ClosingBalance))
                 : NumberToWordsHelper.ConvertToEnglishWords(Math.Abs(_result.ClosingBalance));
 
             column.Item().Text(text =>
             {
-                text.Span($"{_labels.AmountInWords} ").SemiBold();
+                text.Span($"{_labels.AmountInWords} ").SemiBold().FontSize(8.5f);
                 if (_result.ClosingBalance < 0)
-                    text.Span(_labels.Minus + " ");
-                text.Span(words);
+                    text.Span(_labels.Minus + " ").Italic().FontSize(8.5f);
+                text.Span(words).Italic().FontSize(8.5f).FontColor(MutedText);
             });
 
-            // e) Signature block.
-            column.Item().PaddingTop(24).Row(row =>
+            // e) Signature block — an actual ruled line per signer, label beneath it.
+            column.Item().PaddingTop(20).Row(row =>
             {
                 row.RelativeItem().Column(sigs =>
                 {
-                    sigs.Spacing(16);
-                    sigs.Item().Text(_labels.Director);
-                    sigs.Item().Text(_labels.ChiefAccountant);
+                    sigs.Spacing(22);
+
+                    sigs.Item().Column(line =>
+                    {
+                        line.Item().Height(20);
+                        line.Item().BorderBottom(0.75f).BorderColor(Colors.Grey.Lighten1);
+                        line.Item().PaddingTop(3).Text(_labels.Director).FontSize(8).FontColor(MutedText);
+                    });
+
+                    sigs.Item().Column(line =>
+                    {
+                        line.Item().Height(20);
+                        line.Item().BorderBottom(0.75f).BorderColor(Colors.Grey.Lighten1);
+                        line.Item().PaddingTop(3).Text(_labels.ChiefAccountant).FontSize(8).FontColor(MutedText);
+                    });
                 });
 
-                row.RelativeItem().AlignRight().AlignBottom().Text(_labels.CompanySeal);
+                row.ConstantItem(24);
+
+                row.RelativeItem().AlignRight().AlignBottom().Text(_labels.CompanySeal).FontSize(8).FontColor(Colors.Grey.Lighten1);
             });
         });
     }
 
     private static string FormatAmount(decimal value) =>
-        value.ToString("0.00", CultureInfo.InvariantCulture) + " EUR";
+        value.ToString("#,##0.00", CultureInfo.InvariantCulture);
 }
