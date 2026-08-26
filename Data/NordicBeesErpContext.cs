@@ -104,6 +104,7 @@ namespace NordicBeesERP.Data
 
         // Artwork Module
         public DbSet<ArtworkBrand> ArtworkBrands { get; set; }
+        public DbSet<ArtworkLabelType> ArtworkLabelTypes { get; set; }
         public DbSet<ArtworkAsset> ArtworkAssets { get; set; }
         public DbSet<ArtworkVersion> ArtworkVersions { get; set; }
         public DbSet<ArtworkFile> ArtworkFiles { get; set; }
@@ -600,13 +601,18 @@ namespace NordicBeesERP.Data
              });
 
              // ===== ARTWORK MODULE =====
-             modelBuilder.Entity<ArtworkBrand>(entity =>
+              modelBuilder.Entity<ArtworkBrand>(entity =>
+              {
+                  entity.HasIndex(e => e.Slug).IsUnique();
+                  entity.HasIndex(e => e.Name).IsUnique();
+              });
+
+             modelBuilder.Entity<ArtworkLabelType>(entity =>
              {
-                 entity.HasIndex(e => e.Slug).IsUnique();
                  entity.HasIndex(e => e.Name).IsUnique();
              });
 
-              modelBuilder.Entity<ArtworkAsset>(entity =>
+               modelBuilder.Entity<ArtworkAsset>(entity =>
               {
                   entity.HasIndex(e => new { e.BrandId, e.Name }).HasDatabaseName("uq_brand_asset_name");
                   entity.HasIndex(e => e.Status);

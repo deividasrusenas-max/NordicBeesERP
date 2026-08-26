@@ -1,0 +1,199 @@
+@page "/settings/artwork-label-types"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "ArtworkAccess")]
+@using Microsoft.AspNetCore.Authorization
+@using NordicBeesERP.Models.Artwork
+@using NordicBeesERP.Services.Artwork
+@inject IArtworkService ArtworkService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Etikečių tipai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Etikečių tipai</MudText>
+        @if (_isAdmin)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">Pridėti</MudButton>
+        }
+    </div>
+
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable T="ArtworkLabelType" Items="_labelTypes" Dense="true" Hover="true" Striped="true" Loading="_loading">
+            <HeaderContent>
+                <MudTh>Pavadinimas</MudTh>
+                <MudTh>Rikiavimo tvarka</MudTh>
+                <MudTh>Statusas</MudTh>
+                <MudTh Style="width:120px">Veiksmai</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="lt">
+                @if (_editingItem?.Id == lt.Id)
+                {
+                    <MudTd>
+                        <MudTextField @bind-Value="_editingItem.Name" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" Required="true" />
+                    </MudTd>
+                    <MudTd>
+                        <MudNumericField T="int" @bind-Value="_editingItem.SortOrder" Variant="Variant.Outlined" Size="Size.Small" Margin="Margin.Dense" />
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(_editingItem.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(_editingItem.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <div class="d-flex gap-1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Save" Size="Size.Small" Color="Color.Success" OnClick="SaveEdit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Secondary" OnClick="CancelEdit" />
+                        </div>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd>@lt.Name</MudTd>
+                    <MudTd>@lt.SortOrder</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(lt.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(lt.IsActive ? "Aktyvus" : "Neaktyvus")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(lt))" />
+                        @if (_isAdmin)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteLabelType(lt))" />
+                        }
+                    </MudTd>
+                }
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Įrašų nėra</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Label" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(_editingItem.Id == 0 ? "Naujas etiketės tipas" : "Redaguoti etiketės tipą")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_editingItem.Name" Label="Pavadinimas" Variant="Variant.Outlined" Required="true" />
+            <MudNumericField T="int" @bind-Value="_editingItem.SortOrder" Label="Rikiavimo tvarka" Variant="Variant.Outlined" />
+            <MudSwitch T="bool" @bind-Value="_editingItem.IsActive" Label="Aktyvus" Color="Color.Success" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _dialogVisible = false)" Variant="Variant.Outlined">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveItem" StartIcon="@Icons.Material.Filled.Save">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ArtworkLabelType> _labelTypes = new();
+    private ArtworkLabelType _editingItem = new();
+    private bool _loading = true;
+    private bool _dialogVisible = false;
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAdmin = auth.User.IsInRole("Admin");
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _labelTypes = await ArtworkService.GetAllLabelTypesAsync();
+        _loading = false;
+    }
+
+    private void OpenCreateDialog()
+    {
+        _editingItem = new ArtworkLabelType { IsActive = true, SortOrder = 0 };
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ArtworkLabelType lt)
+    {
+        _editingItem = new ArtworkLabelType
+        {
+            Id = lt.Id,
+            Name = lt.Name,
+            SortOrder = lt.SortOrder,
+            IsActive = lt.IsActive,
+            CreatedAt = lt.CreatedAt
+        };
+        _dialogVisible = true;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editingItem.Name))
+        {
+            Snackbar.Add("Pavadinimas privalomas", Severity.Warning);
+            return;
+        }
+
+        await ArtworkService.UpdateLabelTypeAsync(_editingItem.Id, _editingItem.Name, _editingItem.SortOrder, _editingItem.IsActive);
+        _editingItem = new ArtworkLabelType();
+        await LoadData();
+        Snackbar.Add("Etiketės tipas išsaugotas sėkmingai", Severity.Success);
+    }
+
+    private void CancelEdit()
+    {
+        _editingItem = new ArtworkLabelType();
+    }
+
+    private async Task SaveItem()
+    {
+        if (string.IsNullOrWhiteSpace(_editingItem.Name))
+        {
+            Snackbar.Add("Pavadinimas privalomas", Severity.Warning);
+            return;
+        }
+
+        if (_editingItem.Id == 0)
+            await ArtworkService.CreateLabelTypeAsync(_editingItem.Name, _editingItem.SortOrder);
+        else
+            await ArtworkService.UpdateLabelTypeAsync(_editingItem.Id, _editingItem.Name, _editingItem.SortOrder, _editingItem.IsActive);
+
+        _dialogVisible = false;
+        await LoadData();
+        Snackbar.Add(_editingItem.Id == 0 ? "Etiketės tipas sukurtas sėkmingai" : "Etiketės tipas atnaujintas sėkmingai", Severity.Success);
+    }
+
+    private async Task DeleteLabelType(ArtworkLabelType lt)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Patvirtinti išjungimą",
+            $"Ar tikrai norite išjungti \"{lt.Name}\"? Įrašas liks istorijoje (minkštas trynimas) ir nebepasiūlysimas įkėlimo formoje.",
+            yesText: "Išjungti",
+            cancelText: "Atšaukti");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await ArtworkService.DeleteLabelTypeAsync(lt.Id);
+            await LoadData();
+            Snackbar.Add($"\"{lt.Name}\" išjungtas sėkmingai", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida trinant: " + ex.Message, Severity.Error);
+        }
+    }
+}

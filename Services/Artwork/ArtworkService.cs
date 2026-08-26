@@ -534,6 +534,35 @@ public class ArtworkService : IArtworkService
             id);
     }
 
+    public async Task<List<ArtworkLabelType>> GetAllLabelTypesAsync()
+    {
+        return await _context.ArtworkLabelTypes
+            .AsNoTracking()
+            .OrderBy(lt => lt.SortOrder)
+            .ToListAsync();
+    }
+
+    public async Task CreateLabelTypeAsync(string name, int sortOrder)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO artwork_label_types (name, sort_order, is_active, created_at) VALUES (@p0, @p1, 1, NOW())",
+            name, sortOrder);
+    }
+
+    public async Task UpdateLabelTypeAsync(int id, string name, int sortOrder, bool isActive)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "UPDATE artwork_label_types SET name = @p0, sort_order = @p1, is_active = @p2 WHERE id = @p3",
+            name, sortOrder, isActive, id);
+    }
+
+    public async Task DeleteLabelTypeAsync(int id)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "UPDATE artwork_label_types SET is_active = 0 WHERE id = @p0",
+            id);
+    }
+
     public string GenerateSlug(string name)
     {
         var slug = name.ToLowerInvariant();

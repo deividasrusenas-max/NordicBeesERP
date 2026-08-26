@@ -23,6 +23,10 @@ public interface IArtworkService
     Task CreateBrandAsync(string name, string slug);
     Task UpdateBrandAsync(int id, string name, string slug, bool isActive);
     Task DeleteBrandAsync(int id);
+    Task<List<ArtworkLabelType>> GetAllLabelTypesAsync();
+    Task CreateLabelTypeAsync(string name, int sortOrder);
+    Task UpdateLabelTypeAsync(int id, string name, int sortOrder, bool isActive);
+    Task DeleteLabelTypeAsync(int id);
     string GenerateSlug(string name);
 }
 

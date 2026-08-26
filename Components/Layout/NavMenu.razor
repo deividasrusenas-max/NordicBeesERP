@@ -8,6 +8,7 @@
         <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
         <MudNavGroup Title="Nustatymai" Icon="@Icons.Material.Filled.Settings">
             <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
+            <MudNavLink Href="/settings/artwork-label-types" Icon="@Icons.Material.Filled.Label">Etikečių tipai</MudNavLink>
         </MudNavGroup>
     }
     else
@@ -117,6 +118,7 @@
             @if (_isAdmin || _isDesigner || _isManager)
             {
                 <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
+                <MudNavLink Href="/settings/artwork-label-types" Icon="@Icons.Material.Filled.Label">Etikečių tipai</MudNavLink>
             }
         </MudNavGroup>
     }
