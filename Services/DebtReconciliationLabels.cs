@@ -31,6 +31,7 @@ public static class DebtReconciliationLabels
         public string PartnerLabel { get; init; } = "";
         public string CompanyCodeLabel { get; init; } = "";
         public string AddressLabel { get; init; } = "";
+        public string Minus { get; init; } = "";
     }
 
     private static readonly Set Lt = new()
@@ -54,6 +55,7 @@ public static class DebtReconciliationLabels
         PartnerLabel = "Klientas",
         CompanyCodeLabel = "Įm. kodas",
         AddressLabel = "Adresas",
+        Minus = "minus",
     };
 
     private static readonly Set En = new()
@@ -77,6 +79,7 @@ public static class DebtReconciliationLabels
         PartnerLabel = "Customer",
         CompanyCodeLabel = "Company code",
         AddressLabel = "Address",
+        Minus = "minus",
     };
 
     public static Set For(ReportLanguage lang) => lang == ReportLanguage.EN ? En : Lt;
