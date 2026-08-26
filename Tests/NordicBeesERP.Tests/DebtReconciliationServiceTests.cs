@@ -42,6 +42,7 @@ public class DebtReconciliationServiceTests : IClassFixture<DbTestFixture>
             UpdatedAt = DateTime.UtcNow
         };
         context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
 
         // Pre-period invoice: drives the opening balance (50).
         var openingInvoice = new Invoice
@@ -84,6 +85,11 @@ public class DebtReconciliationServiceTests : IClassFixture<DbTestFixture>
 
         context.Invoices.Add(openingInvoice);
         context.Invoices.Add(periodInvoice);
+        await context.SaveChangesAsync();
+
+        creditNote.OriginalInvoiceId = openingInvoice.Id;
+        creditNote.AppliedInvoiceId = periodInvoice.Id;
+
         context.CreditNotes.Add(creditNote);
         context.Payments.Add(payment);
         await context.SaveChangesAsync();
@@ -138,12 +144,13 @@ public class DebtReconciliationServiceTests : IClassFixture<DbTestFixture>
         finally
         {
             // Cleanup: delete every row this test inserted so nordic_bees_erp_test stays clean.
-            await context.Database.ExecuteSqlRawAsync(
-                "DELETE FROM invoices WHERE id = {0} OR id = {1}", invoiceIds[0], invoiceIds[1]);
+            // credit_notes references invoices via ON DELETE RESTRICT, so it must be deleted first.
             await context.Database.ExecuteSqlRawAsync(
                 "DELETE FROM credit_notes WHERE id = {0}", creditNoteId);
             await context.Database.ExecuteSqlRawAsync(
                 "DELETE FROM payments WHERE id = {0}", paymentId);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0} OR id = {1}", invoiceIds[0], invoiceIds[1]);
             await context.Database.ExecuteSqlRawAsync(
                 "DELETE FROM business_partners WHERE id = {0}", partnerId);
         }
