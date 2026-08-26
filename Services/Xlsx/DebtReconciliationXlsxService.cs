@@ -67,8 +67,12 @@ namespace NordicBeesERP.Services.Xlsx
             // Opening balance row (numeric cell — the formula anchor for the running balance)
             var openingRow = 8;
             worksheet.Cell(openingRow, ColDocNo).Value = labels.OpeningBalance;
+            worksheet.Cell(openingRow, ColDocNo).Style.Font.Bold = true;
             worksheet.Cell(openingRow, ColDebit).Value = result.OpeningBalance;
             worksheet.Cell(openingRow, ColDebit).Style.NumberFormat.Format = AmountFormat;
+            worksheet.Cell(openingRow, ColDebit).Style.Font.Bold = true;
+            worksheet.Cell(openingRow, ColDebit).Style.Font.FontSize = 12;
+            worksheet.Cell(openingRow, ColDebit).Style.Font.FontColor = XLColor.FromHtml("#4f7cac");
             var openingCellAddress = worksheet.Cell(openingRow, ColDebit).Address.ToString();
 
             // Table header
@@ -82,7 +86,12 @@ namespace NordicBeesERP.Services.Xlsx
 
             var headerRange = worksheet.Range(headerRow, ColDocNo, headerRow, ColBalance);
             headerRange.Style.Font.Bold = true;
-            headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+            headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#eef2f7");
+            headerRange.Style.Border.BottomBorder = XLBorderStyleValues.Medium;
+            headerRange.Style.Border.BottomBorderColor = XLColor.FromHtml("#4f7cac");
+            worksheet.Cell(headerRow, ColDebit).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            worksheet.Cell(headerRow, ColCredit).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            worksheet.Cell(headerRow, ColBalance).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             worksheet.SheetView.FreezeRows(headerRow);
 
             // Data rows — Balance is a real formula: opening + debit - credit (first row),
@@ -143,12 +152,16 @@ namespace NordicBeesERP.Services.Xlsx
 
             var closingRow = totalRow + 1;
             worksheet.Cell(closingRow, ColDocNo).Value = labels.ClosingBalance;
+            worksheet.Cell(closingRow, ColDocNo).Style.Font.Bold = true;
             var closingCell = worksheet.Cell(closingRow, ColDebit);
             if (result.Lines.Count > 0)
                 closingCell.FormulaA1 = $"={lastBalanceCellAddress}";
             else
                 closingCell.Value = result.OpeningBalance;
             closingCell.Style.NumberFormat.Format = AmountFormat;
+            closingCell.Style.Font.Bold = true;
+            closingCell.Style.Font.FontSize = 12;
+            closingCell.Style.Font.FontColor = XLColor.FromHtml("#4f7cac");
 
             worksheet.Columns().AdjustToContents();
 
