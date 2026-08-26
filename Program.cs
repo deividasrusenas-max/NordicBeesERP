@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using NordicBeesERP.Components;
 using NordicBeesERP.Data;
 using NordicBeesERP.Services;
+using NordicBeesERP.Services.Pdf;
+using NordicBeesERP.Services.Xlsx;
 using MudBlazor; // Pridėjome šią eilutę
 using MudBlazor.Services;
 using NordicBeesERP.Services.Artwork;
@@ -69,8 +71,13 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IExpenseExportService, ExpenseExportService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
-builder.Services.AddScoped<ICreditNoteNumberGenerator, CreditNoteNumberGenerator>();
-builder.Services.AddHttpClient("Default").ConfigureHttpClient(client =>
+    builder.Services.AddScoped<ICreditNoteNumberGenerator, CreditNoteNumberGenerator>();
+    // Reports module
+    builder.Services.AddScoped<BrandedReportHeader>();
+    builder.Services.AddScoped<DebtReconciliationService>();
+    builder.Services.AddScoped<DebtReconciliationPdfService>();
+    builder.Services.AddScoped<DebtReconciliationXlsxService>();
+    builder.Services.AddHttpClient("Default").ConfigureHttpClient(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(300);
 });
