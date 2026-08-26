@@ -112,10 +112,14 @@ namespace NordicBeesERP.Services.Xlsx
                     worksheet.Cell(currentRow, ColDueDate).Style.NumberFormat.Format = DateFormat;
                 }
 
-                worksheet.Cell(currentRow, ColDebit).Value = line.Debit;
-                worksheet.Cell(currentRow, ColDebit).Style.NumberFormat.Format = AmountFormat;
-                worksheet.Cell(currentRow, ColCredit).Value = line.Credit;
-                worksheet.Cell(currentRow, ColCredit).Style.NumberFormat.Format = AmountFormat;
+                var debitCell = worksheet.Cell(currentRow, ColDebit);
+                debitCell.Value = line.Debit;
+                debitCell.Style.NumberFormat.Format = AmountFormat;
+                debitCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+                var creditCell = worksheet.Cell(currentRow, ColCredit);
+                creditCell.Value = line.Credit;
+                creditCell.Style.NumberFormat.Format = AmountFormat;
+                creditCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
 
                 var debitCellAddress = worksheet.Cell(currentRow, ColDebit).Address.ToString();
                 var creditCellAddress = worksheet.Cell(currentRow, ColCredit).Address.ToString();
@@ -129,9 +133,16 @@ namespace NordicBeesERP.Services.Xlsx
 
             var lastDataRow = currentRow - 1;
 
+            for (int r = firstDataRow; r <= lastDataRow; r++)
+            {
+                if ((r - firstDataRow) % 2 == 1)
+                    worksheet.Range(r, ColDocNo, r, ColBalance).Style.Fill.BackgroundColor = XLColor.FromHtml("#f8fafc");
+            }
+
             // Total row: SUM formulas over the debit/credit ranges, closing balance as a formula.
             var totalRow = currentRow;
             worksheet.Cell(totalRow, ColDocNo).Value = labels.Total;
+            worksheet.Cell(totalRow, ColDocNo).Style.Font.Bold = true;
             if (result.Lines.Count > 0)
             {
                 // Derive the column letters from actual cells so the SUM ranges stay
@@ -148,7 +159,15 @@ namespace NordicBeesERP.Services.Xlsx
                 worksheet.Cell(totalRow, ColCredit).Value = 0m;
             }
             worksheet.Cell(totalRow, ColDebit).Style.NumberFormat.Format = AmountFormat;
+            worksheet.Cell(totalRow, ColDebit).Style.Font.Bold = true;
+            worksheet.Cell(totalRow, ColDebit).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
             worksheet.Cell(totalRow, ColCredit).Style.NumberFormat.Format = AmountFormat;
+            worksheet.Cell(totalRow, ColCredit).Style.Font.Bold = true;
+            worksheet.Cell(totalRow, ColCredit).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+            var totalRange = worksheet.Range(totalRow, ColDocNo, totalRow, ColBalance);
+            totalRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#eef2f7");
+            totalRange.Style.Border.TopBorder = XLBorderStyleValues.Medium;
+            totalRange.Style.Border.TopBorderColor = XLColor.FromHtml("#4f7cac");
 
             var closingRow = totalRow + 1;
             worksheet.Cell(closingRow, ColDocNo).Value = labels.ClosingBalance;
