@@ -45,18 +45,24 @@ namespace NordicBeesERP.Services.Xlsx
             worksheet.Cell(1, 1).Value = labels.Title;
             worksheet.Cell(1, 1).Style.Font.Bold = true;
             worksheet.Cell(1, 1).Style.Font.FontSize = 14;
+            worksheet.Cell(1, 1).Style.Font.FontColor = XLColor.FromHtml("#4f7cac");
 
             // Partner block
             worksheet.Cell(3, 1).Value = labels.PartnerLabel;
+            worksheet.Cell(3, 1).Style.Font.Bold = true;
             worksheet.Cell(3, 2).Value = result.PartnerName;
             worksheet.Cell(4, 1).Value = labels.CompanyCodeLabel;
+            worksheet.Cell(4, 1).Style.Font.Bold = true;
             worksheet.Cell(4, 2).Value = result.PartnerCode;
             worksheet.Cell(5, 1).Value = labels.AddressLabel;
+            worksheet.Cell(5, 1).Style.Font.Bold = true;
             worksheet.Cell(5, 2).Value = result.PartnerAddress;
 
             // Period line — whole year when the period ends on Dec 31, otherwise the specific end month
             int? endMonth = (result.PeriodEnd.Month == 12 && result.PeriodEnd.Day == 31) ? null : result.PeriodEnd.Month;
             worksheet.Cell(6, 1).Value = DebtReconciliationLabels.FormatPeriod(lang, result.PeriodStart.Year, endMonth);
+            worksheet.Cell(6, 1).Style.Font.Bold = true;
+            worksheet.Range(3, 1, 6, 2).Style.Fill.BackgroundColor = XLColor.FromHtml("#f8fafc");
 
             // Opening balance row (numeric cell — the formula anchor for the running balance)
             var openingRow = 8;
@@ -77,6 +83,7 @@ namespace NordicBeesERP.Services.Xlsx
             var headerRange = worksheet.Range(headerRow, ColDocNo, headerRow, ColBalance);
             headerRange.Style.Font.Bold = true;
             headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+            worksheet.SheetView.FreezeRows(headerRow);
 
             // Data rows — Balance is a real formula: opening + debit - credit (first row),
             // previous balance + debit - credit (subsequent rows).
