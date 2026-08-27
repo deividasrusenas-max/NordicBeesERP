@@ -28,7 +28,7 @@
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
 
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+    <StandardListFilterBar>
         <MudGrid Spacing="3">
             <MudItem xs="12" md="6">
                 <MudTextField T="string" Label="Paieška (pavadinimas / kodas / PVM kodas)"
@@ -44,7 +44,7 @@
                 </MudChipSet>
             </MudItem>
         </MudGrid>
-    </MudPaper>
+    </StandardListFilterBar>
 
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
         <MudTable Items="@FilteredCustomers"
@@ -74,8 +74,8 @@
                     }
                 </MudTd>
                 <MudTd>@(customer!.VatCode)</MudTd>
-                <MudTd>@customer!.DefaultVatRate.ToString("N0")%</MudTd>
-                <MudTd>@(customer!.PaymentTermDays) d.</MudTd>
+                <MudTd Class="lakstena-mono">@customer!.DefaultVatRate.ToString("N0")%</MudTd>
+                <MudTd Class="lakstena-mono">@(customer!.PaymentTermDays) d.</MudTd>
                 <MudTd>
                     <MudChip T="string" Size="Size.Small"
                              Color="@(customer!.IsActive ? Color.Success : Color.Default)"
