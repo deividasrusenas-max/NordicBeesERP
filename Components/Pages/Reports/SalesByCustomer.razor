@@ -1,0 +1,140 @@
+@page "/reports/sales-by-customer"
+@rendermode InteractiveServer
+@using System
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Pdf
+@using NordicBeesERP.Services.Xlsx
+@using NordicBeesERP.Services.Reports
+@using MudBlazor
+@inject SalesByCustomerReportService SalesByCustomerReportService
+@inject SalesByCustomerPdfService SalesByCustomerPdfService
+@inject SalesByCustomerXlsxService SalesByCustomerXlsxService
+@inject ICustomerService CustomerService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Prekių pardavimo suvestinė</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Prekių pardavimo suvestinė</MudText>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudAutocomplete T="BusinessPartner" @bind-Value="_selectedCustomer"
+                    Label="Klientas" Variant="Variant.Outlined"
+                    SearchFunc="SearchPartners" ToStringFunc="@(p => p?.Name ?? string.Empty)"
+                    MinCharacters="0" CoerceText="false" CoerceValue="false"
+                    ResetValueOnEmptyText="true" Immediate="true" OpenOnFocus="true"
+                    ShowProgressIndicator="true" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDatePicker @bind-Date="_fromDate" Label="Nuo" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDatePicker @bind-Date="_toDate" Label="Iki" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="ReportLanguage" @bind-Value="_language" Label="Kalba" Variant="Variant.Outlined">
+                    <MudSelectItem Value="ReportLanguage.LT">Lietuvių</MudSelectItem>
+                    <MudSelectItem Value="ReportLanguage.EN">English</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Class="mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GeneratePdf" Disabled="@(!HasFilter || _isLoading)">Generuoti PDF</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="GenerateXlsx" Disabled="@(!HasFilter || _isLoading)">Generuoti XLSX</MudButton>
+            @if (_isLoading)
+            {
+                <MudProgressCircular Class="ml-3" Size="Size.Small" Indeterminate="true" />
+            }
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private BusinessPartner? _selectedCustomer;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private ReportLanguage _language = ReportLanguage.LT;
+    private bool _isLoading;
+    private List<BusinessPartner> _partners = new();
+
+    private bool HasFilter => _selectedCustomer != null || _fromDate.HasValue || _toDate.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _partners = await CustomerService.GetAllBusinessPartnersAsync();
+    }
+
+    private async Task<IEnumerable<BusinessPartner>> SearchPartners(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return _partners;
+
+        var v = value.ToLowerInvariant();
+        return _partners.Where(p =>
+            (p.Name != null && p.Name.ToLowerInvariant().Contains(v)) ||
+            (p.CompanyCode != null && p.CompanyCode.ToLowerInvariant().Contains(v)));
+    }
+
+    private async Task GeneratePdf()
+    {
+        if (!HasFilter)
+        {
+            Snackbar.Add("Pasirinkite klientą arba periodą", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            _isLoading = true;
+            var result = await SalesByCustomerReportService.GetReportAsync(_selectedCustomer?.Id, _fromDate, _toDate);
+            var bytes = await SalesByCustomerPdfService.GeneratePdfAsync(result, _language);
+            var cust = _selectedCustomer?.CompanyCode ?? "visi";
+            var from = _fromDate?.ToString("yyyyMMdd") ?? "nuo";
+            var to = _toDate?.ToString("yyyyMMdd") ?? "iki";
+            await JS.InvokeVoidAsync("downloadFileFromBytes", $"prekiu-pardavimo-suvestine-{cust}-{from}-{to}.pdf", "application/pdf", Convert.ToBase64String(bytes));
+            Snackbar.Add("PDF sugeneruotas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida generuojant PDF: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task GenerateXlsx()
+    {
+        if (!HasFilter)
+        {
+            Snackbar.Add("Pasirinkite klientą arba periodą", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            _isLoading = true;
+            var result = await SalesByCustomerReportService.GetReportAsync(_selectedCustomer?.Id, _fromDate, _toDate);
+            var bytes = SalesByCustomerXlsxService.GenerateXlsx(result, _language); // sync, do NOT await
+            var cust = _selectedCustomer?.CompanyCode ?? "visi";
+            var from = _fromDate?.ToString("yyyyMMdd") ?? "nuo";
+            var to = _toDate?.ToString("yyyyMMdd") ?? "iki";
+            await JS.InvokeVoidAsync("downloadFileFromBytes", $"prekiu-pardavimo-suvestine-{cust}-{from}-{to}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(bytes));
+            Snackbar.Add("XLSX sugeneruotas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida generuojant XLSX: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

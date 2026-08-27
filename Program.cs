@@ -81,6 +81,9 @@ builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
     builder.Services.AddScoped<UnpaidInvoicesService>();
     builder.Services.AddScoped<UnpaidInvoicesPdfService>();
     builder.Services.AddScoped<UnpaidInvoicesXlsxService>();
+    builder.Services.AddScoped<SalesByCustomerReportService>();
+    builder.Services.AddScoped<SalesByCustomerPdfService>();
+    builder.Services.AddScoped<SalesByCustomerXlsxService>();
     builder.Services.AddHttpClient("Default").ConfigureHttpClient(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(300);
