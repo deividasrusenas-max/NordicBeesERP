@@ -574,3 +574,55 @@ h1, h2, h3, h4, h5, h6 {
     background-color: #9c27b0 !important;
     color: #ffffff;
 }
+
+/* ===== Lakštena ERP design tokens (warm gold / sand theme) ===== */
+:root {
+  --lakstena-bg: #efece6;
+  --lakstena-surface: #fbfaf7;
+  --lakstena-card: #ffffff;
+  --lakstena-text: #1b1917;
+  --lakstena-text-secondary: rgba(27, 25, 23, 0.6);
+  --lakstena-border: rgba(27, 25, 23, 0.09);
+  --lakstena-accent: #c47a10;
+  --lakstena-accent-2: #f2b73d;
+  --lakstena-accent-light: #fdf3de;
+  --lakstena-accent-text: #7a4d08;
+  --lakstena-danger: #b3402f;
+  --lakstena-success: #5f8f7f;
+  --lakstena-radius-card: 16px;
+  --lakstena-radius-nav: 10px;
+  --lakstena-radius-sm: 6px;
+}
+
+/* Geist is the global UI font (loaded in App.razor). Override MudBlazor's default Roboto. */
+body,
+.mud-typography,
+.mud-input,
+.mud-button-label,
+.mud-select,
+.mud-table {
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+/* Flat surfaces: drop the Material drop shadows, use a single 1px hairline border. */
+.mud-paper,
+.mud-card,
+.mud-table-container {
+  box-shadow: none !important;
+  border: 1px solid var(--lakstena-border) !important;
+  border-radius: var(--lakstena-radius-card) !important;
+}
+
+/* Soft, consistent corner radii for interactive chrome. */
+.mud-nav-link,
+.mud-button,
+.mud-chip {
+  border-radius: var(--lakstena-radius-nav) !important;
+}
+
+/* Geist Mono for numeric / monetary values and uppercase micro-labels. */
+.lakstena-mono {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
