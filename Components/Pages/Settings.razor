@@ -59,6 +59,36 @@
             }
         </MudPaper>
     </MudPaper>
+
+    <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:8px">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-3">Telegram pranešimai</MudText>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+            <MudTextField @bind-Value="telegramBotToken" InputType="InputType.Password"
+                          Label="Bot Token" Variant="Variant.Outlined" Style="flex:1" />
+            <MudIconButton Icon="@Icons.Material.Filled.NetworkCheck"
+                           Color="Color.Primary"
+                           OnClick="TestTelegramConnection"
+                           Title="Tikrinti ryšį" />
+            @if (telegramStatus.HasValue)
+            {
+                <MudIcon Icon="@(telegramStatus.Value ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                         Color="@(telegramStatus.Value ? Color.Success : Color.Error)" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.HelpOutline"
+                         Color="Color.Default"
+                         Title="Telegram nesukonfigūruotas" />
+            }
+        </MudStack>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudNumericField T="long" @bind-Value="telegramChatSandelis" Label="Sandėlio grupė (chat ID)" Variant="Variant.Outlined" Style="flex:1" />
+            <MudNumericField T="long" @bind-Value="telegramChatUzsakymai" Label="Užsakymų grupė (chat ID)" Variant="Variant.Outlined" Style="flex:1" />
+            <MudNumericField T="long" @bind-Value="telegramChatGamyba" Label="Gamybos grupė (chat ID)" Variant="Variant.Outlined" Style="flex:1" />
+        </MudStack>
+    </MudPaper>
 </MudContainer>
 
 @code {
@@ -67,6 +97,13 @@
     private bool? azureStatus;
 
     [Inject] IExpenseOcrService ExpenseOcrService { get; set; } = default!;
+    [Inject] TelegramNotificationService Telegram { get; set; } = default!;
+
+    private string telegramBotToken = string.Empty;
+    private long telegramChatSandelis;
+    private long telegramChatUzsakymai;
+    private long telegramChatGamyba;
+    private bool? telegramStatus;
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,6 +121,12 @@
         var keySetting = await context.AppSettings
             .FirstOrDefaultAsync(s => s.SettingKey == "azure_di_key");
         azureDiKey = keySetting?.SettingValue ?? string.Empty;
+
+        telegramBotToken = (await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == "telegram_bot_token"))?.SettingValue ?? string.Empty;
+        telegramChatSandelis = long.TryParse((await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == "telegram_chat_sandelis"))?.SettingValue, out var ts) ? ts : 0;
+        telegramChatUzsakymai = long.TryParse((await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == "telegram_chat_uzsakymai"))?.SettingValue, out var tu) ? tu : 0;
+        telegramChatGamyba = long.TryParse((await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == "telegram_chat_gamyba"))?.SettingValue, out var tg) ? tg : 0;
+        telegramStatus = string.IsNullOrEmpty(telegramBotToken) ? null : true;
 
         // Automatically test connection if both values are configured
         if (!string.IsNullOrEmpty(azureDiEndpoint) && !string.IsNullOrEmpty(azureDiKey))
@@ -107,23 +150,20 @@
 
         await UpsertSettingAsync(context, "azure_di_endpoint", azureDiEndpoint);
         await UpsertSettingAsync(context, "azure_di_key", azureDiKey);
+        await UpsertSettingAsync(context, "telegram_bot_token", telegramBotToken);
+        await UpsertSettingAsync(context, "telegram_chat_sandelis", telegramChatSandelis.ToString());
+        await UpsertSettingAsync(context, "telegram_chat_uzsakymai", telegramChatUzsakymai.ToString());
+        await UpsertSettingAsync(context, "telegram_chat_gamyba", telegramChatGamyba.ToString());
 
-        await context.SaveChangesAsync();
         Snackbar.Add("Nustatymai išsaugoti", Severity.Success);
     }
 
     private static async Task UpsertSettingAsync(NordicBeesERPContext context, string key, string value)
     {
-        var setting = await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == key);
-        if (setting != null)
-        {
-            setting.SettingValue = value;
-            context.Entry(setting).Property(p => p.SettingValue).IsModified = true;
-        }
-        else
-        {
-            context.AppSettings.Add(new AppSetting { SettingKey = key, SettingValue = value });
-        }
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO app_settings (setting_key, setting_value) VALUES ({0}, {1}) " +
+            "ON DUPLICATE KEY UPDATE setting_value = {1}",
+            key, value);
     }
 
     private async Task TestAzureConnection()
@@ -136,6 +176,20 @@
             ? "Azure Document Intelligence aktyvus"
             : "Azure Document Intelligence nepasiekiamas",
             azureStatus.Value ? Severity.Success : Severity.Error);
+
+        StateHasChanged();
+    }
+
+    private async Task TestTelegramConnection()
+    {
+        await SaveSettingsAsync();
+
+        telegramStatus = await Telegram.TestConnectionAsync(telegramBotToken);
+
+        Snackbar.Add(telegramStatus.Value
+            ? "Telegram botas aktyvus"
+            : "Telegram botas nepasiekiamas - patikrinkite tokeną",
+            telegramStatus.Value ? Severity.Success : Severity.Error);
 
         StateHasChanged();
     }
