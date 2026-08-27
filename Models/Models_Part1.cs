@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using NordicBeesERP.Models.Honey;
 
 namespace NordicBeesERP.Models
@@ -181,6 +182,7 @@ namespace NordicBeesERP.Models
         public string DefaultLanguage { get; set; } = "LT";
 
         [Column("default_vat_rate")]
+        [Precision(5, 2)]
         public decimal DefaultVatRate { get; set; } = 0m;
 
         // Tiekėjo specifiniai laukai

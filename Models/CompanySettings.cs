@@ -7,6 +7,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace NordicBeesERP.Models
 {
@@ -69,6 +70,7 @@ namespace NordicBeesERP.Models
         public string? LogoPath { get; set; }
 
         [Column("default_vat_rate")]
+        [Precision(5, 2)]
         public decimal DefaultVatRate { get; set; } = 21m;
 
         [Column("updated_at")]

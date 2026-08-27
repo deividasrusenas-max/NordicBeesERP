@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using NordicBeesERP.Models.WarehouseModule;
 
 namespace NordicBeesERP.Models
@@ -128,6 +129,7 @@ namespace NordicBeesERP.Models
         public string? BankAccount { get; set; }
         public int PaymentTermDays { get; set; } = 7;
         public string DefaultLanguage { get; set; } = "lt";
+        [Precision(5, 2)]
         public decimal DefaultVatRate { get; set; } = 0m;
         public string CountryCode { get; set; } = "LT";
         public string Country { get; set; } = PdfLocalization.CountryLt;
