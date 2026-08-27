@@ -9,10 +9,12 @@ namespace NordicBeesERP.Services;
 public class OrderService : IOrderService
 {
     private readonly IDbContextFactory<NordicBeesERPContext> _contextFactory;
+    private readonly TelegramNotificationService? _telegram;
 
-    public OrderService(IDbContextFactory<NordicBeesERPContext> contextFactory)
+    public OrderService(IDbContextFactory<NordicBeesERPContext> contextFactory, TelegramNotificationService? telegram = null)
     {
         _contextFactory = contextFactory;
+        _telegram = telegram;
     }
 
     // =====================================================
@@ -227,6 +229,11 @@ public class OrderService : IOrderService
             }
 
             await transaction.CommitAsync();
+
+            if (_telegram is not null)
+                _ = _telegram.SendToGroupAsync("uzsakymai",
+                    $"🆕 Naujas užsakymas\n\n🔹 Užsakymo nr.: {order.OrderNumber}\n🔹 Klientas (ID): {order.CustomerId}");
+
             return newOrderId;
         }
         catch
@@ -548,6 +555,12 @@ public class OrderService : IOrderService
             await context.Database.ExecuteSqlRawAsync(
                 "UPDATE orders SET status = 'ready_for_pickup', updated_at = NOW() WHERE id = {0} AND status IN ('draft', 'packing', 'confirmed')",
                 orderId);
+
+            var orderNumber = await context.Database.SqlQueryRaw<string>(
+                "SELECT order_number AS Value FROM orders WHERE id = {0}", orderId).FirstOrDefaultAsync();
+            if (_telegram is not null)
+                _ = _telegram.SendToGroupAsync("uzsakymai",
+                    $"✅ Užsakymas supakuotas\n\n🔹 Užsakymo nr.: {orderNumber}");
         }
     }
 

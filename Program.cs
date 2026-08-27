@@ -103,8 +103,8 @@ builder.Services.AddScoped<IArtworkService, ArtworkService>();
 builder.Services.AddHostedService<ArtworkPreviewWorker>();
 
 // Telegram notifications
-builder.Services.Configure<ArtworkTelegramOptions>(builder.Configuration.GetSection("Telegram"));
-builder.Services.AddScoped<ArtworkNotificationService>();
+builder.Services.Configure<TelegramOptions>(builder.Configuration.GetSection("Telegram"));
+builder.Services.AddScoped<TelegramNotificationService>();
 
 builder.Services.AddScoped<BlazorAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<BlazorAuthStateProvider>());
