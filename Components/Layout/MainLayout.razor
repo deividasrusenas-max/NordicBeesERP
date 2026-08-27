@@ -14,16 +14,16 @@
 
 <CascadingAuthenticationState>
 <MudLayout>
-    <MudAppBar Elevation="0" Style="background:#f8fafc; color:#1e293b; border-bottom:1px solid #e2e8f0">
+    <MudAppBar Elevation="0" Style="background:var(--lakstena-surface); color:var(--lakstena-text); border-bottom:1px solid var(--lakstena-border)">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleSidebar" />
-        <MudText Typo="Typo.h6" Class="ms-2" Style="font-weight:700; color:#1e293b">
+        <MudText Typo="Typo.h6" Class="ms-2" Style="font-weight:700; color:var(--lakstena-text)">
     <img src="/logo.png" style="height:32px; margin-right:8px; vertical-align:middle;" alt="Lakštena" />
     Lakštena ERP
 </MudText>
         <MudSpacer />
         <AuthorizeView>
             <Authorized>
-                <MudText Typo="Typo.body2" Class="mr-3" Style="color:#64748b">
+                <MudText Typo="Typo.body2" Class="mr-3" Style="color:var(--lakstena-text-secondary)">
                     @context.User.FindFirst("FullName")?.Value
                 </MudText>
                 <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
@@ -32,14 +32,14 @@
         </AuthorizeView>
     </MudAppBar>
     <MudDrawer @bind-Open="sidebarOpen" Elevation="0" Width="250px" 
-        Style="background:#f8fafc; border-right:1px solid #e2e8f0">
+        Style="background:var(--lakstena-surface); border-right:1px solid var(--lakstena-border)">
         <NavMenu />
     </MudDrawer>
-    <MudMainContent Style="background:#ffffff">
+    <MudMainContent Style="background:var(--lakstena-bg)">
         <div style="padding:0">
             @Body
-            <MudPaper Elevation="0" Class="pa-3 mt-4" Style="background:#f8fafc; border-top:1px solid #e2e8f0; text-align:center;">
-                <MudText Typo="Typo.caption" Style="color:#94a3b8">© 2026 @_companyName · NordicBeesERP v@_version</MudText>
+            <MudPaper Elevation="0" Class="pa-3 mt-4" Style="background:var(--lakstena-surface); border-top:1px solid var(--lakstena-border); text-align:center;">
+                <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">© 2026 @_companyName · NordicBeesERP v@_version</MudText>
             </MudPaper>
         </div>
     </MudMainContent>
@@ -69,16 +69,19 @@
     {
         PaletteLight = new PaletteLight
         {
-            Primary = "#4f7cac",
+            Primary = "#c47a10",
             Secondary = "#7fb685",
-            AppbarBackground = "#f8fafc",
-            AppbarText = "#1e293b",
-            DrawerBackground = "#f8fafc",
-            DrawerText = "#475569",
-            Background = "#ffffff",
+            AppbarBackground = "#fbfaf7",
+            AppbarText = "#1b1917",
+            DrawerBackground = "#fbfaf7",
+            DrawerText = "#1b1917",
+            Background = "#efece6",
             Surface = "#ffffff",
-            TextPrimary = "#1e293b",
-            TextSecondary = "#64748b"
+            TextPrimary = "#1b1917",
+            TextSecondary = "rgba(27,25,23,.6)",
+            Error = "#b3402f",
+            Success = "#5f8f7f",
+            Divider = "rgba(27,25,23,.09)"
         }
     };
 
