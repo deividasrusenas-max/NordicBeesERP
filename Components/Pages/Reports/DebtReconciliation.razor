@@ -4,10 +4,14 @@
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Pdf
 @using NordicBeesERP.Services.Xlsx
+@using NordicBeesERP.Services.Reports
 @using MudBlazor
 @inject DebtReconciliationService DebtReconciliationService
 @inject DebtReconciliationPdfService DebtReconciliationPdfService
 @inject DebtReconciliationXlsxService DebtReconciliationXlsxService
+@inject UnpaidInvoicesService UnpaidInvoicesService
+@inject UnpaidInvoicesPdfService UnpaidInvoicesPdfService
+@inject UnpaidInvoicesXlsxService UnpaidInvoicesXlsxService
 @inject ICustomerService CustomerService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -26,6 +30,12 @@
                     MinCharacters="0" CoerceText="false" CoerceValue="false"
                     ResetValueOnEmptyText="true" Immediate="true" OpenOnFocus="true"
                     ShowProgressIndicator="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="ReportType" @bind-Value="_reportType" Label="Ataskaitos tipas" Variant="Variant.Outlined">
+                    <MudSelectItem Value="ReportType.DebtReconciliation">Skolų suderinimo aktas</MudSelectItem>
+                    <MudSelectItem Value="ReportType.UnpaidInvoices">Neapmokėtų sąskaitų suvestinė</MudSelectItem>
+                </MudSelect>
             </MudItem>
             <MudItem xs="12" md="3">
                 <MudSelect T="int" @bind-Value="_year" Label="Metai" Variant="Variant.Outlined">
@@ -65,7 +75,14 @@
     private int _year = DateTime.Now.Year;
     private int _month = 0; // 0 = all year
     private ReportLanguage _language = ReportLanguage.LT;
+    private ReportType _reportType = ReportType.DebtReconciliation;
     private List<BusinessPartner> _partners = new();
+
+    private enum ReportType
+    {
+        DebtReconciliation,
+        UnpaidInvoices
+    }
     private List<int> _years = new();
 
     protected override async Task OnInitializedAsync()
