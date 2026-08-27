@@ -9,7 +9,7 @@ Configuration lives under the `Telegram` section of `appsettings.json` (overrida
 | Group key | Purpose | Status |
 |-----------|---------|--------|
 | `sandelis` | Warehouse / sandėlis | Reserved — config placeholder only, no code calls yet |
-| `uzsakymai` | Orders / užsakymai | Wired — 2 triggers (see below) |
+| `uzsakymai` | Orders / užsakymai | Wired — 3 triggers (see below) |
 | `gamyba` | Production / gamyba | Reserved — config placeholder only, no code calls yet |
 
 Group keys are lowercase, no diacritics, to avoid `appsettings.json` key-casing issues.
@@ -20,8 +20,9 @@ Implemented in `Services/OrderService.cs` via `TelegramNotificationService.SendT
 
 1. **New order created** — `CreateOrderAsync`, after the order row is committed. Message: order number + customer id.
 2. **Order packed** — `MarkReadyForPickupCheckAsync`, when all order lines are packed (status transition to `ready_for_pickup`). Message: order number.
+3. **Order closed/delivered WITHOUT an invoice** — after the status transitions to `shipped` in BOTH `MarkShippedAsync` and `CreateShipmentAsync`. Sends only when `orders.invoice_id IS NULL` (checked via `SqlQueryRaw<int?>` immediately after the status UPDATE). Message: order number, noting no invoice was issued.
 
-> ⚠️ **Trigger 3 (order closed/delivered WITHOUT an invoice) is NOT yet wired.** The `shipped` status is set in two methods (`MarkShippedAsync` and `CreateShipmentAsync`), so the exact wiring point is ambiguous. This is pending a decision — see the task handoff. When wired, the invoice-presence check is `orders.invoice_id IS NULL` (same pattern as `Order.IsUninvoiced` / `GetUninvoicedShippedOrdersAsync`).
+> **Trigger 3 is wired** in both `shipped`-transition methods. Each reads `invoice_id` and fires to `uzsakymai` only when it is null. This is a best-effort, fire-and-forget notification (`_ = _telegram.SendToGroupAsync(...)`) and never blocks or rolls back the shipment.
 
 ## Configuring real values
 
