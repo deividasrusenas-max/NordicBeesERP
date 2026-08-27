@@ -106,3 +106,11 @@ Look for commit: `feat: restore working drag and drop using setupDropZone JS int
   reach the DB.
 - Origin: this policy was established following the audit in
   `todo-audit-investigation-20260827-1911.md` (see `.opencode/reports/`).
+- Auto-migrate on startup is dev-only (IsDevelopment() gated). Staging and prod require a manual
+  `dotnet ef database update` after deploying code that includes a new migration — the app will log
+  a warning listing pending migrations but will NOT apply them automatically outside development.
+
+### Staging / Prod deployment steps
+- If this deploy includes a new EF migration, run `dotnet ef database update` manually on the target
+  server BEFORE or immediately after the container restart — check the startup logs for a
+  'pending migrations' warning to confirm.

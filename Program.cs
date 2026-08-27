@@ -207,13 +207,30 @@ app.MapGet("/artwork/preview/full/{versionId:int}", async (int versionId,
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// EF Core auto-migration — run before app starts, but don't crash if tables exist
+// EF Core auto-migration — run before app starts, but don't crash if tables exist.
+// Auto-apply is DEV-ONLY: in Staging/Prod migrations must be applied manually
+// (dotnet ef database update) and any pending ones are only logged as a warning.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<NordicBeesERPContext>();
     try
     {
-        await db.Database.MigrateAsync();
+        if (app.Environment.IsDevelopment())
+        {
+            await db.Database.MigrateAsync();
+        }
+        else
+        {
+            var pending = await db.Database.GetPendingMigrationsAsync();
+            var pendingList = string.Join(", ", pending);
+            if (!string.IsNullOrEmpty(pendingList))
+            {
+                app.Logger.LogWarning(
+                    "Pending EF migrations detected in {Environment} but NOT auto-applied (dev-only auto-migrate). Manual apply required via 'dotnet ef database update'. Pending: {Migrations}",
+                    app.Environment.EnvironmentName,
+                    pendingList);
+            }
+        }
     }
     catch (Exception ex)
     {
