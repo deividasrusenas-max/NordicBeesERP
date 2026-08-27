@@ -25,7 +25,7 @@
     </MudButton>
 
     <!-- Filter section -->
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+    <StandardListFilterBar>
         <MudGrid>
             <MudItem xs="12" sm="6" md="4">
                 <MudTextField Value="@_filterSearch"
@@ -61,7 +61,7 @@
                 </MudItem>
             }
         </MudGrid>
-    </MudPaper>
+    </StandardListFilterBar>
 
     <!-- Loading indicator -->
     @if (_isLoading)
@@ -165,7 +165,7 @@
                 <MudTd>@order.OrderNumber</MudTd>
                 <MudTd>@GetCustomerName(order.CustomerId)</MudTd>
                 <MudTd>@order.OrderDate.ToString("yyyy-MM-dd")</MudTd>
-                <MudTd>@order.TotalQuantity.ToString("N0")</MudTd>
+                <MudTd Class="lakstena-mono">@order.TotalQuantity.ToString("N0")</MudTd>
                 <MudTd>
                     <MudChip T="string" Color="@StatusDisplayHelper.GetColor(order.Status, _statusDisplay)" Size="Size.Small" Style="text-transform:none">
                         @StatusDisplayHelper.GetLabel(order.Status, _statusDisplay)@(order.Status == "partially_shipped" ? $" {order.ShippedQuantity.ToString("N0")}/{order.TotalQuantity.ToString("N0")}" : "")
