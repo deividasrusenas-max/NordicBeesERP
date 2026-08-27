@@ -22,7 +22,7 @@
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
 
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+    <StandardListFilterBar>
         <MudGrid>
             <MudItem xs="12" md="11">
                 <MudTextField Value="@_searchText"
@@ -39,7 +39,7 @@
                 <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff" Color="Color.Secondary" Size="Size.Small" OnClick="ClearFilters" Title="Išvalyti filtrus" />
             </MudItem>
         </MudGrid>
-    </MudPaper>
+    </StandardListFilterBar>
 
     <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
         <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Tipas:</MudText>
@@ -117,8 +117,8 @@
                     }
                 </MudTd>
                 <MudTd>@product.Unit</MudTd>
-                <MudTd>@FormatAmountHelper.Trim(product.CostPrice, 2) €</MudTd>
-                <MudTd><strong>@FormatAmountHelper.Trim(product.SalePrice, 2) €</strong></MudTd>
+                <MudTd Class="lakstena-mono">@FormatAmountHelper.Trim(product.CostPrice, 2) €</MudTd>
+                <MudTd Class="lakstena-mono"><strong>@FormatAmountHelper.Trim(product.SalePrice, 2) €</strong></MudTd>
                 <MudTd>
                     <MudChip T="string" Size="Size.Small"
                              Color="@(product.IsActive ? Color.Success : Color.Default)"
