@@ -89,3 +89,20 @@ If unsure whether a change broke something — check git log:
 git log --oneline Components/Dialogs/ExpenseUploadDialog.razor | head -5
 ```
 Look for commit: `feat: restore working drag and drop using setupDropZone JS interop`
+
+---
+
+## 8. MIGRATIONS POLICY (effective 2026-08-27)
+
+**Status:** POLICY — governs how all future schema changes are handled. Not a frozen code block.
+
+- Migrations policy (effective 2026-08-27): every schema change must be paired with
+  `dotnet ef migrations add <DescriptiveName>` at the time the change is made — do NOT
+  batch schema changes into the InitialCreate convention anymore. Old migration history
+  (pre-2026-08-27) is left as-is and will not be reconciled.
+- Before adding a new migration, always run `dotnet ef migrations add <name> --dry-run`
+  if available, or inspect the generated Up()/Down() methods before applying, to catch
+  unintended diffs (e.g. decimal precision, missing [Table] attributes) before they
+  reach the DB.
+- Origin: this policy was established following the audit in
+  `todo-audit-investigation-20260827-1911.md` (see `.opencode/reports/`).
