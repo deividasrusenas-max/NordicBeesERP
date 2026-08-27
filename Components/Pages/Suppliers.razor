@@ -29,7 +29,7 @@
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
 
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+    <StandardListFilterBar>
         <MudTextField Value="@_searchText"
                       ValueChanged="@((string val) => OnSearchChanged(val))"
                       Placeholder="Ieškoti pagal pavadinimą, kodą..."
@@ -39,7 +39,7 @@
                       Clearable="true"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       Adornment="Adornment.Start" />
-    </MudPaper>
+    </StandardListFilterBar>
 
     <MudStack Row="true" Class="mt-2 mb-0">
         @if (!_isWarehouse)
@@ -135,8 +135,8 @@
                 <RowTemplate Context="supplier">
                     <MudTd>@supplier.Name</MudTd>
                     <MudTd>@(supplier.NationalIdNumber ?? "—")</MudTd>
-                    <MudTd>@supplier.DefaultVatRate.ToString("N0")%</MudTd>
-                    <MudTd>@supplier.PaymentTermDays d.</MudTd>
+                    <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
+                    <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
                     <MudTd>
                         <MudChip T="string" Size="Size.Small"
                                  Color="@(supplier.IsActive ? Color.Success : Color.Default)"
@@ -174,7 +174,7 @@
                     <MudTd>@(supplier.CompanyCode ?? "—")</MudTd>
                     <MudTd>@(supplier.VatCode ?? "—")</MudTd>
                     <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
-                    <MudTd>@supplier.PaymentTermDays d.</MudTd>
+                    <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
                     <MudTd>
                         <MudChip T="string" Size="Size.Small"
                                  Color="@(supplier.IsActive ? Color.Success : Color.Default)"
@@ -209,8 +209,8 @@
                 <RowTemplate Context="supplier">
                     <MudTd>@supplier.Name</MudTd>
                     <MudTd>@(supplier.CompanyCode ?? supplier.NationalIdNumber ?? "—")</MudTd>
-                    <MudTd>@supplier.DefaultVatRate.ToString("N0")%</MudTd>
-                    <MudTd>@supplier.PaymentTermDays d.</MudTd>
+                    <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
+                    <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
                     <MudTd>
                         <MudChip T="string" Size="Size.Small"
                                  Color="@(supplier.IsActive ? Color.Success : Color.Default)"
