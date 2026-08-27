@@ -318,6 +318,14 @@ public class OrderService : IOrderService
         await context.Database.ExecuteSqlRawAsync(
             "UPDATE orders SET status = 'shipped', shipped_at = NOW(), shipped_by_user_id = {0} WHERE id = {1} AND status = 'ready_for_pickup'",
             userId, orderId);
+
+        var orderNumber = await context.Database.SqlQueryRaw<string>(
+            "SELECT order_number AS Value FROM orders WHERE id = {0}", orderId).FirstOrDefaultAsync();
+        var hasInvoice = await context.Database.SqlQueryRaw<int?>(
+            "SELECT invoice_id AS Value FROM orders WHERE id = {0}", orderId).FirstOrDefaultAsync() != null;
+        if (!hasInvoice && _telegram is not null)
+            _ = _telegram.SendToGroupAsync("uzsakymai",
+                $"⚠️ Užsakymas uždarytas be sąskaitos faktūros\n\n🔹 Užsakymo nr.: {orderNumber}");
     }
 
     public async Task CreateShipmentAsync(int orderId, DateTime shipmentDate, string? courierName, string? notes, int userId, List<(int BatchId, decimal Quantity)> batchQuantities)
@@ -388,6 +396,14 @@ public class OrderService : IOrderService
                 await context.Database.ExecuteSqlRawAsync(
                     "UPDATE orders SET status = 'shipped', shipped_at = NOW(), shipped_by_user_id = {0}, updated_at = NOW() WHERE id = {1} AND status IN ('ready_for_pickup', 'partially_shipped')",
                     userId, orderId);
+
+                var orderNumber = await context.Database.SqlQueryRaw<string>(
+                    "SELECT order_number AS Value FROM orders WHERE id = {0}", orderId).FirstOrDefaultAsync();
+                var hasInvoice = await context.Database.SqlQueryRaw<int?>(
+                    "SELECT invoice_id AS Value FROM orders WHERE id = {0}", orderId).FirstOrDefaultAsync() != null;
+                if (!hasInvoice && _telegram is not null)
+                    _ = _telegram.SendToGroupAsync("uzsakymai",
+                        $"⚠️ Užsakymas uždarytas be sąskaitos faktūros\n\n🔹 Užsakymo nr.: {orderNumber}");
             }
             else if (totalBatches > 0)
             {
