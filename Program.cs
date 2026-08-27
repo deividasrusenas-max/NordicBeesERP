@@ -6,6 +6,7 @@ using NordicBeesERP.Data;
 using NordicBeesERP.Services;
 using NordicBeesERP.Services.Pdf;
 using NordicBeesERP.Services.Xlsx;
+using NordicBeesERP.Services.Reports;
 using MudBlazor; // Pridėjome šią eilutę
 using MudBlazor.Services;
 using NordicBeesERP.Services.Artwork;
@@ -77,6 +78,9 @@ builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
     builder.Services.AddScoped<DebtReconciliationService>();
     builder.Services.AddScoped<DebtReconciliationPdfService>();
     builder.Services.AddScoped<DebtReconciliationXlsxService>();
+    builder.Services.AddScoped<UnpaidInvoicesService>();
+    builder.Services.AddScoped<UnpaidInvoicesPdfService>();
+    builder.Services.AddScoped<UnpaidInvoicesXlsxService>();
     builder.Services.AddHttpClient("Default").ConfigureHttpClient(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(300);
