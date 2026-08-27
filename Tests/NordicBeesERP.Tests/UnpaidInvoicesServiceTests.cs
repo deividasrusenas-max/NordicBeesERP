@@ -113,7 +113,8 @@ public class UnpaidInvoicesServiceTests : IClassFixture<DbTestFixture>
             CurrencyId = 1,
             TotalInclVat = 30m,
             Status = CreditNoteStatus.Printed,
-            OriginalInvoiceId = invB.Id
+            OriginalInvoiceId = invB.Id,
+            AppliedInvoiceId = invB.Id
         };
         context.CreditNotes.Add(creditNote);
         await context.SaveChangesAsync();
