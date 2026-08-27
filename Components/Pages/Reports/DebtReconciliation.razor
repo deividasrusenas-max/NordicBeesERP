@@ -110,6 +110,15 @@
             return;
         }
 
+        if (_reportType == ReportType.UnpaidInvoices)
+        {
+            var unpaid = await UnpaidInvoicesService.GetUnpaidInvoicesAsync(_selectedPartner.Id, _year, _month == 0 ? null : _month);
+            var unpaidBytes = await UnpaidInvoicesPdfService.GeneratePdfAsync(unpaid, _language);
+            await JS.InvokeVoidAsync("downloadFileFromBytes", $"neapmoketu-saskaitu-suvestine-{unpaid.PartnerCode}-{_year}.pdf", "application/pdf", Convert.ToBase64String(unpaidBytes));
+            Snackbar.Add("PDF sugeneruotas", Severity.Success);
+            return;
+        }
+
         var result = await DebtReconciliationService.GetReconciliationAsync(_selectedPartner.Id, _year, _month == 0 ? null : _month);
         var bytes = await DebtReconciliationPdfService.GeneratePdfAsync(result, _language);
         await JS.InvokeVoidAsync("downloadFileFromBytes", $"skolu-suderinimo-aktas-{result.PartnerCode}-{_year}.pdf", "application/pdf", Convert.ToBase64String(bytes));
@@ -121,6 +130,15 @@
         if (_selectedPartner == null)
         {
             Snackbar.Add("Pasirinkite partnerį", Severity.Warning);
+            return;
+        }
+
+        if (_reportType == ReportType.UnpaidInvoices)
+        {
+            var unpaid = await UnpaidInvoicesService.GetUnpaidInvoicesAsync(_selectedPartner.Id, _year, _month == 0 ? null : _month);
+            var unpaidBytes = UnpaidInvoicesXlsxService.GenerateXlsx(unpaid, _language); // sync, do NOT await
+            await JS.InvokeVoidAsync("downloadFileFromBytes", $"neapmoketu-saskaitu-suvestine-{unpaid.PartnerCode}-{_year}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(unpaidBytes));
+            Snackbar.Add("XLSX sugeneruotas", Severity.Success);
             return;
         }
 
