@@ -1410,5 +1410,96 @@ namespace NordicBeesERP.Services
 
             return kpi;
         }
+
+        // =====================================================
+        // DASHBOARD TREND + NAV BADGES
+        // =====================================================
+
+        public async Task<DashboardTrendResult> GetDashboardTrendAsync()
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var result = new DashboardTrendResult();
+            var today = DateTime.Today;
+            var fourteenDaysAgo = today.AddDays(-14);
+            var sevenDaysAgo = today.AddDays(-7);
+
+            // Read last 14 days of snapshots (including today if exists)
+            var snapshots = await context.Database.SqlQueryRaw<DashboardDailySnapshot>(
+                "SELECT * FROM dashboard_daily_snapshots WHERE snapshot_date >= {0} ORDER BY snapshot_date",
+                fourteenDaysAgo).ToListAsync();
+
+            // Helper to build trend for a decimal KPI
+            Func<string, Func<DashboardDailySnapshot, decimal>, DashboardKpiTrend> buildTrend = (seriesName, selector) =>
+            {
+                var trend = new DashboardKpiTrend();
+                var todaySnap = snapshots.FirstOrDefault(s => s.SnapshotDate.Date == today);
+                var sevenDaySnap = snapshots.FirstOrDefault(s => s.SnapshotDate.Date == sevenDaysAgo);
+
+                trend.CurrentValue = todaySnap != null ? selector(todaySnap) : 0m;
+                trend.Value7DaysAgo = sevenDaySnap != null ? selector(sevenDaySnap) : (decimal?)null;
+
+                if (trend.Value7DaysAgo.HasValue && trend.Value7DaysAgo.Value != 0)
+                {
+                    trend.DeltaAbsolute = trend.CurrentValue - trend.Value7DaysAgo.Value;
+                    trend.DeltaPercent = Math.Round((trend.DeltaAbsolute.Value / trend.Value7DaysAgo.Value) * 100m, 1);
+                }
+
+                // Build 14-day series for sparkline
+                trend.Series = snapshots
+                    .Select(s => new DashboardTrendPoint { Date = s.SnapshotDate, Value = selector(s) })
+                    .OrderBy(p => p.Date)
+                    .ToList();
+
+                // If no history (0-1 rows), return flat/empty series
+                if (snapshots.Count < 2)
+                {
+                    trend.DeltaAbsolute = null;
+                    trend.DeltaPercent = null;
+                    trend.Series = new List<DashboardTrendPoint>(); // flat/empty
+                }
+
+                return trend;
+            };
+
+            result.BarrelsKg = buildTrend("BarrelsKg", s => s.BarrelsKg);
+            result.BucketsKg = buildTrend("BucketsKg", s => s.BucketsKg);
+            result.UnpricedDeliveries = buildTrend("UnpricedDeliveries", s => s.UnpricedDeliveriesCount);
+            result.SupplierDebtTotal = buildTrend("SupplierDebtTotal", s => s.SupplierDebtTotal);
+
+            return result;
+        }
+
+        public async Task<NavBadgeCounts> GetNavBadgeCountsAsync()
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var counts = new NavBadgeCounts();
+
+            // 1. Unpriced deliveries (Status == "RECEIVED")
+            counts.UnpricedDeliveries = await context.Deliveries
+                .AsNoTracking()
+                .CountAsync(d => d.Status == "RECEIVED");
+
+            // 2. Overdue invoices (LAK invoices with DueDate < today and PaymentStatus != "paid")
+            counts.OverdueInvoices = await context.Invoices
+                .AsNoTracking()
+                .Where(i => EF.Functions.Like(i.InvoiceNumber, "LAK%")
+                    && !EF.Functions.Like(i.InvoiceNumber, "ULAK%")
+                    && i.DueDate.HasValue && i.DueDate.Value < DateTime.Today
+                    && i.PaymentStatus != "paid"
+                    && i.Status != InvoiceStatus.Disputed)
+                .CountAsync();
+
+            // 3. Unmatched bank import rows
+            counts.UnmatchedBankImports = await context.BankImportRows
+                .AsNoTracking()
+                .CountAsync(r => r.MatchStatus == "unmatched");
+
+            // 4. Pending write-offs (none currently - return 0 as placeholder)
+            counts.PendingWriteOffs = 0;
+
+            return counts;
+        }
     }
 }

@@ -477,5 +477,9 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             => Task.FromResult<InvoiceWithPaymentInfo?>(null);
         public Task<PaymentsDashboardKpi> GetPaymentsDashboardKpiAsync()
             => Task.FromResult(new PaymentsDashboardKpi());
+        public Task<DashboardTrendResult> GetDashboardTrendAsync()
+            => Task.FromResult(new DashboardTrendResult());
+        public Task<NavBadgeCounts> GetNavBadgeCountsAsync()
+            => Task.FromResult(new NavBadgeCounts());
     }
 }

@@ -101,6 +101,7 @@ builder.Services.Configure<ArtworkPreviewOptions>(builder.Configuration.GetSecti
 builder.Services.AddScoped<IArtworkStorageService, ArtworkStorageService>();
 builder.Services.AddScoped<IArtworkService, ArtworkService>();
 builder.Services.AddHostedService<ArtworkPreviewWorker>();
+builder.Services.AddHostedService<DashboardSnapshotWorker>();
 
 // Telegram notifications
 builder.Services.Configure<TelegramOptions>(builder.Configuration.GetSection("Telegram"));

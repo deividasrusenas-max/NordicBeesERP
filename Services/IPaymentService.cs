@@ -72,5 +72,16 @@ namespace NordicBeesERP.Services
 
         // Payments Dashboard KPI
         Task<PaymentsDashboardKpi> GetPaymentsDashboardKpiAsync();
+
+        /// <summary>
+        /// Get dashboard KPI trends with 14-day sparkline series and 7-day delta.
+        /// Reads from dashboard_daily_snapshots table.
+        /// </summary>
+        Task<DashboardTrendResult> GetDashboardTrendAsync();
+
+        /// <summary>
+        /// Get badge counts for NavMenu sidebar.
+        /// </summary>
+        Task<NavBadgeCounts> GetNavBadgeCountsAsync();
     }
 }

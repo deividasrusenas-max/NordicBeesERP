@@ -302,4 +302,44 @@ namespace NordicBeesERP.Services.Dtos
         public decimal TotalDebtVat { get; set; }
         public decimal TotalDebt { get; set; }
     }
+
+    // =====================================================
+    // DASHBOARD TREND KPI (for Home.razor sparklines + deltas)
+    // =====================================================
+
+    public class DashboardKpiTrend
+    {
+        public decimal CurrentValue { get; set; }
+        public decimal? Value7DaysAgo { get; set; }
+        public decimal? DeltaAbsolute { get; set; }
+        public decimal? DeltaPercent { get; set; }
+        public bool IsPositive => DeltaAbsolute.HasValue && DeltaAbsolute.Value >= 0;
+        public List<DashboardTrendPoint> Series { get; set; } = new();
+    }
+
+    public class DashboardTrendPoint
+    {
+        public DateTime Date { get; set; }
+        public decimal Value { get; set; }
+    }
+
+    public class DashboardTrendResult
+    {
+        public DashboardKpiTrend BarrelsKg { get; set; } = new();
+        public DashboardKpiTrend BucketsKg { get; set; } = new();
+        public DashboardKpiTrend UnpricedDeliveries { get; set; } = new();
+        public DashboardKpiTrend SupplierDebtTotal { get; set; } = new();
+    }
+
+    // =====================================================
+    // NAV MENU BADGE COUNTS
+    // =====================================================
+
+    public class NavBadgeCounts
+    {
+        public int UnpricedDeliveries { get; set; }
+        public int OverdueInvoices { get; set; }
+        public int UnmatchedBankImports { get; set; }
+        public int PendingWriteOffs { get; set; }
+    }
 }

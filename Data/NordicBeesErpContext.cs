@@ -111,6 +111,9 @@ namespace NordicBeesERP.Data
         public DbSet<ArtworkComment> ArtworkComments { get; set; }
         public DbSet<ArtworkAuditLog> ArtworkAuditLogs { get; set; }
 
+        // Dashboard Snapshots
+        public DbSet<DashboardDailySnapshot> DashboardDailySnapshots { get; set; }
+
         // =====================================================
         // MODEL CONFIGURATION
         // =====================================================
@@ -646,12 +649,23 @@ namespace NordicBeesERP.Data
                  entity.Ignore(e => e.User);
              });
 
-             // Seed initial brands
-             modelBuilder.Entity<ArtworkBrand>().HasData(
-                 new ArtworkBrand { Id = 1, Name = "Nordic Bees", Slug = "nordic-bees", IsActive = true, CreatedAt = DateTime.UtcNow },
-                 new ArtworkBrand { Id = 2, Name = "Honeymark", Slug = "honeymark", IsActive = true, CreatedAt = DateTime.UtcNow },
-                 new ArtworkBrand { Id = 3, Name = "MEDŽIO", Slug = "medzio", IsActive = true, CreatedAt = DateTime.UtcNow }
-             );
+              // Seed initial brands
+              modelBuilder.Entity<ArtworkBrand>().HasData(
+                  new ArtworkBrand { Id = 1, Name = "Nordic Bees", Slug = "nordic-bees", IsActive = true, CreatedAt = DateTime.UtcNow },
+                  new ArtworkBrand { Id = 2, Name = "Honeymark", Slug = "honeymark", IsActive = true, CreatedAt = DateTime.UtcNow },
+                  new ArtworkBrand { Id = 3, Name = "MEDŽIO", Slug = "medzio", IsActive = true, CreatedAt = DateTime.UtcNow }
+              );
+
+            // ===== DASHBOARD DAILY SNAPSHOTS =====
+            modelBuilder.Entity<DashboardDailySnapshot>(entity =>
+            {
+                entity.HasIndex(e => e.SnapshotDate).IsUnique();
+
+                // Decimal precision
+                entity.Property(e => e.BarrelsKg).HasPrecision(12, 2);
+                entity.Property(e => e.BucketsKg).HasPrecision(12, 2);
+                entity.Property(e => e.SupplierDebtTotal).HasPrecision(12, 2);
+            });
         }
 
         // =====================================================
