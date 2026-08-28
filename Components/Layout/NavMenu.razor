@@ -1,5 +1,8 @@
 @using MudBlazor
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IPaymentService PaymentService
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
 
 <MudNavMenu Style="display:flex; flex-direction:column; height:100%">
     @if (_isDesigner && !_isAdmin)
@@ -19,7 +22,13 @@
             <MudNavLink Href="/warehouse/deliveries/new" Icon="@Icons.Material.Filled.Add">Naujas pristatymas</MudNavLink>
             @if (!_isManager)
             {
-                <MudNavLink Href="/warehouse/deliveries" Icon="@Icons.Material.Filled.LocalShipping">Pristatymai</MudNavLink>
+                <MudNavLink Href="/warehouse/deliveries" Icon="@Icons.Material.Filled.LocalShipping">
+                    Pristatymai
+                    @if (_badgeCounts.UnpricedDeliveries > 0)
+                    {
+                        <span class="nav-count-pill" style="background:var(--lakstena-accent); color:#fff; border-radius:10px; padding:0 8px; font-size:0.7rem; margin-left:6px">@_badgeCounts.UnpricedDeliveries</span>
+                    }
+                </MudNavLink>
             }
             @if (_isAdmin || _isManager)
             {
@@ -58,7 +67,13 @@
         @if (_isAdmin || _isManager)
         {
             <MudNavGroup Title="Pardavimai" Icon="@Icons.Material.Filled.AccountBalance">
-                <MudNavLink Href="/invoices/sales" Icon="@Icons.Material.Filled.Receipt">Pardavimų sąskaitos</MudNavLink>
+                <MudNavLink Href="/invoices/sales" Icon="@Icons.Material.Filled.Receipt">
+                    Pardavimų sąskaitos
+                    @if (_badgeCounts.OverdueInvoices > 0)
+                    {
+                        <span style="background:var(--lakstena-danger); color:#fff; border-radius:10px; padding:0 8px; font-size:0.7rem; margin-left:6px">@_badgeCounts.OverdueInvoices</span>
+                    }
+                </MudNavLink>
                 <MudNavLink Href="/payments" Icon="@Icons.Material.Filled.Dashboard">Skolų valdymas</MudNavLink>
                 <MudNavLink Href="/payments/forecast" Icon="@Icons.Material.Filled.TrendingUp">Įplaukų prognozė</MudNavLink>
                 <MudNavLink Href="/payments/history" Icon="@Icons.Material.Filled.History">Įplaukų istorija</MudNavLink>
@@ -131,6 +146,8 @@
     private bool _isWarehouse;
     private bool _isDesigner;
 
+    private NavBadgeCounts _badgeCounts = new();
+
     protected override async Task OnInitializedAsync()
     {
         var auth = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -138,5 +155,8 @@
         _isManager = auth.User.IsInRole("Manager");
         _isWarehouse = auth.User.IsInRole("Warehouse");
         _isDesigner = auth.User.IsInRole("Designer");
+
+        try { _badgeCounts = await PaymentService.GetNavBadgeCountsAsync(); }
+        catch { _badgeCounts = new NavBadgeCounts(); }
     }
 }
