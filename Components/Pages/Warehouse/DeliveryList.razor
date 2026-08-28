@@ -26,7 +26,7 @@
     }
 
     <!-- Filters -->
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+    <StandardListFilterBar>
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync"
@@ -44,7 +44,7 @@
                     OnClick="ClearFilters" Title="Išvalyti filtrus" />
             </MudItem>
         </MudGrid>
-    </MudPaper>
+    </StandardListFilterBar>
 
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
         @foreach (var status in _statusDisplay)
@@ -85,10 +85,10 @@
             <MudTd>@context.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
             <MudTd>@context.DeliveryNumber</MudTd>
             <MudTd>@GetSupplierName(context.SupplierId)</MudTd>
-            <MudTd Style="text-align:right">@context.TotalNetWeight.ToString("N1")</MudTd>
-            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(context.TotalAmount, 2)</MudTd>
-            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(context.PaidAmount, 2)</MudTd>
-            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(context.TotalAmount - context.PaidAmount, 2)</MudTd>
+            <MudTd Class="lakstena-mono" Style="text-align:right">@context.TotalNetWeight.ToString("N1")</MudTd>
+            <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Trim(context.TotalAmount, 2)</MudTd>
+            <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Trim(context.PaidAmount, 2)</MudTd>
+            <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Trim(context.TotalAmount - context.PaidAmount, 2)</MudTd>
             <MudTd>
                 <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(context.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(context.Status, _statusDisplay)</MudChip>
             </MudTd>
