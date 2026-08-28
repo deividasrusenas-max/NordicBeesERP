@@ -42,11 +42,12 @@
                     <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
                         <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Statinės sandėlyje</MudText>
                         <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_trendResult.BarrelsKg.CurrentValue, 0) kg</MudText>
-                        @if (_trendResult.BarrelsKg.Series.Count >= 2)
+                        @if (BuildKpiPaths(_trendResult.BarrelsKg, out var barrelsLine, out var barrelsArea))
                         {
-                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
-                                ChartSeries="@KpiBarrelsSeries" XAxisLabels="@KpiBarrelsLabels"
-                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                            <svg viewBox="0 0 240 46" preserveAspectRatio="none" style="width:100%;height:46px;display:block;margin-top:8px">
+                                <path d="@barrelsArea" fill="#c47a10" opacity="0.09"></path>
+                                <path d="@barrelsLine" fill="none" stroke="#c47a10" stroke-width="1.8" stroke-linecap="round"></path>
+                            </svg>
                         }
                         <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.BarrelsKg.DeltaAbsolute)">
                             @FormatDelta(_trendResult.BarrelsKg.DeltaPercent, _trendResult.BarrelsKg.DeltaAbsolute, " kg")
@@ -57,11 +58,12 @@
                     <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
                         <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Kibirai sandėlyje</MudText>
                         <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_trendResult.BucketsKg.CurrentValue, 0) kg</MudText>
-                        @if (_trendResult.BucketsKg.Series.Count >= 2)
+                        @if (BuildKpiPaths(_trendResult.BucketsKg, out var bucketsLine, out var bucketsArea))
                         {
-                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
-                                ChartSeries="@KpiBucketsSeries" XAxisLabels="@KpiBucketsLabels"
-                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                            <svg viewBox="0 0 240 46" preserveAspectRatio="none" style="width:100%;height:46px;display:block;margin-top:8px">
+                                <path d="@bucketsArea" fill="#2f7d6b" opacity="0.09"></path>
+                                <path d="@bucketsLine" fill="none" stroke="#2f7d6b" stroke-width="1.8" stroke-linecap="round"></path>
+                            </svg>
                         }
                         <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.BucketsKg.DeltaAbsolute)">
                             @FormatDelta(_trendResult.BucketsKg.DeltaPercent, _trendResult.BucketsKg.DeltaAbsolute, " kg")
@@ -72,11 +74,12 @@
                     <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
                         <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Neįkainotos</MudText>
                         <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@_trendResult.UnpricedDeliveries.CurrentValue.ToString("N0")</MudText>
-                        @if (_trendResult.UnpricedDeliveries.Series.Count >= 2)
+                        @if (BuildKpiPaths(_trendResult.UnpricedDeliveries, out var unpricedLine, out var unpricedArea))
                         {
-                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
-                                ChartSeries="@KpiUnpricedSeries" XAxisLabels="@KpiUnpricedLabels"
-                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                            <svg viewBox="0 0 240 46" preserveAspectRatio="none" style="width:100%;height:46px;display:block;margin-top:8px">
+                                <path d="@unpricedArea" fill="#d9a13f" opacity="0.09"></path>
+                                <path d="@unpricedLine" fill="none" stroke="#d9a13f" stroke-width="1.8" stroke-linecap="round"></path>
+                            </svg>
                         }
                         <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.UnpricedDeliveries.DeltaAbsolute)">
                             @FormatDelta(_trendResult.UnpricedDeliveries.DeltaPercent, _trendResult.UnpricedDeliveries.DeltaAbsolute, "")
@@ -87,11 +90,12 @@
                     <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
                         <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Skolos tiekėjams</MudText>
                         <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_trendResult.SupplierDebtTotal.CurrentValue, 2) €</MudText>
-                        @if (_trendResult.SupplierDebtTotal.Series.Count >= 2)
+                        @if (BuildKpiPaths(_trendResult.SupplierDebtTotal, out var debtLine, out var debtArea))
                         {
-                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
-                                ChartSeries="@KpiDebtSeries" XAxisLabels="@KpiDebtLabels"
-                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                            <svg viewBox="0 0 240 46" preserveAspectRatio="none" style="width:100%;height:46px;display:block;margin-top:8px">
+                                <path d="@debtArea" fill="#b3402f" opacity="0.09"></path>
+                                <path d="@debtLine" fill="none" stroke="#b3402f" stroke-width="1.8" stroke-linecap="round"></path>
+                            </svg>
                         }
                         <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.SupplierDebtTotal.DeltaAbsolute)">
                             @FormatDelta(_trendResult.SupplierDebtTotal.DeltaPercent, _trendResult.SupplierDebtTotal.DeltaAbsolute, " €")
@@ -112,21 +116,33 @@
                 <MudItem xs="12" md="7">
                     <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
                         <MudText Typo="Typo.subtitle1" Class="mb-2" Style="font-weight:600">Laukiamos įplaukos</MudText>
-                        <MudChart ChartType="ChartType.Bar" Width="100%" Height="260px"
-                            ChartSeries="@CashFlowSeries" XAxisLabels="@CashFlowLabels"
-                            ChartOptions="@(new ChartOptions { ShowLegend = false, YAxisFormat = "N0" })" />
+                        @if (_weeklyBars.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-4" Style="color:var(--lakstena-text-secondary)">Nėra duomenų</MudText>
+                        }
+                        else
+                        {
+                            <div style="display:flex; align-items:flex-end; gap:8px; height:200px; padding-top:20px">
+                                @foreach (var week in _weeklyBars)
+                                {
+                                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%">
+                                        <span style="font-family:'Geist Mono',monospace; font-size:11px; color:var(--lakstena-text-secondary)">@week.FormattedAmount</span>
+                                        <div style="width:100%; max-width:32px; height:@week.BarHeightPx.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)px; background:@week.Color; border-radius:4px 4px 0 0"></div>
+                                        <span style="font-size:10px; color:var(--lakstena-text-secondary); white-space:nowrap; margin-top:6px">@week.Label</span>
+                                    </div>
+                                }
+                            </div>
+                        }
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="12" md="5">
                     <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px; position:relative">
                         <MudText Typo="Typo.subtitle1" Class="mb-2" Style="font-weight:600">Įsiskolinimų senėjimas</MudText>
-                        <div style="position:relative">
-                            <MudChart ChartType="ChartType.Donut" Width="100%" Height="240px"
-                                ChartSeries="@AgingSeries" XAxisLabels="@AgingLabels"
-                                ChartOptions="@(new ChartOptions { ShowLegend = false, ChartPalette = AgingColors })" />
-                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-60%); text-align:center; pointer-events:none">
-                                <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Bendra skola</MudText>
-                                <MudText Typo="Typo.h5" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_agingReport.TotalOverdue, 2) €</MudText>
+                        <div style="position:relative; width:200px; height:200px; margin:0 auto">
+                            <div style="width:100%; height:100%; border-radius:50%; background:@AgingRingCss"></div>
+                            <div style="position:absolute; inset:22px; border-radius:50%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center">
+                                <span style="font-size:11px; color:var(--lakstena-text-secondary)">Bendra skola</span>
+                                <span style="font-family:'Geist Mono',monospace; font-weight:700; font-size:22px">@FormatAmountHelper.Trim(_agingReport.TotalOverdue, 2) €</span>
                             </div>
                         </div>
                         <MudStack Row="true" Spacing="2" Class="mt-2" Justify="Justify.Center">
@@ -288,59 +304,70 @@
     private List<CashFlowWeek> _cashFlowForecast = new();
     private AgingReport _agingReport = new();
 
-    // ----- New dashboard chart data builders (consumed by markup in later rounds) -----
-    private List<ChartSeries> KpiBarrelsSeries => new()
+    // ----- KPI sparkline SVG path builder (shared by the 4 KPI cards) -----
+    private static bool BuildKpiPaths(DashboardKpiTrend trend, out string linePath, out string areaPath)
     {
-        new ChartSeries { Name = "Statinės kg", Data = _trendResult.BarrelsKg.Series.Select(s => (double)s.Value).ToArray() }
-    };
-    private string[] KpiBarrelsLabels => _trendResult.BarrelsKg.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
-
-    private List<ChartSeries> KpiBucketsSeries => new()
-    {
-        new ChartSeries { Name = "Kibirai kg", Data = _trendResult.BucketsKg.Series.Select(s => (double)s.Value).ToArray() }
-    };
-    private string[] KpiBucketsLabels => _trendResult.BucketsKg.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
-
-    private List<ChartSeries> KpiUnpricedSeries => new()
-    {
-        new ChartSeries { Name = "Neįkainotos", Data = _trendResult.UnpricedDeliveries.Series.Select(s => (double)s.Value).ToArray() }
-    };
-    private string[] KpiUnpricedLabels => _trendResult.UnpricedDeliveries.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
-
-    private List<ChartSeries> KpiDebtSeries => new()
-    {
-        new ChartSeries { Name = "Skolos tiekėjams", Data = _trendResult.SupplierDebtTotal.Series.Select(s => (double)s.Value).ToArray() }
-    };
-    private string[] KpiDebtLabels => _trendResult.SupplierDebtTotal.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
-
-    private List<ChartSeries> CashFlowSeries => new()
-    {
-        new ChartSeries { Name = "Įplaukos", Data = _cashFlowForecast.Select(w => (double)w.ExpectedIncome).ToArray() }
-    };
-    private string[] CashFlowLabels => _cashFlowForecast.Select(w => w.WeekStart.ToString("MM/dd")).ToArray();
-
-    private List<ChartSeries> AgingSeries => new()
-    {
-        new ChartSeries
+        var values = trend.Series.Select(p => p.Value).ToArray();
+        if (values.Length < 2)
         {
-            Name = "Įsiskolinimai",
-            Data = new double[]
-            {
-                (double)_agingReport.Bucket0To30.TotalAmount,
-                (double)_agingReport.Bucket31To60.TotalAmount,
-                (double)_agingReport.Bucket61To90.TotalAmount,
-                (double)_agingReport.Bucket90Plus.TotalAmount
-            }
+            // Single point: flat horizontal line at vertical midpoint
+            linePath = "M0 23 L240 23";
+            areaPath = "";
+            return true;
         }
-    };
-    private string[] AgingLabels => new[] { "0-30", "31-60", "61-90", "90+" };
-    private string[] AgingColors => new[]
+        var max = Math.Max(values.Max() * 1.1m, 1m);
+        linePath = ChartMathHelper.BuildSmoothPath(values, 240, 46, max);
+        areaPath = linePath + " L240 46 L0 46 Z";
+        return true;
+    }
+
+    // ----- Weekly revenue bars (overdue + cash-flow weeks) -----
+    private List<(string Label, decimal Amount, string Color, double BarHeightPx, string FormattedAmount)> _weeklyBars = new();
+
+    private void BuildWeeklyBars()
     {
-        "var(--lakstena-success)",
-        "var(--lakstena-warning)",
-        "var(--lakstena-accent)",
-        "var(--lakstena-danger)"
-    };
+        var bars = new List<(string Label, decimal Amount, string Color)>();
+        if (_agingReport.TotalOverdue > 0)
+            bars.Add(("Pradelsta", _agingReport.TotalOverdue, "#b3402f"));
+        for (var i = 0; i < _cashFlowForecast.Count; i++)
+        {
+            var w = _cashFlowForecast[i];
+            bars.Add((w.WeekStart.ToString("MM/dd"), w.ExpectedIncome, i == 0 ? "#c47a10" : "#d9a13f"));
+        }
+        var maxAmount = bars.Count > 0 ? bars.Max(b => b.Amount) : 0m;
+        _weeklyBars = bars.Select(b => (b.Label, b.Amount, b.Color,
+            maxAmount > 0 ? (double)(b.Amount / maxAmount * 160m) : 0.0,
+            FormatAmountHelper.Trim(b.Amount, 0) + " €")).ToList();
+    }
+
+    // ----- Debt-aging donut ring (conic-gradient) -----
+    private string AgingRingCss
+    {
+        get
+        {
+            var buckets = new (string Color, decimal Value)[]
+            {
+                ("#2f7d6b", _agingReport.Bucket0To30.TotalAmount),
+                ("#d9a13f", _agingReport.Bucket31To60.TotalAmount),
+                ("#c47a10", _agingReport.Bucket61To90.TotalAmount),
+                ("#b3402f", _agingReport.Bucket90Plus.TotalAmount)
+            };
+            var total = buckets.Sum(b => b.Value);
+            if (total <= 0) return "rgba(27,25,23,.08)";
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var acc = 0m;
+            var stops = new List<string>();
+            foreach (var (color, value) in buckets)
+            {
+                if (value <= 0) continue;
+                var from = (acc / total) * 100m;
+                var to = ((acc + value) / total) * 100m;
+                stops.Add($"{color} {from.ToString("0.##", inv)}% {to.ToString("0.##", inv)}%");
+                acc += value;
+            }
+            return "conic-gradient(from -90deg, " + string.Join(", ", stops) + ")";
+        }
+    }
 
     private bool IsDoubleClick(object item)
     {
@@ -393,7 +420,7 @@
 
             PeriodState.OnPeriodChanged += OnPeriodChanged;
 
-            var trendTask = PaymentService.GetDashboardTrendAsync();
+            var trendTask = PaymentService.GetDashboardTrendAsync(_barrelNetWeight, _bucketNetWeight, _unpricedDeliveries, _totalDebt);
             var cashFlowTask = PaymentService.GetCashFlowForecastAsync(PeriodState.FromDate, PeriodState.ToDate);
             var agingTask = PaymentService.GetAgingReportAsync();
             var badgeTask = PaymentService.GetNavBadgeCountsAsync();
@@ -403,6 +430,7 @@
             _agingReport = await agingTask;
             _navBadgeCounts = await badgeTask;
 
+            BuildWeeklyBars();
             _loading = false;
         }
         catch (Exception ex)
@@ -417,6 +445,7 @@
         try
         {
             _cashFlowForecast = await PaymentService.GetCashFlowForecastAsync(PeriodState.FromDate, PeriodState.ToDate);
+            BuildWeeklyBars();
         }
         catch
         {

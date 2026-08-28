@@ -1440,7 +1440,7 @@ namespace NordicBeesERP.Services
         // DASHBOARD TREND + NAV BADGES
         // =====================================================
 
-        public async Task<DashboardTrendResult> GetDashboardTrendAsync()
+        public async Task<DashboardTrendResult> GetDashboardTrendAsync(decimal currentBarrelsKg, decimal currentBucketsKg, int currentUnpricedDeliveries, decimal currentSupplierDebtTotal)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -1454,14 +1454,19 @@ namespace NordicBeesERP.Services
                 "SELECT * FROM dashboard_daily_snapshots WHERE snapshot_date >= {0} ORDER BY snapshot_date",
                 fourteenDaysAgo).ToListAsync();
 
-            // Helper to build trend for a decimal KPI
-            Func<string, Func<DashboardDailySnapshot, decimal>, DashboardKpiTrend> buildTrend = (seriesName, selector) =>
+            // Helper to build trend for a decimal KPI from the live current value + snapshot history
+            Func<decimal, Func<DashboardDailySnapshot, decimal>, DashboardKpiTrend> buildTrend = (liveValue, selector) =>
             {
                 var trend = new DashboardKpiTrend();
-                var todaySnap = snapshots.FirstOrDefault(s => s.SnapshotDate.Date == today);
-                var sevenDaySnap = snapshots.FirstOrDefault(s => s.SnapshotDate.Date == sevenDaysAgo);
 
-                trend.CurrentValue = todaySnap != null ? selector(todaySnap) : 0m;
+                // CurrentValue is always the live value passed in — today's snapshot row
+                // doesn't exist until the 03:00 worker runs.
+                trend.CurrentValue = liveValue;
+
+                // 7-day delta: exact match first, fall back to closest snapshot within 7 days
+                var sevenDaySnap = snapshots.FirstOrDefault(s => s.SnapshotDate.Date == sevenDaysAgo)
+                    ?? snapshots.Where(s => s.SnapshotDate.Date >= sevenDaysAgo && s.SnapshotDate.Date < today)
+                        .OrderByDescending(s => s.SnapshotDate).FirstOrDefault();
                 trend.Value7DaysAgo = sevenDaySnap != null ? selector(sevenDaySnap) : (decimal?)null;
 
                 if (trend.Value7DaysAgo.HasValue && trend.Value7DaysAgo.Value != 0)
@@ -1470,27 +1475,31 @@ namespace NordicBeesERP.Services
                     trend.DeltaPercent = Math.Round((trend.DeltaAbsolute.Value / trend.Value7DaysAgo.Value) * 100m, 1);
                 }
 
-                // Build 14-day series for sparkline
-                trend.Series = snapshots
-                    .Select(s => new DashboardTrendPoint { Date = s.SnapshotDate, Value = selector(s) })
-                    .OrderBy(p => p.Date)
-                    .ToList();
-
-                // If no history (0-1 rows), return flat/empty series
+                // If no real history (0-1 rows): no delta, single live point only
                 if (snapshots.Count < 2)
                 {
                     trend.DeltaAbsolute = null;
                     trend.DeltaPercent = null;
-                    trend.Series = new List<DashboardTrendPoint>(); // flat/empty
+                    trend.Series = new List<DashboardTrendPoint> { new() { Date = today, Value = liveValue } };
+                    return trend;
                 }
+
+                // Build 14-day series for sparkline, ending at the true current value:
+                // replace today's snapshot row (if present) with a synthetic live point.
+                trend.Series = snapshots
+                    .Where(s => s.SnapshotDate.Date != today)
+                    .Select(s => new DashboardTrendPoint { Date = s.SnapshotDate, Value = selector(s) })
+                    .OrderBy(p => p.Date)
+                    .ToList();
+                trend.Series.Add(new DashboardTrendPoint { Date = today, Value = liveValue });
 
                 return trend;
             };
 
-            result.BarrelsKg = buildTrend("BarrelsKg", s => s.BarrelsKg);
-            result.BucketsKg = buildTrend("BucketsKg", s => s.BucketsKg);
-            result.UnpricedDeliveries = buildTrend("UnpricedDeliveries", s => s.UnpricedDeliveriesCount);
-            result.SupplierDebtTotal = buildTrend("SupplierDebtTotal", s => s.SupplierDebtTotal);
+            result.BarrelsKg = buildTrend(currentBarrelsKg, s => s.BarrelsKg);
+            result.BucketsKg = buildTrend(currentBucketsKg, s => s.BucketsKg);
+            result.UnpricedDeliveries = buildTrend((decimal)currentUnpricedDeliveries, s => s.UnpricedDeliveriesCount);
+            result.SupplierDebtTotal = buildTrend(currentSupplierDebtTotal, s => s.SupplierDebtTotal);
 
             return result;
         }

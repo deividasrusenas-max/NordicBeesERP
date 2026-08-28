@@ -76,9 +76,11 @@ namespace NordicBeesERP.Services
 
         /// <summary>
         /// Get dashboard KPI trends with 14-day sparkline series and 7-day delta.
-        /// Reads from dashboard_daily_snapshots table.
+        /// CurrentValue is the live value passed in (today's snapshot row only exists
+        /// after the 03:00 worker runs); snapshots are used for the 7-day delta and
+        /// the historical series, which ends with a synthetic live point.
         /// </summary>
-        Task<DashboardTrendResult> GetDashboardTrendAsync();
+        Task<DashboardTrendResult> GetDashboardTrendAsync(decimal currentBarrelsKg, decimal currentBucketsKg, int currentUnpricedDeliveries, decimal currentSupplierDebtTotal);
 
         /// <summary>
         /// Get badge counts for NavMenu sidebar.
