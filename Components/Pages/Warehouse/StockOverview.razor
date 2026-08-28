@@ -19,7 +19,7 @@
     <MudText Typo="Typo.h5" Class="mb-4">Sandėlio likučiai</MudText>
 
     <!-- Filters -->
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+    <StandardListFilterBar>
         <MudGrid>
             <MudItem xs="12" md="2">
                 <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Clearable="true">
@@ -71,7 +71,7 @@
                 </div>
             </MudItem>
         </MudGrid>
-    </MudPaper>
+    </StandardListFilterBar>
 
     <!-- Summary cards -->
     <MudGrid Class="mb-4">
@@ -124,9 +124,9 @@
             <MudTd>@(container.ContainerType == "BARREL" ? "🛢️" : "🪣")</MudTd>
             <MudTd>@GetSupplierName(container.SupplierId)</MudTd>
             <MudTd>@GetHoneyTypeName(container.HoneyTypeId)</MudTd>
-            <MudTd Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
-            <MudTd Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
-            <MudTd Style="text-align:right"><strong>@container.NetWeight.ToString("N1")</strong></MudTd>
+            <MudTd Class="lakstena-mono" Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
+            <MudTd Class="lakstena-mono" Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
+            <MudTd Class="lakstena-mono" Style="text-align:right"><strong>@container.NetWeight.ToString("N1")</strong></MudTd>
             <MudTd><MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(container.Status, _containerStatusDisplay)">@StatusDisplayHelper.GetLabel(container.Status, _containerStatusDisplay)</MudChip></MudTd>
             <MudTd>@GetWarehouseName(container.WarehouseId)</MudTd>
             <MudTd>@container.CreatedAt.ToString("MM-dd")</MudTd>
