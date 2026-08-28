@@ -19,7 +19,7 @@
     else
     {
         <!-- Filter bar -->
-        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
+        <StandardListFilterBar>
             <MudGrid Spacing="3">
                 <MudItem xs="12" md="4">
                     <MudTextField T="string" Label="Paieška (tiekėjas)" @bind-Value="_searchText"
@@ -41,32 +41,32 @@
                     </MudItem>
                 }
             </MudGrid>
-        </MudPaper>
+        </StandardListFilterBar>
 
         <!-- Summary cards -->
         <MudGrid Class="mb-4">
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#f0fdf4; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Tiekėjų</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value">@FilteredDebtRows.Count</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FilteredDebtRows.Count</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#fef3c7; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Bendra suma</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value">@FormatAmountHelper.Trim(FilteredDebtRows.Sum(r => r.TotalAmount), 2) €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FormatAmountHelper.Trim(FilteredDebtRows.Sum(r => r.TotalAmount), 2) €</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#dbeafe; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Sumokėta</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value">@FormatAmountHelper.Trim(FilteredDebtRows.Sum(r => r.PaidAmount), 2) €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FormatAmountHelper.Trim(FilteredDebtRows.Sum(r => r.PaidAmount), 2) €</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card debt-card" Style="@_debtCardStyle">
                     <MudText Typo="Typo.caption" Style="color:#666">Skola</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value debt-text">@FormatAmountHelper.Trim(_totalDebt, 2) €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value debt-text lakstena-mono">@FormatAmountHelper.Trim(_totalDebt, 2) €</MudText>
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -92,11 +92,11 @@
             </HeaderContent>
             <RowTemplate Context="row">
                 <MudTd><strong>@row.SupplierName</strong></MudTd>
-                <MudTd Style="text-align:right">@row.DeliveryCount</MudTd>
-                <MudTd Style="text-align:right">@row.TotalNetWeight.ToString("N1")</MudTd>
-                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(row.TotalAmount, 2)</MudTd>
-                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(row.PaidAmount, 2)</MudTd>
-                <MudTd @attributes='@(new Dictionary<string, object> { { "Style", $"text-align:right{GetRowDebtClass(row.Debt)}" } })'>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@row.DeliveryCount</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@row.TotalNetWeight.ToString("N1")</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Trim(row.TotalAmount, 2)</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Trim(row.PaidAmount, 2)</MudTd>
+                <MudTd Class="lakstena-mono" @attributes='@(new Dictionary<string, object> { { "Style", $"text-align:right{GetRowDebtClass(row.Debt)}" } })'>
                     @FormatAmountHelper.Trim(row.Debt, 2)
                 </MudTd>
             </RowTemplate>
