@@ -12,4 +12,5 @@ public interface ICustomerService
     Task<bool> DeleteBusinessPartnerAsync(int id);
     Task<List<BusinessPartner>> GetSuppliersAsync();
     Task<Customer> SaveCustomerAsync(Customer customer);
+    Task<List<BusinessPartner>> SearchBusinessPartnersAsync(string searchTerm, int limit = 20);
 }

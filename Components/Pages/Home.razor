@@ -13,6 +13,8 @@
 @inject IPaymentService PaymentService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject DashboardPeriodState PeriodState
+@implements IDisposable
 
 <PageTitle>Lakštena ERP</PageTitle>
 
@@ -389,8 +391,10 @@
                 BucketKg: allContainers.Where(c => c.HoneyTypeId == ht.Id && c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight)
             )).ToList();
 
+            PeriodState.OnPeriodChanged += OnPeriodChanged;
+
             var trendTask = PaymentService.GetDashboardTrendAsync();
-            var cashFlowTask = PaymentService.GetCashFlowForecastAsync(8);
+            var cashFlowTask = PaymentService.GetCashFlowForecastAsync(PeriodState.FromDate, PeriodState.ToDate);
             var agingTask = PaymentService.GetAgingReportAsync();
             var badgeTask = PaymentService.GetNavBadgeCountsAsync();
             await Task.WhenAll(trendTask, cashFlowTask, agingTask, badgeTask);
@@ -406,6 +410,34 @@
             _dbError = true;
             _ = ex;
         }
+    }
+
+    private async Task LoadCashFlowAsync()
+    {
+        try
+        {
+            _cashFlowForecast = await PaymentService.GetCashFlowForecastAsync(PeriodState.FromDate, PeriodState.ToDate);
+        }
+        catch
+        {
+            // Keep last good data on transient failures — never crash the circuit.
+        }
+    }
+
+    private void OnPeriodChanged()
+    {
+        _ = RefreshCashFlowAsync();
+    }
+
+    private async Task RefreshCashFlowAsync()
+    {
+        await LoadCashFlowAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PeriodState.OnPeriodChanged -= OnPeriodChanged;
     }
 
     private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";

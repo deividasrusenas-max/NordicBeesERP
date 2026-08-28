@@ -15,4 +15,5 @@ public interface IDeliveryService
     Task<string> GenerateDeliveryNumberAsync(string materialCode);
     Task UpdateDeliveryStatusAsync(int deliveryId);
     Task<bool> SaveSignatureAsync(int deliveryId, string signerName, string signatureSvg);
+    Task<List<Delivery>> SearchDeliveriesAsync(string searchTerm, int limit = 20);
 }

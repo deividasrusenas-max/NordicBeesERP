@@ -40,4 +40,7 @@ public interface IOrderService
 
     /// Get all packed pallets (batches) for an order with their shipment status.
     Task<List<OrderPalletInfo>> GetOrderPalletsAsync(int orderId);
+
+    /// Search orders by order number or customer name (diacritic-insensitive).
+    Task<List<Order>> SearchOrdersAsync(string searchTerm, int limit = 20);
 }

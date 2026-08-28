@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models.WarehouseModule;
 
 namespace NordicBeesERP.Services;
@@ -276,5 +277,35 @@ public class DeliveryService : IDeliveryService
             new MySqlConnector.MySqlParameter("@signed", DateTime.Now),
             new MySqlConnector.MySqlParameter("@id", deliveryId));
         return true;
+    }
+
+    public async Task<List<Delivery>> SearchDeliveriesAsync(string searchTerm, int limit = 20)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        // deliveries is tiny (~3 rows) and its collation is accent-sensitive, so server-side
+        // LIKE cannot do diacritic-insensitive matching — materialize and fold in memory
+        // (same pattern as CustomerService.SearchBusinessPartnersAsync).
+        var deliveries = await context.Deliveries.AsNoTracking()
+            .OrderByDescending(d => d.DeliveryDate)
+            .ToListAsync();
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return deliveries.Take(limit).ToList();
+        }
+
+        var foldedTerm = DiacriticHelper.Fold(searchTerm.Trim());
+
+        var supplierNames = await context.BusinessPartners.AsNoTracking()
+            .ToDictionaryAsync(p => p.Id, p => p.Name ?? string.Empty);
+
+        return deliveries
+            .Where(d =>
+                DiacriticHelper.Fold(d.DeliveryNumber ?? string.Empty).Contains(foldedTerm) ||
+                (supplierNames.TryGetValue(d.SupplierId, out var supplierName) &&
+                 DiacriticHelper.Fold(supplierName).Contains(foldedTerm)))
+            .Take(limit)
+            .ToList();
     }
 }

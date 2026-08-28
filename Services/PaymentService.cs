@@ -412,9 +412,6 @@ namespace NordicBeesERP.Services
 
         public async Task<List<CashFlowWeek>> GetCashFlowForecastAsync(int weeks = 8)
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-
-            var result = new List<CashFlowWeek>();
             var today = DateTime.Today;
             var weekStart = today;
 
@@ -423,6 +420,34 @@ namespace NordicBeesERP.Services
             {
                 weekStart = weekStart.AddDays(-1);
             }
+
+            return await GetCashFlowForecastCoreAsync(weekStart, weeks);
+        }
+
+        public async Task<List<CashFlowWeek>> GetCashFlowForecastAsync(DateTime fromDate, DateTime toDate)
+        {
+            if (toDate < fromDate)
+                toDate = fromDate;
+
+            var weekStart = fromDate.Date;
+
+            // Align to the start of the week (Monday) so buckets are whole weeks.
+            while (weekStart.DayOfWeek != DayOfWeek.Monday)
+            {
+                weekStart = weekStart.AddDays(-1);
+            }
+
+            // Number of 7-day buckets needed to cover [weekStart, toDate], at least 1.
+            var weeks = Math.Max(1, (int)((toDate.Date - weekStart).TotalDays / 7) + 1);
+
+            return await GetCashFlowForecastCoreAsync(weekStart, weeks);
+        }
+
+        private async Task<List<CashFlowWeek>> GetCashFlowForecastCoreAsync(DateTime weekStart, int weeks)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var result = new List<CashFlowWeek>();
 
             for (int i = 0; i < weeks; i++)
             {

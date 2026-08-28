@@ -70,6 +70,7 @@ builder.Services.AddScoped<IRawMaterialTypeService, RawMaterialTypeService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IExpenseExportService, ExpenseExportService>();
+builder.Services.AddScoped<DashboardPeriodState>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
     builder.Services.AddScoped<ICreditNoteNumberGenerator, CreditNoteNumberGenerator>();

@@ -554,6 +554,71 @@ public class OrderService : IOrderService
         return pallets;
     }
 
+    public async Task<List<Order>> SearchOrdersAsync(string searchTerm, int limit = 20)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return new List<Order>();
+
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        // orders is tiny (~21 rows) and its collation is accent-sensitive, so server-side LIKE
+        // cannot do diacritic-insensitive matching — materialize everything and fold in memory
+        // (same pattern as CustomerService.SearchBusinessPartnersAsync).
+        var sql = @"SELECT id AS Id, order_number AS OrderNumber, order_date AS OrderDate, 
+                      customer_id AS CustomerId, delivery_date AS DeliveryDate, 
+                      status AS Status, notes AS Notes, 
+                      shipped_at AS ShippedAt, shipped_by_user_id AS ShippedByUserId, 
+                      invoice_id AS InvoiceId, invoiced_at AS InvoicedAt, invoiced_by_user_id AS InvoicedByUserId, 
+                      created_at AS CreatedAt, updated_at AS UpdatedAt
+                      FROM orders ORDER BY order_date DESC, id DESC";
+
+        var conn = context.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open)
+            await conn.OpenAsync();
+
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+
+        var orders = new List<Order>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var o = new Order
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                OrderNumber = reader.GetString(reader.GetOrdinal("OrderNumber")),
+                OrderDate = reader.GetDateTime(reader.GetOrdinal("OrderDate")),
+                CustomerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                DeliveryDate = ReadNullableDateTime(reader, "DeliveryDate"),
+                Status = reader.GetString(reader.GetOrdinal("Status")),
+                Notes = ReadNullableString(reader, "Notes"),
+                ShippedAt = ReadNullableDateTime(reader, "ShippedAt"),
+                ShippedByUserId = ReadNullableInt(reader, "ShippedByUserId"),
+                InvoiceId = ReadNullableInt(reader, "InvoiceId"),
+                InvoicedAt = ReadNullableDateTime(reader, "InvoicedAt"),
+                InvoicedByUserId = ReadNullableInt(reader, "InvoicedByUserId"),
+                CreatedAt = ReadNullableDateTime(reader, "CreatedAt"),
+                UpdatedAt = ReadNullableDateTime(reader, "UpdatedAt")
+            };
+            o.IsUninvoiced = o.Status == "shipped" && !o.InvoiceId.HasValue;
+            orders.Add(o);
+        }
+
+        var partnerNames = await context.BusinessPartners.AsNoTracking()
+            .ToDictionaryAsync(p => p.Id, p => p.Name ?? string.Empty);
+
+        var foldedTerm = NordicBeesERP.Helpers.DiacriticHelper.Fold(searchTerm.Trim());
+
+        return orders
+            .Where(o => NordicBeesERP.Helpers.DiacriticHelper.Fold(o.OrderNumber).Contains(foldedTerm)
+                || (partnerNames.TryGetValue(o.CustomerId, out var customerName)
+                    && NordicBeesERP.Helpers.DiacriticHelper.Fold(customerName ?? string.Empty).Contains(foldedTerm)))
+            .OrderByDescending(o => o.OrderDate)
+            .ThenByDescending(o => o.Id)
+            .Take(limit)
+            .ToList();
+    }
+
     // =====================================================
     // PRIVATE HELPERS
     // =====================================================

@@ -16,6 +16,15 @@
     }
     else
     {
+        @* Sidebar top block: logo + brand name *@
+        <div class="d-flex align-center pa-3 pb-2" style="border-bottom:1px solid var(--lakstena-border)">
+            <img src="/logo.png" style="height:28px; margin-right:10px;" alt="Lakštena" />
+            <div>
+                <div style="font-weight:700; color:var(--lakstena-text); font-size:0.95rem; line-height:1.2">Lakštena ERP</div>
+                <div class="lakstena-mono" style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.14em; color:var(--lakstena-text-secondary)">MEDAUS APSKAITA</div>
+            </div>
+        </div>
+
         <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Pradžia</MudNavLink>
 
         <MudNavGroup Title="Sandėlis" Icon="@Icons.Material.Filled.Warehouse" Expanded="false">
@@ -58,11 +67,25 @@
 
         @if (_isAdmin || _isManager || _isWarehouse)
         {
-            <MudNavGroup Title="Tiekėjai ir klientai" Icon="@Icons.Material.Filled.People">
+            <MudNavGroup Title="Tiekėjai" Icon="@Icons.Material.Filled.People">
                 <MudNavLink Href="/suppliers" Icon="@Icons.Material.Filled.LocalShipping">Tiekėjai</MudNavLink>
                 <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
             </MudNavGroup>
         }
+
+        @if (_isAdmin || _isManager)
+        {
+            <MudNavGroup Title="Išlaidos" Icon="@Icons.Material.Filled.Receipt" Expanded="false">
+                <MudNavLink Href="/expenses" Icon="@Icons.Material.Filled.Dashboard">Suvestinė</MudNavLink>
+                <MudNavLink Href="/expense-invoices" Icon="@Icons.Material.Filled.Receipt">Sąskaitos</MudNavLink>
+                <MudNavLink Href="/expense-payments" Icon="@Icons.Material.Filled.History">Mokėjimai</MudNavLink>
+                <MudNavLink Href="/expenses/forecast" Icon="@Icons.Material.Filled.TrendingDown">Išlaidų prognozė</MudNavLink>
+                <MudNavLink Href="/bank-import?type=expense" Icon="@Icons.Material.Filled.FileUpload">Banko importas</MudNavLink>
+            </MudNavGroup>
+        }
+
+        @* Section header: FINANSAI *@
+        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">FINANSAI</div>
 
         @if (_isAdmin || _isManager)
         {
@@ -83,16 +106,10 @@
             @*<MudNavGroup Title="Medaus pirkimai" Icon="@Icons.Material.Filled.Hive" Expanded="false">
                 <MudNavLink Href="/invoices/purchases" Icon="@Icons.Material.Filled.Receipt">Pirkimų sąskaitos</MudNavLink>
             </MudNavGroup>*@
-            <MudNavGroup Title="Išlaidos" Icon="@Icons.Material.Filled.Receipt" Expanded="false">
-                <MudNavLink Href="/expenses" Icon="@Icons.Material.Filled.Dashboard">Suvestinė</MudNavLink>
-                <MudNavLink Href="/expense-invoices" Icon="@Icons.Material.Filled.Receipt">Sąskaitos</MudNavLink>
-                <MudNavLink Href="/expense-payments" Icon="@Icons.Material.Filled.History">Mokėjimai</MudNavLink>
-                <MudNavLink Href="/expenses/forecast" Icon="@Icons.Material.Filled.TrendingDown">Išlaidų prognozė</MudNavLink>
-                <MudNavLink Href="/bank-import?type=expense" Icon="@Icons.Material.Filled.FileUpload">Banko importas</MudNavLink>
-            </MudNavGroup>
         }
 
-        <MudDivider Class="my-2"/>
+        @* Section header: ANALITIKA *@
+        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">ANALITIKA</div>
 
         @if (_isAdmin || _isManager)
         {
@@ -104,18 +121,11 @@
             </MudNavGroup>
         }
 
-        <MudDivider Class="my-2"/>
+        @* Section header: DARBAS (empty — operational items stay top-level) *@
+        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">DARBAS</div>
 
-        @if (_isAdmin || _isDesigner || _isManager)
-        {
-            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
-                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
-                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
-            </MudNavGroup>
-        }
-
-        <div style="flex:1"></div>
-        <MudDivider Class="my-2"/>
+        @* Section header: SISTEMA *@
+        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">SISTEMA</div>
 
         <MudNavGroup Title="Nustatymai" Icon="@Icons.Material.Filled.Settings">
             @if (_isAdmin)
@@ -137,6 +147,14 @@
                 <MudNavLink Href="/settings/artwork-label-types" Icon="@Icons.Material.Filled.Label">Etikečių tipai</MudNavLink>
             }
         </MudNavGroup>
+
+        @if (_isAdmin || _isDesigner || _isManager)
+        {
+            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
+                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
+                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
+            </MudNavGroup>
+        }
     }
 </MudNavMenu>
 

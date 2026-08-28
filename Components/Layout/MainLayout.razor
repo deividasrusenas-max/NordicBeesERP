@@ -2,7 +2,6 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
 @using NordicBeesERP.Services
-@inject BlazorAuthStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @inject ICompanySettingsService CompanySettingsService
@@ -20,16 +19,7 @@
     <img src="/logo.png" style="height:32px; margin-right:8px; vertical-align:middle;" alt="Lakštena" />
     Lakštena ERP
 </MudText>
-        <MudSpacer />
-        <AuthorizeView>
-            <Authorized>
-                <MudText Typo="Typo.body2" Class="mr-3" Style="color:var(--lakstena-text-secondary)">
-                    @context.User.FindFirst("FullName")?.Value
-                </MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
-                    OnClick="HandleLogout" Title="Atsijungti" />
-            </Authorized>
-        </AuthorizeView>
+        <TopHeader />
     </MudAppBar>
     <MudDrawer @bind-Open="sidebarOpen" Elevation="0" Width="250px" 
         Style="background:var(--lakstena-surface); border-right:1px solid var(--lakstena-border)">
@@ -84,12 +74,6 @@
             Divider = "rgba(27,25,23,.09)"
         }
     };
-
-    private async Task HandleLogout()
-    {
-        await AuthStateProvider.LogoutAsync();
-        Navigation.NavigateTo("/login", forceLoad: false);
-    }
 
     private void ToggleSidebar()
     {

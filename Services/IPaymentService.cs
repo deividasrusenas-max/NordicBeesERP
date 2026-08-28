@@ -26,6 +26,7 @@ namespace NordicBeesERP.Services
             DateTime? fromDate = null,
             DateTime? toDate = null);
         Task<List<CashFlowWeek>> GetCashFlowForecastAsync(int weeks = 8);
+        Task<List<CashFlowWeek>> GetCashFlowForecastAsync(DateTime fromDate, DateTime toDate);
         Task<AgingReport> GetAgingReportAsync();
         Task<PaymentHistoryResult> GetPaymentHistoryAsync(
             int? customerId = null,

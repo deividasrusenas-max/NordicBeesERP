@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 
 namespace NordicBeesERP.Services
@@ -172,6 +173,31 @@ namespace NordicBeesERP.Services
             "expensesupplier" or "expense_supplier" or "išlaidų tiekėjas" => PartnerType.ExpenseSupplier,
             _ => PartnerType.Customer
         };
+
+        public async Task<List<BusinessPartner>> SearchBusinessPartnersAsync(string searchTerm, int limit = 20)
+        {
+            using var context = _dbFactory.CreateDbContext();
+
+            // business_partners is tiny (~190 rows) and its collation is accent-sensitive,
+            // so server-side LIKE cannot do diacritic-insensitive matching — materialize
+            // and fold in memory (same pattern as Orders/Create.razor).
+            var all = await context.BusinessPartners.AsNoTracking().ToListAsync();
+
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return all.OrderBy(bp => bp.Name).Take(limit).ToList();
+            }
+
+            var foldedTerm = DiacriticHelper.Fold(searchTerm.Trim());
+
+            return all
+                .Where(bp => DiacriticHelper.Fold(bp.Name).Contains(foldedTerm)
+                    || (bp.VatCode != null && DiacriticHelper.Fold(bp.VatCode).Contains(foldedTerm))
+                    || (bp.CompanyCode != null && DiacriticHelper.Fold(bp.CompanyCode).Contains(foldedTerm)))
+                .OrderBy(bp => bp.Name)
+                .Take(limit)
+                .ToList();
+        }
 
         public async Task<List<BusinessPartner>> GetSuppliersAsync()
         {

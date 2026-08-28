@@ -1,0 +1,194 @@
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using NordicBeesERP.Services
+@using NordicBeesERP.Models
+@using NordicBeesERP.Models.Expenses
+@using NordicBeesERP.Models.WarehouseModule
+@implements IDisposable
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject BlazorAuthStateProvider AppAuthProvider
+@inject DashboardPeriodState PeriodState
+@inject ICustomerService CustomerService
+@inject IDeliveryService DeliveryService
+@inject IExpenseService ExpenseService
+@inject IOrderService OrderService
+
+<MudStack Row="true" Spacing="3" Class="pa-2 align-center">
+    @* Left: greeting *@
+    <MudStack Spacing="0">
+        <MudText Typo="Typo.h6" Style="color:var(--lakstena-text)">Sveiki, @_fullName</MudText>
+        <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Sandėlio ir finansų apžvalga · atnaujinta @_lastUpdated</MudText>
+    </MudStack>
+
+    <MudSpacer />
+
+    @* Center: global search *@
+    <MudAutocomplete T="GlobalSearchItem" Placeholder="Ieškoti..." Variant="Variant.Outlined"
+        Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+        MinCharacters="2" DebounceInterval="300"
+        SearchFunc="@SearchAsync" MaxItems="20"
+        ValueChanged="@OnItemSelected"
+        ToStringFunc="@(item => item?.Title ?? string.Empty)"
+        Style="max-width:320px; --mud-palette-primary: var(--lakstena-accent);">
+        <ItemTemplate Context="item">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">@item.Group</MudText>
+                <MudText Typo="Typo.body2" Style="color:var(--lakstena-text)">@item.Title</MudText>
+                <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">@item.Subtitle</MudText>
+            </MudStack>
+        </ItemTemplate>
+        <NoItemsTemplate>
+            <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Nieko nerasta</MudText>
+        </NoItemsTemplate>
+    </MudAutocomplete>
+
+    <MudSpacer />
+
+    @* Right: period selector, avatar, logout *@
+    <MudButtonGroup T="int" Variant="Variant.Outlined" Color="Color.Default">
+        <MudButton T="int" Value="30" Color="@(_selectedPeriodDays == 30 ? Color.Primary : Color.Inherit)" OnClick="() => SelectPeriod(30)">30 d.</MudButton>
+        <MudButton T="int" Value="90" Color="@(_selectedPeriodDays == 90 ? Color.Primary : Color.Inherit)" OnClick="() => SelectPeriod(90)">90 d.</MudButton>
+        <MudButton T="int" Value="365" Color="@(_selectedPeriodDays == 365 ? Color.Primary : Color.Inherit)" OnClick="() => SelectPeriod(365)">12 mėn.</MudButton>
+    </MudButtonGroup>
+
+    <MudAvatar Color="Color.Primary" Size="Size.Small">@_initials</MudAvatar>
+
+    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Title="Atsijungti" OnClick="HandleLogout" />
+</MudStack>
+
+@code {
+    private string _fullName = string.Empty;
+    private string _initials = string.Empty;
+    private string _lastUpdated = DateTime.Now.ToString("HH:mm");
+    private int _selectedPeriodDays = 30;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _fullName = auth.User.FindFirst("FullName")?.Value ?? auth.User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+        _initials = GetInitials(_fullName);
+
+        PeriodState.OnPeriodChanged += OnPeriodChanged;
+    }
+
+    private void OnPeriodChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        PeriodState.OnPeriodChanged -= OnPeriodChanged;
+    }
+
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return (parts[0][0].ToString() + parts[1][0].ToString()).ToUpperInvariant();
+    }
+
+    private void SelectPeriod(int days)
+    {
+        _selectedPeriodDays = days;
+        PeriodState.SetPeriod(days);
+        _lastUpdated = DateTime.Now.ToString("HH:mm");
+    }
+
+    private async Task HandleLogout()
+    {
+        await AppAuthProvider.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: false);
+    }
+
+    private sealed class GlobalSearchItem
+    {
+        public string Group { get; init; } = string.Empty;
+        public string Title { get; init; } = string.Empty;
+        public string Subtitle { get; init; } = string.Empty;
+        public string Href { get; init; } = string.Empty;
+    }
+
+    private async Task<IEnumerable<GlobalSearchItem>?> SearchAsync(string? query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
+        {
+            return Enumerable.Empty<GlobalSearchItem>();
+        }
+
+        var term = query.Trim();
+
+        try
+        {
+            var partnersTask = CustomerService.SearchBusinessPartnersAsync(term);
+            var ordersTask = OrderService.SearchOrdersAsync(term);
+            var deliveriesTask = DeliveryService.SearchDeliveriesAsync(term);
+            var expensesTask = ExpenseService.SearchExpenseInvoicesAsync(term);
+
+            await Task.WhenAll(partnersTask, ordersTask, deliveriesTask, expensesTask);
+
+            var partnersResult = await partnersTask;     // Task<List<BusinessPartner>>
+            var ordersResult = await ordersTask;         // Task<List<Order>>
+            var deliveriesResult = await deliveriesTask; // Task<List<Delivery>>
+            var expensesResult = await expensesTask;     // Task<List<ExpenseInvoice>>
+
+            var partners = partnersResult
+                .Take(5)
+                .Select(bp => new GlobalSearchItem
+                {
+                    Group = "Partneriai",
+                    Title = bp.Name,
+                    Subtitle = bp.PartnerType == PartnerType.Supplier ? "Tiekėjas" : "Klientas",
+                    Href = bp.PartnerType == PartnerType.Supplier ? "/suppliers" : "/customers"
+                })
+                .ToList();
+
+            var orders = ordersResult
+                .Take(5)
+                .Select(o => new GlobalSearchItem
+                {
+                    Group = "Užsakymai",
+                    Title = o.OrderNumber,
+                    Subtitle = o.OrderDate.ToString("yyyy-MM-dd"),
+                    Href = $"/orders/{o.Id}"
+                })
+                .ToList();
+
+            var deliveries = deliveriesResult
+                .Take(5)
+                .Select(d => new GlobalSearchItem
+                {
+                    Group = "Pristatymai",
+                    Title = d.DeliveryNumber ?? string.Empty,
+                    Subtitle = d.DeliveryDate.ToString("yyyy-MM-dd"),
+                    Href = $"/warehouse/deliveries/{d.Id}"
+                })
+                .ToList();
+
+            var expenses = expensesResult
+                .Take(5)
+                .Select(i => new GlobalSearchItem
+                {
+                    Group = "Išlaidų sąskaitos",
+                    Title = i.InvoiceNumber,
+                    Subtitle = i.SupplierName ?? string.Empty,
+                    Href = "/expense-invoices"
+                })
+                .ToList();
+
+            return partners.Concat(orders).Concat(deliveries).Concat(expenses);
+        }
+        catch
+        {
+            return Enumerable.Empty<GlobalSearchItem>();
+        }
+    }
+
+    private void OnItemSelected(GlobalSearchItem item)
+    {
+        if (item != null)
+        {
+            Navigation.NavigateTo(item.Href);
+        }
+    }
+}

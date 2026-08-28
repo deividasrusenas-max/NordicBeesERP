@@ -443,6 +443,8 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             => Task.FromResult(new List<InvoiceWithPaymentInfo>());
         public Task<List<CashFlowWeek>> GetCashFlowForecastAsync(int weeks = 8)
             => Task.FromResult(new List<CashFlowWeek>());
+        public Task<List<CashFlowWeek>> GetCashFlowForecastAsync(DateTime fromDate, DateTime toDate)
+            => Task.FromResult(new List<CashFlowWeek>());
         public Task<AgingReport> GetAgingReportAsync()
             => Task.FromResult(new AgingReport());
         public Task<PaymentHistoryResult> GetPaymentHistoryAsync(int? customerId = null, DateTime? fromDate = null, DateTime? toDate = null, string? paymentMethod = null, string? source = null, string? searchTerm = null, string? sortBy = null, string? sortDirection = null, int take = 50, int skip = 0)

@@ -75,6 +75,54 @@ namespace NordicBeesERP.Services
             return invoices;
         }
 
+        public async Task<List<ExpenseInvoice>> SearchExpenseInvoicesAsync(string searchTerm, int limit = 20)
+        {
+            await using var context = _dbFactory.CreateDbContext();
+
+            // Diacritic- and case-insensitive search: fold the term (e.g. "zukline" matches "Žūklinė")
+            var foldedTerm = DiacriticHelper.Fold(searchTerm);
+
+            // expense_invoices is tiny (~13 rows) and its collation is accent-sensitive,
+            // so server-side LIKE cannot do diacritic-insensitive matching — materialize
+            // the whole table and fold in memory (same pattern as CustomerService.SearchBusinessPartnersAsync).
+            var invoices = await context.ExpenseInvoices
+                .AsNoTracking()
+                .OrderByDescending(i => i.InvoiceDate)
+                .ToListAsync();
+
+            // Populate SupplierName from BusinessPartners (NotMapped — no Include allowed)
+            var supplierIds = invoices
+                .Where(i => i.SupplierId.HasValue)
+                .Select(i => i.SupplierId.Value)
+                .Distinct()
+                .ToList();
+
+            if (supplierIds.Count > 0)
+            {
+                var suppliers = await context.BusinessPartners
+                    .AsNoTracking()
+                    .Where(s => supplierIds.Contains(s.Id))
+                    .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+                foreach (var invoice in invoices)
+                {
+                    if (invoice.SupplierId.HasValue && suppliers.TryGetValue(invoice.SupplierId.Value, out var supplierName))
+                        invoice.SupplierName = supplierName;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(foldedTerm))
+            {
+                invoices = invoices
+                    .Where(i => (i.InvoiceNumber != null && DiacriticHelper.Fold(i.InvoiceNumber).Contains(foldedTerm))
+                        || (i.PendingSupplierName != null && DiacriticHelper.Fold(i.PendingSupplierName).Contains(foldedTerm))
+                        || (!string.IsNullOrEmpty(i.SupplierName) && DiacriticHelper.Fold(i.SupplierName).Contains(foldedTerm)))
+                    .ToList();
+            }
+
+            return invoices.Take(limit).ToList();
+        }
+
         public async Task<ExpenseInvoice?> GetInvoiceWithDetailsAsync(int id)
         {
             await using var context = _dbFactory.CreateDbContext();

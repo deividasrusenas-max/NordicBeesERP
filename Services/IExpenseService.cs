@@ -8,6 +8,7 @@ namespace NordicBeesERP.Services
     {
         // Invoices
         Task<List<ExpenseInvoice>> GetInvoicesAsync(string? status = null, int? supplierId = null, DateTime? fromDate = null, DateTime? toDate = null, int? categoryId = null);
+        Task<List<ExpenseInvoice>> SearchExpenseInvoicesAsync(string searchTerm, int limit = 20);
         Task<ExpenseInvoice?> GetInvoiceWithDetailsAsync(int id);
         Task<ExpenseInvoice?> GetInvoiceAsync(int id);
         Task<InvoiceAddResult> CreateInvoiceAsync(ExpenseInvoice invoice);
