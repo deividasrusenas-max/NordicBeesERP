@@ -76,7 +76,6 @@
     },
     "orchestrator": {
       "mode": "primary",
-      "model": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
       "permission": {
         "bash": {
           "*": "allow"
@@ -632,6 +631,13 @@
         "apiKey": "local",
         "baseURL": "http://100.110.26.80:8086/v1"
       }
+    }
+  },
+  "command": {
+    "claude-task": {
+      "template": "!cat .opencode/tasks/latest.md",
+      "description": "Vykdyti naujausią Claude paruoštą task promptą",
+      "agent": "orchestrator"
     }
   },
   "autoupdate": "notify",
