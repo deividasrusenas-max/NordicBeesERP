@@ -315,9 +315,9 @@
             areaPath = "";
             return true;
         }
-        var max = Math.Max(values.Max() * 1.1m, 1m);
-        linePath = ChartMathHelper.BuildSmoothPath(values, 240, 46, max);
-        areaPath = linePath + " L240 46 L0 46 Z";
+        var (line, area) = ChartMathHelper.BuildSparkPath(values, 240, 46);
+        linePath = line;
+        areaPath = area;
         return true;
     }
 
@@ -349,7 +349,7 @@
             {
                 ("#2f7d6b", _agingReport.Bucket0To30.TotalAmount),
                 ("#d9a13f", _agingReport.Bucket31To60.TotalAmount),
-                ("#c47a10", _agingReport.Bucket61To90.TotalAmount),
+                ("#c9761f", _agingReport.Bucket61To90.TotalAmount),
                 ("#b3402f", _agingReport.Bucket90Plus.TotalAmount)
             };
             var total = buckets.Sum(b => b.Value);

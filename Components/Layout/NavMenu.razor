@@ -121,8 +121,15 @@
             </MudNavGroup>
         }
 
-        @* Section header: DARBAS (empty — operational items stay top-level) *@
-        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">DARBAS</div>
+        @* Section header: GAMYBA (Artwork) *@
+        @if (_isAdmin || _isDesigner || _isManager)
+        {
+            <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">GAMYBA</div>
+            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
+                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
+                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
+            </MudNavGroup>
+        }
 
         @* Section header: SISTEMA *@
         <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">SISTEMA</div>
@@ -148,13 +155,6 @@
             }
         </MudNavGroup>
 
-        @if (_isAdmin || _isDesigner || _isManager)
-        {
-            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
-                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
-                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
-            </MudNavGroup>
-        }
     }
 </MudNavMenu>
 
