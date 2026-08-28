@@ -3,11 +3,14 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Helpers
+@using NordicBeesERP.Services.Dtos
+@using MudBlazor.Charts
 @inject IDeliveryService DeliveryService
 @inject IContainerService ContainerService
 @inject IHoneyTypeService HoneyTypeService
 @inject ICustomerService CustomerService
 @inject IWarehouseService WarehouseService
+@inject IPaymentService PaymentService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -32,37 +35,104 @@
     {
         <!-- Admin / Manager: full dashboard -->
         <AuthorizeView Roles="Admin,Manager">
-            <MudGrid Class="mb-6">
-                <MudItem xs="6" md="3">
-                    <MudPaper Class="pa-4" Elevation="0" Style="background:#dbeafe; border-radius:12px; cursor:pointer"
-                        @onclick="@(() => Navigation.NavigateTo("/warehouse/stock"))">
-                        <MudText Typo="Typo.caption" Style="color:#64748b">Statinės sandėlyje</MudText>
-                        <MudText Typo="Typo.h4" Style="font-weight:700">@_barrelCount vnt.</MudText>
-                        <MudText Typo="Typo.body2" Style="color:#64748b">@_barrelNetWeight.ToString("N0") kg netto</MudText>
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
+                        <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Statinės sandėlyje</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_trendResult.BarrelsKg.CurrentValue, 0) kg</MudText>
+                        @if (_trendResult.BarrelsKg.Series.Count >= 2)
+                        {
+                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
+                                ChartSeries="@KpiBarrelsSeries" XAxisLabels="@KpiBarrelsLabels"
+                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                        }
+                        <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.BarrelsKg.DeltaAbsolute)">
+                            @FormatDelta(_trendResult.BarrelsKg.DeltaPercent, _trendResult.BarrelsKg.DeltaAbsolute, " kg")
+                        </MudText>
                     </MudPaper>
                 </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudPaper Class="pa-4" Elevation="0" Style="background:#f0fdf4; border-radius:12px; cursor:pointer"
-                        @onclick="@(() => Navigation.NavigateTo("/warehouse/stock"))">
-                        <MudText Typo="Typo.caption" Style="color:#64748b">Kibirai sandėlyje</MudText>
-                        <MudText Typo="Typo.h4" Style="font-weight:700">@_bucketCount vnt.</MudText>
-                        <MudText Typo="Typo.body2" Style="color:#64748b">@_bucketNetWeight.ToString("N0") kg netto</MudText>
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
+                        <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Kibirai sandėlyje</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_trendResult.BucketsKg.CurrentValue, 0) kg</MudText>
+                        @if (_trendResult.BucketsKg.Series.Count >= 2)
+                        {
+                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
+                                ChartSeries="@KpiBucketsSeries" XAxisLabels="@KpiBucketsLabels"
+                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                        }
+                        <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.BucketsKg.DeltaAbsolute)">
+                            @FormatDelta(_trendResult.BucketsKg.DeltaPercent, _trendResult.BucketsKg.DeltaAbsolute, " kg")
+                        </MudText>
                     </MudPaper>
                 </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudPaper Class="pa-4" Elevation="0" Style="background:#fef3c7; border-radius:12px; cursor:pointer"
-                        @onclick="@(() => Navigation.NavigateTo("/warehouse/delivery-pricing"))">
-                        <MudText Typo="Typo.caption" Style="color:#64748b">Neįkainotos</MudText>
-                        <MudText Typo="Typo.h4" Style="@GetUnpricedStyle()">@_unpricedDeliveries</MudText>
-                        <MudText Typo="Typo.body2" Style="color:#64748b">Laukia kainų</MudText>
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
+                        <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Neįkainotos</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@_trendResult.UnpricedDeliveries.CurrentValue.ToString("N0")</MudText>
+                        @if (_trendResult.UnpricedDeliveries.Series.Count >= 2)
+                        {
+                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
+                                ChartSeries="@KpiUnpricedSeries" XAxisLabels="@KpiUnpricedLabels"
+                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                        }
+                        <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.UnpricedDeliveries.DeltaAbsolute)">
+                            @FormatDelta(_trendResult.UnpricedDeliveries.DeltaPercent, _trendResult.UnpricedDeliveries.DeltaAbsolute, "")
+                        </MudText>
                     </MudPaper>
                 </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudPaper Class="pa-4" Elevation="0" Style="@GetDebtBackgroundStyle()"
-                        @onclick="@(() => Navigation.NavigateTo("/warehouse/supplier-debts"))">
-                        <MudText Typo="Typo.caption" Style="color:#64748b">Skolos tiekėjams</MudText>
-                        <MudText Typo="Typo.h4" Style="@GetDebtStyle()">@FormatAmountHelper.Trim(_totalDebt, 2) €</MudText>
-                        <MudText Typo="Typo.body2" Style="color:#64748b">@_suppliersWithDebt tiekėjų</MudText>
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
+                        <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Skolos tiekėjams</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_trendResult.SupplierDebtTotal.CurrentValue, 2) €</MudText>
+                        @if (_trendResult.SupplierDebtTotal.Series.Count >= 2)
+                        {
+                            <MudChart ChartType="ChartType.Line" Class="mt-2" Width="100%" Height="60px"
+                                ChartSeries="@KpiDebtSeries" XAxisLabels="@KpiDebtLabels"
+                                ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                        }
+                        <MudText Typo="Typo.caption" Style="@GetDeltaBadgeStyle(_trendResult.SupplierDebtTotal.DeltaAbsolute)">
+                            @FormatDelta(_trendResult.SupplierDebtTotal.DeltaPercent, _trendResult.SupplierDebtTotal.DeltaAbsolute, " €")
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            @if (_agingReport.Bucket90Plus.InvoiceCount > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4" Style="background:var(--lakstena-accent-light)">
+                    <b>Dėmesio!</b> @_agingReport.Bucket90Plus.InvoiceCount sąskaita(-os) pradelsta daugiau nei 90 dienų (@FormatAmountHelper.Trim(_agingReport.Bucket90Plus.TotalAmount, 2) €).
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/invoices/sales?status=overdue" Class="ml-2">PERŽIŪRĖTI</MudButton>
+                </MudAlert>
+            }
+
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" md="7">
+                    <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
+                        <MudText Typo="Typo.subtitle1" Class="mb-2" Style="font-weight:600">Laukiamos įplaukos</MudText>
+                        <MudChart ChartType="ChartType.Bar" Width="100%" Height="260px"
+                            ChartSeries="@CashFlowSeries" XAxisLabels="@CashFlowLabels"
+                            ChartOptions="@(new ChartOptions { ShowLegend = false, YAxisFormat = "N0" })" />
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="5">
+                    <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px; position:relative">
+                        <MudText Typo="Typo.subtitle1" Class="mb-2" Style="font-weight:600">Įsiskolinimų senėjimas</MudText>
+                        <div style="position:relative">
+                            <MudChart ChartType="ChartType.Donut" Width="100%" Height="240px"
+                                ChartSeries="@AgingSeries" XAxisLabels="@AgingLabels"
+                                ChartOptions="@(new ChartOptions { ShowLegend = false, ChartPalette = AgingColors })" />
+                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-60%); text-align:center; pointer-events:none">
+                                <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Bendra skola</MudText>
+                                <MudText Typo="Typo.h5" Style="font-weight:700; font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">@FormatAmountHelper.Trim(_agingReport.TotalOverdue, 2) €</MudText>
+                            </div>
+                        </div>
+                        <MudStack Row="true" Spacing="2" Class="mt-2" Justify="Justify.Center">
+                            <MudText Typo="Typo.caption">0-30</MudText>
+                            <MudText Typo="Typo.caption">31-60</MudText>
+                            <MudText Typo="Typo.caption">61-90</MudText>
+                            <MudText Typo="Typo.caption">90+</MudText>
+                        </MudStack>
                     </MudPaper>
                 </MudItem>
             </MudGrid>
@@ -164,22 +234,34 @@
             </MudGrid>
         </AuthorizeView>
 
-        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Medaus rūšys sandėlyje</MudText>
-        <MudGrid>
-        @foreach (var ht in _honeyTypeStock)
-        {
-            var totalKg = ht.BarrelKg + ht.BucketKg;
-            <MudItem xs="12" sm="6" md="4">
-                <MudCard Elevation="1" Style="@($"background:{ht.Color}; border-radius:12px; border-left:4px solid #4f7cac;")">
-                    <MudCardContent Class="pa-3">
-                        <MudText Typo="Typo.subtitle1" Style="font-weight:600">@ht.Name</MudText>
-                        <MudText Typo="Typo.body2">Statinėse: @(totalKg > 0 ? ht.BarrelKg.ToString("N1") : "0") kg</MudText>
-                        <MudText Typo="Typo.body2">Kibiruose: @(totalKg > 0 ? ht.BucketKg.ToString("N1") : "0") kg</MudText>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-        }
-        </MudGrid>
+        <MudText Typo="Typo.h6" Class="mt-4 mb-2" Style="font-weight:600">Sandėlio sudėtis</MudText>
+        <MudPaper Class="pa-4" Elevation="1" Style="border-radius:12px">
+            @if (WarehouseCompositionSeries.Count > 0)
+            {
+                <MudChart ChartType="ChartType.StackedBar" Width="100%" Height="120px"
+                    ChartSeries="@WarehouseCompositionSeries" XAxisLabels="@(new[] { "kg" })"
+                    ChartOptions="@(new ChartOptions { ShowLegend = false })" />
+                <MudDivider Class="my-3" />
+                @foreach (var ht in _honeyTypeStock.Where(x => x.BarrelKg + x.BucketKg > 0))
+                {
+                    var totalKg = ht.BarrelKg + ht.BucketKg;
+                    <div class="d-flex align-center justify-space-between pa-1">
+                        <div class="d-flex align-center">
+                            <div style="width:12px;height:12px;border-radius:3px;margin-right:8px;background:@ht.Color"></div>
+                            <MudText Typo="Typo.body2">@ht.Name</MudText>
+                        </div>
+                        <MudText Typo="Typo.body2" Style="font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">
+                            @totalKg.ToString("N1") kg ·
+                            @WarehouseCompositionPercent(totalKg).ToString("0.0") %
+                        </MudText>
+                    </div>
+                }
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Sandėlyje kol kas nėra supakuotų medaus kiekių.</MudText>
+            }
+        </MudPaper>
     }
 </MudContainer>
 
@@ -198,6 +280,65 @@
     private List<(string Name, string Color, decimal BarrelKg, decimal BucketKg)> _honeyTypeStock = new();
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
+
+    private DashboardTrendResult _trendResult = new();
+    private NavBadgeCounts _navBadgeCounts = new();
+    private List<CashFlowWeek> _cashFlowForecast = new();
+    private AgingReport _agingReport = new();
+
+    // ----- New dashboard chart data builders (consumed by markup in later rounds) -----
+    private List<ChartSeries> KpiBarrelsSeries => new()
+    {
+        new ChartSeries { Name = "Statinės kg", Data = _trendResult.BarrelsKg.Series.Select(s => (double)s.Value).ToArray() }
+    };
+    private string[] KpiBarrelsLabels => _trendResult.BarrelsKg.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
+
+    private List<ChartSeries> KpiBucketsSeries => new()
+    {
+        new ChartSeries { Name = "Kibirai kg", Data = _trendResult.BucketsKg.Series.Select(s => (double)s.Value).ToArray() }
+    };
+    private string[] KpiBucketsLabels => _trendResult.BucketsKg.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
+
+    private List<ChartSeries> KpiUnpricedSeries => new()
+    {
+        new ChartSeries { Name = "Neįkainotos", Data = _trendResult.UnpricedDeliveries.Series.Select(s => (double)s.Value).ToArray() }
+    };
+    private string[] KpiUnpricedLabels => _trendResult.UnpricedDeliveries.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
+
+    private List<ChartSeries> KpiDebtSeries => new()
+    {
+        new ChartSeries { Name = "Skolos tiekėjams", Data = _trendResult.SupplierDebtTotal.Series.Select(s => (double)s.Value).ToArray() }
+    };
+    private string[] KpiDebtLabels => _trendResult.SupplierDebtTotal.Series.Select(s => s.Date.ToString("MM/dd")).ToArray();
+
+    private List<ChartSeries> CashFlowSeries => new()
+    {
+        new ChartSeries { Name = "Įplaukos", Data = _cashFlowForecast.Select(w => (double)w.ExpectedIncome).ToArray() }
+    };
+    private string[] CashFlowLabels => _cashFlowForecast.Select(w => w.WeekStart.ToString("MM/dd")).ToArray();
+
+    private List<ChartSeries> AgingSeries => new()
+    {
+        new ChartSeries
+        {
+            Name = "Įsiskolinimai",
+            Data = new double[]
+            {
+                (double)_agingReport.Bucket0To30.TotalAmount,
+                (double)_agingReport.Bucket31To60.TotalAmount,
+                (double)_agingReport.Bucket61To90.TotalAmount,
+                (double)_agingReport.Bucket90Plus.TotalAmount
+            }
+        }
+    };
+    private string[] AgingLabels => new[] { "0-30", "31-60", "61-90", "90+" };
+    private string[] AgingColors => new[]
+    {
+        "var(--lakstena-success)",
+        "var(--lakstena-warning)",
+        "var(--lakstena-accent)",
+        "var(--lakstena-danger)"
+    };
 
     private bool IsDoubleClick(object item)
     {
@@ -248,6 +389,16 @@
                 BucketKg: allContainers.Where(c => c.HoneyTypeId == ht.Id && c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight)
             )).ToList();
 
+            var trendTask = PaymentService.GetDashboardTrendAsync();
+            var cashFlowTask = PaymentService.GetCashFlowForecastAsync(8);
+            var agingTask = PaymentService.GetAgingReportAsync();
+            var badgeTask = PaymentService.GetNavBadgeCountsAsync();
+            await Task.WhenAll(trendTask, cashFlowTask, agingTask, badgeTask);
+            _trendResult = await trendTask;
+            _cashFlowForecast = await cashFlowTask;
+            _agingReport = await agingTask;
+            _navBadgeCounts = await badgeTask;
+
             _loading = false;
         }
         catch (Exception ex)
@@ -276,4 +427,34 @@
     private string GetDebtStyle() => _totalDebt > 0
         ? "font-weight:700; color:#dc2626"
         : "font-weight:700; color:#16a34a";
+
+    // Returns display string for a KPI delta badge; "—" when no history
+    private string FormatDelta(decimal? deltaPercent, decimal? deltaAbs, string suffix = " €")
+    {
+        if (!deltaPercent.HasValue || !deltaAbs.HasValue) return "—";
+        var arrow = deltaAbs.Value >= 0 ? "▲" : "▼";
+        return $"{arrow} {deltaAbs.Value:+#,##0;-#,##0;0}{suffix} ({deltaPercent.Value:+#,##0.0;-#,##0.0;0}%)";
+    }
+
+    private string GetDeltaBadgeStyle(decimal? deltaAbs)
+    {
+        if (!deltaAbs.HasValue) return "font-weight:700; color:var(--lakstena-text-secondary)";
+        return deltaAbs.Value >= 0
+            ? "font-weight:700; color:var(--lakstena-success)"
+            : "font-weight:700; color:var(--lakstena-danger)";
+    }
+
+    private List<ChartSeries> WarehouseCompositionSeries => _honeyTypeStock
+        .Where(ht => ht.BarrelKg + ht.BucketKg > 0)
+        .Select(ht => new ChartSeries
+        {
+            Name = ht.Name,
+            Data = new double[] { (double)(ht.BarrelKg + ht.BucketKg) }
+        })
+        .ToList();
+
+    private decimal WarehouseCompositionTotalKg => _honeyTypeStock.Sum(ht => ht.BarrelKg + ht.BucketKg);
+
+    private double WarehouseCompositionPercent(decimal kg)
+        => WarehouseCompositionTotalKg > 0 ? (double)Math.Round(kg / WarehouseCompositionTotalKg * 100m, 1) : 0;
 }
