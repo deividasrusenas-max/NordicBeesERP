@@ -55,8 +55,7 @@ jobs:
             --exclude-dir=bin --exclude-dir=obj \
             --exclude-dir=.kilo --exclude-dir=Migrations .); do
             if grep -q "SaveChangesAsync()" "$f"; then
-              BAD_FILES="$BAD_FILES$f
-"
+              BAD_FILES="${BAD_FILES}${f}"
             fi
           done
           if [ -n "$BAD_FILES" ]; then
@@ -65,3 +64,4 @@ jobs:
             echo "Fix with ExecuteSqlRawAsync per FROZEN.md."
             exit 1
           fi
+
