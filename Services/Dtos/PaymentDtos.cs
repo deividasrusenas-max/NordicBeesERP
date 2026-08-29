@@ -340,6 +340,7 @@ namespace NordicBeesERP.Services.Dtos
         public int UnpricedDeliveries { get; set; }
         public int OverdueInvoices { get; set; }
         public int UnmatchedBankImports { get; set; }
+        public int DuplicateExpenseInvoices { get; set; }
         public int PendingWriteOffs { get; set; }
     }
 }
