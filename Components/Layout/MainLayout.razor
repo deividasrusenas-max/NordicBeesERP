@@ -13,12 +13,8 @@
 
 <CascadingAuthenticationState>
 <MudLayout>
-    <MudAppBar Elevation="0" Style="background:var(--lakstena-surface); color:var(--lakstena-text); border-bottom:1px solid var(--lakstena-border)">
+    <MudAppBar Elevation="0" Style="min-height:0;display:flex;align-items:center;gap:18px;padding:16px 32px;background:rgba(239,236,230,.86);backdrop-filter:blur(12px);border-bottom:1px solid rgba(27,25,23,.07);color:#1b1917">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleSidebar" />
-        <MudText Typo="Typo.h6" Class="ms-2" Style="font-weight:700; color:var(--lakstena-text)">
-    <img src="/logo.png" style="height:32px; margin-right:8px; vertical-align:middle;" alt="Lakštena" />
-    Lakštena ERP
-</MudText>
         <TopHeader />
     </MudAppBar>
     <MudDrawer @bind-Open="sidebarOpen" Elevation="0" Width="250px" 
