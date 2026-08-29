@@ -231,7 +231,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                     col.Item().PaddingTop(24).Column(c =>
                     {
                         c.Item().PaddingBottom(8).Text("Patvirtinimas").Bold().FontSize(10);
-                        c.Item().Text("Patvirtinu, kad pristačiau aukščiau nurodytus produktus pagal sutartas sąlygas. Duomenys teisingi.")
+                        c.Item().Text("Tvirtinu, kad nurodytas žaliavas pagal sutartas sąlygas pristačiau. Duomenys teisingi.")
                             .FontSize(9).FontColor(Colors.Grey.Darken2);
 
                         if (!string.IsNullOrWhiteSpace(delivery.InspectionResult))
