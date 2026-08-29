@@ -5,6 +5,7 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Models.WarehouseModule
+@using System.Threading
 @implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
@@ -15,59 +16,84 @@
 @inject IExpenseService ExpenseService
 @inject IOrderService OrderService
 
-<MudStack Row="true" Spacing="3" Class="pa-2 align-center">
-    @* Left: greeting *@
-    <MudStack Spacing="0">
-        <MudText Typo="Typo.h6" Style="color:var(--lakstena-text)">Sveiki, @_fullName</MudText>
-        <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Sandėlio ir finansų apžvalga · atnaujinta @_lastUpdated</MudText>
-    </MudStack>
+<style>
+    .topheader-search-input::placeholder { color: rgba(27,25,23,.4); opacity: 1; }
+    .topheader-period-btn { border: none; background: transparent; cursor: pointer; font-family: inherit; padding: 6px 12px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: rgba(27,25,23,.55); }
+    .topheader-period-btn.active { color: #7a4d08; background: #fdf3de; }
+    .topheader-result-item { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+    .topheader-result-item:hover { background: rgba(27,25,23,.05); }
+</style>
 
-    <MudSpacer />
+<div style="display:flex;align-items:center;gap:18px;flex:1;min-width:0">
+
+    @* Left: greeting *@
+    <div style="display:flex;flex-direction:column;gap:2px">
+        <h1 style="margin:0;font-size:19px;font-weight:600;letter-spacing:-.02em;color:#1b1917">Sveiki, @_firstName</h1>
+        <span style="font-size:12.5px;color:rgba(27,25,23,.5)">Sandėlio ir finansų apžvalga · atnaujinta @_lastUpdated</span>
+    </div>
+
+    <div style="flex:1"></div>
 
     @* Center: global search *@
-    <MudAutocomplete T="GlobalSearchItem" Placeholder="Ieškoti..." Variant="Variant.Outlined"
-        Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-        MinCharacters="2" DebounceInterval="300"
-        SearchFunc="@SearchAsync" MaxItems="20"
-        ValueChanged="@OnItemSelected"
-        ToStringFunc="@(item => item?.Title ?? string.Empty)"
-        Style="max-width:320px; --mud-palette-primary: var(--lakstena-accent);">
-        <ItemTemplate Context="item">
-            <MudStack Spacing="0">
-                <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">@item.Group</MudText>
-                <MudText Typo="Typo.body2" Style="color:var(--lakstena-text)">@item.Title</MudText>
-                <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">@item.Subtitle</MudText>
-            </MudStack>
-        </ItemTemplate>
-        <NoItemsTemplate>
-            <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">Nieko nerasta</MudText>
-        </NoItemsTemplate>
-    </MudAutocomplete>
+    <div style="position:relative;display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:10px;background:#fff;border:1px solid rgba(27,25,23,.09);min-width:230px;color:rgba(27,25,23,.4);font-size:13px">
+        <div style="width:13px;height:13px;border:1.6px solid rgba(27,25,23,.32);border-radius:50%"></div>
+        <input class="topheader-search-input" value="@_searchText" @oninput="OnSearchInput" placeholder="Ieškoti pristatymo, tiekėjo…"
+               style="border:none;outline:none;background:transparent;font:inherit;color:#1b1917;flex:1;min-width:0"
+               @onfocus="() => _searchOpen = true" @onblur="OnSearchBlur" />
+        <span style="margin-left:auto;font-family:'Geist Mono',monospace;font-size:10px;padding:2px 5px;border-radius:5px;background:rgba(27,25,23,.06)">⌘K</span>
 
-    <MudSpacer />
+        @if (_searchOpen && _searchResults.Any())
+        {
+            <div style="position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid rgba(27,25,23,.09);border-radius:10px;box-shadow:0 8px 24px rgba(27,25,23,.12);padding:6px;z-index:30;max-height:340px;overflow:auto">
+                @foreach (var item in _searchResults)
+                {
+                    <div class="topheader-result-item" @onmousedown="() => OnItemSelected(item)" @onmousedown:preventDefault>
+                        <span style="font-size:11px;color:rgba(27,25,23,.45);font-family:'Geist Mono',monospace;text-transform:uppercase;letter-spacing:.06em">@item.Group</span>
+                        <span style="font-size:13px;color:#1b1917">@item.Title</span>
+                        <span style="font-size:11.5px;color:rgba(27,25,23,.5)">@item.Subtitle</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
 
-    @* Right: period selector, avatar, logout *@
-    <MudButtonGroup T="int" Variant="Variant.Outlined" Color="Color.Default">
-        <MudButton T="int" Value="30" Color="@(_selectedPeriodDays == 30 ? Color.Primary : Color.Inherit)" OnClick="() => SelectPeriod(30)">30 d.</MudButton>
-        <MudButton T="int" Value="90" Color="@(_selectedPeriodDays == 90 ? Color.Primary : Color.Inherit)" OnClick="() => SelectPeriod(90)">90 d.</MudButton>
-        <MudButton T="int" Value="365" Color="@(_selectedPeriodDays == 365 ? Color.Primary : Color.Inherit)" OnClick="() => SelectPeriod(365)">12 mėn.</MudButton>
-    </MudButtonGroup>
+    @* Period selector: single rounded container, only active button has a background *@
+    <div style="display:flex;background:#fff;border:1px solid rgba(27,25,23,.09);border-radius:10px;padding:3px;gap:2px">
+        <button type="button" class="@("topheader-period-btn" + (_selectedPeriodDays == 30 ? " active" : ""))" @onclick="() => SelectPeriod(30)">30 d.</button>
+        <button type="button" class="@("topheader-period-btn" + (_selectedPeriodDays == 90 ? " active" : ""))" @onclick="() => SelectPeriod(90)">90 d.</button>
+        <button type="button" class="@("topheader-period-btn" + (_selectedPeriodDays == 365 ? " active" : ""))" @onclick="() => SelectPeriod(365)">12 mėn.</button>
+    </div>
 
-    <MudAvatar Color="Color.Primary" Size="Size.Small">@_initials</MudAvatar>
+    @* User block: name text + initials avatar in one bordered container *@
+    <div style="display:flex;align-items:center;gap:9px;padding:5px 5px 5px 12px;border-radius:10px;background:#fff;border:1px solid rgba(27,25,23,.09)">
+        <span style="font-size:12.5px;font-weight:500;color:#1b1917">@_userBlockName</span>
+        <div style="width:26px;height:26px;border-radius:8px;background:#fdf3de;color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(196,122,16,.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">@_initials</div>
+    </div>
 
-    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Title="Atsijungti" OnClick="HandleLogout" />
-</MudStack>
+    @* Logout (functional control; not present in the static reference mockup) *@
+    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Title="Atsijungti" OnClick="HandleLogout" Style="color:rgba(27,25,23,.5)" />
+</div>
 
 @code {
     private string _fullName = string.Empty;
+    private string _firstName = string.Empty;
+    private string _userBlockName = string.Empty;
     private string _initials = string.Empty;
     private string _lastUpdated = DateTime.Now.ToString("HH:mm");
     private int _selectedPeriodDays = 30;
+
+    private string _searchText = string.Empty;
+    private List<GlobalSearchItem> _searchResults = new();
+    private bool _searchOpen;
+    private System.Threading.Timer? _searchTimer;
+    private bool _disposed = false;
 
     protected override async Task OnInitializedAsync()
     {
         var auth = await AuthStateProvider.GetAuthenticationStateAsync();
         _fullName = auth.User.FindFirst("FullName")?.Value ?? auth.User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+        _firstName = GetFirstName(_fullName);
+        _userBlockName = GetUserBlockName(_fullName);
         _initials = GetInitials(_fullName);
 
         PeriodState.OnPeriodChanged += OnPeriodChanged;
@@ -77,7 +103,23 @@
 
     public void Dispose()
     {
+        _searchTimer?.Dispose();
+        _disposed = true;
         PeriodState.OnPeriodChanged -= OnPeriodChanged;
+    }
+
+    private static string GetFirstName(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? string.Empty : parts[0];
+    }
+
+    private static string GetUserBlockName(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return string.Empty;
+        if (parts.Length == 1) return parts[0];
+        return $"{parts[0][0]}. {string.Join(' ', parts.Skip(1))}";
     }
 
     private static string GetInitials(string name)
@@ -99,6 +141,40 @@
     {
         await AppAuthProvider.LogoutAsync();
         Navigation.NavigateTo("/login", forceLoad: false);
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchText = e.Value?.ToString() ?? string.Empty;
+        _searchTimer?.Dispose();
+        var term = _searchText;
+        _searchTimer = new System.Threading.Timer(_ =>
+        {
+            if (_disposed) return;
+            InvokeAsync(async () =>
+            {
+                var results = await SearchAsync(term, CancellationToken.None);
+                _searchResults = results?.ToList() ?? new List<GlobalSearchItem>();
+                _searchOpen = _searchResults.Any();
+                StateHasChanged();
+            });
+        }, null, 300, System.Threading.Timeout.Infinite);
+    }
+
+    private void OnSearchBlur()
+    {
+        _searchOpen = false;
+    }
+
+    private void OnItemSelected(GlobalSearchItem item)
+    {
+        _searchOpen = false;
+        _searchText = string.Empty;
+        _searchResults = new List<GlobalSearchItem>();
+        if (item != null)
+        {
+            Navigation.NavigateTo(item.Href);
+        }
     }
 
     private sealed class GlobalSearchItem
@@ -127,10 +203,10 @@
 
             await Task.WhenAll(partnersTask, ordersTask, deliveriesTask, expensesTask);
 
-            var partnersResult = await partnersTask;     // Task<List<BusinessPartner>>
-            var ordersResult = await ordersTask;         // Task<List<Order>>
-            var deliveriesResult = await deliveriesTask; // Task<List<Delivery>>
-            var expensesResult = await expensesTask;     // Task<List<ExpenseInvoice>>
+            var partnersResult = await partnersTask;
+            var ordersResult = await ordersTask;
+            var deliveriesResult = await deliveriesTask;
+            var expensesResult = await expensesTask;
 
             var partners = partnersResult
                 .Take(5)
@@ -181,14 +257,6 @@
         catch
         {
             return Enumerable.Empty<GlobalSearchItem>();
-        }
-    }
-
-    private void OnItemSelected(GlobalSearchItem item)
-    {
-        if (item != null)
-        {
-            Navigation.NavigateTo(item.Href);
         }
     }
 }
