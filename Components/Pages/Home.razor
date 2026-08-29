@@ -364,7 +364,23 @@
                                     <span class="lb-attention-label">Skolos tiekėjams<br>@_suppliersWithDebt tiekėjai(-ų)</span>
                                 </div>
                             }
-                            @if (_agingReport.Bucket90Plus.InvoiceCount == 0 && _unpricedDeliveries == 0 && _totalDebt <= 0)
+                            @if (_agingReport.Bucket61To90.InvoiceCount > 0)
+                            {
+                                <div class="lb-attention-item">
+                                    <span class="lb-attention-bar" style="background:#c9761f"></span>
+                                    <span class="lb-attention-num">@FormatAmountHelper.Trim(_agingReport.Bucket61To90.TotalAmount, 0)</span>
+                                    <span class="lb-attention-label">Pradelstos sąskaitos 61–90 d.<br>@_agingReport.Bucket61To90.InvoiceCount sąsk.</span>
+                                </div>
+                            }
+                            @if (_navBadgeCounts.UnmatchedBankImports > 0)
+                            {
+                                <div class="lb-attention-item">
+                                    <span class="lb-attention-bar" style="background:#2f7d6b"></span>
+                                    <span class="lb-attention-num">@_navBadgeCounts.UnmatchedBankImports</span>
+                                    <span class="lb-attention-label">Nesudengtos banko importo eilutės</span>
+                                </div>
+                            }
+                            @if (_agingReport.Bucket90Plus.InvoiceCount == 0 && _unpricedDeliveries == 0 && _totalDebt <= 0 && _agingReport.Bucket61To90.InvoiceCount == 0 && _navBadgeCounts.UnmatchedBankImports == 0)
                             {
                                 <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Šiuo metu dėmesio nereikalaujančių įrašų nėra.</MudText>
                             }
