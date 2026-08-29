@@ -1033,3 +1033,91 @@ button.lb-row {
   flex: 1;
   text-align: center;
 }
+
+/* ===== Lakštena dashboard "Greiti veiksmai" quick-action cards (Home.razor) — card elements
+   with icon boxes, per design-reference restructure (replaces MudButton Outlined). ===== */
+
+.lb-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lb-quick-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid rgba(27, 25, 23, .08);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.lb-quick-action:hover {
+  background: rgba(27, 25, 23, .03);
+  border-color: rgba(27, 25, 23, .16);
+}
+
+.lb-quick-action-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.lb-quick-action-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--lakstena-text);
+}
+
+/* ===== Lakštena dashboard "Reikalauja dėmesio" (Needs attention) list (Home.razor) ===== */
+
+.lb-attention-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.lb-attention-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(27, 25, 23, .07);
+}
+
+.lb-attention-item:last-child {
+  border-bottom: none;
+}
+
+.lb-attention-bar {
+  width: 4px;
+  height: 34px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.lb-attention-num {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--lakstena-text);
+  min-width: 56px;
+  flex: none;
+}
+
+.lb-attention-label {
+  font-size: 12.5px;
+  color: rgba(27, 25, 23, .6);
+  line-height: 1.25;
+}

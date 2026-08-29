@@ -170,133 +170,208 @@
                 </div>
             </section>
 
-            <section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+            <!-- Row 1: Sandėlio sudėtis | Paskutiniai pristatymai (two columns, side by side) -->
+            <section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:16px">
                 <div class="lb-trend-card">
-                    <div class="lb-trend-head">
-                        <h2 class="lb-trend-title">Pirkimų apimtis</h2>
-                        <div class="lb-trend-legend">
-                            <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-solid" style="background:#c47a10"></span>@_curYear</span>
-                            <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-dashed"></span>@_prevYear</span>
-                        </div>
-                    </div>
-                    @{ var purchase = BuildTrendChart(_purchaseCurrentYear, _purchasePreviousYear); }
-                    @if (!purchase.hasPeak)
+                    <h2 class="lb-trend-title">Sandėlio sudėtis</h2>
+                    @if (WarehouseCompositionTotalKg > 0)
                     {
-                        <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Nėra duomenų</MudText>
+                        <div class="lb-stackbar">
+                            @foreach (var ht in _honeyTypeStock.Where(x => x.BarrelKg + x.BucketKg > 0))
+                            {
+                                var totalKg = ht.BarrelKg + ht.BucketKg;
+                                <div class="lb-stackbar-seg" style="flex:0 0 @(WarehouseCompositionPercent(totalKg).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture))%;background:@ht.Color" title="@($"{ht.Name}: {totalKg:N1} kg")"></div>
+                            }
+                        </div>
+                        <MudDivider Class="my-3" />
+                        @foreach (var ht in _honeyTypeStock.Where(x => x.BarrelKg + x.BucketKg > 0))
+                        {
+                            var totalKg = ht.BarrelKg + ht.BucketKg;
+                            <div class="d-flex align-center justify-space-between pa-1">
+                                <div class="d-flex align-center">
+                                    <div style="width:12px;height:12px;border-radius:3px;margin-right:8px;background:@ht.Color"></div>
+                                    <MudText Typo="Typo.body2">@ht.Name</MudText>
+                                </div>
+                                <MudText Typo="Typo.body2" Style="font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">
+                                    @totalKg.ToString("N1") kg ·
+                                    @WarehouseCompositionPercent(totalKg).ToString("0.0") %
+                                </MudText>
+                            </div>
+                        }
                     }
                     else
                     {
-                        <div class="lb-trend-chart">
-                            <svg viewBox="0 0 720 172" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
-                                <defs>
-                                    <linearGradient id="lbPurchaseAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="#c47a10" stop-opacity="0.22" />
-                                        <stop offset="100%" stop-color="#c47a10" stop-opacity="0" />
-                                    </linearGradient>
-                                </defs>
-                                <path d="@purchase.areaPath" fill="url(#lbPurchaseAreaGrad)"></path>
-                                <path d="@purchase.prevLinePath" fill="none" stroke="rgba(27,25,23,.22)" stroke-width="1.6" stroke-dasharray="4 4" stroke-linecap="round"></path>
-                                <path d="@purchase.curLinePath" fill="none" stroke="#c47a10" stroke-width="2.6" stroke-linecap="round"></path>
-                                <circle cx="@purchase.peakX.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" cy="@purchase.peakY.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" r="3.5" fill="#fff" stroke="#c47a10" stroke-width="2"></circle>
-                            </svg>
-                        </div>
+                        <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Sandėlyje kol kas nėra supakuotų medaus kiekių.</MudText>
                     }
-                    <div class="lb-trend-months">
-                        @foreach (var m in _monthLabels)
-                        {
-                            <span>@m</span>
-                        }
-                    </div>
                 </div>
 
                 <div class="lb-trend-card">
-                    <div class="lb-trend-head">
-                        <h2 class="lb-trend-title">Pardavimų apimtis</h2>
-                        <div class="lb-trend-legend">
-                            <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-solid" style="background:#2f7d6b"></span>@_curYear</span>
-                            <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-dashed"></span>@_prevYear</span>
-                        </div>
-                    </div>
-                    @{ var sales = BuildTrendChart(_salesCurrentYear, _salesPreviousYear); }
-                    @if (!sales.hasPeak)
-                    {
-                        <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Nėra duomenų</MudText>
-                    }
-                    else
-                    {
-                        <div class="lb-trend-chart">
-                            <svg viewBox="0 0 720 172" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
-                                <defs>
-                                    <linearGradient id="lbSalesAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="#2f7d6b" stop-opacity="0.22" />
-                                        <stop offset="100%" stop-color="#2f7d6b" stop-opacity="0" />
-                                    </linearGradient>
-                                </defs>
-                                <path d="@sales.areaPath" fill="url(#lbSalesAreaGrad)"></path>
-                                <path d="@sales.prevLinePath" fill="none" stroke="rgba(27,25,23,.22)" stroke-width="1.6" stroke-dasharray="4 4" stroke-linecap="round"></path>
-                                <path d="@sales.curLinePath" fill="none" stroke="#2f7d6b" stroke-width="2.6" stroke-linecap="round"></path>
-                                <circle cx="@sales.peakX.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" cy="@sales.peakY.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" r="3.5" fill="#fff" stroke="#2f7d6b" stroke-width="2"></circle>
-                            </svg>
-                        </div>
-                    }
-                    <div class="lb-trend-months">
-                        @foreach (var m in _monthLabels)
-                        {
-                            <span>@m</span>
-                        }
-                    </div>
+                    <h2 class="lb-trend-title">Paskutiniai pristatymai</h2>
+                    <MudTable T="Delivery" Items="_recentDeliveries" Dense="true" Hover="true" Striped="true"
+                        OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) Navigation.NavigateTo($"/warehouse/deliveries/{args.Item.Id}"); })"
+                        Style="cursor:pointer">
+                        <HeaderContent>
+                            <MudTh>Nr.</MudTh>
+                            <MudTh>Data</MudTh>
+                            <MudTh>Tiekėjas</MudTh>
+                            <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                            <MudTh Style="text-align:right">Suma (€)</MudTh>
+                            <MudTh>Statusas</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="d">
+                            <MudTd>@d.DeliveryNumber</MudTd>
+                            <MudTd>@d.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd>@GetSupplierName(d.SupplierId)</MudTd>
+                            <MudTd Style="text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
+                            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.TotalAmount, 2)</MudTd>
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(d.Status, _statusDisplay)" Style="font-size:0.75rem">
+                                    @StatusDisplayHelper.GetLabel(d.Status, _statusDisplay)
+                                </MudChip>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
                 </div>
             </section>
 
-            <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600">Paskutiniai pristatymai</MudText>
-            <MudTable T="Delivery" Items="_recentDeliveries" Dense="true" Hover="true" Striped="true"
-                OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) Navigation.NavigateTo($"/warehouse/deliveries/{args.Item.Id}"); })"
-                Style="cursor:pointer" Class="mb-4">
-                <HeaderContent>
-                    <MudTh>Nr.</MudTh>
-                    <MudTh>Data</MudTh>
-                    <MudTh>Tiekėjas</MudTh>
-                    <MudTh Style="text-align:right">Netto (kg)</MudTh>
-                    <MudTh Style="text-align:right">Suma (€)</MudTh>
-                    <MudTh>Statusas</MudTh>
-                </HeaderContent>
-                <RowTemplate Context="d">
-                    <MudTd>@d.DeliveryNumber</MudTd>
-                    <MudTd>@d.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
-                    <MudTd>@GetSupplierName(d.SupplierId)</MudTd>
-                    <MudTd Style="text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
-                    <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.TotalAmount, 2)</MudTd>
-                    <MudTd>
-                        <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(d.Status, _statusDisplay)" Style="font-size:0.75rem">
-                            @StatusDisplayHelper.GetLabel(d.Status, _statusDisplay)
-                        </MudChip>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+            <!-- Row 2: LEFT = trend charts stacked; RIGHT = Greiti veiksmai + Reikalauja dėmesio stacked -->
+            <section style="display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:16px">
+                <div style="display:flex;flex-direction:column;gap:16px">
+                    <div class="lb-trend-card">
+                        <div class="lb-trend-head">
+                            <h2 class="lb-trend-title">Pirkimų apimtis</h2>
+                            <div class="lb-trend-legend">
+                                <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-solid" style="background:#c47a10"></span>@_curYear</span>
+                                <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-dashed"></span>@_prevYear</span>
+                            </div>
+                        </div>
+                        @{ var purchase = BuildTrendChart(_purchaseCurrentYear, _purchasePreviousYear); }
+                        @if (!purchase.hasPeak)
+                        {
+                            <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Nėra duomenų</MudText>
+                        }
+                        else
+                        {
+                            <div class="lb-trend-chart">
+                                <svg viewBox="0 0 720 172" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+                                    <defs>
+                                        <linearGradient id="lbPurchaseAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="#c47a10" stop-opacity="0.22" />
+                                            <stop offset="100%" stop-color="#c47a10" stop-opacity="0" />
+                                        </linearGradient>
+                                    </defs>
+                                    <path d="@purchase.areaPath" fill="url(#lbPurchaseAreaGrad)"></path>
+                                    <path d="@purchase.prevLinePath" fill="none" stroke="rgba(27,25,23,.22)" stroke-width="1.6" stroke-dasharray="4 4" stroke-linecap="round"></path>
+                                    <path d="@purchase.curLinePath" fill="none" stroke="#c47a10" stroke-width="2.6" stroke-linecap="round"></path>
+                                    <circle cx="@purchase.peakX.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" cy="@purchase.peakY.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" r="3.5" fill="#fff" stroke="#c47a10" stroke-width="2"></circle>
+                                </svg>
+                            </div>
+                        }
+                        <div class="lb-trend-months">
+                            @foreach (var m in _monthLabels)
+                            {
+                                <span>@m</span>
+                            }
+                        </div>
+                    </div>
 
-            <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600">Greiti veiksmai</MudText>
-            <MudGrid>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/deliveries/new"
-                        StartIcon="@Icons.Material.Filled.Add">Naujas pristatymas</MudButton>
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/stock"
-                        StartIcon="@Icons.Material.Filled.Inventory">Sandėlio likučiai</MudButton>
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/delivery-pricing"
-                        StartIcon="@Icons.Material.Filled.PriceCheck">Kainos</MudButton>
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/supplier-debts"
-                        StartIcon="@Icons.Material.Filled.AccountBalance">Skolos</MudButton>
-                </MudItem>
-            </MudGrid>
+                    <div class="lb-trend-card">
+                        <div class="lb-trend-head">
+                            <h2 class="lb-trend-title">Pardavimų apimtis</h2>
+                            <div class="lb-trend-legend">
+                                <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-solid" style="background:#2f7d6b"></span>@_curYear</span>
+                                <span class="lb-trend-legend-item"><span class="lb-trend-swatch lb-trend-swatch-dashed"></span>@_prevYear</span>
+                            </div>
+                        </div>
+                        @{ var sales = BuildTrendChart(_salesCurrentYear, _salesPreviousYear); }
+                        @if (!sales.hasPeak)
+                        {
+                            <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Nėra duomenų</MudText>
+                        }
+                        else
+                        {
+                            <div class="lb-trend-chart">
+                                <svg viewBox="0 0 720 172" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+                                    <defs>
+                                        <linearGradient id="lbSalesAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="#2f7d6b" stop-opacity="0.22" />
+                                            <stop offset="100%" stop-color="#2f7d6b" stop-opacity="0" />
+                                        </linearGradient>
+                                    </defs>
+                                    <path d="@sales.areaPath" fill="url(#lbSalesAreaGrad)"></path>
+                                    <path d="@sales.prevLinePath" fill="none" stroke="rgba(27,25,23,.22)" stroke-width="1.6" stroke-dasharray="4 4" stroke-linecap="round"></path>
+                                    <path d="@sales.curLinePath" fill="none" stroke="#2f7d6b" stroke-width="2.6" stroke-linecap="round"></path>
+                                    <circle cx="@sales.peakX.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" cy="@sales.peakY.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" r="3.5" fill="#fff" stroke="#2f7d6b" stroke-width="2"></circle>
+                                </svg>
+                            </div>
+                        }
+                        <div class="lb-trend-months">
+                            @foreach (var m in _monthLabels)
+                            {
+                                <span>@m</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:16px">
+                    <div class="lb-trend-card">
+                        <h2 class="lb-trend-title">Greiti veiksmai</h2>
+                        <div class="lb-quick-actions">
+                            <button class="lb-quick-action" @onclick="GoDeliveriesNew">
+                                <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" /></span>
+                                <span class="lb-quick-action-label">Naujas pristatymas</span>
+                            </button>
+                            <button class="lb-quick-action" @onclick="GoStock">
+                                <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Small" /></span>
+                                <span class="lb-quick-action-label">Sandėlio likučiai</span>
+                            </button>
+                            <button class="lb-quick-action" @onclick="GoPricing">
+                                <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.PriceCheck" Size="Size.Small" /></span>
+                                <span class="lb-quick-action-label">Kainos</span>
+                            </button>
+                            <button class="lb-quick-action" @onclick="GoDebts">
+                                <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.AccountBalance" Size="Size.Small" /></span>
+                                <span class="lb-quick-action-label">Skolos</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lb-trend-card">
+                        <h2 class="lb-trend-title">Reikalauja dėmesio</h2>
+                        <div class="lb-attention-list">
+                            @if (_agingReport.Bucket90Plus.InvoiceCount > 0)
+                            {
+                                <div class="lb-attention-item">
+                                    <span class="lb-attention-bar" style="background:#b3402f"></span>
+                                    <span class="lb-attention-num">@FormatAmountHelper.Trim(_agingReport.Bucket90Plus.TotalAmount, 0)</span>
+                                    <span class="lb-attention-label">Pradelstos sąskaitos virš 90 d.<br>@_agingReport.Bucket90Plus.InvoiceCount sąsk.</span>
+                                </div>
+                            }
+                            @if (_unpricedDeliveries > 0)
+                            {
+                                <div class="lb-attention-item">
+                                    <span class="lb-attention-bar" style="background:#c47a10"></span>
+                                    <span class="lb-attention-num">@_unpricedDeliveries</span>
+                                    <span class="lb-attention-label">Neįkainoti pristatymai</span>
+                                </div>
+                            }
+                            @if (_totalDebt > 0)
+                            {
+                                <div class="lb-attention-item">
+                                    <span class="lb-attention-bar" style="background:#d9a13f"></span>
+                                    <span class="lb-attention-num">@FormatAmountHelper.Trim(_totalDebt, 0)</span>
+                                    <span class="lb-attention-label">Skolos tiekėjams<br>@_suppliersWithDebt tiekėjai(-ų)</span>
+                                </div>
+                            }
+                            @if (_agingReport.Bucket90Plus.InvoiceCount == 0 && _unpricedDeliveries == 0 && _totalDebt <= 0)
+                            {
+                                <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Šiuo metu dėmesio nereikalaujančių įrašų nėra.</MudText>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </section>
         </AuthorizeView>
 
         <!-- Warehouse: simplified dashboard -->
@@ -320,63 +395,59 @@
                 </MudItem>
             </MudGrid>
 
-            <MudText Typo="Typo.h6" Class="mb-3" Style="font-weight:600">Greiti veiksmai</MudText>
-            <MudGrid>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/deliveries/new"
-                        StartIcon="@Icons.Material.Filled.Add">Naujas pristatymas</MudButton>
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/stock"
-                        StartIcon="@Icons.Material.Filled.Inventory">Sandėlio likučiai</MudButton>
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/deliveries"
-                        StartIcon="@Icons.Material.Filled.LocalShipping">Pristatymai</MudButton>
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="@true"
-                        Style="height:60px; border-radius:10px" Href="/warehouse/transfers"
-                        StartIcon="@Icons.Material.Filled.SwapHoriz">Perkėlimai</MudButton>
-                </MudItem>
-            </MudGrid>
-        </AuthorizeView>
-
-        <MudText Typo="Typo.h6" Class="mt-4 mb-2" Style="font-weight:600">Sandėlio sudėtis</MudText>
-        <MudPaper Class="pa-4" Elevation="1" Style="border-radius:16px">
-            @if (WarehouseCompositionTotalKg > 0)
-            {
-                <div class="lb-stackbar">
+            <h2 class="lb-trend-title" Style="margin-top:24px">Sandėlio sudėtis</h2>
+            <MudPaper Class="pa-4" Elevation="1" Style="border-radius:16px">
+                @if (WarehouseCompositionTotalKg > 0)
+                {
+                    <div class="lb-stackbar">
+                        @foreach (var ht in _honeyTypeStock.Where(x => x.BarrelKg + x.BucketKg > 0))
+                        {
+                            var totalKg = ht.BarrelKg + ht.BucketKg;
+                            <div class="lb-stackbar-seg" style="flex:0 0 @(WarehouseCompositionPercent(totalKg).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture))%;background:@ht.Color" title="@($"{ht.Name}: {totalKg:N1} kg")"></div>
+                        }
+                    </div>
+                    <MudDivider Class="my-3" />
                     @foreach (var ht in _honeyTypeStock.Where(x => x.BarrelKg + x.BucketKg > 0))
                     {
                         var totalKg = ht.BarrelKg + ht.BucketKg;
-                        <div class="lb-stackbar-seg" style="flex:0 0 @(WarehouseCompositionPercent(totalKg).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture))%;background:@ht.Color" title="@($"{ht.Name}: {totalKg:N1} kg")"></div>
-                    }
-                </div>
-                <MudDivider Class="my-3" />
-                @foreach (var ht in _honeyTypeStock.Where(x => x.BarrelKg + x.BucketKg > 0))
-                {
-                    var totalKg = ht.BarrelKg + ht.BucketKg;
-                    <div class="d-flex align-center justify-space-between pa-1">
-                        <div class="d-flex align-center">
-                            <div style="width:12px;height:12px;border-radius:3px;margin-right:8px;background:@ht.Color"></div>
-                            <MudText Typo="Typo.body2">@ht.Name</MudText>
+                        <div class="d-flex align-center justify-space-between pa-1">
+                            <div class="d-flex align-center">
+                                <div style="width:12px;height:12px;border-radius:3px;margin-right:8px;background:@ht.Color"></div>
+                                <MudText Typo="Typo.body2">@ht.Name</MudText>
+                            </div>
+                            <MudText Typo="Typo.body2" Style="font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">
+                                @totalKg.ToString("N1") kg ·
+                                @WarehouseCompositionPercent(totalKg).ToString("0.0") %
+                            </MudText>
                         </div>
-                        <MudText Typo="Typo.body2" Style="font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums">
-                            @totalKg.ToString("N1") kg ·
-                            @WarehouseCompositionPercent(totalKg).ToString("0.0") %
-                        </MudText>
-                    </div>
+                    }
                 }
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Sandėlyje kol kas nėra supakuotų medaus kiekių.</MudText>
-            }
-        </MudPaper>
+                else
+                {
+                    <MudText Typo="Typo.body2" Style="color:var(--lakstena-text-secondary)">Sandėlyje kol kas nėra supakuotų medaus kiekių.</MudText>
+                }
+            </MudPaper>
+
+            <h2 class="lb-trend-title" Style="margin-top:24px">Greiti veiksmai</h2>
+            <div class="lb-quick-actions">
+                <button class="lb-quick-action" @onclick="GoDeliveriesNew">
+                    <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" /></span>
+                    <span class="lb-quick-action-label">Naujas pristatymas</span>
+                </button>
+                <button class="lb-quick-action" @onclick="GoStock">
+                    <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Small" /></span>
+                    <span class="lb-quick-action-label">Sandėlio likučiai</span>
+                </button>
+                <button class="lb-quick-action" @onclick="GoDeliveriesList">
+                    <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.LocalShipping" Size="Size.Small" /></span>
+                    <span class="lb-quick-action-label">Pristatymai</span>
+                </button>
+                <button class="lb-quick-action" @onclick="GoTransfers">
+                    <span class="lb-quick-action-icon" style="background:rgba(196,122,16,.12);color:#c47a10"><MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" /></span>
+                    <span class="lb-quick-action-label">Perkėlimai</span>
+                </button>
+            </div>
+        </AuthorizeView>
     }
 </div>
 
@@ -656,4 +727,13 @@
 
         return (areaPath, curLine, prevLine, peakX, peakY, true);
     }
+
+    // ===== Admin "Greiti veiksmai" quick-action navigation =====
+
+    private void GoDeliveriesNew() => Navigation.NavigateTo("/warehouse/deliveries/new");
+    private void GoStock() => Navigation.NavigateTo("/warehouse/stock");
+    private void GoDeliveriesList() => Navigation.NavigateTo("/warehouse/deliveries");
+    private void GoTransfers() => Navigation.NavigateTo("/warehouse/transfers");
+    private void GoPricing() => Navigation.NavigateTo("/warehouse/delivery-pricing");
+    private void GoDebts() => Navigation.NavigateTo("/warehouse/supplier-debts");
 }
