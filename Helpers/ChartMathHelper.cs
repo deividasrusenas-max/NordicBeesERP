@@ -27,6 +27,23 @@ public static class ChartMathHelper
         return d;
     }
 
+    // Area fill path for a curve() line: line path + " L{w} {h} L0 {h} Z" (mockup convention).
+    public static string BuildSmoothAreaPath(string linePath, double w, double h)
+    {
+        var inv = CultureInfo.InvariantCulture;
+        return linePath + $" L{w.ToString("0.0", inv)} {h.ToString("0.0", inv)} L0 {h.ToString("0.0", inv)} Z";
+    }
+
+    // Coordinates of a single curve() point, e.g. for a peak marker.
+    public static (double x, double y) CurvePoint(decimal[] values, int index, double w, double h, decimal max)
+    {
+        var n = values.Length;
+        if (max <= 0m) max = 1m;
+        var x = index * (w / (n - 1));
+        var y = h - ((double)(values[index] / max)) * (h - 12);
+        return (x, y);
+    }
+
     // Straight-line sparkline path — exact port of the mockup's spark() function.
     // Per-series min/max normalized. Used by the 4 KPI cards.
     public static (string line, string area) BuildSparkPath(decimal[] values, double w, double h)

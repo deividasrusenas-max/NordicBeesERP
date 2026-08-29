@@ -558,3 +558,12 @@ re-labeling the symptom.
 - **Category**: UI-form (data-binding)
 - **Error class**: `kpi-currentvalue-from-missing-snapshot`
 - **Status**: monitoring
+
+### 2026-08-29 — .NET runtime interpreter bug: array.Contains(enumValue) with ReadOnlySpan<TEnum> inside EF parameter extraction
+- **Symptom**: New `InvoiceService.GetMonthlySalesVolumeAsync()` query threw an exception during EF Core's LINQ parameter extraction. The query used a pattern like `statuses.Contains(invoice.Status)` (an array/list of `InvoiceStatus` enum values checked with `.Contains()`) inside the `Where()` predicate.
+- **Root cause**: A .NET runtime interpreter bug when the JIT/interpreter evaluates `array.Contains(enumValue)` against a `ReadOnlySpan<InvoiceStatus>` internally created for the `.Contains()` call on an enum-typed collection — this is a genuine CLR/interpreter issue, not an EF Core or application logic bug. Confirmed via a temporary xUnit test run directly against the dev DB (removed after diagnosis) that isolated the failure to the `.Contains()` call itself, independent of the surrounding query.
+- **Fix**: Replaced `statuses.Contains(invoice.Status)` with explicit `!=` comparisons chained (e.g. `invoice.Status != InvoiceStatus.Draft && invoice.Status != InvoiceStatus.Cancelled`) instead of an inclusion/exclusion list with `.Contains()`.
+- **Guardrail added**: none yet — this is an environment/runtime-level gotcha, not something a code-review guardrail can easily catch by reading the diff. Worth a FROZEN.md or PATTERNS.md note: avoid `enumCollection.Contains(x.EnumProperty)` inside EF LINQ predicates on this stack; prefer explicit equality/inequality chains.
+- **Category**: EF-core / runtime
+- **Error class**: `enum-array-contains-readonlyspan-interpreter-bug`
+- **Status**: monitoring — first occurrence; if this recurs elsewhere in the codebase (any `.Contains()` on an enum collection inside a LINQ-to-EF predicate), escalate and consider a lint rule or FROZEN.md prohibition.

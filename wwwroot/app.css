@@ -626,3 +626,410 @@ body,
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
+
+/* ===== Lakštena sidebar (NavMenu.razor) — ported 1:1 from
+   .opencode/planning/design-reference/dashboard-mockup.dc.html. Global (not scoped) because
+   most rows are rendered by the built-in <NavLink> child component. ===== */
+
+.lb-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 18px 14px 14px;
+  overflow-y: auto;
+  background: var(--lakstena-surface);
+  font-size: 14px;
+}
+
+.lb-logo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 4px 8px 18px;
+}
+
+.lb-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(150deg, #f2b73d, #c47a10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #17150f;
+  flex: none;
+}
+
+.lb-logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lb-logo-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--lakstena-text);
+}
+
+.lb-logo-subtitle {
+  font-family: "Geist Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(27, 25, 23, .4);
+}
+
+.lb-top-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 14px;
+}
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  color: rgba(27, 25, 23, .72);
+  text-decoration: none;
+  font-size: 14px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+button.lb-row {
+  display: flex;
+}
+
+.lb-row:hover {
+  background: rgba(27, 25, 23, .045);
+  color: var(--lakstena-text);
+}
+
+.lb-row.active,
+.lb-row.lb-row-active {
+  background: #fdf3de;
+  color: #7a4d08 !important;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(196, 122, 16, .18);
+}
+
+.lb-row.active::before,
+.lb-row.lb-row-active::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c47a10;
+  flex: none;
+}
+
+.lb-row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-count {
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  color: rgba(27, 25, 23, .35);
+  flex: none;
+}
+
+.lb-alert-pill {
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  background: var(--lakstena-danger);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 6px;
+  line-height: 16px;
+  flex: none;
+}
+
+.lb-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 0 12px;
+  border-top: 1px solid rgba(27, 25, 23, .1);
+}
+
+.lb-group-label {
+  padding: 0 10px 6px;
+  font-family: "Geist Mono", monospace;
+  font-size: 9px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: rgba(27, 25, 23, .34);
+}
+
+.lb-group-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(27, 25, 23, .8);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.lb-group-header:hover {
+  background: rgba(27, 25, 23, .045);
+}
+
+.lb-group-header-open {
+  background: #fdf3de;
+  color: #7a4d08;
+}
+
+.lb-group-icon {
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: rgba(27, 25, 23, .07);
+  color: rgba(27, 25, 23, .5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.lb-group-header-open .lb-group-icon {
+  background: #c47a10;
+  color: #fff;
+}
+
+.lb-group-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-group-count {
+  margin-left: auto;
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  color: rgba(27, 25, 23, .34);
+  flex: none;
+}
+
+.lb-sublist {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 11px;
+  margin-left: 14px;
+  border-left: 1px solid rgba(27, 25, 23, .1);
+}
+
+.lb-sublink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  color: rgba(27, 25, 23, .66);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.lb-sublink:hover {
+  background: rgba(27, 25, 23, .045);
+  color: var(--lakstena-text);
+}
+
+.lb-sublink.active {
+  background: #fdf3de;
+  color: #7a4d08 !important;
+  font-weight: 600;
+}
+
+.lb-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(27, 25, 23, .1);
+}
+
+.lb-footer .lb-group-label {
+  padding: 0 10px;
+}
+
+/* ===== Lakštena dashboard KPI cards (Home.razor) — ported 1:1 from
+   .opencode/planning/design-reference/dashboard-mockup.dc.html ===== */
+
+.lb-kpi-card {
+  background: #fff;
+  border: 1px solid rgba(27, 25, 23, .08);
+  border-radius: 16px;
+  padding: 18px 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.lb-kpi-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lb-kpi-labelvalue {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.lb-kpi-label {
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: rgba(27, 25, 23, .45);
+}
+
+.lb-kpi-valuerow {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.lb-kpi-value {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--lakstena-text);
+}
+
+.lb-kpi-unit {
+  font-size: 13px;
+  color: rgba(27, 25, 23, .45);
+  font-weight: 500;
+}
+
+.lb-kpi-spark {
+  height: 46px;
+  margin: 0 -18px;
+}
+
+/* ===== Lakštena "Sandėlio sudėtis" 100%-stacked horizontal bar (Home.razor) ===== */
+
+.lb-stackbar {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(27, 25, 23, .06);
+}
+
+.lb-stackbar-seg {
+  height: 100%;
+}
+
+/* ===== Lakštena "Pirkimų apimtis" / "Pardavimų apimtis" trend charts (Home.razor) — same
+   curve()-based visual pattern as the mockup's bottom-left purchases chart. ===== */
+
+.lb-trend-card {
+  background: #fff;
+  border: 1px solid rgba(27, 25, 23, .08);
+  border-radius: 18px;
+  padding: 22px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lb-trend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lb-trend-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--lakstena-text);
+}
+
+.lb-trend-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.lb-trend-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  color: rgba(27, 25, 23, .55);
+}
+
+.lb-trend-swatch {
+  width: 10px;
+  height: 2.6px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.lb-trend-swatch-dashed {
+  height: 0;
+  border-top: 1.6px dashed rgba(27, 25, 23, .35);
+}
+
+.lb-trend-chart {
+  height: 172px;
+}
+
+.lb-trend-months {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.lb-trend-months span {
+  font-size: 10px;
+  color: rgba(27, 25, 23, .4);
+  flex: 1;
+  text-align: center;
+}

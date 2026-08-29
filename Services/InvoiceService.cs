@@ -30,6 +30,13 @@ namespace NordicBeesERP.Services
         Task<byte[]> GeneratePdfAsync(int invoiceId);
         Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null);
         Task<List<Invoice>> SearchInvoicesAsync(string searchTerm, int customerId);
+
+        /// <summary>
+        /// Monthly sold volume (netto kg) for sales invoices (LAK prefix, "kg" unit lines),
+        /// excluding Draft/Cancelled, grouped by year+month across the given year range.
+        /// Used by the Home.razor "Pardavimų apimtis" dashboard trend chart.
+        /// </summary>
+        Task<List<MonthlyVolumePoint>> GetMonthlySalesVolumeAsync(int fromYear, int toYear);
     }
 
     public class InvoiceService : IInvoiceService
@@ -540,6 +547,22 @@ namespace NordicBeesERP.Services
             return stats;
         }
 
+        public async Task<List<MonthlyVolumePoint>> GetMonthlySalesVolumeAsync(int fromYear, int toYear)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            var query = from il in context.InvoiceLines
+                        join inv in context.Invoices on il.InvoiceId equals inv.Id
+                        where inv.InvoiceNumber.StartsWith("LAK")
+                              && il.Unit == "kg"
+                              && inv.InvoiceDate.Year >= fromYear && inv.InvoiceDate.Year <= toYear
+                              && inv.Status != InvoiceStatus.Draft && inv.Status != InvoiceStatus.Cancelled
+                        group il.Quantity by new { inv.InvoiceDate.Year, inv.InvoiceDate.Month } into g
+                        select new MonthlyVolumePoint { Year = g.Key.Year, Month = g.Key.Month, NetKg = g.Sum() };
+
+            return await query.ToListAsync();
+        }
+
         public async Task<List<int>> GetInvoiceYearsAsync()
         {
             using var context = _contextFactory.CreateDbContext();
@@ -696,5 +719,12 @@ namespace NordicBeesERP.Services
 
         public decimal AverageInvoiceAmount { get; set; }
         public Invoice? LargestInvoice { get; set; }
+    }
+
+    public class MonthlyVolumePoint
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public decimal NetKg { get; set; }
     }
 }

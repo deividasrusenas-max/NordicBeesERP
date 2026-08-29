@@ -1,170 +1,188 @@
 @using MudBlazor
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IPaymentService PaymentService
+@inject NavigationManager Navigation
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos
+@implements IDisposable
 
-<MudNavMenu Style="display:flex; flex-direction:column; height:100%">
-    @if (_isDesigner && !_isAdmin)
-    {
-        <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
-        <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
-        <MudNavGroup Title="Nustatymai" Icon="@Icons.Material.Filled.Settings">
-            <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
-            <MudNavLink Href="/settings/artwork-label-types" Icon="@Icons.Material.Filled.Label">Etikečių tipai</MudNavLink>
-        </MudNavGroup>
-    }
-    else
-    {
-        @* Sidebar top block: logo + brand name *@
-        <div class="d-flex align-center pa-3 pb-2" style="border-bottom:1px solid var(--lakstena-border)">
-            <img src="/logo.png" style="height:28px; margin-right:10px;" alt="Lakštena" />
-            <div>
-                <div style="font-weight:700; color:var(--lakstena-text); font-size:0.95rem; line-height:1.2">Lakštena ERP</div>
-                <div class="lakstena-mono" style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.14em; color:var(--lakstena-text-secondary)">MEDAUS APSKAITA</div>
-            </div>
+@* Sidebar markup/CSS ported 1:1 from .opencode/planning/design-reference/dashboard-mockup.dc.html
+   (colors, spacing, radii, fonts — see that file's top comment block for the source values).
+   Styles live in wwwroot/app.css under "Lakštena sidebar" (global, not scoped — most rows are
+   rendered by the built-in <NavLink> child component, which scoped CSS can't reach). *@
+
+<div class="lb-sidebar">
+@if (_isDesigner && !_isAdmin)
+{
+    <div class="lb-logo">
+        <div class="lb-logo-mark">L</div>
+        <div class="lb-logo-text">
+            <span class="lb-logo-title">Lakštena ERP</span>
+            <span class="lb-logo-subtitle">medaus apskaita</span>
         </div>
+    </div>
 
-        <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Pradžia</MudNavLink>
+    <div class="lb-top-items">
+        <NavLink href="/artwork/gallery" Match="NavLinkMatch.Prefix" class="lb-row" ActiveClass="lb-row-active">
+            <span class="lb-row-label">Galerija</span>
+        </NavLink>
+        <NavLink href="/artwork" Match="NavLinkMatch.All" class="lb-row" ActiveClass="lb-row-active">
+            <span class="lb-row-label">Brand Dashboard</span>
+        </NavLink>
+    </div>
 
-        <MudNavGroup Title="Sandėlis" Icon="@Icons.Material.Filled.Warehouse" Expanded="false">
-            <MudNavLink Href="/warehouse/deliveries/new" Icon="@Icons.Material.Filled.Add">Naujas pristatymas</MudNavLink>
-            @if (!_isManager)
-            {
-                <MudNavLink Href="/warehouse/deliveries" Icon="@Icons.Material.Filled.LocalShipping">
-                    Pristatymai
-                    @if (_badgeCounts.UnpricedDeliveries > 0)
-                    {
-                        <span class="nav-count-pill" style="background:var(--lakstena-accent); color:#fff; border-radius:10px; padding:0 8px; font-size:0.7rem; margin-left:6px">@_badgeCounts.UnpricedDeliveries</span>
-                    }
-                </MudNavLink>
-            }
-            @if (_isAdmin || _isManager)
-            {
-                <MudNavLink Href="/warehouse/delivery-pricing" Icon="@Icons.Material.Filled.PriceCheck">Kainos ir mokėjimai</MudNavLink>
-                <MudNavLink Href="/warehouse/supplier-debts" Icon="@Icons.Material.Filled.AccountBalance">Skolos tiekėjams</MudNavLink>
-            }
-            <MudNavLink Href="/warehouse/stock" Icon="@Icons.Material.Filled.Inventory">Sandėlio likučiai</MudNavLink>
-            <MudNavLink Href="/warehouse/write-off" Icon="@Icons.Material.Filled.DeleteForever">Nurašymas</MudNavLink>
-            <MudNavLink Href="/warehouse/write-off-history" Icon="@Icons.Material.Filled.History">Nurašymų istorija</MudNavLink>
-            <MudNavLink Href="/warehouse/transfers" Icon="@Icons.Material.Filled.SwapHoriz">Perkėlimai</MudNavLink>
-        </MudNavGroup>
-
-        <MudNavGroup Title="Produkcija" Icon="@Icons.Material.Filled.Agriculture">
-            <MudNavLink Href="/products" Icon="@Icons.Material.Filled.Inventory">Produktai</MudNavLink>
-        </MudNavGroup>
-
-        @if (_isAdmin || _isManager || _isWarehouse)
+    <div class="lb-group">
+        <button type="button" class="lb-group-header @(_designerSettingsOpen ? "lb-group-header-open" : "")" @onclick="() => _designerSettingsOpen = !_designerSettingsOpen">
+            <span class="lb-group-icon">⚙</span>
+            <span class="lb-group-title">Nustatymai</span>
+        </button>
+        @if (_designerSettingsOpen)
         {
-            <MudNavGroup Title="Užsakymai" Icon="@Icons.Material.Filled.ShoppingCart">
-                <MudNavLink Href="/orders" Icon="@Icons.Material.Filled.List">Užsakymų sąrašas</MudNavLink>
+            <div class="lb-sublist">
+                <NavLink href="/settings/artwork-brands" class="lb-sublink">Prekių ženklai</NavLink>
+                <NavLink href="/settings/artwork-label-types" class="lb-sublink">Etikečių tipai</NavLink>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="lb-logo">
+        <div class="lb-logo-mark">L</div>
+        <div class="lb-logo-text">
+            <span class="lb-logo-title">Lakštena ERP</span>
+            <span class="lb-logo-subtitle">medaus apskaita</span>
+        </div>
+    </div>
+
+    <div class="lb-top-items">
+        <NavLink href="/" Match="NavLinkMatch.All" class="lb-row" ActiveClass="lb-row-active">
+            <span class="lb-row-label">Pradžia</span>
+        </NavLink>
+
+        @foreach (var topSection in _topSections)
+        {
+            <button type="button" class="lb-row @(IsSectionActive(topSection) ? "lb-row-active" : "")" @onclick="() => Toggle(topSection)">
+                <span class="lb-row-label">@topSection.Title</span>
+            </button>
+            @if (topSection.Expanded)
+            {
+                <div class="lb-sublist">
+                    @foreach (var item in topSection.Items)
+                    {
+                        <NavLink href="@item.Href" Match="NavLinkMatch.Prefix" class="lb-sublink">
+                            <span>@item.Label</span>
+                            @if (item.Count > 0)
+                            {
+                                <span class="lb-count">@item.Count</span>
+                            }
+                        </NavLink>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    @foreach (var group in _groupedSections)
+    {
+        <div class="lb-group">
+            <div class="lb-group-label">@group.GroupLabel</div>
+            <button type="button" class="lb-group-header @(group.Section.Expanded ? "lb-group-header-open" : "")" @onclick="() => Toggle(group.Section)">
+                <span class="lb-group-icon">@group.Icon</span>
+                <span class="lb-group-title">@group.Section.Title</span>
+                <span class="lb-group-count">@group.Section.Items.Count</span>
+            </button>
+            @if (group.Section.Expanded)
+            {
+                <div class="lb-sublist">
+                    @foreach (var item in group.Section.Items)
+                    {
+                        <NavLink href="@item.Href" Match="NavLinkMatch.Prefix" class="lb-sublink">
+                            <span>@item.Label</span>
+                            @if (item.Danger && item.Count > 0)
+                            {
+                                <span class="lb-alert-pill">@item.Count</span>
+                            }
+                            else if (item.Count > 0)
+                            {
+                                <span class="lb-count">@item.Count</span>
+                            }
+                        </NavLink>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="lb-footer">
+        <div class="lb-group-label">Sistema</div>
+        <button type="button" class="lb-group-header @(_settingsOpen ? "lb-group-header-open" : "")" @onclick="() => _settingsOpen = !_settingsOpen">
+            <span class="lb-group-icon">⚙</span>
+            <span class="lb-group-title">Nustatymai</span>
+        </button>
+        @if (_settingsOpen)
+        {
+            <div class="lb-sublist">
+                @if (_isAdmin)
+                {
+                    <NavLink href="/app-settings" Match="NavLinkMatch.Prefix" class="lb-sublink">Pagrindiniai nustatymai</NavLink>
+                    <NavLink href="/settings/company" Match="NavLinkMatch.Prefix" class="lb-sublink">Įmonės rekvizitai</NavLink>
+                    <NavLink href="/admin/users" Match="NavLinkMatch.Prefix" class="lb-sublink">Vartotojai</NavLink>
+                }
+                <NavLink href="/settings/honey-types" Match="NavLinkMatch.Prefix" class="lb-sublink">Medaus rūšys</NavLink>
+                <NavLink href="/settings/raw-materials" Match="NavLinkMatch.Prefix" class="lb-sublink">Žaliavų tipai</NavLink>
+                <NavLink href="/warehouses" Match="NavLinkMatch.Prefix" class="lb-sublink">Sandėliai</NavLink>
                 @if (_isAdmin || _isManager)
                 {
-                    <MudNavLink Href="/orders/create" Icon="@Icons.Material.Filled.Add">Naujas užsakymas</MudNavLink>
+                    <NavLink href="/settings/expense-categories" Match="NavLinkMatch.Prefix" class="lb-sublink">Išlaidų kategorijos</NavLink>
                 }
-            </MudNavGroup>
+                @if (_isAdmin || _isDesigner || _isManager)
+                {
+                    <NavLink href="/settings/artwork-brands" Match="NavLinkMatch.Prefix" class="lb-sublink">Prekių ženklai</NavLink>
+                    <NavLink href="/settings/artwork-label-types" Match="NavLinkMatch.Prefix" class="lb-sublink">Etikečių tipai</NavLink>
+                }
+            </div>
         }
-
-        @if (_isAdmin || _isManager || _isWarehouse)
-        {
-            <MudNavGroup Title="Tiekėjai" Icon="@Icons.Material.Filled.People">
-                <MudNavLink Href="/suppliers" Icon="@Icons.Material.Filled.LocalShipping">Tiekėjai</MudNavLink>
-                <MudNavLink Href="/customers" Icon="@Icons.Material.Filled.Person">Klientai</MudNavLink>
-            </MudNavGroup>
-        }
-
-        @if (_isAdmin || _isManager)
-        {
-            <MudNavGroup Title="Išlaidos" Icon="@Icons.Material.Filled.Receipt" Expanded="false">
-                <MudNavLink Href="/expenses" Icon="@Icons.Material.Filled.Dashboard">Suvestinė</MudNavLink>
-                <MudNavLink Href="/expense-invoices" Icon="@Icons.Material.Filled.Receipt">Sąskaitos</MudNavLink>
-                <MudNavLink Href="/expense-payments" Icon="@Icons.Material.Filled.History">Mokėjimai</MudNavLink>
-                <MudNavLink Href="/expenses/forecast" Icon="@Icons.Material.Filled.TrendingDown">Išlaidų prognozė</MudNavLink>
-                <MudNavLink Href="/bank-import?type=expense" Icon="@Icons.Material.Filled.FileUpload">Banko importas</MudNavLink>
-            </MudNavGroup>
-        }
-
-        @* Section header: FINANSAI *@
-        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">FINANSAI</div>
-
-        @if (_isAdmin || _isManager)
-        {
-            <MudNavGroup Title="Pardavimai" Icon="@Icons.Material.Filled.AccountBalance">
-                <MudNavLink Href="/invoices/sales" Icon="@Icons.Material.Filled.Receipt">
-                    Pardavimų sąskaitos
-                    @if (_badgeCounts.OverdueInvoices > 0)
-                    {
-                        <span style="background:var(--lakstena-danger); color:#fff; border-radius:10px; padding:0 8px; font-size:0.7rem; margin-left:6px">@_badgeCounts.OverdueInvoices</span>
-                    }
-                </MudNavLink>
-                <MudNavLink Href="/payments" Icon="@Icons.Material.Filled.Dashboard">Skolų valdymas</MudNavLink>
-                <MudNavLink Href="/payments/forecast" Icon="@Icons.Material.Filled.TrendingUp">Įplaukų prognozė</MudNavLink>
-                <MudNavLink Href="/payments/history" Icon="@Icons.Material.Filled.History">Įplaukų istorija</MudNavLink>
-                <MudNavLink Href="/bank-import?type=income" Icon="@Icons.Material.Filled.FileUpload">Banko importas</MudNavLink>
-            </MudNavGroup>
-            @* Hidden 2026-08-19 pending decision on this section's purpose *@
-            @*<MudNavGroup Title="Medaus pirkimai" Icon="@Icons.Material.Filled.Hive" Expanded="false">
-                <MudNavLink Href="/invoices/purchases" Icon="@Icons.Material.Filled.Receipt">Pirkimų sąskaitos</MudNavLink>
-            </MudNavGroup>*@
-        }
-
-        @* Section header: ANALITIKA *@
-        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">ANALITIKA</div>
-
-        @if (_isAdmin || _isManager)
-        {
-            <MudNavGroup Title="Statistika" Icon="@Icons.Material.Filled.BarChart" Expanded="false">
-                <MudNavLink Href="/statistics" Icon="@Icons.Material.Filled.ShoppingCart">Pirkimai</MudNavLink>
-                <MudNavLink Href="/statistics/sales" Icon="@Icons.Material.Filled.PointOfSale">Pardavimai</MudNavLink>
-                <MudNavLink Href="/reports/debt-reconciliation" Icon="@Icons.Material.Filled.Description">Skolų suderinimo aktas</MudNavLink>
-                <MudNavLink Href="/reports/sales-by-customer" Icon="@Icons.Material.Filled.PointOfSale">Prekių pardavimo suvestinė</MudNavLink>
-            </MudNavGroup>
-        }
-
-        @* Section header: GAMYBA (Artwork) *@
-        @if (_isAdmin || _isDesigner || _isManager)
-        {
-            <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">GAMYBA</div>
-            <MudNavGroup Title="Artwork" Icon="@Icons.Material.Filled.Palette">
-                <MudNavLink Href="/artwork" Icon="@Icons.Material.Filled.Palette">Brand Dashboard</MudNavLink>
-                <MudNavLink Href="/artwork/gallery" Icon="@Icons.Material.Filled.GridView">Galerija</MudNavLink>
-            </MudNavGroup>
-        }
-
-        @* Section header: SISTEMA *@
-        <div class="lakstena-mono" style="padding:12px 16px 4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--lakstena-text-secondary)">SISTEMA</div>
-
-        <MudNavGroup Title="Nustatymai" Icon="@Icons.Material.Filled.Settings">
-            @if (_isAdmin)
-            {
-                <MudNavLink Href="/app-settings" Icon="@Icons.Material.Filled.Settings">Pagrindiniai nustatymai</MudNavLink>
-                <MudNavLink Href="/settings/company" Icon="@Icons.Material.Filled.Business">Įmonės rekvizitai</MudNavLink>
-                <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.People">Vartotojai</MudNavLink>
-            }
-            <MudNavLink Href="/settings/honey-types" Icon="@Icons.Material.Filled.Hive">Medaus rūšys</MudNavLink>
-            <MudNavLink Href="/settings/raw-materials" Icon="@Icons.Material.Filled.Category">Žaliavų tipai</MudNavLink>
-            <MudNavLink Href="/warehouses" Icon="@Icons.Material.Filled.Warehouse">Sandėliai</MudNavLink>
-            @if (_isAdmin || _isManager)
-            {
-                <MudNavLink Href="/settings/expense-categories" Icon="@Icons.Material.Filled.Category">Išlaidų kategorijos</MudNavLink>
-            }
-            @if (_isAdmin || _isDesigner || _isManager)
-            {
-                <MudNavLink Href="/settings/artwork-brands" Icon="@Icons.Material.Filled.Palette">Prekių ženklai</MudNavLink>
-                <MudNavLink Href="/settings/artwork-label-types" Icon="@Icons.Material.Filled.Label">Etikečių tipai</MudNavLink>
-            }
-        </MudNavGroup>
-
-    }
-</MudNavMenu>
+    </div>
+}
+</div>
 
 @code {
     private bool _isAdmin;
     private bool _isManager;
     private bool _isWarehouse;
     private bool _isDesigner;
+    private bool _designerSettingsOpen = true;
+    private bool _settingsOpen = true;
 
     private NavBadgeCounts _badgeCounts = new();
+    private string _currentPath = "/";
+
+    private sealed class NavItem
+    {
+        public string Href { get; init; } = string.Empty;
+        public string Label { get; init; } = string.Empty;
+        public int? Count { get; init; }
+        public bool Danger { get; init; }
+    }
+
+    private sealed class NavSection
+    {
+        public string Title { get; init; } = string.Empty;
+        public List<NavItem> Items { get; init; } = new();
+        public bool DefaultExpanded { get; init; }
+        public bool Expanded { get; set; }
+    }
+
+    private sealed class NavGroup
+    {
+        public string GroupLabel { get; init; } = string.Empty;
+        public string Icon { get; init; } = string.Empty;
+        public NavSection Section { get; init; } = new();
+    }
+
+    private List<NavSection> _topSections = new();
+    private List<NavGroup> _groupedSections = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -176,5 +194,170 @@
 
         try { _badgeCounts = await PaymentService.GetNavBadgeCountsAsync(); }
         catch { _badgeCounts = new NavBadgeCounts(); }
+
+        BuildNav();
+
+        _currentPath = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0];
+        AutoExpandActiveSections();
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void BuildNav()
+    {
+        _topSections = new List<NavSection>();
+
+        var warehouseItems = new List<NavItem> { new() { Href = "/warehouse/deliveries/new", Label = "Naujas pristatymas" } };
+        if (!_isManager)
+        {
+            warehouseItems.Add(new NavItem { Href = "/warehouse/deliveries", Label = "Pristatymai", Count = _badgeCounts.UnpricedDeliveries });
+        }
+        if (_isAdmin || _isManager)
+        {
+            warehouseItems.Add(new NavItem { Href = "/warehouse/delivery-pricing", Label = "Kainos ir mokėjimai" });
+            warehouseItems.Add(new NavItem { Href = "/warehouse/supplier-debts", Label = "Skolos tiekėjams" });
+        }
+        warehouseItems.Add(new NavItem { Href = "/warehouse/stock", Label = "Sandėlio likučiai" });
+        warehouseItems.Add(new NavItem { Href = "/warehouse/write-off", Label = "Nurašymas" });
+        warehouseItems.Add(new NavItem { Href = "/warehouse/write-off-history", Label = "Nurašymų istorija" });
+        warehouseItems.Add(new NavItem { Href = "/warehouse/transfers", Label = "Perkėlimai" });
+        _topSections.Add(new NavSection { Title = "Sandėlis", Items = warehouseItems, DefaultExpanded = false });
+
+        _topSections.Add(new NavSection
+        {
+            Title = "Produkcija",
+            Items = new List<NavItem> { new() { Href = "/products", Label = "Produktai" } },
+            DefaultExpanded = true
+        });
+
+        if (_isAdmin || _isManager || _isWarehouse)
+        {
+            var orderItems = new List<NavItem> { new() { Href = "/orders", Label = "Užsakymų sąrašas" } };
+            if (_isAdmin || _isManager)
+            {
+                orderItems.Add(new NavItem { Href = "/orders/create", Label = "Naujas užsakymas" });
+            }
+            _topSections.Add(new NavSection { Title = "Užsakymai", Items = orderItems, DefaultExpanded = true });
+
+            _topSections.Add(new NavSection
+            {
+                Title = "Tiekėjai ir klientai",
+                Items = new List<NavItem>
+                {
+                    new() { Href = "/suppliers", Label = "Tiekėjai" },
+                    new() { Href = "/customers", Label = "Klientai" }
+                },
+                DefaultExpanded = true
+            });
+        }
+
+        if (_isAdmin || _isManager)
+        {
+            _topSections.Add(new NavSection
+            {
+                Title = "Išlaidos",
+                Items = new List<NavItem>
+                {
+                    new() { Href = "/expenses", Label = "Suvestinė" },
+                    new() { Href = "/expense-invoices", Label = "Sąskaitos" },
+                    new() { Href = "/expense-payments", Label = "Mokėjimai" },
+                    new() { Href = "/expenses/forecast", Label = "Išlaidų prognozė" },
+                    new() { Href = "/bank-import?type=expense", Label = "Banko importas" }
+                },
+                DefaultExpanded = false
+            });
+        }
+
+        foreach (var section in _topSections)
+        {
+            section.Expanded = section.DefaultExpanded;
+        }
+
+        _groupedSections = new List<NavGroup>();
+
+        if (_isAdmin || _isManager)
+        {
+            var salesSection = new NavSection
+            {
+                Title = "Pardavimai",
+                Items = new List<NavItem>
+                {
+                    new() { Href = "/invoices/sales", Label = "Pardavimų sąskaitos", Count = _badgeCounts.OverdueInvoices, Danger = true },
+                    new() { Href = "/payments", Label = "Skolų valdymas" },
+                    new() { Href = "/payments/forecast", Label = "Įplaukų prognozė" },
+                    new() { Href = "/payments/history", Label = "Įplaukų istorija" },
+                    new() { Href = "/bank-import?type=income", Label = "Banko importas" }
+                },
+                DefaultExpanded = true
+            };
+            salesSection.Expanded = salesSection.DefaultExpanded;
+            _groupedSections.Add(new NavGroup { GroupLabel = "Finansai", Icon = "€", Section = salesSection });
+        }
+
+        if (_isAdmin || _isManager)
+        {
+            var statsSection = new NavSection
+            {
+                Title = "Statistika",
+                Items = new List<NavItem>
+                {
+                    new() { Href = "/statistics", Label = "Pirkimai" },
+                    new() { Href = "/statistics/sales", Label = "Pardavimai" },
+                    new() { Href = "/reports/debt-reconciliation", Label = "Skolų suderinimo aktas" },
+                    new() { Href = "/reports/sales-by-customer", Label = "Prekių pardavimo suvestinė" }
+                },
+                DefaultExpanded = false
+            };
+            statsSection.Expanded = statsSection.DefaultExpanded;
+            _groupedSections.Add(new NavGroup { GroupLabel = "Analitika", Icon = "◲", Section = statsSection });
+        }
+
+        if (_isAdmin || _isDesigner || _isManager)
+        {
+            var artworkSection = new NavSection
+            {
+                Title = "Artwork",
+                Items = new List<NavItem>
+                {
+                    new() { Href = "/artwork", Label = "Brand Dashboard" },
+                    new() { Href = "/artwork/gallery", Label = "Galerija" }
+                },
+                DefaultExpanded = true
+            };
+            artworkSection.Expanded = artworkSection.DefaultExpanded;
+            _groupedSections.Add(new NavGroup { GroupLabel = "Gamyba", Icon = "◑", Section = artworkSection });
+        }
+    }
+
+    private void AutoExpandActiveSections()
+    {
+        foreach (var section in _topSections)
+        {
+            if (SectionContainsCurrentPath(section)) section.Expanded = true;
+        }
+        foreach (var group in _groupedSections)
+        {
+            if (SectionContainsCurrentPath(group.Section)) group.Section.Expanded = true;
+        }
+    }
+
+    private bool SectionContainsCurrentPath(NavSection section)
+        => section.Items.Any(i => _currentPath.StartsWith(i.Href.Split('?')[0], StringComparison.OrdinalIgnoreCase));
+
+    private bool IsSectionActive(NavSection section) => SectionContainsCurrentPath(section);
+
+    private void Toggle(NavSection section)
+    {
+        section.Expanded = !section.Expanded;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _currentPath = "/" + Navigation.ToBaseRelativePath(e.Location).Split('?')[0];
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }
