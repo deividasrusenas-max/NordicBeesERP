@@ -16,6 +16,7 @@ public interface IContainerService
     Task<decimal> GetTotalNetWeightAsync(int? warehouseId, string? status);
     Task<string?> GetLastContainerCodeAsync();
     Task<string?> GetLastBucketCodeAsync();
+    Task<string> GenerateNextContainerCodeAsync();
     Task<List<Container>> GetByIdsAsync(List<int> ids);
     Task UpdateHoneyTypeAsync(List<int> containerIds, int honeyTypeId);
 }

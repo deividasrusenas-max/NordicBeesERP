@@ -19,59 +19,49 @@
     <MudText Typo="Typo.h5" Class="mb-4">Sandėlio likučiai</MudText>
 
     <!-- Filters -->
-    <StandardListFilterBar>
+    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px;">
         <MudGrid>
-            <MudItem xs="12" md="2">
-                <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Clearable="true">
+            <MudItem xs="12" md="3">
+                <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Variant="Variant.Text" Clearable="@true">
                     @foreach (var w in _warehouses)
                     {
                         <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" md="2">
-                <MudSelect T="int?" Value="_filterHoneyTypeId" ValueChanged="@(async (int? v) => { _filterHoneyTypeId = v; await ApplyFiltersFromUrl(); })" Label="Medaus rūšis" Clearable="true">
-                    @foreach (var h in _honeyTypes)
-                    {
-                        <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="2">
-                <MudSelect T="int?" Value="_filterSupplierId" ValueChanged="@(async (int? v) => { _filterSupplierId = v; await ApplyFiltersFromUrl(); })" Label="Tiekėjas" Clearable="true">
-                    @foreach (var s in _suppliers)
-                    {
-                        <MudSelectItem T="int?" Value="s.Id">@s.Name</MudSelectItem>
-                    }
-                </MudSelect>
+            <MudItem xs="12" md="4">
+                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis, sandėlis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
             </MudItem>
             <MudItem xs="12" md="3">
-                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis, sandėlis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Immediate="true" FullWidth="@true" Variant="Variant.Outlined" />
+                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="@true" />
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Outlined" FullWidth="@true" Clearable="true" />
-            </MudItem>
-            <MudItem xs="12" md="1" Class="d-flex align-end">
-                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff" Color="Color.Secondary" Size="Size.Small" OnClick="ClearFilters" Title="Išvalyti filtrus" />
-            </MudItem>
-            <MudItem xs="12">
-                <div class="d-flex flex-wrap gap-2 align-center">
-                    <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
-                    @foreach (var status in _containerStatusDisplay)
-                    {
-                        <MudChip T="string"
-                                 Color="@(_filterStatus == status.Key ? status.Value.Color : Color.Default)"
-                                 Variant="@(_filterStatus == status.Key ? Variant.Filled : Variant.Outlined)"
-                                 OnClick="@(() => ToggleStatus(status.Key))"
-                                 Size="Size.Small"
-                                 Style="@(_filterStatus == status.Key ? "" : "opacity:0.7")">
-                           @status.Value.Label
-                        </MudChip>
-                    }
-                </div>
+                <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                           Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Small"
+                           OnClick="ClearFilters">
+                    Išvalyti filtrus
+                </MudButton>
             </MudItem>
         </MudGrid>
-    </StandardListFilterBar>
+    </MudPaper>
+
+    <!-- Status chips row (separate from filter bar, no label) -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        @foreach (var status in _containerStatusDisplay)
+        {
+            var isSelected = _filterStatus == status.Key;
+            <MudChip T="string"
+                     Color="@(isSelected ? status.Value.Color : Color.Default)"
+                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleStatus(status.Key))"
+                     Size="Size.Small"
+                      Style="@("text-transform:none;" + (isSelected ? "" : " opacity:0.7"))">
+                @status.Value.Label
+            </MudChip>
+        }
+    </div>
 
     <!-- Summary cards -->
     <MudGrid Class="mb-4">
@@ -109,7 +99,6 @@
         MultiSelection="true" @bind-SelectedItems="_selectedContainers" RowsPerPage="50">
         <HeaderContent>
             <MudTh>ID</MudTh>
-            <MudTh>Tipas</MudTh>
             <MudTh>Tiekėjas</MudTh>
             <MudTh>Rūšis</MudTh>
             <MudTh Style="text-align:right">Brutto</MudTh>
@@ -121,7 +110,6 @@
         </HeaderContent>
         <RowTemplate Context="container">
             <MudTd><strong>@container.ContainerCode</strong></MudTd>
-            <MudTd>@(container.ContainerType == "BARREL" ? "🛢️" : "🪣")</MudTd>
             <MudTd>@GetSupplierName(container.SupplierId)</MudTd>
             <MudTd>@GetHoneyTypeName(container.HoneyTypeId)</MudTd>
             <MudTd Class="lakstena-mono" Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>

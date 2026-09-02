@@ -25,7 +25,7 @@ public class ContainerService : IContainerService
     public async Task<List<Container>> GetFilteredAsync(int? warehouseId, int? honeyTypeId, int? supplierId, string? status, string? searchCode)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var query = context.Containers.AsQueryable();
+        var query = context.Containers.AsNoTracking().AsQueryable();
 
         if (warehouseId.HasValue)
             query = query.Where(c => c.WarehouseId == warehouseId.Value);
@@ -37,10 +37,32 @@ public class ContainerService : IContainerService
             query = query.Where(c => c.Status == status);
         else
             query = query.Where(c => c.Status != "WRITTEN_OFF" && c.Status != "SOLD");
+
         if (!string.IsNullOrEmpty(searchCode))
-            query = query.Where(c => c.ContainerCode.Contains(searchCode));
+        {
+            var pattern = $"%{searchCode}%";
+            query = query.Where(c =>
+                EF.Functions.Like(c.ContainerCode, pattern)
+                || context.BusinessPartners.Any(s => s.Id == c.SupplierId && EF.Functions.Like(s.Name, pattern))
+                || (c.HoneyTypeId.HasValue && context.HoneyTypes.Any(h => h.Id == c.HoneyTypeId!.Value && EF.Functions.Like(h.Name, pattern)))
+                || context.Warehouses.Any(w => w.Id == c.WarehouseId && EF.Functions.Like(w.Name, pattern)));
+        }
 
         return await query.OrderByDescending(c => c.CreatedAt).ToListAsync();
+    }
+
+    public async Task<string> GenerateNextContainerCodeAsync()
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        // Race-safe when the caller wraps this + the subsequent insert in a
+        // transaction on the same connection (e.g. CreateBatchAsync pattern):
+        // the MAX is read inside that transaction, so concurrent inserts cannot
+        // slip between the read and the write.
+        var maxSeq = await context.Database
+            .SqlQueryRaw<int>("SELECT COALESCE(MAX(CAST(SUBSTRING(container_code, 3) AS UNSIGNED)), 0) FROM containers WHERE container_code LIKE 'TP%'")
+            .FirstOrDefaultAsync();
+
+        return "TP" + (maxSeq + 1).ToString("D6");
     }
 
     public async Task<Container?> GetByIdAsync(int id)

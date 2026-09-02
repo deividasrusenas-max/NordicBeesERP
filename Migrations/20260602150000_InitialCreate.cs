@@ -1282,11 +1282,26 @@ namespace NordicBeesERP.Migrations
                     DEFAULT 'draft';
             ");
 
+            // ── Forward-only: UNIQUE constraint on containers.container_code ──
+            // Prevents future duplicate container codes (TP-prefixed codes are
+            // new; existing LAK codes must be verified to have no duplicates
+            // before running this. If duplicates exist, clean them up first.)
+            migrationBuilder.Sql(@"
+                ALTER TABLE `containers` DROP INDEX `idx_container_code`;
+                ALTER TABLE `containers` ADD UNIQUE INDEX `idx_container_code` (`container_code`);
+            ");
+
             migrationBuilder.Sql("SET FOREIGN_KEY_CHECKS=1;");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // Reverse: restore non-unique index on containers.container_code
+            migrationBuilder.Sql(@"
+                ALTER TABLE `containers` DROP INDEX `idx_container_code`;
+                ALTER TABLE `containers` ADD INDEX `idx_container_code` (`container_code`);
+            ");
+
             migrationBuilder.Sql(@"
                 ALTER TABLE `orders` MODIFY COLUMN `status`
                     ENUM('draft','confirmed','packing','ready_for_pickup','shipped','cancelled')
