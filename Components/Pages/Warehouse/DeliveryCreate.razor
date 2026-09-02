@@ -197,10 +197,6 @@
             {
                 <MudGrid>
                     <MudItem xs="6" md="3">
-                        <MudTextField T="string" @bind-Value="_startId" Label="Pradinis ID" Variant="Variant.Outlined"
-                            Style="font-size:1.2rem" Required="true" Placeholder="pvz. 150 arba A-150" />
-                    </MudItem>
-                    <MudItem xs="6" md="3">
                         <MudNumericField T="int" @bind-Value="_barrelCount" Label="Kiekis" Variant="Variant.Outlined"
                             Min="1" Max="500" Style="font-size:1.2rem" />
                     </MudItem>
@@ -215,7 +211,7 @@
                 </MudText>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
                     OnClick="async () => await AddUniformBarrels()" FullWidth="@true" Style="min-height:56px; font-size:1.1rem"
-                    Disabled="@(_barrelCount < 1 || _uniformGross <= 0 || string.IsNullOrWhiteSpace(_startId))">
+                    Disabled="@(_barrelCount < 1 || _uniformGross <= 0)">
                     Įvesti @_barrelCount statinių
                 </MudButton>
             }
@@ -223,18 +219,14 @@
             @if (_barrelMode == "different")
             {
                 <MudGrid>
-                    <MudItem xs="6">
-                        <MudTextField T="string" @bind-Value="_startId" Label="Pradinis ID" Variant="Variant.Outlined"
-                            Style="font-size:1.2rem" Required="true" Placeholder="pvz. 150 arba A-150" />
-                    </MudItem>
-                <MudItem xs="6">
+                <MudItem xs="12">
                     <MudNumericField T="int" @bind-Value="_barrelCount" Label="Kiekis" Variant="Variant.Outlined"
                         Min="1" Max="500" Style="font-size:1.2rem" Immediate="true" />
                 </MudItem>
                 </MudGrid>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
                     OnClick="StartDifferentWeightsWizard" FullWidth="@true" Style="min-height:56px"
-                    Disabled="@(_barrelCount < 1 || string.IsNullOrWhiteSpace(_startId))">
+                    Disabled="@(_barrelCount < 1)">
                     Pradėti svėrimą
                 </MudButton>
             }
@@ -308,15 +300,11 @@
             @if (_bucketEntryMode == "uniform")
             {
                 <MudGrid>
-                    <MudItem xs="4">
-                        <MudTextField T="string" @bind-Value="_bucketStartId" Label="Pradinis ID"
-                            Variant="Variant.Outlined" Placeholder="pvz. K-001" />
-                    </MudItem>
-                    <MudItem xs="4">
+                    <MudItem xs="12">
                         <MudNumericField T="int" @bind-Value="_bucketCount" Label="Kiekis"
                             Variant="Variant.Outlined" Min="1" Max="500" />
                     </MudItem>
-                    <MudItem xs="4">
+                    <MudItem xs="12">
                         <MudNumericField T="decimal" @bind-Value="_bucketUniformGross" Label="Brutto (kg)"
                             Variant="Variant.Outlined" Format="F2" />
                     </MudItem>
@@ -326,8 +314,8 @@
                     <strong>@FormatAmountHelper.Trim(Math.Max(0, _bucketUniformGross - _customBucketTare) * _bucketCount, 1) kg</strong>
                 </MudText>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
-                    OnClick="AddUniformBuckets" FullWidth="@true" Style="min-height:56px"
-                    Disabled="@(string.IsNullOrWhiteSpace(_bucketStartId) || _bucketCount < 1 || _bucketUniformGross <= 0)">
+                    OnClick="async () => await AddUniformBuckets()" FullWidth="@true" Style="min-height:56px"
+                    Disabled="@(_bucketCount < 1 || _bucketUniformGross <= 0)">
                     Įvesti @_bucketCount vnt.
                 </MudButton>
             }
@@ -335,18 +323,14 @@
             @if (_bucketEntryMode == "different")
             {
                 <MudGrid>
-                    <MudItem xs="6">
-                        <MudTextField T="string" @bind-Value="_bucketStartId" Label="Pradinis ID"
-                            Variant="Variant.Outlined" Placeholder="pvz. K-001" />
-                    </MudItem>
-                    <MudItem xs="6">
+                    <MudItem xs="12">
                         <MudNumericField T="int" @bind-Value="_bucketCount" Label="Kiekis"
                             Variant="Variant.Outlined" Min="1" Max="500" />
                     </MudItem>
                 </MudGrid>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
-                    OnClick="StartBucketWeighingWizard" FullWidth="@true" Style="min-height:56px"
-                    Disabled="@(string.IsNullOrWhiteSpace(_bucketStartId) || _bucketCount < 1)">
+                    OnClick="async () => await StartBucketWeighingWizard()" FullWidth="@true" Style="min-height:56px"
+                    Disabled="@(_bucketCount < 1)">
                     Pradėti svėrimą
                 </MudButton>
             }
@@ -436,7 +420,6 @@
     private RawMaterialType? _selectedRawMaterial;
 
     // Barrel fields
-    private string _startId = "";
     private int _barrelCount = 1;
     private decimal _uniformGross = 305;
     private int? _honeyTypeId;
@@ -452,7 +435,6 @@
 
     // Bucket entry mode
     private string _bucketEntryMode = "uniform";
-    private string _bucketStartId = "";
     private decimal _bucketUniformGross = 29;
     private int _bucketCount = 1;
     private bool _bucketWeighingActive;
@@ -475,14 +457,6 @@
         _products = await ProductService.GetAllProductsAsync();
         _honeyTypes = await HoneyTypeService.GetActiveAsync();
         _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
-        
-        var lastCode = await ContainerService.GetLastContainerCodeAsync();
-        if (lastCode != null && int.TryParse(lastCode, out int lastNum))
-            _startId = (lastNum + 1).ToString();
-        
-        var lastBucketCode = await ContainerService.GetLastBucketCodeAsync();
-        if (lastBucketCode != null && int.TryParse(lastBucketCode, out int lastBucketNum))
-            _bucketStartId = (lastBucketNum + 1).ToString();
     }
 
     private void GoToStep2()
@@ -563,12 +537,10 @@
     // === BARREL: Uniform weights ===
     private async Task AddUniformBarrels()
     {
-        if (string.IsNullOrWhiteSpace(_startId)) return;
-
         var duplicates = new List<string>();
         for (int i = 0; i < _barrelCount; i++)
         {
-            var code = GenerateSequentialId(_startId, i);
+            var code = await GetNextSessionContainerCodeAsync();
             
             // Tikrinti duplikatą šiame pristatyme
             if (_pendingContainers.Any(c => c.ContainerCode == code))
@@ -612,11 +584,10 @@
     }
 
     // === BARREL: Different weights wizard ===
-    private void StartDifferentWeightsWizard()
+    private async Task StartDifferentWeightsWizard()
     {
-        if (string.IsNullOrWhiteSpace(_startId)) return;
         _currentBarrelIndex = 0;
-        _currentBarrelCode = _startId;
+        _currentBarrelCode = await GetNextSessionContainerCodeAsync();
         _currentGross = 0;
         _currentTare = GetTareWeight();
         _weighingActive = true;
@@ -655,7 +626,7 @@
         _currentBarrelIndex++;
         if (_currentBarrelIndex < _barrelCount)
         {
-            _currentBarrelCode = GenerateSequentialId(_startId, _currentBarrelIndex);
+            _currentBarrelCode = await GetNextSessionContainerCodeAsync();
             _currentGross = 305;
         }
         else
@@ -677,35 +648,32 @@
     }
 
     // === ID GENERATION ===
-    private string GenerateSequentialId(string startId, int offset)
+    // Returns the next TP code not yet used in this session's _pendingContainers.
+    private async Task<string> GetNextSessionContainerCodeAsync()
     {
-        // Jei startId yra grynas skaičius: "150" + 2 = "152"
-        if (int.TryParse(startId, out int numId))
-            return (numId + offset).ToString();
-
-        // Jei turi prefiksą + skaičių gale: "A-150" + 2 = "A-152"
-        var match = System.Text.RegularExpressions.Regex.Match(startId, @"^(.*?)(\d+)$");
-        if (match.Success)
+        var code = await ContainerService.GenerateNextContainerCodeAsync();
+        while (_pendingContainers.Any(c => c.ContainerCode == code))
         {
-            var prefix = match.Groups[1].Value;
-            var number = int.Parse(match.Groups[2].Value);
-            var format = new string('0', match.Groups[2].Value.Length);
-            return $"{prefix}{(number + offset).ToString(format)}";
+            code = IncrementTpCode(code);
         }
+        return code;
+    }
 
-        // Negalima generuoti sekos — grąžink originalą su prierašu
-        return offset == 0 ? startId : $"{startId}-{offset + 1}";
+    private static string IncrementTpCode(string code)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(code, @"^(TP)(\d+)$");
+        if (!match.Success) return $"{code}-1";
+        var num = int.Parse(match.Groups[2].Value) + 1;
+        return $"TP{num.ToString(new string('0', match.Groups[2].Value.Length))}";
     }
 
     // === BUCKET UNIFORM ===
     private async Task AddUniformBuckets()
     {
-        if (string.IsNullOrWhiteSpace(_bucketStartId)) return;
-
         var duplicates = new List<string>();
         for (int i = 0; i < _bucketCount; i++)
         {
-            var code = GenerateSequentialId(_bucketStartId, i);
+            var code = await GetNextSessionContainerCodeAsync();
             
             // Tikrinti duplikatą šiame pristatyme
             if (_pendingContainers.Any(c => c.ContainerCode == code))
@@ -748,11 +716,10 @@
         }
     }
 
-    private void StartBucketWeighingWizard()
+    private async Task StartBucketWeighingWizard()
     {
-        if (string.IsNullOrWhiteSpace(_bucketStartId)) return;
         _currentBucketIndex = 0;
-        _currentBucketCode = _bucketStartId;
+        _currentBucketCode = await GetNextSessionContainerCodeAsync();
         _currentBucketGross = _customBucketTare <= 0.4m ? 15 : 29;
         _bucketWeighingActive = true;
     }
@@ -792,7 +759,7 @@
         _currentBucketIndex++;
         if (_currentBucketIndex < _bucketCount)
         {
-            _currentBucketCode = GenerateSequentialId(_bucketStartId, _currentBucketIndex);
+            _currentBucketCode = await GetNextSessionContainerCodeAsync();
             _currentBucketGross = _customBucketTare <= 0.4m ? 15 : 29;
         }
         else
