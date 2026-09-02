@@ -1,94 +1,76 @@
-# Task: Redesign Warehouse Write-Off module (WriteOff.razor + WriteOffHistory.razor)
+# Task: Apply standard filter bar design to 3 warehouse pages
 
-Type: BUILD (code changes to Razor pages only — no service/interface/model/DB changes)
+Type: BUILD (Razor pages only)
 
 ## Context
-This module is for writing off spoiled/unsuitable honey containers from stock.
-Investigation report `writeoff-status-investigation-20260902-2241.md` established:
-- Of the 7 `containers.status` enum values, only `IN_STOCK` and `WRITTEN_OFF` are
-  ever actually set in production code. RECEIVED/RESERVED/IN_PRODUCTION/SOLD/RETURNED
-  have UI chips but zero code paths that assign them.
-- `ContainerService.GetFilteredAsync(warehouseId, honeyTypeId, supplierId, status, ...)`
-  is shared with `StockOverview.razor` — its signature must NOT change.
+`Docs/FILTER_STANDARDIZATION_PLAN.md` was just rewritten to define the one
+correct filter-bar look, based on the reference page `/invoices/sales`
+(`Components/Pages/Invoices.razor`). Read that doc first — it has the exact
+markup pattern to copy, plus a "What NOT to do" list. Also read
+`Components/Shared/StandardListFilterBar.razor` (the shared wrapper) and
+`Components/Pages/Invoices.razor` lines ~110-135 for the literal reference
+markup.
 
-Owner decision: simplify this module to reflect reality — it only ever deals with
-IN_STOCK (candidates) and WRITTEN_OFF (already written off) containers. No status
-picker is needed anywhere in this module.
+Fix these 3 pages so their filter bars conform to that standard:
 
-## Required changes
+## A. `Components/Pages/Warehouse/StockOverview.razor` (`/warehouse/stock`)
 
-### A. `Components/Pages/Warehouse/WriteOff.razor` (candidates / selection page)
+Current problems (per the doc's conformance table):
+- Filter card is a bare `MudPaper Style="background:#f8fafc; border-radius:8px;"` —
+  replace with `<StandardListFilterBar>`.
+- Column split is custom (warehouse md3 / search md4 / date md3 / clear md2) —
+  change to: warehouse dropdown `xs=12 sm=6 md=4`, search `xs=12 sm=6 md=4`,
+  date range `xs=12 sm=6 md=4` (three roughly-even fields on this page since it
+  has one extra dropdown beyond the standard two — keep them all inside the
+  same `<StandardListFilterBar><MudGrid>`).
+- "Išvalyti filtrus" is currently always visible — make it conditional
+  (`MudItem xs="12"`, only rendered when warehouse filter, search, date range,
+  or the status chip selection is non-default). Reuse/adapt whatever
+  "is anything filtered" check already exists, or add one.
+- Do NOT touch the status-chip row below the card (`_containerStatusDisplay`
+  foreach) — it already correctly sits outside the filter card per the
+  standard. Leave StockOverview's warehouse dropdown and status chips as-is
+  functionally — this task is layout/wrapper only, not a field-removal task.
 
-1. **Remove the status filter chip row entirely** (the `_containerStatusDisplay`
-   `MudChip` foreach block and `ToggleStatus`/`_status` wiring). This page should
-   only ever load containers with `status == "IN_STOCK"` — pass that literal
-   constant into `GetFilteredAsync` instead of a user-toggleable `_status`.
-2. **Remove the warehouse dropdown filter and honey type dropdown filter** (the
-   `MudSelect` for warehouse and honey type, and their bound fields/params sent
-   to `GetFilteredAsync` — pass `null` for those two params since we're not
-   filtering by them anymore).
-3. **Rebuild the filter bar to match the standard pattern** used on
-   `/invoices/sales` (see `Docs/FILTER_STANDARDIZATION_PLAN.md` and that page's
-   markup for reference): page title on its own row, primary action button
-   below it (left-aligned), filter fields with **no bordered card wrapper**.
-   Filter bar contents:
-   - Single search box covering: container code (`Code`), supplier name, honey
-     type/rūšis (search across these fields — check how `_search` currently
-     works client-side in `FilteredContainers` and keep/adapt that logic, just
-     make sure honey-type text is included in what's matched)
-   - Date range picker for laikotarpis (use whatever date field the containers
-     list currently filters/sorts by for this page — check existing code
-     first, likely delivery/created date)
-4. **Remove the "Statusas" column from the container table.** Every row on this
-   page is IN_STOCK by definition now, so a status column is redundant. Just
-   drop the column, don't replace it with anything on this page.
-5. Keep everything else: container selection checkboxes, the write-off reason
-   step (Pažeista/Pasenusi/Netinkama/Užteršta/Kita + notes), confirm button,
-   `ContainerService.WriteOffAsync` call — unchanged.
+## B. `Components/Pages/Warehouse/WriteOff.razor` (`/warehouse/write-off`)
 
-### B. `Components/Pages/Warehouse/WriteOffHistory.razor` (history page)
+Current problems:
+- Filter section is a bare `MudGrid` with no card at all — wrap it in
+  `<StandardListFilterBar>`.
+- Search field is `md="8"`, date range is `md="4"` — change both to
+  `xs="12" sm="6" md="4"` to match the standard exactly (this page only has
+  these 2 fields, so it's a direct copy of the reference pattern).
+- "Išvalyti filtrus" is always visible — make it conditional on search
+  non-empty OR date range set.
 
-1. This page already hard-loads `status="WRITTEN_OFF"` — confirm there's no
-   status filter/chip UI here to remove (per the investigation report there
-   wasn't one, but re-check).
-2. **Replace any "Statusas" display (badge/column showing "Nurašytas") with a
-   proper "Priežastis" column** showing the write-off reason (the `Notes` field,
-   which already stores the reason typed on the WriteOff page — see
-   `WriteOffAsync` in `ContainerService.cs`). If a Notes/Priežastis column
-   already exists, just make sure the redundant status badge is removed and
-   Priežastis is clearly labeled and prominent.
-3. Remove warehouse/honey type dropdown filters here too if present, for
-   consistency with WriteOff.razor.
-4. Apply the same standard borderless filter bar pattern as (A.3): search box
-   (code/supplier/rūšis) + date range picker (use the write-off date —
-   `UpdatedAt`, per the investigation report).
+## C. `Components/Pages/Warehouse/WriteOffHistory.razor` (`/warehouse/write-off-history`)
 
-## Explicit guardrails — do NOT touch
+Same fixes as (B): wrap in `<StandardListFilterBar>`, search + date range both
+`xs="12" sm="6" md="4"`, make "Išvalyti filtrus" conditional.
 
-- Do NOT change `ContainerService.GetFilteredAsync` / `IContainerService`
-  signatures — `StockOverview.razor` depends on the exact current signature.
-- Do NOT touch `StockOverview.razor` at all.
-- Do NOT touch `Container.cs`, the `containers` table, any migration, or the
-  DB enum. Status values stay as-is in the DB/model — we're only removing
-  unused UI, not the underlying data model.
-- Do NOT touch `ContainerService.WriteOffAsync`, `ContainerService.UpdateStatusAsync`,
-  or any other service method logic.
-- Do NOT remove the `RESERVED`/`IN_PRODUCTION`/`SOLD`/`RETURNED` handling from
-  `StockOverview.razor` — that page is out of scope for this task.
-- Follow FROZEN.md: `.AsNoTracking()` on reads, `ExecuteSqlRawAsync` for writes,
-  no FK changes, DDL human-only (n/a here since no DDL).
+## Guardrails
+- Do NOT change any data-loading logic, service calls, or the underlying
+  filter *behavior* (what gets searched/filtered) — this is purely visual/
+  layout: card wrapper, column widths, conditional clear button.
+- Do NOT remove or add any filter fields (no touching the warehouse dropdown
+  on StockOverview, no re-adding status chips to the write-off pages).
+- Do NOT touch any other page.
+- Do NOT touch `ContainerService`, `IContainerService`, `Container.cs`, or any
+  migration/DB.
+- After the fix, update the "Conformance status" table in
+  `Docs/FILTER_STANDARDIZATION_PLAN.md` — flip the 3 pages from ❌ to ✅.
 
 ## Verification
-- `dotnet build` → must be 0 errors.
-- Grep both files after the change to confirm `_containerStatusDisplay`,
-  `ToggleStatus`, and the status chip markup are fully gone from WriteOff.razor
-  (and from WriteOffHistory.razor if it had them).
-- Confirm `StockOverview.razor` was NOT modified (`git diff --stat` should not
-  list it).
+- `dotnet build` → 0 errors.
+- Grep each of the 3 files to confirm `<StandardListFilterBar>` wraps the
+  filter fields and no bare `MudPaper Style="background:#f8fafc"` filter card
+  remains.
+- Grep to confirm no `md="8"` remains on the WriteOff.razor/WriteOffHistory.razor
+  search fields.
 - No Playwright/browser verification — Deividas checks the UI manually.
 - End with `./bump-version.sh patch`.
 
 ## Output
-Write a full report to `.opencode/reports/writeoff-module-redesign-<timestamp>.md`
-listing: exact diffs/summary per file, confirmation of the guardrails above,
-build result, commit hash, version bump result.
+Write a report to `.opencode/reports/filter-standard-rollout-<timestamp>.md`
+with a before/after summary per file, confirmation of the guardrails, build
+result, commit hash, version bump result.
