@@ -76,7 +76,7 @@
             </HeaderContent>
             <RowTemplate Context="context">
                 <MudTd><strong>@context.ContainerCode</strong></MudTd>
-                <MudTd>@(context.ContainerType == "BARREL" ? "🛢️ Statinė" : "🪣 Kibirai")</MudTd>
+                <MudTd>@(context.ContainerType == "BARREL" ? "Statinė" : "Kibirai")</MudTd>
                 <MudTd>@GetSupplierName(context.SupplierId)</MudTd>
                 <MudTd>@GetHoneyTypeName(context.HoneyTypeId)</MudTd>
                 <MudTd Style="text-align:right">@context.NetWeight.ToString("N1")</MudTd>
