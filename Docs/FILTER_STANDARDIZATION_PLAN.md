@@ -113,6 +113,7 @@ reason).
 |---|---|
 | `/invoices/sales`, `/invoices/purchases` (Invoices.razor) | ✅ Reference — already conforms |
 | `/warehouse/stock` (StockOverview.razor) | ✅ Conforms — `StandardListFilterBar`, fields `xs=12 sm=6 md=4`, conditional `Išvalyti filtrus` (2026-09-03) |
+| `/warehouse/deliveries` (DeliveryList.razor) | ✅ Conforms — `StandardListFilterBar`, search/date `xs=12 sm=6 md=4`, `Variant.Text`, labeled conditional `Išvalyti filtrus` (2026-09-03) |
 | `/warehouse/write-off` (WriteOff.razor) | ✅ Conforms — `StandardListFilterBar`, search/date `xs=12 sm=6 md=4`, conditional `Išvalyti filtrus` (2026-09-03) |
 | `/warehouse/write-off-history` (WriteOffHistory.razor) | ✅ Conforms — `StandardListFilterBar`, search/date `xs=12 sm=6 md=4`, conditional `Išvalyti filtrus` (2026-09-03) |
 | All other list pages | Not yet audited against this version of the standard — audit and fix opportunistically when touching a page, or in a dedicated future pass |

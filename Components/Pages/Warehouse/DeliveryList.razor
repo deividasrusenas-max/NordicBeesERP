@@ -28,21 +28,27 @@
     <!-- Filters -->
     <StandardListFilterBar>
         <MudGrid>
-            <MudItem xs="12" md="6">
+            <MudItem xs="12" sm="6" md="4">
                 <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync"
                     Label="Paieška (numeris, tiekėjas, sąskaita)"
                     Adornment="Adornment.Start"
                     AdornmentIcon="@Icons.Material.Filled.Search"
-                    Clearable="true" Immediate="true" FullWidth="@true" Variant="Variant.Outlined" />
+                    Clearable="true" Immediate="true" FullWidth="@true" Variant="Variant.Text" />
             </MudItem>
-            <MudItem xs="12" md="5">
+            <MudItem xs="12" sm="6" md="4">
                 <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync"
-                    Label="Laikotarpis" Variant="Variant.Outlined" FullWidth="@true" Clearable="true" />
+                    Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="true" />
             </MudItem>
-            <MudItem xs="12" md="1">
-                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff" Color="Color.Secondary" Size="Size.Small"
-                    OnClick="ClearFilters" Title="Išvalyti filtrus" />
-            </MudItem>
+            @if (!string.IsNullOrWhiteSpace(_search) || _dateRange?.Start != null || _dateRange?.End != null || _filterStatus != null)
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                               OnClick="ClearFilters">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
         </MudGrid>
     </StandardListFilterBar>
 
