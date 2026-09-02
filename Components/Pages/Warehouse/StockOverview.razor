@@ -66,27 +66,27 @@
     <!-- Summary cards -->
     <MudGrid Class="mb-4">
         <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#e3f2fd; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
                 <MudText Typo="Typo.caption">Statinės</MudText>
                 <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BARREL") vnt.</MudText>
                 <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BARREL").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#e8f5e9; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
                 <MudText Typo="Typo.caption">Bendras netto</MudText>
                 <MudText Typo="Typo.h5">@_containers.Sum(c => c.NetWeight).ToString("N1") kg</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#fff3e0; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
                 <MudText Typo="Typo.caption">Kibirai</MudText>
                 <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BUCKET_GROUP") vnt.</MudText>
                 <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#f3e5f5; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
                 <MudText Typo="Typo.caption">Bičių duona</MudText>
                 <MudText Typo="Typo.h5">@_biciuDuonaWeight.ToString("N1") kg</MudText>
                 <MudText Typo="Typo.body2" Style="color:#64748b">@_biciuDuonaCount vnt.</MudText>
@@ -94,35 +94,13 @@
         </MudItem>
     </MudGrid>
 
-    <!-- Main table -->
-    <MudTable T="Container" Items="@FilteredContainers" Dense="true" Hover="true" Striped="true" Loading="_loading"
-        MultiSelection="true" @bind-SelectedItems="_selectedContainers" RowsPerPage="50">
-        <HeaderContent>
-            <MudTh>ID</MudTh>
-            <MudTh>Tiekėjas</MudTh>
-            <MudTh>Rūšis</MudTh>
-            <MudTh Style="text-align:right">Brutto</MudTh>
-            <MudTh Style="text-align:right">Tara</MudTh>
-            <MudTh Style="text-align:right">Netto</MudTh>
-            <MudTh>Statusas</MudTh>
-            <MudTh>Sandėlis</MudTh>
-            <MudTh>Data</MudTh>
-        </HeaderContent>
-        <RowTemplate Context="container">
-            <MudTd><strong>@container.ContainerCode</strong></MudTd>
-            <MudTd>@GetSupplierName(container.SupplierId)</MudTd>
-            <MudTd>@GetHoneyTypeName(container.HoneyTypeId)</MudTd>
-            <MudTd Class="lakstena-mono" Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
-            <MudTd Class="lakstena-mono" Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
-            <MudTd Class="lakstena-mono" Style="text-align:right"><strong>@container.NetWeight.ToString("N1")</strong></MudTd>
-            <MudTd><MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(container.Status, _containerStatusDisplay)">@StatusDisplayHelper.GetLabel(container.Status, _containerStatusDisplay)</MudChip></MudTd>
-            <MudTd>@GetWarehouseName(container.WarehouseId)</MudTd>
-            <MudTd>@container.CreatedAt.ToString("MM-dd")</MudTd>
-        </RowTemplate>
-        <PagerContent>
-            <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
-        </PagerContent>
-    </MudTable>
+    <!-- Category hierarchy -->
+    <MudExpansionPanels Dense="true" MultiExpansion="true" Class="mb-3">
+        @foreach (var group in CategoryGroups)
+        {
+            @RenderGroup(group)
+        }
+    </MudExpansionPanels>
 
     @if (_selectedContainers.Any())
     {
@@ -248,6 +226,51 @@
     }
 
     private IReadOnlyList<StockGroup> CategoryGroups => BuildStockHierarchy();
+
+    private bool HasActiveSearch => !string.IsNullOrWhiteSpace(_search);
+
+    private RenderFragment RenderGroup(StockGroup group) => __builder =>
+    {
+        <MudExpansionPanel Dense="@true" Expanded="HasActiveSearch" Text="@group.SummaryText">
+            @if (group.Children.Any())
+            {
+                <MudExpansionPanels Dense="true" MultiExpansion="true">
+                    @foreach (var child in group.Children)
+                    {
+                        @RenderGroup(child)
+                    }
+                </MudExpansionPanels>
+            }
+            else if (group.Items.Any())
+            {
+                @RenderLeafTable(group.Items)
+            }
+        </MudExpansionPanel>
+    };
+
+    private RenderFragment RenderLeafTable(List<Container> items) => __builder =>
+    {
+        <MudTable T="Container" Items="@items" Dense="true" Hover="true" Striped="true"
+            MultiSelection="true" @bind-SelectedItems="_selectedContainers" RowsPerPage="50">
+            <HeaderContent>
+                <MudTh>ID</MudTh><MudTh>Tiekėjas</MudTh><MudTh>Rūšis</MudTh><MudTh Style="text-align:right">Brutto</MudTh><MudTh Style="text-align:right">Tara</MudTh><MudTh Style="text-align:right">Netto</MudTh><MudTh>Statusas</MudTh><MudTh>Sandėlis</MudTh><MudTh>Data</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="container">
+                <MudTd><strong>@container.ContainerCode</strong></MudTd>
+                <MudTd>@GetSupplierName(container.SupplierId)</MudTd>
+                <MudTd>@GetHoneyTypeName(container.HoneyTypeId)</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@container.GrossWeight.ToString("N1")</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@container.TareWeight.ToString("N1")</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right"><strong>@container.NetWeight.ToString("N1")</strong></MudTd>
+                <MudTd><MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(container.Status, _containerStatusDisplay)">@StatusDisplayHelper.GetLabel(container.Status, _containerStatusDisplay)</MudChip></MudTd>
+                <MudTd>@GetWarehouseName(container.WarehouseId)</MudTd>
+                <MudTd>@container.CreatedAt.ToString("MM-dd")</MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
+            </PagerContent>
+        </MudTable>
+    };
 
     private IReadOnlyList<StockGroup> BuildStockHierarchy()
     {
