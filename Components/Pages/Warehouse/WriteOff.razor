@@ -13,26 +13,31 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h5" Class="mb-4">Nurašymas iš sandėlio</MudText>
 
-    <!-- Filter section — borderless, no card wrapper (standard pattern) -->
-    <MudGrid Class="mb-4">
-        <MudItem xs="12" md="8">
-            <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync"
-                Label="Paieška (kodas, tiekėjas, rūšis)"
-                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
-        </MudItem>
-        <MudItem xs="12" md="4">
-            <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync"
-                Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="@true" />
-        </MudItem>
-        <MudItem xs="12">
-            <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
-                       Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                       OnClick="ClearFilters">
-                Išvalyti filtrus
-            </MudButton>
-        </MudItem>
-    </MudGrid>
+    <!-- Filter section — standard filter bar (per Docs/FILTER_STANDARDIZATION_PLAN.md §2) -->
+    <StandardListFilterBar>
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync"
+                    Label="Paieška (kodas, tiekėjas, rūšis)"
+                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                    Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync"
+                    Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="@true" />
+            </MudItem>
+            @if (!string.IsNullOrWhiteSpace(_search) || _dateRange?.Start != null || _dateRange?.End != null)
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                               OnClick="ClearFilters">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </StandardListFilterBar>
 
     @if (_containers.Any())
     {

@@ -19,9 +19,9 @@
     <MudText Typo="Typo.h5" Class="mb-4">Sandėlio likučiai</MudText>
 
     <!-- Filters -->
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px;">
+    <StandardListFilterBar>
         <MudGrid>
-            <MudItem xs="12" md="3">
+            <MudItem xs="12" sm="6" md="4">
                 <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Variant="Variant.Text" Clearable="@true">
                     @foreach (var w in _warehouses)
                     {
@@ -29,23 +29,28 @@
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" md="4">
+            <MudItem xs="12" sm="6" md="4">
                 <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis, sandėlis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
             </MudItem>
-            <MudItem xs="12" md="3">
+            <MudItem xs="12" sm="6" md="4">
                 <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="@true" />
             </MudItem>
-            <MudItem xs="12" md="2">
-                <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
-                           Variant="Variant.Text"
-                           Color="Color.Secondary"
-                           Size="Size.Small"
-                           OnClick="ClearFilters">
-                    Išvalyti filtrus
-                </MudButton>
-            </MudItem>
+            @if (!string.IsNullOrWhiteSpace(_search)
+                || _filterStatus != null
+                || _dateRange?.Start != null
+                || _dateRange?.End != null
+                || (_filterWarehouseId.HasValue && _warehouses.Any() && _filterWarehouseId.Value != _warehouses.First().Id))
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                               OnClick="ClearFilters">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
         </MudGrid>
-    </MudPaper>
+    </StandardListFilterBar>
 
     <!-- Status chips row (separate from filter bar, no label) -->
     <div class="d-flex flex-wrap gap-2 mb-3">
