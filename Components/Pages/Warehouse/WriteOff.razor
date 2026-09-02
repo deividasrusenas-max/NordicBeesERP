@@ -3,7 +3,6 @@
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Helpers
 @inject IContainerService ContainerService
-@inject IWarehouseService WarehouseService
 @inject IHoneyTypeService HoneyTypeService
 @inject ICustomerService CustomerService
 @inject ISnackbar Snackbar
@@ -14,52 +13,26 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h5" Class="mb-4">Nurašymas iš sandėlio</MudText>
 
-    <!-- Step 1: Select warehouse and filter -->
-    <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#f8fafc; border-radius:8px">
-        <MudGrid>
-            <MudItem xs="12" md="3">
-                <MudSelect T="int?" Value="@_warehouseId" ValueChanged="@(async (int? v) => { _warehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Clearable="true">
-                    @foreach (var w in _warehouses)
-                    {
-                        <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="3">
-                <MudSelect T="int?" Value="@_honeyTypeId" ValueChanged="@(async (int? v) => { _honeyTypeId = v; await ApplyFiltersFromUrl(); })" Label="Medaus rūšis" Clearable="true">
-                    @foreach (var h in _honeyTypes)
-                    {
-                        <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="3">
-                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Immediate="true" FullWidth="@true" Variant="Variant.Outlined" />
-            </MudItem>
-            <MudItem xs="12" md="3">
-                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Outlined" FullWidth="@true" Clearable="true" />
-            </MudItem>
-            <MudItem xs="12">
-                <div class="d-flex flex-wrap gap-2 align-center">
-                    <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
-                    @foreach (var status in _containerStatusDisplay)
-                    {
-                        <MudChip T="string"
-                                 Color="@(_status == status.Key ? status.Value.Color : Color.Default)"
-                                 Variant="@(_status == status.Key ? Variant.Filled : Variant.Outlined)"
-                                 OnClick="@(() => ToggleStatus(status.Key))"
-                                 Size="Size.Small"
-                                 Style="@(_status == status.Key ? "" : "opacity:0.7")">
-                            @status.Value.Label
-                        </MudChip>
-                    }
-                </div>
-            </MudItem>
-            <MudItem xs="12" md="3" Class="d-flex align-end">
-                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff" Color="Color.Secondary" Size="Size.Small" OnClick="ClearFilters" Title="Išvalyti filtrus" />
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
+    <!-- Filter section — borderless, no card wrapper (standard pattern) -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="8">
+            <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync"
+                Label="Paieška (kodas, tiekėjas, rūšis)"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync"
+                Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="@true" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                       OnClick="ClearFilters">
+                Išvalyti filtrus
+            </MudButton>
+        </MudItem>
+    </MudGrid>
 
     @if (_containers.Any())
     {
@@ -72,7 +45,6 @@
                 <MudTh>Tiekėjas</MudTh>
                 <MudTh>Rūšis</MudTh>
                 <MudTh Style="text-align:right">Netto (kg)</MudTh>
-                <MudTh>Statusas</MudTh>
             </HeaderContent>
             <RowTemplate Context="context">
                 <MudTd><strong>@context.ContainerCode</strong></MudTd>
@@ -80,7 +52,6 @@
                 <MudTd>@GetSupplierName(context.SupplierId)</MudTd>
                 <MudTd>@GetHoneyTypeName(context.HoneyTypeId)</MudTd>
                 <MudTd Style="text-align:right">@context.NetWeight.ToString("N1")</MudTd>
-                <MudTd>@context.Status</MudTd>
             </RowTemplate>
             <PagerContent>
                 <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
@@ -124,29 +95,14 @@
     private List<Container> _containers = new();
     private HashSet<Container> _selectedContainers = new();
 
-    private List<NordicBeesERP.Models.Warehouse> _warehouses = new();
     private List<NordicBeesERP.Models.HoneyType> _honeyTypes = new();
     private List<NordicBeesERP.Models.BusinessPartner> _suppliers = new();
 
-    private int? _warehouseId;
-    private int? _honeyTypeId;
     private int? _supplierId;
-    private string? _status;
     private string? _search;
     private DateTime? _dateFrom;
     private DateTime? _dateTo;
     private DateRange? _dateRange;
-
-    private readonly Dictionary<string, (string Label, Color Color)> _containerStatusDisplay = new()
-    {
-        ["RECEIVED"] = ("Priimtas", Color.Info),
-        ["IN_STOCK"] = ("Sandėlyje", Color.Success),
-        ["RESERVED"] = ("Rezervuotas", Color.Warning),
-        ["IN_PRODUCTION"] = ("Gamyboje", Color.Primary),
-        ["SOLD"] = ("Parduotas", Color.Secondary),
-        ["RETURNED"] = ("Grąžintas", Color.Default),
-        ["WRITTEN_OFF"] = ("Nurašytas", Color.Error)
-    };
 
     // Client-side free-text + date-range filter applied on top of the server-fetched _containers
     private IEnumerable<Container> FilteredContainers => _containers.Where(c =>
@@ -166,17 +122,8 @@
     });
 
     // URL query-string parameters (synchronized with filter state)
-    [SupplyParameterFromQuery(Name = "warehouse")]
-    public int? FilterWarehouseId { get; set; }
-
-    [SupplyParameterFromQuery(Name = "honeyType")]
-    public int? FilterHoneyTypeId { get; set; }
-
     [SupplyParameterFromQuery(Name = "supplier")]
     public int? FilterSupplierId { get; set; }
-
-    [SupplyParameterFromQuery(Name = "status")]
-    public string? FilterStatus { get; set; }
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? FilterSearch { get; set; }
@@ -194,10 +141,7 @@
     protected override async Task OnParametersSetAsync()
     {
         // Sync URL query params to filter fields
-        _warehouseId = FilterWarehouseId;
-        _honeyTypeId = FilterHoneyTypeId;
         _supplierId = FilterSupplierId;
-        _status = FilterStatus;
         _search = FilterSearch;
 
         // Parse date-range params (null-safe: a fresh load with no query string leaves both null)
@@ -205,25 +149,18 @@
         _dateTo = DateTime.TryParse(FilterDateTo, out var to) ? to : (DateTime?)null;
         _dateRange = (_dateFrom.HasValue || _dateTo.HasValue) ? new DateRange(_dateFrom, _dateTo) : null;
 
-        _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _honeyTypes = (await HoneyTypeService.GetActiveAsync()).ToList();
         _suppliers = (await CustomerService.GetSuppliersAsync()).ToList();
 
         await LoadContainers();
     }
 
-    private async Task ToggleStatus(string status)
-    {
-        _status = _status == status ? null : status;
-        await ApplyFiltersFromUrl();
-    }
-
-    // Loads containers from the server for the load-bearing selects (warehouse/honey-type/supplier/status).
-    // Free-text search and date range are applied client-side in FilteredContainers.
+    // Loads IN_STOCK containers from the server. Free-text search and date range are applied
+    // client-side in FilteredContainers.
     private async Task LoadContainers()
     {
         _selectedContainers.Clear();
-        _containers = await ContainerService.GetFilteredAsync(_warehouseId, _honeyTypeId, _supplierId, _status, null);
+        _containers = await ContainerService.GetFilteredAsync(null, null, null, "IN_STOCK", null);
     }
 
     // Rebuilds the URL from current filter state and reloads. Navigating (replace) re-runs
@@ -231,10 +168,7 @@
     private async Task ApplyFiltersFromUrl()
     {
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("warehouse", FilterUrlBuilder.ToQueryValue(_warehouseId)),
-            ("honeyType", FilterUrlBuilder.ToQueryValue(_honeyTypeId)),
             ("supplier", FilterUrlBuilder.ToQueryValue(_supplierId)),
-            ("status", FilterUrlBuilder.ToQueryValue(_status)),
             ("q", FilterUrlBuilder.ToQueryValue(_search)),
             ("from", FilterUrlBuilder.ToQueryValue(_dateFrom)),
             ("to", FilterUrlBuilder.ToQueryValue(_dateTo)));
