@@ -206,6 +206,8 @@
     private List<Warehouse> _warehouses = new();
     private List<BusinessPartner> _suppliers = new();
     private List<HoneyType> _honeyTypes = new();
+    private List<RawMaterialType> _rawMaterialTypes = new();
+    private readonly Dictionary<int, int> _deliveryLineToRawTypeId = new();
 
     // Filters
     private int? _filterWarehouseId;
@@ -232,6 +234,97 @@
         }
         return true;
     });
+
+    private sealed class StockGroup
+    {
+        public required string Key { get; init; }
+        public required string Label { get; init; }
+        public bool IsHoneyLevel { get; init; }              // true = this group's Children are container-type groups; false = this group holds Items directly
+        public List<StockGroup> Children { get; set; } = new();
+        public List<Container> Items { get; set; } = new();
+        public int Count => Items.Count + Children.Sum(c => c.Count);
+        public decimal NetWeight => Items.Sum(i => i.NetWeight) + Children.Sum(c => c.NetWeight);
+        public string SummaryText => $"{Label} — {Count} vnt., {NetWeight.ToString("N0")} kg";
+    }
+
+    private IReadOnlyList<StockGroup> CategoryGroups => BuildStockHierarchy();
+
+    private IReadOnlyList<StockGroup> BuildStockHierarchy()
+    {
+        var filtered = FilteredContainers.ToList();
+        var result = new List<StockGroup>();
+
+        // Resolve each container's raw material type (null when it cannot be resolved)
+        var withCategory = filtered.Select(c =>
+        {
+            int? rawTypeId = c.DeliveryLineId.HasValue && _deliveryLineToRawTypeId.TryGetValue(c.DeliveryLineId.Value, out var rid) ? rid : null;
+            return (Container: c, RawType: rawTypeId.HasValue ? _rawMaterialTypes.FirstOrDefault(r => r.Id == rawTypeId.Value) : null);
+        }).ToList();
+
+        // Level 1 — one group per raw material type that has containers, ordered by SortOrder
+        foreach (var rawType in withCategory.Where(x => x.RawType != null).GroupBy(x => x.RawType!.Id))
+        {
+            var type = _rawMaterialTypes.First(r => r.Id == rawType.Key);
+            var containersInCategory = rawType.Select(x => x.Container).ToList();
+
+            var categoryGroup = new StockGroup { Key = $"raw-{type.Id}", Label = type.Name, IsHoneyLevel = false };
+            categoryGroup.Children = BuildContainerTypeGroups(containersInCategory);
+
+            // Level 2 — honey-type sub-groups for honey categories only
+            if (type.IsHoney)
+            {
+                var honeyGroups = new List<StockGroup>();
+                foreach (var honeyBucket in containersInCategory.GroupBy(c => c.HoneyTypeId))
+                {
+                    var honeyType = _honeyTypes.FirstOrDefault(h => h.Id == honeyBucket.Key);
+                    var label = honeyType?.Name ?? "Nenurodyta";
+                    var honeyGroup = new StockGroup { Key = $"raw-{type.Id}-honey-{(honeyBucket.Key.HasValue ? honeyBucket.Key.Value : "null")}", Label = label, IsHoneyLevel = true };
+                    honeyGroup.Children = BuildContainerTypeGroups(honeyBucket.ToList());
+                    if (honeyGroup.Count > 0) honeyGroups.Add(honeyGroup);
+                }
+                // Order honey groups by honey type name (unknown/null last), fall back to label for stability
+                categoryGroup.Children = honeyGroups
+                    .OrderBy(g => _honeyTypes.Any(h => h.Name == g.Label) ? 0 : 1)
+                    .ThenBy(g => g.Label, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            if (categoryGroup.Count > 0) result.Add(categoryGroup);
+        }
+
+        // Level 1 — synthetic "Kita" group for unresolvable containers
+        var otherContainers = withCategory.Where(x => x.RawType == null).Select(x => x.Container).ToList();
+        if (otherContainers.Count > 0)
+        {
+            var otherGroup = new StockGroup { Key = "raw-other", Label = "Kita", IsHoneyLevel = false };
+            otherGroup.Children = BuildContainerTypeGroups(otherContainers);
+            if (otherGroup.Count > 0) result.Add(otherGroup);
+        }
+
+        return result;
+    }
+
+    private static List<StockGroup> BuildContainerTypeGroups(List<Container> containers)
+    {
+        var groups = new List<StockGroup>();
+        foreach (var typeBucket in containers.GroupBy(c => c.ContainerType))
+        {
+            var label = typeBucket.Key switch
+            {
+                "BARREL" => "Statinės",
+                "BUCKET_GROUP" => "Kibirai",
+                _ => typeBucket.Key
+            };
+            groups.Add(new StockGroup
+            {
+                Key = $"type-{typeBucket.Key}",
+                Label = label,
+                IsHoneyLevel = false,
+                Items = typeBucket.ToList()
+            });
+        }
+        return groups;
+    }
 
     private async Task ToggleStatus(string status)
     {
@@ -266,6 +359,7 @@
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _suppliers = await CustomerService.GetSuppliersAsync();
         _honeyTypes = await HoneyTypeService.GetAllAsync();
+        _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -293,40 +387,53 @@
         _loading = true;
         _selectedContainers.Clear();
         _containers = await ContainerService.GetFilteredAsync(_filterWarehouseId, _filterHoneyTypeId, _filterSupplierId, _filterStatus, null);
-        
+
+        // Build the delivery-line → raw material type mapping once per load (before any FilteredContainers-dependent work)
+        await LoadDeliveryLineToRawTypeMappingAsync();
+
         // Calculate bičių duona stats
-        await CalculateBiciuDuonaStats();
-        
+        CalculateBiciuDuonaStats();
+
         _loading = false;
         await InvokeAsync(StateHasChanged);
     }
     
-    private async Task CalculateBiciuDuonaStats()
+    private async Task LoadDeliveryLineToRawTypeMappingAsync()
     {
-        var rawTypes = await RawMaterialTypeService.GetActiveAsync();
         var allDeliveries = await DeliveryService.GetAllAsync();
-        var biciuTypeIds = rawTypes
+        var deliveryById = allDeliveries.ToDictionary(d => d.Id);
+
+        using var context = DbContextFactory.CreateDbContext();
+        var lines = await context.DeliveryLines
+            .Select(l => new { l.Id, l.DeliveryId })
+            .ToListAsync();
+
+        _deliveryLineToRawTypeId.Clear();
+        foreach (var line in lines)
+        {
+            if (!deliveryById.TryGetValue(line.DeliveryId, out var delivery)) continue;
+            if (!delivery.RawMaterialTypeId.HasValue) continue;
+            _deliveryLineToRawTypeId[line.Id] = delivery.RawMaterialTypeId.Value;
+        }
+    }
+
+    private void CalculateBiciuDuonaStats()
+    {
+        // A container belongs to bičių duona when its DeliveryLineId maps (via the shared mapping)
+        // to a raw material type whose name contains "BIČIŲ DUONA".
+        var biciuTypeIds = _rawMaterialTypes
             .Where(r => r.Name.Contains("BIČIŲ DUONA", StringComparison.OrdinalIgnoreCase))
             .Select(r => r.Id)
             .ToHashSet();
-        
-        var biciuDeliveryIds = allDeliveries
-            .Where(d => d.RawMaterialTypeId.HasValue && biciuTypeIds.Contains(d.RawMaterialTypeId.Value))
-            .Select(d => d.Id)
-            .ToHashSet();
-        
-        // Get delivery lines for bičių duona deliveries
-        using var context = DbContextFactory.CreateDbContext();
-        var biciuLineIds = await context.DeliveryLines
-            .Where(l => biciuDeliveryIds.Contains(l.DeliveryId))
-            .Select(l => l.Id)
-            .ToListAsync();
-        
+
+        bool IsBiciuDuona(Container c) =>
+            c.DeliveryLineId.HasValue
+            && _deliveryLineToRawTypeId.TryGetValue(c.DeliveryLineId.Value, out var rawTypeId)
+            && biciuTypeIds.Contains(rawTypeId);
+
         // Count and sum containers whose DeliveryLineId matches bičių duona delivery lines
-        _biciuDuonaCount = _containers.Count(c => c.DeliveryLineId.HasValue && biciuLineIds.Contains(c.DeliveryLineId.Value));
-        _biciuDuonaWeight = _containers
-            .Where(c => c.DeliveryLineId.HasValue && biciuLineIds.Contains(c.DeliveryLineId.Value))
-            .Sum(c => c.NetWeight);
+        _biciuDuonaCount = _containers.Count(IsBiciuDuona);
+        _biciuDuonaWeight = _containers.Where(IsBiciuDuona).Sum(c => c.NetWeight);
     }
 
     private void ClearFilters()
