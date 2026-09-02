@@ -335,7 +335,7 @@
             var label = typeBucket.Key switch
             {
                 "BARREL" => "Statinės",
-                "BUCKET_GROUP" => "Kibirai",
+                "BUCKET_GROUP" or "BUCKET" => "Kibirai",
                 _ => typeBucket.Key
             };
             groups.Add(new StockGroup
