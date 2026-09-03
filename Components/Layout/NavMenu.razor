@@ -206,22 +206,6 @@ else
     {
         _topSections = new List<NavSection>();
 
-        var warehouseItems = new List<NavItem> { new() { Href = "/warehouse/deliveries/new", Label = "Naujas pristatymas" } };
-        if (!_isManager)
-        {
-            warehouseItems.Add(new NavItem { Href = "/warehouse/deliveries", Label = "Pristatymai", Count = _badgeCounts.UnpricedDeliveries });
-        }
-        if (_isAdmin || _isManager)
-        {
-            warehouseItems.Add(new NavItem { Href = "/warehouse/delivery-pricing", Label = "Kainos ir mokėjimai" });
-            warehouseItems.Add(new NavItem { Href = "/warehouse/supplier-debts", Label = "Skolos tiekėjams" });
-        }
-        warehouseItems.Add(new NavItem { Href = "/warehouse/stock", Label = "Sandėlio likučiai" });
-        warehouseItems.Add(new NavItem { Href = "/warehouse/write-off", Label = "Nurašymas" });
-        warehouseItems.Add(new NavItem { Href = "/warehouse/write-off-history", Label = "Nurašymų istorija" });
-        warehouseItems.Add(new NavItem { Href = "/warehouse/transfers", Label = "Perkėlimai" });
-        _topSections.Add(new NavSection { Title = "Sandėlis", Items = warehouseItems, DefaultExpanded = false });
-
         _topSections.Add(new NavSection
         {
             Title = "Produkcija",
@@ -273,6 +257,22 @@ else
         }
 
         _groupedSections = new List<NavGroup>();
+
+        var warehouseItems = new List<NavItem> { new() { Href = "/warehouse/deliveries/new", Label = "Naujas pristatymas" } };
+        if (!_isManager)
+        {
+            warehouseItems.Add(new NavItem { Href = "/warehouse/deliveries", Label = "Pristatymai", Count = _badgeCounts.UnpricedDeliveries });
+        }
+        if (_isAdmin || _isManager)
+        {
+            warehouseItems.Add(new NavItem { Href = "/warehouse/delivery-pricing", Label = "Kainos ir mokėjimai" });
+            warehouseItems.Add(new NavItem { Href = "/warehouse/supplier-debts", Label = "Skolos tiekėjams" });
+        }
+        warehouseItems.Add(new NavItem { Href = "/warehouse/stock", Label = "Sandėlio likučiai" });
+
+        var warehouseSection = new NavSection { Title = "Sandėlis", Items = warehouseItems, DefaultExpanded = false };
+        warehouseSection.Expanded = warehouseSection.DefaultExpanded;
+        _groupedSections.Add(new NavGroup { GroupLabel = "Sandėlis", Icon = "▤", Section = warehouseSection });
 
         if (_isAdmin || _isManager)
         {
