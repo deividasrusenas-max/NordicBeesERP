@@ -1,5 +1,6 @@
 @page "/customers"
 @inject ICustomerService CustomerService
+@inject IDebtReconciliationService DebtReconciliationService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -85,32 +86,31 @@
                   OnRowClick="@(async (TableRowClickEventArgs<Customer> args) => await OnRowClick(args.Item))">
             <HeaderContent>
                 <MudTh>Pavadinimas</MudTh>
-                <MudTh>Kodas</MudTh>
-                <MudTh>PVM kodas</MudTh>
-                <MudTh>PVM%</MudTh>
-                <MudTh>Mokėjimo terminas</MudTh>
-                <MudTh>Aktyvus</MudTh>
+                <MudTh>Šalis</MudTh>
+                <MudTh>PVM</MudTh>
+                <MudTh>Mokėjimo term.</MudTh>
+                <MudTh>Balansas</MudTh>
                 <MudTh Style="width:120px;">Veiksmai</MudTh>
             </HeaderContent>
             <RowTemplate Context="customer">
                 <MudTd>
                     <MudText Typo="Typo.body2">@customer!.Name</MudText>
                 </MudTd>
-                <MudTd>
-                    @if (!string.IsNullOrEmpty(customer!.CompanyCode))
-                    {
-                        <MudText Typo="Typo.caption">@customer!.CompanyCode</MudText>
-                    }
-                </MudTd>
-                <MudTd>@(customer!.VatCode)</MudTd>
+                <MudTd>@(string.IsNullOrWhiteSpace(customer!.Country) ? "—" : customer!.Country)</MudTd>
                 <MudTd Class="lakstena-mono">@customer!.DefaultVatRate.ToString("N0")%</MudTd>
-                <MudTd Class="lakstena-mono">@(customer!.PaymentTermDays) d.</MudTd>
+                <MudTd Class="lakstena-mono">@customer!.PaymentTermDays d.</MudTd>
                 <MudTd>
-                    <MudChip T="string" Size="Size.Small"
-                             Color="@(customer!.IsActive ? Color.Success : Color.Default)"
-                             Variant="Variant.Outlined">
-                        @(customer!.IsActive ? "Aktyvus" : "Neaktyvus")
-                    </MudChip>
+                    @if (_balances.TryGetValue(customer!.Id, out var bal))
+                    {
+                        <MudText Typo="Typo.body2" Class="lakstena-mono"
+                                 Color="@(bal > 0 ? Color.Success : bal < 0 ? Color.Error : Color.Default)">
+                            @FormatBalance(bal)
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="lakstena-mono">—</MudText>
+                    }
                 </MudTd>
                 <MudTd>
                     <div @onclick:stopPropagation="true">
@@ -138,6 +138,7 @@
     private List<Customer>? _customers;
     private string _filterSearch = string.Empty;
     private HashSet<string> _selectedStatuses = new();
+    private Dictionary<int, decimal> _balances = new();
     private bool _isAdmin;
     private bool _isManager;
     private DateTime _lastClickTime = DateTime.MinValue;
@@ -171,6 +172,22 @@
     private async Task LoadCustomers()
     {
         _customers = await CustomerService.GetCustomersAsync();
+        if (_customers is { Count: > 0 })
+        {
+            _balances = await DebtReconciliationService.GetBalancesBulkAsync(_customers.Select(c => c.Id));
+        }
+        else
+        {
+            _balances = new Dictionary<int, decimal>();
+        }
+    }
+
+    private static string FormatBalance(decimal balance)
+    {
+        if (balance == 0m)
+            return "0,00 €";
+        var sign = balance > 0m ? "+" : "-";
+        return $"{sign}{FormatAmountHelper.Trim(Math.Abs(balance), 2)} €";
     }
 
     private void ApplyFilters()
