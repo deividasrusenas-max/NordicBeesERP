@@ -12,15 +12,15 @@
 <PageTitle>Tiekėjai</PageTitle>
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
 
-    <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">Tiekėjai</MudText>
+    <MudText Typo="Typo.h5" Class="mb-3">Tiekėjai</MudText>
+    <div class="d-flex justify-space-between align-center mb-4">
         @if (_isAdmin || _isManager)
         {
-            <MudButton OnClick="@(() => OpenCreateDialog(PartnerType.Both))" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary">Naujas tiekėjas</MudButton>
+            <MudButton OnClick="@(() => OpenCreateDialog(PartnerType.Both))" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none">Naujas tiekėjas</MudButton>
         }
         else if (_isWarehouse)
         {
-            <MudButton OnClick="@(() => OpenCreateDialog(PartnerType.Supplier))" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary">Naujas ūkininkas</MudButton>
+            <MudButton OnClick="@(() => OpenCreateDialog(PartnerType.Supplier))" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none">Naujas ūkininkas</MudButton>
         }
     </div>
 
@@ -30,15 +30,31 @@
     }
 
     <StandardListFilterBar>
-        <MudTextField Value="@_searchText"
-                      ValueChanged="@((string val) => OnSearchChanged(val))"
-                      Placeholder="Ieškoti pagal pavadinimą, kodą..."
-                      Variant="Variant.Outlined"
-                      Immediate="true"
-                      FullWidth="true"
-                      Clearable="true"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Adornment="Adornment.Start" />
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField Value="@_searchText"
+                              ValueChanged="@((string val) => OnSearchChanged(val))"
+                              Label="Paieška pagal pavadinimą, kodą arba PVM kodą"
+                              Variant="Variant.Text"
+                              Immediate="true"
+                              FullWidth="true"
+                              Clearable="true"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Adornment="Adornment.Start" />
+            </MudItem>
+            @if (!string.IsNullOrEmpty(_searchText) || _selectedVatRates.Any() || _filterActive.HasValue || _tabIndex != 0)
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text"
+                               Color="Color.Secondary"
+                               Size="Size.Small"
+                               OnClick="@ClearFiltersAsync">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
     </StandardListFilterBar>
 
     <MudStack Row="true" Class="mt-2 mb-0">
@@ -81,7 +97,7 @@
     </MudStack>
 
     <div class="d-flex flex-wrap gap-2 mb-3 mt-2 align-center">
-        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">PVM:</MudText>
+        <MudText Typo="Typo.body2" Class="mr-1">PVM:</MudText>
         @foreach (var rate in new decimal[] { 0, 6, 21 })
         {
             var isVatSelected = _selectedVatRates.Contains(rate);
@@ -316,6 +332,16 @@
             ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates.Select(r => r.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
             ("active", FilterUrlBuilder.ToQueryValue(_filterActive)),
             ("tab", _tabIndex != 0 ? _tabIndex.ToString() : null)), replace: false);
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _searchText = null;
+        _selectedVatRates = new HashSet<decimal>();
+        _filterActive = null;
+        _tabIndex = 0;
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
+        await LoadSuppliers();
     }
 
     private bool IsDoubleClick(object item)

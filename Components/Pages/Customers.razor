@@ -9,10 +9,10 @@
 <PageTitle>Klientai</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h5">Klientai</MudText>
-        @if (_isAdmin || _isManager)
-        {
+    <MudText Typo="Typo.h5" Class="mb-3">Klientai</MudText>
+    @if (_isAdmin || _isManager)
+    {
+        <div class="mb-4">
             <MudButton OnClick="OpenCreateDialog"
                         StartIcon="@Icons.Material.Filled.Add"
                         Variant="Variant.Filled"
@@ -20,8 +20,8 @@
                         Style="text-transform:none">
                 Naujas klientas
             </MudButton>
-        }
-    </div>
+        </div>
+    }
 
     @if (_customers == null)
     {
@@ -30,21 +30,50 @@
 
     <StandardListFilterBar>
         <MudGrid Spacing="3">
-            <MudItem xs="12" md="6">
+            <MudItem xs="12" sm="6" md="4">
                 <MudTextField T="string" Label="Paieška (pavadinimas / kodas / PVM kodas)"
-                    Value="_filterSearch"
-                    ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
-                    Immediate="true" Clearable="true" Adornment="Adornment.Start"
-                    AdornmentIcon="@Icons.Material.Filled.Search" />
+                              Value="_filterSearch"
+                              ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
+                              Variant="Variant.Text"
+                              Immediate="true"
+                              FullWidth="true"
+                              Clearable="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
             </MudItem>
-            <MudItem xs="12" md="6">
-                <MudChipSet T="string" @bind-Values="_selectedStatuses" OnValuesChanged="_ => ApplyFilters()" Variant="Variant.Outlined">
-                    <MudChip Value="@("active")">Aktyvus</MudChip>
-                    <MudChip Value="@("inactive")">Neaktyvus</MudChip>
-                </MudChipSet>
-            </MudItem>
+            @if (!string.IsNullOrWhiteSpace(_filterSearch) || _selectedStatuses.Any())
+            {
+                <MudItem xs="12">
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Text"
+                               Color="Color.Secondary"
+                               Size="Size.Small"
+                               OnClick="@ClearFiltersAsync">
+                        Išvalyti filtrus
+                    </MudButton>
+                </MudItem>
+            }
         </MudGrid>
     </StandardListFilterBar>
+
+    <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+        <MudChip T="string" Value="@("active")"
+                 Color="@(_selectedStatuses.Contains("active") ? Color.Success : Color.Default)"
+                 Variant="@(_selectedStatuses.Contains("active") ? Variant.Filled : Variant.Outlined)"
+                 Size="Size.Small"
+                 Style="@(_selectedStatuses.Contains("active") ? "" : "opacity:0.7")"
+                 OnClick="@(() => ToggleStatus("active"))">
+            Aktyvus
+        </MudChip>
+        <MudChip T="string" Value="@("inactive")"
+                 Color="@(_selectedStatuses.Contains("inactive") ? Color.Error : Color.Default)"
+                 Variant="@(_selectedStatuses.Contains("inactive") ? Variant.Filled : Variant.Outlined)"
+                 Size="Size.Small"
+                 Style="@(_selectedStatuses.Contains("inactive") ? "" : "opacity:0.7")"
+                 OnClick="@(() => ToggleStatus("inactive"))">
+            Neaktyvus
+        </MudChip>
+    </div>
 
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
         <MudTable Items="@FilteredCustomers"
@@ -156,6 +185,20 @@
         _filterSearch = val ?? string.Empty;
         ApplyFilters();
         return Task.CompletedTask;
+    }
+
+    private void ToggleStatus(string s)
+    {
+        if (!_selectedStatuses.Remove(s)) _selectedStatuses.Add(s);
+        ApplyFilters();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _filterSearch = string.Empty;
+        _selectedStatuses = new HashSet<string>();
+        Navigation.NavigateTo(Navigation.Uri.Split('?')[0], replace: false);
+        await LoadCustomers();
     }
 
     private List<Customer> FilteredCustomers
