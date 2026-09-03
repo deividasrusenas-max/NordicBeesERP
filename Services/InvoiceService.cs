@@ -667,14 +667,9 @@ namespace NordicBeesERP.Services
                 ? (delivery.TotalAmount - deductions) / delivery.TotalNetWeight
                 : 0m;
 
-            // Build the deduction summary for Notes — only non-zero items, no trailing separators.
-            var noteParts = new List<string>();
-            if (transportCost != 0m)
-                noteParts.Add($"Transportas: {transportCost.ToString("F2", CultureInfo.InvariantCulture)} €");
-            if (barrelCost != 0m)
-                noteParts.Add($"Tara: {barrelCost.ToString("F2", CultureInfo.InvariantCulture)} €");
-            if (otherCost != 0m)
-                noteParts.Add($"Kitos išlaidos: {otherCost.ToString("F2", CultureInfo.InvariantCulture)} €");
+            // Build the deduction summary for internal record only — not written to Invoice.Notes
+            // (deductions remain persisted on the delivery via the ExecuteSqlRawAsync call below;
+            // the invoice itself should not display them as a comment).
 
             var paymentTermDays = supplier.PaymentTermDays > 0 ? supplier.PaymentTermDays : 10;
 
@@ -689,7 +684,7 @@ namespace NordicBeesERP.Services
                 Language = "LT",
                 InvoiceType = "6% PVM SĄSKAITA FAKTŪRA",
                 Status = InvoiceStatus.Draft,
-                Notes = noteParts.Count > 0 ? string.Join(", ", noteParts) : null,
+                Notes = null,
                 Lines = new List<InvoiceLine>
                 {
                     new InvoiceLine

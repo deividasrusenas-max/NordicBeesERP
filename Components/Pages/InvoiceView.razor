@@ -209,10 +209,6 @@
                                 <div>
                                     @($"{line.Description}. Pristatymo nr.: {_invoice.Delivery.DeliveryNumber}")
                                 </div>
-                                @if (FormatDeductions(_invoice.Delivery) is { } deductionsText)
-                                {
-                                    <div Class="mt-1" Style="font-size:0.85rem; color:#777;">@deductionsText</div>
-                                }
                             }
                             else
                             {
@@ -479,16 +475,6 @@
 
     private string GetCreditStatusLabel(CreditNoteStatus status) => _creditNoteStatusDisplay[status].Label;
     private Color GetCreditStatusColor(CreditNoteStatus status) => _creditNoteStatusDisplay[status].Color;
-
-    private string? FormatDeductions(NordicBeesERP.Models.WarehouseModule.Delivery? delivery)
-    {
-        if (delivery == null) return null;
-        var parts = new List<string>();
-        if (delivery.TransportCostDeduction > 0) parts.Add($"Transportas: {delivery.TransportCostDeduction:0.00} €");
-        if (delivery.BarrelCostDeduction > 0) parts.Add($"Tara: {delivery.BarrelCostDeduction:0.00} €");
-        if (delivery.OtherCostDeduction > 0) parts.Add($"Kitos išlaidos: {delivery.OtherCostDeduction:0.00} €");
-        return parts.Count > 0 ? string.Join(", ", parts) : null;
-    }
 
     private void NavigateToCreditNote(int creditNoteId)
     {
