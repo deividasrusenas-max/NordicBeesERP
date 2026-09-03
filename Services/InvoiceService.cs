@@ -26,6 +26,7 @@ namespace NordicBeesERP.Services
         Task<InvoiceStatistics> GetInvoiceStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
         Task<List<Invoice>> GetInvoicesAsync(DateTime? fromDate = null, DateTime? toDate = null, InvoiceStatus? status = null, int? customerId = null, string? searchTerm = null, int take = 50, string? type = null);
         Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId);
+        Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost);
         Task<List<int>> GetInvoiceYearsAsync();
         Task<byte[]> GeneratePdfAsync(int invoiceId);
         Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null);
@@ -642,65 +643,77 @@ namespace NordicBeesERP.Services
 
         public async Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId)
         {
+            return await CreateInvoiceFromDeliveryAsync(deliveryId, 0m, 0m, 0m);
+        }
+
+        public async Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost)
+        {
             using var context = await _contextFactory.CreateDbContextAsync();
-            
+
             var delivery = await context.Deliveries
                 .Include(d => d.RawMaterialType)
                 .FirstOrDefaultAsync(d => d.Id == deliveryId);
-            
+
             if (delivery == null)
                 throw new InvalidOperationException($"Pristatymas su id {deliveryId} nerastas");
-            
+
             // Get supplier info
             var supplier = await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == delivery.SupplierId);
             if (supplier == null)
                 throw new InvalidOperationException($"Tiekėjas su id {delivery.SupplierId} nerastas");
-            
-            // Generate invoice number
-            var invoiceNumber = await GenerateNextInvoiceNumberAsync(delivery.DeliveryDate, "6% PVM SĄSKAITA FAKTŪRA");
-            
-            // Create invoice
+
+            var deductions = transportCost + barrelCost + otherCost;
+            var unitPrice = delivery.TotalNetWeight > 0
+                ? (delivery.TotalAmount - deductions) / delivery.TotalNetWeight
+                : 0m;
+
+            // Build the deduction summary for Notes — only non-zero items, no trailing separators.
+            var noteParts = new List<string>();
+            if (transportCost != 0m)
+                noteParts.Add($"Transportas: {transportCost.ToString("F2", CultureInfo.InvariantCulture)} €");
+            if (barrelCost != 0m)
+                noteParts.Add($"Tara: {barrelCost.ToString("F2", CultureInfo.InvariantCulture)} €");
+            if (otherCost != 0m)
+                noteParts.Add($"Kitos išlaidos: {otherCost.ToString("F2", CultureInfo.InvariantCulture)} €");
+
+            var paymentTermDays = supplier.PaymentTermDays > 0 ? supplier.PaymentTermDays : 10;
+
             var invoice = new Invoice
             {
-                InvoiceNumber = invoiceNumber,
+                // InvoiceNumber intentionally left empty — CreateInvoiceAsync generates it.
                 InvoiceDate = delivery.DeliveryDate,
                 CustomerId = delivery.SupplierId,
                 DeliveryId = delivery.Id,
-                PaymentTermDays = supplier.PaymentTermDays,
-                PaymentDueDate = delivery.DeliveryDate.AddDays(supplier.PaymentTermDays),
+                PaymentTermDays = paymentTermDays,
+                PaymentDueDate = delivery.DeliveryDate.AddDays(paymentTermDays),
                 Language = "LT",
                 InvoiceType = "6% PVM SĄSKAITA FAKTŪRA",
                 Status = InvoiceStatus.Draft,
-                Lines = new List<InvoiceLine>()
+                Notes = noteParts.Count > 0 ? string.Join(", ", noteParts) : null,
+                Lines = new List<InvoiceLine>
+                {
+                    new InvoiceLine
+                    {
+                        LineNumber = 1,
+                        Description = $"{delivery.RawMaterialType?.Name ?? "Žaliava"} - {delivery.DeliveryNumber}",
+                        Quantity = delivery.TotalNetWeight,
+                        Unit = "kg",
+                        PriceExclVat = unitPrice,
+                        VatRate = 6
+                    }
+                }
             };
-            
-            // Add invoice line for the delivery
-            int lineNumber = 1;
-            invoice.Lines.Add(new InvoiceLine
-            {
-                LineNumber = lineNumber++,
-                Description = $"{delivery.RawMaterialType?.Name ?? "Žaliava"} - {delivery.DeliveryNumber}",
-                Quantity = delivery.TotalNetWeight,
-                Unit = "kg",
-                PriceExclVat = delivery.TotalNetWeight > 0 ? (delivery.TotalAmount / delivery.TotalNetWeight) : 0,
-                VatRate = 6
-            });
-            
-            // Calculate totals
-            invoice = CalculateInvoiceTotals(invoice);
 
-            // Snapshot the supplier's VAT code at issuance
-            invoice.CustomerVatCode = supplier?.VatCode;
+            // CreateInvoiceAsync creates the invoice + line, computes totals, snapshots the
+            // supplier VAT code, and updates deliveries.invoice_id/invoice_number linkage.
+            var invoiceId = await CreateInvoiceAsync(invoice);
 
-            context.Invoices.Add(invoice);
-            await context.SaveChangesAsync();
-
-            // Update delivery with invoice reference (delivery is detached — use raw SQL)
+            // Persist the three deduction amounts on the delivery (delivery is detached — raw SQL).
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE deliveries SET invoice_id = {0}, invoice_number = {1}, updated_at = NOW() WHERE id = {2}",
-                invoice.Id, invoiceNumber, delivery.Id);
-            
-            return invoice.Id;
+                "UPDATE deliveries SET transport_cost_deduction = {0}, barrel_cost_deduction = {1}, other_cost_deduction = {2}, updated_at = NOW() WHERE id = {3}",
+                transportCost, barrelCost, otherCost, deliveryId);
+
+            return invoiceId;
         }
     }
 
