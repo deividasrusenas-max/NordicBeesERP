@@ -274,7 +274,7 @@ namespace NordicBeesERP.Services
                     string documentTitle = labels.DocumentTitle;
                     if (isReverseCharge6)
                     {
-                        documentTitle = "6% PVM SĄSKAITA FAKTŪRA";
+                        documentTitle = "PVM SĄSKAITA FAKTŪRA";
                     }
                     
                     // Eilutė 1: "PVM SĄSKAITA FAKTŪRA" - bold, large
