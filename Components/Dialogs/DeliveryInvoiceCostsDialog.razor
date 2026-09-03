@@ -1,0 +1,114 @@
+@namespace NordicBeesERP.Components.Dialogs
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Receipt" Color="@Color.Primary" />
+            <MudText Typo="Typo.h6">Sąskaitos išlaidos</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudNumericField T="decimal"
+                         @bind-Value="_transportCost"
+                         Label="Transporto išlaidos, kurias skolingas tiekėjas (€)"
+                         Variant="Variant.Outlined"
+                         FullWidth="@true"
+                         Format="F2"
+                         Culture="@_ltCulture"
+                         Margin="Margin.Dense"
+                         Immediate="true" />
+        <MudNumericField T="decimal"
+                         @bind-Value="_barrelCost"
+                         Label="Statinių/taros išlaidos, kurias skolingas tiekėjas (€)"
+                         Variant="Variant.Outlined"
+                         FullWidth="@true"
+                         Format="F2"
+                         Culture="@_ltCulture"
+                         Margin="Margin.Dense"
+                         Immediate="true" />
+        <MudNumericField T="decimal"
+                         @bind-Value="_otherCost"
+                         Label="Kitos išlaidos (€)"
+                         Variant="Variant.Outlined"
+                         FullWidth="@true"
+                         Format="F2"
+                         Culture="@_ltCulture"
+                         Margin="Margin.Dense"
+                         Immediate="true" />
+
+        <MudStack Spacing="1" Class="mt-4">
+            <MudText Typo="Typo.body2">Vieneto kaina: @_previewUnitPrice.ToString("F2", _ltCulture) €</MudText>
+            <MudText Typo="Typo.body2">Suma: @_previewTotal.ToString("F2", _ltCulture) €</MudText>
+        </MudStack>
+
+        @if (TotalAmount > 0 && _previewTotal < 0)
+        {
+            <MudAlert Severity="Severity.Warning" Dense Class="mt-4">
+                Išskaičiavimai viršija bendrą sumą.
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Style="text-transform:none"
+                   OnClick="@Cancel">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Style="text-transform:none"
+                   Disabled="@(TotalAmount > 0 && _previewTotal < 0)"
+                   OnClick="@Confirm">Formuoti sąskaitą</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public decimal TotalAmount { get; set; }
+    [Parameter] public decimal TotalNetWeight { get; set; }
+
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private decimal _transportCost = 0m;
+    private decimal _barrelCost = 0m;
+    private decimal _otherCost = 0m;
+
+    private readonly System.Globalization.CultureInfo _ltCulture = new("lt-LT");
+
+    private decimal _deductions => _transportCost + _barrelCost + _otherCost;
+
+    private decimal _previewUnitPrice => TotalNetWeight > 0
+        ? (TotalAmount - _deductions) / TotalNetWeight
+        : 0m;
+
+    private decimal _previewTotal => TotalAmount - _deductions;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(new DeliveryInvoiceCostsResult
+    {
+        TransportCost = _transportCost,
+        BarrelCost = _barrelCost,
+        OtherCost = _otherCost
+    }));
+
+    public class DeliveryInvoiceCostsResult
+    {
+        public decimal TransportCost { get; init; }
+        public decimal BarrelCost { get; init; }
+        public decimal OtherCost { get; init; }
+
+        public static async Task<DeliveryInvoiceCostsResult?> ShowAsync(IDialogService dialogService, decimal totalAmount, decimal totalNetWeight)
+        {
+            var parameters = new DialogParameters<DeliveryInvoiceCostsDialog>
+            {
+                [nameof(TotalAmount)] = totalAmount,
+                [nameof(TotalNetWeight)] = totalNetWeight
+            };
+            var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+            var dialog = await dialogService.ShowAsync<DeliveryInvoiceCostsDialog>("Sąskaitos išskyrimas", parameters, options);
+            var result = await dialog.Result;
+            if (result == null || result.Canceled)
+                return null;
+            return result.Data as DeliveryInvoiceCostsResult;
+        }
+    }
+}
