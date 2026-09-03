@@ -77,6 +77,7 @@ builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
     // Reports module
     builder.Services.AddScoped<BrandedReportHeader>();
     builder.Services.AddScoped<DebtReconciliationService>();
+    builder.Services.AddScoped<IDebtReconciliationService, DebtReconciliationService>();
     builder.Services.AddScoped<DebtReconciliationPdfService>();
     builder.Services.AddScoped<DebtReconciliationXlsxService>();
     builder.Services.AddScoped<UnpaidInvoicesService>();

@@ -8,7 +8,7 @@ using NordicBeesERP.Models;
 
 namespace NordicBeesERP.Services;
 
-public class DebtReconciliationService
+public class DebtReconciliationService : IDebtReconciliationService
 {
     private readonly IDbContextFactory<NordicBeesERPContext> _dbFactory;
 
@@ -132,5 +132,131 @@ public class DebtReconciliationService
             TotalCredit = totalCredit,
             ClosingBalance = closingBalance
         };
+    }
+
+    public async Task<Dictionary<int, decimal>> GetBalancesBulkAsync(IEnumerable<int> partnerIds, int? year = null)
+    {
+        var partnerIdList = partnerIds.Distinct().ToList();
+        if (partnerIdList.Count == 0)
+        {
+            return new Dictionary<int, decimal>();
+        }
+
+        await using var db = await _dbFactory.CreateDbContextAsync();
+
+        // Fixed set of grouped aggregate queries — no per-partner loop.
+        // Sign convention matches GetReconciliationAsync: debit (invoices) − credit (credit notes + payments).
+        // In the year-filtered branch, the opening balance also subtracts pre-period payments.
+
+        Dictionary<int, decimal> debit, creditCn, creditPay;
+        Dictionary<int, decimal>? openingDebit = null, openingCredit = null, openingPayments = null;
+
+        if (!year.HasValue)
+        {
+            var invoiceRows = await db.Invoices.AsNoTracking()
+                .Where(i => partnerIdList.Contains(i.CustomerId)
+                    && EF.Functions.Like(i.InvoiceNumber, "LAK%")
+                    && i.Status != InvoiceStatus.Draft
+                    && i.Status != InvoiceStatus.Cancelled)
+                .GroupBy(i => i.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.TotalInclVat) })
+                .ToListAsync();
+
+            var creditNoteRows = await db.CreditNotes.AsNoTracking()
+                .Where(c => partnerIdList.Contains(c.CustomerId)
+                    && c.Status != CreditNoteStatus.Draft
+                    && c.Status != CreditNoteStatus.Disputed)
+                .GroupBy(c => c.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.TotalInclVat) })
+                .ToListAsync();
+
+            var paymentRows = await db.Payments.AsNoTracking()
+                .Where(p => partnerIdList.Contains(p.CustomerId))
+                .GroupBy(p => p.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync();
+
+            debit = invoiceRows.ToDictionary(r => r.Key, r => r.Total);
+            creditCn = creditNoteRows.ToDictionary(r => r.Key, r => r.Total);
+            creditPay = paymentRows.ToDictionary(r => r.Key, r => r.Total);
+        }
+        else
+        {
+            var y = year.Value;
+            var periodStart = new DateTime(y, 1, 1);
+            var periodEnd = new DateTime(y, 12, 31);
+
+            // Opening balance: everything dated before Jan 1 of the year.
+            var openingInvoiceRows = await db.Invoices.AsNoTracking()
+                .Where(i => partnerIdList.Contains(i.CustomerId)
+                    && EF.Functions.Like(i.InvoiceNumber, "LAK%")
+                    && i.Status != InvoiceStatus.Draft
+                    && i.Status != InvoiceStatus.Cancelled
+                    && i.InvoiceDate < periodStart)
+                .GroupBy(i => i.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.TotalInclVat) })
+                .ToListAsync();
+
+            var openingCreditNoteRows = await db.CreditNotes.AsNoTracking()
+                .Where(c => partnerIdList.Contains(c.CustomerId)
+                    && c.Status != CreditNoteStatus.Draft
+                    && c.Status != CreditNoteStatus.Disputed
+                    && c.CreditDate < periodStart)
+                .GroupBy(c => c.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.TotalInclVat) })
+                .ToListAsync();
+
+            var openingPaymentRows = await db.Payments.AsNoTracking()
+                .Where(p => partnerIdList.Contains(p.CustomerId)
+                    && p.PaymentDate < periodStart)
+                .GroupBy(p => p.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync();
+
+            var invoiceRows = await db.Invoices.AsNoTracking()
+                .Where(i => partnerIdList.Contains(i.CustomerId)
+                    && EF.Functions.Like(i.InvoiceNumber, "LAK%")
+                    && i.Status != InvoiceStatus.Draft
+                    && i.Status != InvoiceStatus.Cancelled
+                    && i.InvoiceDate >= periodStart && i.InvoiceDate <= periodEnd)
+                .GroupBy(i => i.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.TotalInclVat) })
+                .ToListAsync();
+
+            var creditNoteRows = await db.CreditNotes.AsNoTracking()
+                .Where(c => partnerIdList.Contains(c.CustomerId)
+                    && c.Status != CreditNoteStatus.Draft
+                    && c.Status != CreditNoteStatus.Disputed
+                    && c.CreditDate >= periodStart && c.CreditDate <= periodEnd)
+                .GroupBy(c => c.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.TotalInclVat) })
+                .ToListAsync();
+
+            var paymentRows = await db.Payments.AsNoTracking()
+                .Where(p => partnerIdList.Contains(p.CustomerId)
+                    && p.PaymentDate >= periodStart && p.PaymentDate <= periodEnd)
+                .GroupBy(p => p.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync();
+
+            openingDebit = openingInvoiceRows.ToDictionary(r => r.Key, r => r.Total);
+            openingCredit = openingCreditNoteRows.ToDictionary(r => r.Key, r => r.Total);
+            openingPayments = openingPaymentRows.ToDictionary(r => r.Key, r => r.Total);
+            debit = invoiceRows.ToDictionary(r => r.Key, r => r.Total);
+            creditCn = creditNoteRows.ToDictionary(r => r.Key, r => r.Total);
+            creditPay = paymentRows.ToDictionary(r => r.Key, r => r.Total);
+        }
+
+        var result = new Dictionary<int, decimal>(partnerIdList.Count);
+        foreach (var id in partnerIdList)
+        {
+            var opening = (openingDebit?.GetValueOrDefault(id) ?? 0m)
+                        - (openingCredit?.GetValueOrDefault(id) ?? 0m)
+                        - (openingPayments?.GetValueOrDefault(id) ?? 0m);
+            var balance = opening + debit.GetValueOrDefault(id) - creditCn.GetValueOrDefault(id) - creditPay.GetValueOrDefault(id);
+            result[id] = balance;
+        }
+
+        return result;
     }
 }
