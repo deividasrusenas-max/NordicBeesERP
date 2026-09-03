@@ -258,6 +258,114 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Fact]
+    public async Task CreateInvoiceFromDeliveryAsync_RecipientSupplierId_InvoicesSelectedRecipient()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Warehouse
+        var warehouse = new Warehouse
+        {
+            Code = $"WH-{DateTime.UtcNow.Ticks % 10000000:D7}",
+            Name = $"Test Warehouse {DateTime.UtcNow.Ticks}",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Warehouses.Add(warehouse);
+        await context.SaveChangesAsync();
+        var warehouseId = warehouse.Id;
+
+        // 2. Two suppliers: the delivery's own supplier (no VAT code needed — recipient is different)
+        var deliverySupplier = new BusinessPartner
+        {
+            PartnerType = PartnerType.Supplier,
+            Name = $"Test Delivery Supplier {DateTime.UtcNow.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 7,
+            DefaultVatRate = 0m,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var recipient = new BusinessPartner
+        {
+            PartnerType = PartnerType.Supplier,
+            Name = $"Test Recipient {DateTime.UtcNow.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            VatCode = "LT987654321",
+            PaymentTermDays = 14,
+            DefaultVatRate = 0m,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.BusinessPartners.AddRange(deliverySupplier, recipient);
+        await context.SaveChangesAsync();
+        var deliverySupplierId = deliverySupplier.Id;
+        var recipientId = recipient.Id;
+
+        // 3. Delivery keyed to the delivery supplier
+        var delivery = new Models.WarehouseModule.Delivery
+        {
+            DeliveryDate = DateTime.UtcNow.Date,
+            SupplierId = deliverySupplierId,
+            WarehouseId = warehouseId,
+            Status = "RECEIVED",
+            TotalNetWeight = 100m,
+            TotalAmount = 200m,
+            BarrelsOwed = 0,
+            NeedReturnBarrels = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Deliveries.Add(delivery);
+        await context.SaveChangesAsync();
+        var deliveryId = delivery.Id;
+
+        // Act — invoice the RECIPIENT, not the delivery's own supplier
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var invoiceId = await service.CreateInvoiceFromDeliveryAsync(
+            deliveryId, 0m, 0m, 0m, recipientId);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceFromDeliveryAsync should return the new invoice id");
+
+        // Assert with a brand-new context (proves the write hit the DB)
+        try
+        {
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            var invoice = await verifyContext.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            Assert.NotNull(invoice);
+            Assert.Equal(recipientId, invoice!.CustomerId);
+            Assert.NotEqual(deliverySupplierId, invoice.CustomerId);
+            Assert.Equal(deliveryId, invoice.DeliveryId);
+            Assert.Equal("6% PVM SĄSKAITA FAKTŪRA", invoice.InvoiceType);
+        }
+        finally
+        {
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM deliveries WHERE id = {0}", deliveryId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM warehouses WHERE id = {0}", warehouseId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", recipientId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", deliverySupplierId);
+        }
+    }
+
     /// <summary>
     /// Reads the three deduction columns off a delivery. Returns null if those columns do not
     /// yet exist in nordic_bees_erp_test (the migration is generated but not human-applied),
