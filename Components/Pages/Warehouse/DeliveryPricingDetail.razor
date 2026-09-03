@@ -9,6 +9,7 @@
 @inject IHoneyTypeService HoneyTypeService
 @inject IProductService ProductService
 @inject IRawMaterialTypeService RawMaterialTypeService
+@inject IInvoiceService InvoiceService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
@@ -28,6 +29,13 @@
             <MudText Typo="Typo.h5" Style="font-weight:600">Kainos: @_delivery.DeliveryNumber</MudText>
             <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
                 Href="/warehouse/delivery-pricing">Atgal</MudButton>
+            @if (_canIssueInvoice)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                    StartIcon="@Icons.Material.Filled.Receipt"
+                    OnClick="IssueInvoiceAsync"
+                    Class="ml-2">Išrašyti sąskaitą</MudButton>
+            }
         </MudStack>
 
         <!-- Save indicator -->
@@ -250,6 +258,12 @@
     private List<DeliveryLine> _lines = new();
     private List<SupplierPayment> _payments = new();
     private string _supplierName = "";
+    private string? _supplierVatCode;
+    private bool _canIssueInvoice =>
+        _delivery != null
+        && _delivery.InvoiceId == null
+        && !string.IsNullOrEmpty(_supplierVatCode)
+        && _delivery.TotalNetWeight > 0;
     private decimal _totalAmount => _delivery?.TotalAmount ?? 0;
     private decimal _paidAmount => _delivery?.PaidAmount ?? 0;
     private decimal _skola => Math.Max(0, _totalAmount - _paidAmount);
@@ -336,7 +350,9 @@
             _delivery.PaidAmount = _payments.Sum(p => p.Amount);
             _lines = await DeliveryService.GetLinesByDeliveryIdAsync(Id);
             var suppliers = await CustomerService.GetSuppliersAsync();
-            _supplierName = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId)?.Name ?? "";
+            var supplier = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId);
+            _supplierName = supplier?.Name ?? "";
+            _supplierVatCode = supplier?.VatCode;
         }
     }
 
@@ -402,6 +418,28 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Nepavyko pridėti mokėjimo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task IssueInvoiceAsync()
+    {
+        if (_delivery == null) return;
+        try
+        {
+            var result = await DeliveryInvoiceCostsDialog.DeliveryInvoiceCostsResult.ShowAsync(
+                DialogService, _delivery.TotalAmount, _delivery.TotalNetWeight);
+            if (result == null)
+                return; // cancelled
+
+            var invoiceId = await InvoiceService.CreateInvoiceFromDeliveryAsync(
+                _delivery.Id, result.TransportCost, result.BarrelCost, result.OtherCost);
+
+            Snackbar.Add($"Sąskaita išrašyta: {invoiceId}", Severity.Success);
+            Navigation.NavigateTo($"/invoices/{invoiceId}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko išrašyti sąskaitos: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
         }
     }
 
