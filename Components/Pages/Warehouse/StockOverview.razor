@@ -148,7 +148,7 @@
                         OnClick="OpenAssignHoneyTypeDialog">Priskirti rūšį</MudButton>
                     <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
                         StartIcon="@Icons.Material.Filled.DeleteForever"
-                        Href="/warehouse/write-off">Nurašyti</MudButton>
+                        OnClick="OpenWriteOffDialog">Nurašyti</MudButton>
                 </MudStack>
             </MudStack>
         </MudPaper>
@@ -199,6 +199,29 @@
                 Disabled="@(!_assignHoneyTypeId.HasValue)">
                 Priskirti ✓
             </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    <!-- Write Off Dialog -->
+    <MudDialog @bind-Visible="_writeOffDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Nurašyti @_selectedContainers.Count vnt. (@_selectedContainers.Sum(c => c.NetWeight).ToString("N1") kg)</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudSelect T="string" @bind-Value="_writeOffReason" Label="Priežastis" Variant="Variant.Outlined" Required="true" FullWidth="true">
+                    <MudSelectItem Value="@("Pažeista")">Pažeista</MudSelectItem>
+                    <MudSelectItem Value="@("Pasenusi")">Pasenusi</MudSelectItem>
+                    <MudSelectItem Value="@("Netinkama")">Netinkama</MudSelectItem>
+                    <MudSelectItem Value="@("Užteršta")">Užteršta</MudSelectItem>
+                    <MudSelectItem Value="@("Kita")">Kita</MudSelectItem>
+                </MudSelect>
+                <MudTextField @bind-Value="_writeOffNotes" Label="Pastaba" Variant="Variant.Outlined" FullWidth="true" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Text" OnClick="CloseWriteOffDialog">Atšaukti</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(string.IsNullOrEmpty(_writeOffReason) || _processing)" OnClick="ConfirmWriteOff">Patvirtinti nurašymą</MudButton>
         </DialogActions>
     </MudDialog>
 </MudContainer>
@@ -631,6 +654,48 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Nepavyko priskirti: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+        }
+    }
+
+    // Write Off dialog
+    private bool _writeOffDialogVisible;
+    private string _writeOffReason = "";
+    private string _writeOffNotes = "";
+    private bool _processing;
+
+    private void OpenWriteOffDialog()
+    {
+        if (!_selectedContainers.Any()) return;
+        _writeOffReason = "";
+        _writeOffNotes = "";
+        _writeOffDialogVisible = true;
+    }
+
+    private void CloseWriteOffDialog()
+    {
+        _writeOffDialogVisible = false;
+        _writeOffReason = "";
+        _writeOffNotes = "";
+    }
+
+    private async Task ConfirmWriteOff()
+    {
+        var ids = _selectedContainers.Select(c => c.Id).ToList();
+        var reason = _writeOffReason + (!string.IsNullOrEmpty(_writeOffNotes) ? $": {_writeOffNotes}" : "");
+        _processing = true;
+        try
+        {
+            await ContainerService.WriteOffAsync(ids, reason, null);
+            _writeOffDialogVisible = false;
+            _writeOffReason = "";
+            _writeOffNotes = "";
+            Snackbar.Add($"Nurašyta {ids.Count} vnt.", Severity.Success);
+            await LoadData();
+            _selectedContainers.Clear();
+        }
+        finally
+        {
+            _processing = false;
         }
     }
 }
