@@ -231,6 +231,83 @@
         }
     }
 
+    <!-- TRANSFERS view (ported from TransferHistory.razor) -->
+    @if (_viewType == "TRANSFERS")
+    {
+        <StandardListFilterBar>
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField T="string" Value="@_transferSearchText" ValueChanged="UpdateTransferSearchAsync"
+                        Label="Paieška (nr. / sandėlis)" Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.Search"
+                        Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudDateRangePicker T="DateTime?" DateRange="@_transferDateRange" DateRangeChanged="UpdateTransferDateRangeAsync"
+                        Label="Perkėlimo data" Variant="Variant.Text" FullWidth="@true" Clearable="@true" Editable="true" DateFormat="yyyy-MM-dd" />
+                </MudItem>
+                @if (!string.IsNullOrWhiteSpace(_transferSearchText) || _transferDateRange?.Start != null || _transferDateRange?.End != null)
+                {
+                    <MudItem xs="12">
+                        <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff" Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" OnClick="ClearTransferFilters">Išvalyti filtrus</MudButton>
+                    </MudItem>
+                }
+            </MudGrid>
+        </StandardListFilterBar>
+
+        @if (_transferLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (!FilteredTransferGroups.Any())
+        {
+            <MudAlert Severity="Severity.Info">Perkėlimų dar nėra</MudAlert>
+        }
+        else
+        {
+            <MudTable T="TransferGroup" Items="FilteredTransferGroups" Dense="true" Hover="true" Striped="true"
+                OnRowClick="@((TableRowClickEventArgs<TransferGroup> args) => ToggleTransferDetail(args.Item))"
+                Style="cursor:pointer">
+                <HeaderContent>
+                    <MudTh>Nr.</MudTh>
+                    <MudTh>Data</MudTh>
+                    <MudTh>Iš</MudTh>
+                    <MudTh>Į</MudTh>
+                    <MudTh Style="text-align:right">Vnt.</MudTh>
+                    <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="t">
+                    <MudTd><strong>@t.TransferNumber</strong></MudTd>
+                    <MudTd>@t.Date.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                    <MudTd>@GetTransferWarehouseName(t.FromWarehouseId)</MudTd>
+                    <MudTd>@GetTransferWarehouseName(t.ToWarehouseId)</MudTd>
+                    <MudTd Style="text-align:right">@t.ContainerCount</MudTd>
+                    <MudTd Style="text-align:right">@t.TotalQuantity.ToString("N1")</MudTd>
+                </RowTemplate>
+                <ChildRowContent Context="t">
+                    @if (t.ShowDetail)
+                    {
+                        <MudTr>
+                            <td colspan="6" style="padding:0 16px 16px 48px; background:#f8fafc">
+                                <MudSimpleTable Dense="true" Style="background:white; border-radius:8px" Elevation="0">
+                                    <thead>
+                                        <tr><th>Konteineris</th><th style="text-align:right">Netto (kg)</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var c in t.Containers)
+                                        {
+                                            <tr><td><strong>@c.Code</strong></td><td style="text-align:right">@c.Quantity.ToString("N1")</td></tr>
+                                        }
+                                    </tbody>
+                                </MudSimpleTable>
+                            </td>
+                        </MudTr>
+                    }
+                </ChildRowContent>
+            </MudTable>
+        }
+    }
+
     <!-- Transfer Dialog -->
     <MudDialog @bind-Visible="_transferDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
         <TitleContent>
@@ -532,6 +609,16 @@
     [SupplyParameterFromQuery(Name = "woto")]
     public string? WriteOffTo { get; set; }
 
+    // TRANSFERS view filters — deliberately "t"-prefixed so they never collide with the STOCK view's q/from/to params above
+    [SupplyParameterFromQuery(Name = "tq")]
+    public string? TransferQ { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tfrom")]
+    public string? TransferFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tto")]
+    public string? TransferTo { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
@@ -565,6 +652,7 @@
             _filterWarehouseId = _warehouses.First().Id;
 
         ReadWriteOffUrlParams();
+        ReadTransferUrlParams();
 
         await LoadData();
 
@@ -572,6 +660,11 @@
         // navigations don't refetch); does NOT touch the STOCK-view _containers.
         if (_viewType == "WRITTEN_OFF" && !_writeOffContainersLoaded)
             await LoadWriteOffDataAsync();
+
+        // TRANSFERS view — load once on first entry into this view (guarded so filter-keystroke
+        // navigations don't refetch); does NOT touch the STOCK-view _containers.
+        if (_viewType == "TRANSFERS" && !_transferGroupsLoaded)
+            await LoadTransferDataAsync();
     }
 
     private void ReadWriteOffUrlParams()
@@ -642,6 +735,140 @@
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("view", _viewType != "STOCK" ? _viewType : null)));
         return Task.CompletedTask;
+    }
+
+    // TRANSFERS view (ported from TransferHistory.razor) — separate fields so they never collide with the STOCK/WRITTEN_OFF filters above
+    private List<TransferGroup> _transferGroups = new();
+    private bool _transferLoading = true;
+    private bool _transferGroupsLoaded;
+    private string _transferSearchText = string.Empty;
+    private DateRange? _transferDateRange;
+
+    private void ReadTransferUrlParams()
+    {
+        _transferSearchText = TransferQ ?? string.Empty;
+        _transferDateRange = null;
+        if (!string.IsNullOrWhiteSpace(TransferFrom) && DateTime.TryParse(TransferFrom, out var tFrom))
+            _transferDateRange = new DateRange(tFrom, _transferDateRange?.End);
+        if (!string.IsNullOrWhiteSpace(TransferTo) && DateTime.TryParse(TransferTo, out var tTo))
+            _transferDateRange = new DateRange(_transferDateRange?.Start, tTo);
+    }
+
+    private async Task LoadTransferDataAsync()
+    {
+        _transferLoading = true;
+        StateHasChanged();
+        try
+        {
+            // _warehouses is already populated by OnInitializedAsync — no re-fetch here.
+            var movements = await TransferService.GetTransferHistoryAsync();
+
+            _transferGroups = movements
+                .GroupBy(m => m.Notes ?? "")
+                .Where(g => !string.IsNullOrEmpty(g.Key))
+                .Select(g => new TransferGroup
+                {
+                    TransferNumber = g.Key,
+                    Date = g.Min(m => m.CreatedAt),
+                    FromWarehouseId = g.First().FromWarehouseId,
+                    ToWarehouseId = g.First().ToWarehouseId,
+                    ContainerCount = g.Count(),
+                    TotalQuantity = g.Sum(m => m.Quantity),
+                    Containers = g.Select(m => new TransferContainerInfo
+                    {
+                        Code = m.ContainerId.ToString(),
+                        Quantity = m.Quantity
+                    }).ToList()
+                })
+                .OrderByDescending(t => t.Date)
+                .ToList();
+
+            // Pakeisti container ID į kodus
+            var allContainerIds = movements.Select(m => m.ContainerId).Distinct().ToList();
+            var containers = await ContainerService.GetByIdsAsync(allContainerIds);
+            foreach (var transfer in _transferGroups)
+            {
+                foreach (var c in transfer.Containers)
+                {
+                    var container = containers.FirstOrDefault(x => x.Id.ToString() == c.Code);
+                    if (container != null)
+                        c.Code = container.ContainerCode;
+                }
+            }
+        }
+        finally
+        {
+            _transferLoading = false;
+            _transferGroupsLoaded = true;
+            StateHasChanged();
+        }
+    }
+
+    private string GetTransferWarehouseName(int? id) => id.HasValue
+        ? _warehouses.FirstOrDefault(w => w.Id == id.Value)?.Name ?? $"#{id}"
+        : "-";
+
+    private void ToggleTransferDetail(TransferGroup t) => t.ShowDetail = !t.ShowDetail;
+
+    // Client-side filter for the TRANSFERS view (ported from TransferHistory.razor's GetFilteredTransfers,
+    // renamed to use _transferGroups/_transferSearchText/_transferDateRange) — never touches STOCK-view _containers/_dateRange.
+    private IEnumerable<TransferGroup> FilteredTransferGroups => _transferGroups.Where(t =>
+    {
+        var q = _transferSearchText?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(q) &&
+            !t.TransferNumber.ToLowerInvariant().Contains(q) &&
+            !GetTransferWarehouseName(t.FromWarehouseId).ToLowerInvariant().Contains(q) &&
+            !GetTransferWarehouseName(t.ToWarehouseId).ToLowerInvariant().Contains(q))
+            return false;
+        if (_transferDateRange?.Start != null && t.Date.Date < _transferDateRange.Start.Value.Date) return false;
+        if (_transferDateRange?.End != null && t.Date.Date > _transferDateRange.End.Value.Date) return false;
+        return true;
+    });
+
+    private Task UpdateTransferSearchAsync(string value)
+    {
+        _transferSearchText = value ?? string.Empty;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("tq", string.IsNullOrWhiteSpace(_transferSearchText) ? null : _transferSearchText),
+            ("view", _viewType != "STOCK" ? _viewType : null)));
+        return Task.CompletedTask;
+    }
+
+    private Task UpdateTransferDateRangeAsync(DateRange? range)
+    {
+        _transferDateRange = range;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("tfrom", range?.Start?.ToString("yyyy-MM-dd")),
+            ("tto", range?.End?.ToString("yyyy-MM-dd")),
+            ("view", _viewType != "STOCK" ? _viewType : null)));
+        return Task.CompletedTask;
+    }
+
+    private Task ClearTransferFilters()
+    {
+        _transferSearchText = string.Empty;
+        _transferDateRange = null;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("view", _viewType != "STOCK" ? _viewType : null)));
+        return Task.CompletedTask;
+    }
+
+    private class TransferGroup
+    {
+        public string TransferNumber { get; set; } = "";
+        public DateTime Date { get; set; }
+        public int? FromWarehouseId { get; set; }
+        public int? ToWarehouseId { get; set; }
+        public int ContainerCount { get; set; }
+        public decimal TotalQuantity { get; set; }
+        public bool ShowDetail { get; set; }
+        public List<TransferContainerInfo> Containers { get; set; } = new();
+    }
+
+    private class TransferContainerInfo
+    {
+        public string Code { get; set; } = "";
+        public decimal Quantity { get; set; }
     }
 
     private async Task LoadData()
