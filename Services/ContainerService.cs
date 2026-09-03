@@ -59,7 +59,7 @@ public class ContainerService : IContainerService
         // the MAX is read inside that transaction, so concurrent inserts cannot
         // slip between the read and the write.
         var maxSeq = await context.Database
-            .SqlQueryRaw<int>("SELECT COALESCE(MAX(CAST(SUBSTRING(container_code, 3) AS UNSIGNED)), 0) FROM containers WHERE container_code LIKE 'TP%'")
+            .SqlQueryRaw<int>("SELECT COALESCE(MAX(CAST(SUBSTRING(container_code, 3) AS UNSIGNED)), 0) AS Value FROM containers WHERE container_code LIKE 'TP%'")
             .FirstOrDefaultAsync();
 
         return "TP" + (maxSeq + 1).ToString("D6");
