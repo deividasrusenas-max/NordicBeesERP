@@ -101,7 +101,10 @@
                 }
             </MudTd>
             <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(context.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(context.Status, _statusDisplay)</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(context.Status, _statusDisplay)"
+                    Icon="@(!string.IsNullOrEmpty(context.InvoiceNumber) ? Icons.Material.Filled.Receipt : null)">
+                    @StatusDisplayHelper.GetLabel(context.Status, _statusDisplay)
+                </MudChip>
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>
