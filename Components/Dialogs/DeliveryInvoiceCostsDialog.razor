@@ -1,5 +1,6 @@
 @namespace NordicBeesERP.Components.Dialogs
 @using MudBlazor
+@using NordicBeesERP.Models
 
 <MudDialog>
     <TitleContent>
@@ -9,6 +10,29 @@
         </div>
     </TitleContent>
     <DialogContent>
+        @if (DefaultSupplierId.HasValue && Suppliers?.Any(s => s.Id == DefaultSupplierId.Value) != true)
+        {
+            <MudAlert Severity="Severity.Warning" Dense Class="mb-4" >
+                Šis ūkininkas neturi 6% PVM kodo — pasirinkite kitą tiekėją.
+            </MudAlert>
+        }
+
+        <MudSelect T="int?" @bind-Value="_selectedSupplierId"
+                   Label="Ūkininkas (6% PVM)"
+                   Variant="Variant.Outlined"
+                   FullWidth="@true"
+                   Required="true"
+                   Margin="Margin.Dense"
+                   Placeholder="Pasirinkite ūkininką">
+            @if (Suppliers != null)
+            {
+                @foreach (var s in Suppliers)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
+                }
+            }
+        </MudSelect>
+
         <MudNumericField T="decimal"
                          @bind-Value="_transportCost"
                          Label="Transporto išlaidos, kurias skolingas tiekėjas (€)"
@@ -56,7 +80,7 @@
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    Style="text-transform:none"
-                   Disabled="@(TotalAmount > 0 && _previewTotal < 0)"
+                   Disabled="@(_selectedSupplierId == null || (TotalAmount > 0 && _previewTotal < 0))"
                    OnClick="@Confirm">Formuoti sąskaitą</MudButton>
     </DialogActions>
 </MudDialog>
@@ -64,9 +88,12 @@
 @code {
     [Parameter] public decimal TotalAmount { get; set; }
     [Parameter] public decimal TotalNetWeight { get; set; }
+    [Parameter] public List<BusinessPartner>? Suppliers { get; set; }
+    [Parameter] public int? DefaultSupplierId { get; set; }
 
     [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
 
+    private int? _selectedSupplierId;
     private decimal _transportCost = 0m;
     private decimal _barrelCost = 0m;
     private decimal _otherCost = 0m;
@@ -81,10 +108,19 @@
 
     private decimal _previewTotal => TotalAmount - _deductions;
 
+    protected override void OnInitialized()
+    {
+        _selectedSupplierId = (DefaultSupplierId.HasValue
+            && Suppliers?.Any(s => s.Id == DefaultSupplierId.Value) == true)
+            ? DefaultSupplierId
+            : null;
+    }
+
     private void Cancel() => MudDialog.Cancel();
 
     private void Confirm() => MudDialog.Close(DialogResult.Ok(new DeliveryInvoiceCostsResult
     {
+        SupplierId = _selectedSupplierId,
         TransportCost = _transportCost,
         BarrelCost = _barrelCost,
         OtherCost = _otherCost
@@ -92,16 +128,21 @@
 
     public class DeliveryInvoiceCostsResult
     {
+        public int? SupplierId { get; init; }
         public decimal TransportCost { get; init; }
         public decimal BarrelCost { get; init; }
         public decimal OtherCost { get; init; }
 
-        public static async Task<DeliveryInvoiceCostsResult?> ShowAsync(IDialogService dialogService, decimal totalAmount, decimal totalNetWeight)
+        public static async Task<DeliveryInvoiceCostsResult?> ShowAsync(
+            IDialogService dialogService, decimal totalAmount, decimal totalNetWeight,
+            List<BusinessPartner>? suppliers, int? defaultSupplierId)
         {
             var parameters = new DialogParameters<DeliveryInvoiceCostsDialog>
             {
                 [nameof(TotalAmount)] = totalAmount,
-                [nameof(TotalNetWeight)] = totalNetWeight
+                [nameof(TotalNetWeight)] = totalNetWeight,
+                [nameof(Suppliers)] = suppliers,
+                [nameof(DefaultSupplierId)] = defaultSupplierId
             };
             var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
             var dialog = await dialogService.ShowAsync<DeliveryInvoiceCostsDialog>("Sąskaitos išskyrimas", parameters, options);
