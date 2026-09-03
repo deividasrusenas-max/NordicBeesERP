@@ -18,6 +18,33 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h5" Class="mb-4">Sandėlio likučiai</MudText>
 
+    <!-- View switcher (Likučiai / Nurašyta / Perkėlimai) -->
+    <MudStack Row="true" Class="mb-3" AlignItems="AlignItems.Center">
+        <MudChipSet T="string"
+                    SelectedValue="_viewType"
+                    SelectedValueChanged="@(async (val) => { if (val != null && val != _viewType) await SetViewType(val); })"
+                    SelectionMode="SelectionMode.SingleSelection">
+            <MudChip T="string" Value="@("STOCK")"
+                     Color="@(_viewType == "STOCK" ? Color.Primary : Color.Default)"
+                     Variant="@(_viewType == "STOCK" ? Variant.Filled : Variant.Outlined)"
+                     Style="text-transform:none;min-width:180px;">
+                Likučiai
+            </MudChip>
+            <MudChip T="string" Value="@("WRITTEN_OFF")"
+                     Color="@(_viewType == "WRITTEN_OFF" ? Color.Primary : Color.Default)"
+                     Variant="@(_viewType == "WRITTEN_OFF" ? Variant.Filled : Variant.Outlined)"
+                     Style="text-transform:none;min-width:180px;">
+                Nurašyta
+            </MudChip>
+            <MudChip T="string" Value="@("TRANSFERS")"
+                     Color="@(_viewType == "TRANSFERS" ? Color.Primary : Color.Default)"
+                     Variant="@(_viewType == "TRANSFERS" ? Variant.Filled : Variant.Outlined)"
+                     Style="text-transform:none;min-width:180px;">
+                Perkėlimai
+            </MudChip>
+        </MudChipSet>
+    </MudStack>
+
     <!-- Filters -->
     <StandardListFilterBar>
         <MudGrid>
@@ -202,6 +229,9 @@
     private DateTime? _filterDateTo;
     private DateRange? _dateRange;
 
+    // Top-level view switcher (Likučiai / Nurašyta / Perkėlimai) — UI + URL state only for now
+    private string _viewType = "STOCK";
+
     // Client-side date-range + free-text filter applied on top of the server-fetched _containers
     private IEnumerable<Container> FilteredContainers => _containers.Where(c =>
     {
@@ -382,6 +412,9 @@
     [SupplyParameterFromQuery(Name = "to")]
     public string? DateTo { get; set; }
 
+    [SupplyParameterFromQuery(Name = "view")]
+    public string? View { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
@@ -397,6 +430,13 @@
         _filterSupplierId = SupplierId;
         _filterStatus = Status;
         _search = SearchCode;
+
+        // View switcher param — default to "STOCK" when absent/invalid
+        _viewType = View switch
+        {
+            "WRITTEN_OFF" or "TRANSFERS" => View,
+            _ => "STOCK"
+        };
 
         // Parse date-range params (null-safe: a fresh load with no query string leaves both null)
         _filterDateFrom = DateTime.TryParse(DateFrom, out var from) ? from : null;
@@ -478,8 +518,17 @@
             ("status", FilterUrlBuilder.ToQueryValue(_filterStatus)),
             ("q", FilterUrlBuilder.ToQueryValue(_search)),
             ("from", FilterUrlBuilder.ToQueryValue(_filterDateFrom)),
-            ("to", FilterUrlBuilder.ToQueryValue(_filterDateTo)));
+            ("to", FilterUrlBuilder.ToQueryValue(_filterDateTo)),
+            ("view", _viewType != "STOCK" ? _viewType : null));
         Navigation.NavigateTo(newUrl, replace: true);
+    }
+
+    private async Task SetViewType(string view)
+    {
+        if (view == _viewType) return;
+        _viewType = view;
+        _selectedContainers.Clear();
+        await ApplyFiltersFromUrl();
     }
 
     private async Task UpdateSearchAsync(string? value)
