@@ -1,6 +1,7 @@
 @page "/suppliers"
 @inject ISupplierService SupplierService
 @inject IExpenseService ExpenseService
+@inject IDebtReconciliationService DebtReconciliationService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -141,25 +142,33 @@
                       OnRowClick="@(async (TableRowClickEventArgs<Supplier> args) => { if (IsDoubleClick(args.Item)) await OpenEditDialog(args.Item); })"
                       Style="cursor:pointer" RowsPerPage="25">
                 <HeaderContent>
-                    <MudTh>Vardas</MudTh>
-                    <MudTh>Asmens kodas</MudTh>
-                    <MudTh>PVM%</MudTh>
+                    <MudTh>Pavadinimas</MudTh>
+                    <MudTh>Šalis</MudTh>
+                    <MudTh>PVM</MudTh>
                     <MudTh>Mokėjimo term.</MudTh>
-                    <MudTh>Aktyvus</MudTh>
+                    <MudTh>Balansas</MudTh>
+                    <MudTh>Išlaidų grupė</MudTh>
                     <MudTh Style="width:120px;">Veiksmai</MudTh>
                 </HeaderContent>
                 <RowTemplate Context="supplier">
                     <MudTd>@supplier.Name</MudTd>
-                    <MudTd>@(supplier.NationalIdNumber ?? "—")</MudTd>
+                    <MudTd>@(string.IsNullOrWhiteSpace(supplier.Country) ? "—" : supplier.Country)</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
                     <MudTd>
-                        <MudChip T="string" Size="Size.Small"
-                                 Color="@(supplier.IsActive ? Color.Success : Color.Default)"
-                                 Variant="Variant.Outlined">
-                            @(supplier.IsActive ? "Aktyvus" : "Neaktyvus")
-                        </MudChip>
+                        @if (_balances.TryGetValue(supplier.Id, out var bal))
+                        {
+                            <MudText Typo="Typo.body2" Class="lakstena-mono"
+                                     Color="@(bal > 0 ? Color.Success : bal < 0 ? Color.Error : Color.Default)">
+                                @FormatBalance(bal)
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="lakstena-mono">—</MudText>
+                        }
                     </MudTd>
+                    <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
@@ -178,26 +187,32 @@
                       Style="cursor:pointer" RowsPerPage="25">
                 <HeaderContent>
                     <MudTh>Pavadinimas</MudTh>
-                    <MudTh>Įm. kodas</MudTh>
-                    <MudTh>PVM kodas</MudTh>
-                    <MudTh>Numatyta kategorija</MudTh>
+                    <MudTh>Šalis</MudTh>
+                    <MudTh>PVM</MudTh>
                     <MudTh>Mokėjimo term.</MudTh>
-                    <MudTh>Aktyvus</MudTh>
+                    <MudTh>Balansas</MudTh>
+                    <MudTh>Išlaidų grupė</MudTh>
                     <MudTh Style="width:120px;">Veiksmai</MudTh>
                 </HeaderContent>
                 <RowTemplate Context="supplier">
                     <MudTd>@supplier.Name</MudTd>
-                    <MudTd>@(supplier.CompanyCode ?? "—")</MudTd>
-                    <MudTd>@(supplier.VatCode ?? "—")</MudTd>
-                    <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
+                    <MudTd>@(string.IsNullOrWhiteSpace(supplier.Country) ? "—" : supplier.Country)</MudTd>
+                    <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
                     <MudTd>
-                        <MudChip T="string" Size="Size.Small"
-                                 Color="@(supplier.IsActive ? Color.Success : Color.Default)"
-                                 Variant="Variant.Outlined">
-                            @(supplier.IsActive ? "Aktyvus" : "Neaktyvus")
-                        </MudChip>
+                        @if (_balances.TryGetValue(supplier.Id, out var bal))
+                        {
+                            <MudText Typo="Typo.body2" Class="lakstena-mono"
+                                     Color="@(bal > 0 ? Color.Success : bal < 0 ? Color.Error : Color.Default)">
+                                @FormatBalance(bal)
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="lakstena-mono">—</MudText>
+                        }
                     </MudTd>
+                    <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
@@ -216,24 +231,32 @@
                       Style="cursor:pointer" RowsPerPage="25">
                 <HeaderContent>
                     <MudTh>Pavadinimas</MudTh>
-                    <MudTh>Kodas</MudTh>
-                    <MudTh>PVM%</MudTh>
+                    <MudTh>Šalis</MudTh>
+                    <MudTh>PVM</MudTh>
                     <MudTh>Mokėjimo term.</MudTh>
-                    <MudTh>Aktyvus</MudTh>
+                    <MudTh>Balansas</MudTh>
+                    <MudTh>Išlaidų grupė</MudTh>
                     <MudTh Style="width:120px;">Veiksmai</MudTh>
                 </HeaderContent>
                 <RowTemplate Context="supplier">
                     <MudTd>@supplier.Name</MudTd>
-                    <MudTd>@(supplier.CompanyCode ?? supplier.NationalIdNumber ?? "—")</MudTd>
+                    <MudTd>@(string.IsNullOrWhiteSpace(supplier.Country) ? "—" : supplier.Country)</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
                     <MudTd>
-                        <MudChip T="string" Size="Size.Small"
-                                 Color="@(supplier.IsActive ? Color.Success : Color.Default)"
-                                 Variant="Variant.Outlined">
-                            @(supplier.IsActive ? "Aktyvus" : "Neaktyvus")
-                        </MudChip>
+                        @if (_balances.TryGetValue(supplier.Id, out var bal))
+                        {
+                            <MudText Typo="Typo.body2" Class="lakstena-mono"
+                                     Color="@(bal > 0 ? Color.Success : bal < 0 ? Color.Error : Color.Default)">
+                                @FormatBalance(bal)
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="lakstena-mono">—</MudText>
+                        }
                     </MudTd>
+                    <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
@@ -258,6 +281,7 @@
     private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
     private HashSet<decimal> _selectedVatRates = new();
     private bool? _filterActive;
+    private Dictionary<int, decimal> _balances = new();
     private bool _isWarehouse;
     private bool _isAdmin;
     private bool _isManager;
@@ -357,6 +381,16 @@
         return false;
     }
 
+    // Positive = partner owes us, negative = we owe partner. Colors match
+    // the project's existing positive/negative amount convention (green/red).
+    private static string FormatBalance(decimal balance)
+    {
+        if (balance == 0m)
+            return "0,00 €";
+        var sign = balance > 0m ? "+" : "-";
+        return $"{sign}{FormatAmountHelper.Trim(Math.Abs(balance), 2)} €";
+    }
+
     private IEnumerable<Supplier> FilteredSuppliers
     {
         get
@@ -407,6 +441,14 @@
     private async Task LoadSuppliers()
     {
         suppliers = await SupplierService.GetSuppliersAsync();
+        if (suppliers is { Count: > 0 })
+        {
+            _balances = await DebtReconciliationService.GetBalancesBulkAsync(suppliers.Select(s => s.Id));
+        }
+        else
+        {
+            _balances = new Dictionary<int, decimal>();
+        }
     }
 
     private void ToggleVatRate(decimal rate)
