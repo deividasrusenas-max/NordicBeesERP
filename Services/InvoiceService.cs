@@ -26,7 +26,7 @@ namespace NordicBeesERP.Services
         Task<InvoiceStatistics> GetInvoiceStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
         Task<List<Invoice>> GetInvoicesAsync(DateTime? fromDate = null, DateTime? toDate = null, InvoiceStatus? status = null, int? customerId = null, string? searchTerm = null, int take = 50, string? type = null);
         Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId);
-        Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost);
+        Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost, int? recipientSupplierId = null);
         Task<List<int>> GetInvoiceYearsAsync();
         Task<byte[]> GeneratePdfAsync(int invoiceId);
         Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null);
@@ -643,10 +643,10 @@ namespace NordicBeesERP.Services
 
         public async Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId)
         {
-            return await CreateInvoiceFromDeliveryAsync(deliveryId, 0m, 0m, 0m);
+            return await CreateInvoiceFromDeliveryAsync(deliveryId, 0m, 0m, 0m, null);
         }
 
-        public async Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost)
+        public async Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost, int? recipientSupplierId = null)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -657,10 +657,11 @@ namespace NordicBeesERP.Services
             if (delivery == null)
                 throw new InvalidOperationException($"Pristatymas su id {deliveryId} nerastas");
 
-            // Get supplier info
-            var supplier = await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == delivery.SupplierId);
+            // Resolve the invoice recipient (may differ from the delivery's supplier)
+            var invoiceSupplierId = recipientSupplierId ?? delivery.SupplierId;
+            var supplier = await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == invoiceSupplierId);
             if (supplier == null)
-                throw new InvalidOperationException($"Tiekėjas su id {delivery.SupplierId} nerastas");
+                throw new InvalidOperationException($"Tiekėjas su id {invoiceSupplierId} nerastas");
 
             var deductions = transportCost + barrelCost + otherCost;
             var unitPrice = delivery.TotalNetWeight > 0
@@ -677,7 +678,7 @@ namespace NordicBeesERP.Services
             {
                 // InvoiceNumber intentionally left empty — CreateInvoiceAsync generates it.
                 InvoiceDate = delivery.DeliveryDate,
-                CustomerId = delivery.SupplierId,
+                CustomerId = invoiceSupplierId,
                 DeliveryId = delivery.Id,
                 PaymentTermDays = paymentTermDays,
                 PaymentDueDate = delivery.DeliveryDate.AddDays(paymentTermDays),
