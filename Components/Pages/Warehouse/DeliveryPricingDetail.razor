@@ -27,15 +27,24 @@
     {
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
             <MudText Typo="Typo.h5" Style="font-weight:600">Kainos: @_delivery.DeliveryNumber</MudText>
-            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
-                Href="/warehouse/delivery-pricing">Atgal</MudButton>
-            @if (_canIssueInvoice)
-            {
-                <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                    StartIcon="@Icons.Material.Filled.Receipt"
-                    OnClick="IssueInvoiceAsync"
-                    Class="ml-2">Išrašyti sąskaitą</MudButton>
-            }
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                    Href="/warehouse/delivery-pricing">Atgal</MudButton>
+                @if (_canIssueInvoice)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                        StartIcon="@Icons.Material.Filled.Receipt"
+                        OnClick="IssueInvoiceAsync"
+                        Class="ml-2">Išrašyti sąskaitą</MudButton>
+                }
+                else if (_delivery.InvoiceId != null)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Primary"
+                        StartIcon="@Icons.Material.Filled.Receipt"
+                        Href="@($"/invoices/{_delivery.InvoiceId}")"
+                        Class="ml-2">Sąskaita išrašyta: @_delivery.InvoiceNumber</MudButton>
+                }
+            </MudStack>
         </MudStack>
 
         <!-- Save indicator -->
