@@ -86,6 +86,7 @@
                 <MudTh>Tiekėjas</MudTh>
                 <MudTh Style="text-align:right">Netto (kg)</MudTh>
                 <MudTh>Statusas</MudTh>
+                <MudTh>Sąskaita</MudTh>
                 <MudTh Style="text-align:right">Suma €</MudTh>
                 <MudTh Style="text-align:right">Sumokėta €</MudTh>
                 <MudTh Style="text-align:right">Skola €</MudTh>
@@ -100,6 +101,18 @@
                         var badge = GetStatusBadge(d);
                     }
                     <MudChip T="string" Size="Size.Small" Color="@badge.Color">@badge.Label</MudChip>
+                </MudTd>
+                <MudTd>
+                    @if (d.InvoiceId != null)
+                    {
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                            StartIcon="@Icons.Material.Filled.Receipt"
+                            Href="@($"/invoices/{d.InvoiceId}")">@d.InvoiceNumber</MudButton>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Style="color:#aaa">—</MudText>
+                    }
                 </MudTd>
                 <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.TotalAmount, 2)</MudTd>
                 <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.PaidAmount, 2)</MudTd>
