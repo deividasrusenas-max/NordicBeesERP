@@ -207,7 +207,7 @@
                             @if (_invoice?.InvoiceType?.Contains("6%") == true && _invoice?.Delivery != null)
                             {
                                 <div>
-                                    @($"{line.Description}. Pristatymo nr.: @_invoice.Delivery.DeliveryNumber")
+                                    @($"{line.Description}. Pristatymo nr.: {_invoice.Delivery.DeliveryNumber}")
                                 </div>
                                 @if (FormatDeductions(_invoice.Delivery) is { } deductionsText)
                                 {
