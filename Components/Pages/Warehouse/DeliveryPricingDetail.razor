@@ -267,11 +267,10 @@
     private List<DeliveryLine> _lines = new();
     private List<SupplierPayment> _payments = new();
     private string _supplierName = "";
-    private string? _supplierVatCode;
+    private List<BusinessPartner> _suppliers = new();
     private bool _canIssueInvoice =>
         _delivery != null
         && _delivery.InvoiceId == null
-        && !string.IsNullOrEmpty(_supplierVatCode)
         && _delivery.TotalNetWeight > 0;
     private decimal _totalAmount => _delivery?.TotalAmount ?? 0;
     private decimal _paidAmount => _delivery?.PaidAmount ?? 0;
@@ -358,10 +357,9 @@
         {
             _delivery.PaidAmount = _payments.Sum(p => p.Amount);
             _lines = await DeliveryService.GetLinesByDeliveryIdAsync(Id);
-            var suppliers = await CustomerService.GetSuppliersAsync();
-            var supplier = suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId);
+            _suppliers = await CustomerService.GetSuppliersAsync();
+            var supplier = _suppliers.FirstOrDefault(s => s.Id == _delivery.SupplierId);
             _supplierName = supplier?.Name ?? "";
-            _supplierVatCode = supplier?.VatCode;
         }
     }
 
@@ -435,13 +433,15 @@
         if (_delivery == null) return;
         try
         {
+            var qualifyingSuppliers = _suppliers.Where(s => !string.IsNullOrEmpty(s.VatCode)).ToList();
             var result = await DeliveryInvoiceCostsDialog.DeliveryInvoiceCostsResult.ShowAsync(
-                DialogService, _delivery.TotalAmount, _delivery.TotalNetWeight);
+                DialogService, _delivery.TotalAmount, _delivery.TotalNetWeight,
+                qualifyingSuppliers, _delivery.SupplierId);
             if (result == null)
                 return; // cancelled
 
             var invoiceId = await InvoiceService.CreateInvoiceFromDeliveryAsync(
-                _delivery.Id, result.TransportCost, result.BarrelCost, result.OtherCost);
+                _delivery.Id, result.TransportCost, result.BarrelCost, result.OtherCost, result.SupplierId);
 
             Snackbar.Add($"Sąskaita išrašyta: {invoiceId}", Severity.Success);
             Navigation.NavigateTo($"/invoices/{invoiceId}");
