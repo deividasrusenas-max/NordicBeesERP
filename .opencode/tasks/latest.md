@@ -1,125 +1,118 @@
-# BUILD TASK — Invoice-issued indicators + PDF title wording
+# Task: Restructure Suppliers & Customers table columns (Šalis, Balansas, Išlaidų grupė)
 
-Read `Docs/FROZEN.md` and `AGENTS.md` first. This build is based on
-`.opencode/reports/invoice-issued-indicators-pdf-title-investigation-20260903-1656.md` — read it
-fully first; it has exact line numbers and verbatim current code for every file below.
+## Type: BUILD (code changes — includes one new service method, not just markup)
 
-No DB/migration changes in this task — every page already loads full `Delivery` entities with
-`InvoiceId`/`InvoiceNumber` populated, so this is UI-only.
+## Context
+Follow-up to `.opencode/reports/suppliers-customers-columns-audit-20260904-1200.md`.
+Read that report in full first — it has exact line numbers, current
+column diffs, and confirms all backing data already exists (no missing
+model fields).
 
-## A.1 — `Components/Pages/Warehouse/DeliveryPricing.razor` (list, `/warehouse/delivery-pricing`)
+## Target column layout
 
-Add a dedicated "Sąskaita" column (this list's whole purpose is the invoicing workflow, so a
-column is appropriate here — unlike `DeliveryList.razor`, do not fold into the status chip).
+### `/customers` table
+`Pavadinimas | Šalis | PVM | Mokėjimo term. | Balansas | Veiksmai`
 
-- Header: add `<MudTh>Sąskaita</MudTh>` after the `Statusas` `<MudTh>`.
-- Row: add a matching `<MudTd>` after the status `MudTd`:
-  ```razor
-  <MudTd>
-      @if (d.InvoiceId != null)
-      {
-          <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
-              StartIcon="@Icons.Material.Filled.Receipt"
-              Href="@($"/invoices/{d.InvoiceId}")">@d.InvoiceNumber</MudButton>
-      }
-      else
-      {
-          <MudText Typo="Typo.caption" Style="color:#aaa">—</MudText>
-      }
-  </MudTd>
-  ```
+### `/suppliers` table — ALL THREE tab variants (Ūkininkai / Įmonės / Visi)
+`Pavadinimas | Šalis | PVM | Mokėjimo term. | Balansas | Išlaidų grupė | Veiksmai`
 
-## A.2 — `Components/Pages/Warehouse/DeliveryPricingDetail.razor` (detail, `/warehouse/deliveries/{Id}/pricing`)
+**Decision (already made, do not re-litigate):** unify all three Suppliers
+tab table variants to this single column set. This means:
+- Tab "Ūkininkai" (currently: Vardas / Asmens kodas / PVM% / Mokėjimo
+  term. / Aktyvus / Veiksmai) loses its `Asmens kodas` column and gains
+  `Šalis`, `Balansas`, `Išlaidų grupė`.
+- Tab "Įmonės" (currently: Pavadinimas / Įm. kodas / PVM kodas /
+  Numatyta kategorija / Mokėjimo term. / Aktyvus / Veiksmai) loses
+  `Įm. kodas` and `PVM kodas` as separate text columns, and its existing
+  `Numatyta kategorija` column becomes the `Išlaidų grupė` column (same
+  data — `ExpenseCategory.Name` via `DefaultExpenseCategoryId` — do NOT
+  render it twice; the audit's draft diff had it duplicated, that's a
+  drafting mistake, fix it to appear once).
+- Tab "Visi" (currently: Pavadinimas / Kodas / PVM% / Mokėjimo term. /
+  Aktyvus / Veiksmai) loses `Kodas`, gains `Šalis`, `Balansas`,
+  `Išlaidų grupė`.
+- All three use `Name` for "Pavadinimas" header (rename "Vardas" header
+  on the Ūkininkai tab to "Pavadinimas" for consistency).
+- All three show `DefaultVatRate` as the "PVM" column (percentage,
+  `N0` format + `%`), same as today.
+- `PaymentTermDays` stays as "Mokėjimo term." (already present, no change
+  needed to the underlying field).
+- The existing "Aktyvus" IsActive chip column is REMOVED from the table
+  (active/inactive filtering already lives in the external chip row from
+  the previous filter-bar task — confirmed no dependency in the audit).
 
-In the header `MudStack` (currently: title, "Atgal" button, conditional "Išrašyti sąskaitą"
-button gated on `_canIssueInvoice`), add an `else if` branch so that when an invoice already
-exists, a clickable indicator replaces the issue button:
+### `/customers` table changes
+- Remove `Kodas` (CompanyCode) and `PVM kodas` (VatCode) columns.
+- Add `Šalis` (Country).
+- Keep `PVM%` (rename header to "PVM" for consistency with the spec) and
+  `Mokėjimo terminas` (or align header text to "Mokėjimo term." to match
+  Suppliers — pick one consistent label across both pages).
+- Remove `Aktyvus` column (status filtering already external, per prior
+  task).
+- Add `Balansas`.
 
-```razor
-@if (_canIssueInvoice)
-{
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-        StartIcon="@Icons.Material.Filled.Receipt"
-        OnClick="IssueInvoiceAsync"
-        Class="ml-2">Išrašyti sąskaitą</MudButton>
-}
-else if (_delivery.InvoiceId != null)
-{
-    <MudButton Variant="Variant.Text" Color="Color.Primary"
-        StartIcon="@Icons.Material.Filled.Receipt"
-        Href="@($"/invoices/{_delivery.InvoiceId}")"
-        Class="ml-2">Sąskaita išrašyta: @_delivery.InvoiceNumber</MudButton>
-}
-```
+## Balance column — REQUIRED bulk implementation, not per-row
 
-While in this file: the header `MudStack` uses `Justify="Justify.SpaceBetween"` with what can now
-be 3 children (title / Atgal / invoice button-or-indicator) — verify visually it doesn't look
-oddly spread out; if it does, wrap the "Atgal" + invoice-state button in a nested
-`MudStack Row="true" Spacing="2"` so SpaceBetween only splits title vs. the button group.
+Per the audit: `DebtReconciliationService.GetReconciliationAsync` is
+per-partner and would cause an N+1 query problem if called per table
+row. Instead:
 
-## A.3 — `Components/Pages/Warehouse/DeliveryList.razor` and `Components/Pages/Warehouse/SupplierDebtDetail.razor`
+1. Add to `IDebtReconciliationService` (create this interface if it
+   doesn't already exist — check first, don't duplicate) a new method:
+   ```csharp
+   Task<Dictionary<int, decimal>> GetBalancesBulkAsync(IEnumerable<int> partnerIds, int? year = null);
+   ```
+   Implement with a single aggregate query (or a small fixed number of
+   queries) across Invoice/CreditNote/Payment tables, grouped by partner
+   id — do not loop calling the existing single-partner method N times.
+   Default `year` to the current year if null, matching the existing
+   method's convention.
+2. Register the interface in `Program.cs` if it's newly created.
+3. In `Suppliers.razor` and `Customers.razor`: inject the service, call
+   `GetBalancesBulkAsync` once after the partner list loads (in
+   `OnParametersSet`/`LoadSuppliers`/`LoadCustomers`), store as
+   `Dictionary<int, decimal> _balances`, and read from it in the row
+   template via `_balances.TryGetValue(id, out var b) ? ... : "—"`.
+4. **Sign convention (confirmed from existing code):** positive =
+   partner owes us, negative = we owe partner. Render as e.g.
+   `+1234.56 €` in a success-colored span when positive, `-1234.56 €` in
+   an error-colored span when negative, and plain `0.00 €` (or "—") when
+   zero. Use `MudText`/inline style with the project's existing color
+   tokens from `Docs/DESIGN_SYSTEM.md` — do NOT hardcode new hex colors;
+   reuse whatever class/token the project already uses for
+   positive/negative amounts (check `FormatAmount` helper /
+   `formatamount-trim-methods-20260825-1200.md` report for the existing
+   pattern before inventing a new one).
 
-Both already show a "Būsena" status chip driven by `StatusDisplayHelper`. In both, when the
-delivery has a non-empty `InvoiceNumber`, add a small receipt icon to that same chip (do NOT add
-a new column — a dedicated "Sąskaita" column was intentionally removed from `DeliveryList.razor`
-in a prior change). Example pattern for the chip:
+## Do NOT
+- Do not remove `CompanyCode`, `VatCode`, `NationalIdNumber` from the
+  underlying models or from the edit dialogs — only from the LIST TABLE
+  columns. They must remain editable in Create/Edit dialogs.
+- Do not touch `FROZEN.md`-scoped files (not needed for this change per
+  the audit).
+- Do not add a new xUnit test for `GetBalancesBulkAsync` as mandatory —
+  it's a read-only aggregate query, not a DB-write method, so the
+  project's "every DB-write method needs a test" rule doesn't apply.
+  Adding one is optional/nice-to-have, not required to finish this task.
 
-```razor
-<MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(context.Status, _statusDisplay)"
-    Icon="@(!string.IsNullOrEmpty(context.InvoiceNumber) ? Icons.Material.Filled.Receipt : null)">
-    @StatusDisplayHelper.GetLabel(context.Status, _statusDisplay)
-</MudChip>
-```
-(Adjust the context variable name per file — `context` in `DeliveryList.razor`, `delivery` in
-`SupplierDebtDetail.razor`, per the investigation report's line references.) Passing `Icon=null`
-when there's no invoice must not render an empty icon slot — verify visually.
-
-## A.4 — `Components/Pages/Warehouse/SupplierDebts.razor`
-
-Skip. This table is supplier-aggregated, not per-delivery — no invoice-issued indicator here per
-the investigation report's recommendation. Do not touch this file.
-
-## B — PDF title: `Services/PdfGeneratorService.cs` (lines ~273–281 per investigation report)
-
-Change ONLY the display string, not any comparison logic:
-
-```csharp
-// BEFORE
-string documentTitle = labels.DocumentTitle;
-if (isReverseCharge6)
-{
-    documentTitle = "6% PVM SĄSKAITA FAKTŪRA";
-}
-
-// AFTER
-string documentTitle = labels.DocumentTitle;
-if (isReverseCharge6)
-{
-    documentTitle = "PVM SĄSKAITA FAKTŪRA";
-}
-```
-
-**Do NOT touch:**
-- `Invoice.InvoiceType` stored string (stays `"6% PVM SĄSKAITA FAKTŪRA"` — used by numbering).
-- `isReverseCharge6` computation at `PdfGeneratorService.cs:139` (`Contains("6%")`).
-- `GenerateNextInvoiceNumberAsync`'s `Contains("6%")` check in `Services/InvoiceService.cs:433`.
-- The VAT% table cell (`displayVatRate`, ~line 336) — that's the actual 6% VAT rate, correct as-is.
-- `InvoiceView.razor`'s `GetInvoiceTypeLabel` and `InvoiceDetailDialog.razor`'s verbatim
-  `InvoiceType` display — out of scope for this task (PDF-only per the request); leave them
-  showing "6%" as today. Note this inconsistency in your report but do not fix it.
-
-## Constraints
-
-- `dotnet build` must pass, 0 errors, before finishing.
-- This diff touches Lithuanian UI strings ("Sąskaita", "Sąskaita išrašyta: ...") — reviewer must
-  quote every changed Lithuanian string verbatim in its verdict per AGENTS.md.
-- No DB/migration/service-layer changes — this is UI + one PDF string only.
+## Verification (required before finishing)
+- `dotnet build` — actual output pasted in the report, 0 errors.
+- Manually confirm no N+1 query pattern was introduced (balances loaded
+  once per page load, not per row).
+- Reviewer subagent: quote every changed/added Lithuanian header string
+  verbatim in its verdict (Šalis, PVM, Mokėjimo term., Balansas,
+  Išlaidų grupė, Pavadinimas).
+- Confirm `?vat=21` filter on `/suppliers` still works correctly with the
+  new column set (manual check, no code change expected there).
 
 ## Report
+Write the full work report to
+`.opencode/reports/suppliers-customers-columns-fix-<YYYYMMDD>-<HHMM>.md`,
+including actual `dotnet build` output and a diff summary per file.
 
-Write to `.opencode/reports/invoice-issued-indicators-pdf-title-build-<YYYYMMDD>-<HHMM>.md`
-listing every file changed and confirming the clean `dotnet build`.
-
-## Required last step
-
-Run `./bump-version.sh patch`.
+## Final step (required)
+Run `./bump-version.sh patch` at the end of this task. Before running it,
+confirm `.opencode/tasks/latest.md` itself has no uncommitted diff
+blocking the script (this blocked the previous filter-bar task — check
+`git status --porcelain` first and report if it blocks again instead of
+silently skipping the bump).
