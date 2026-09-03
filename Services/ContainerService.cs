@@ -134,8 +134,8 @@ public class ContainerService : IContainerService
                 if (container != null)
                 {
                     await context.Database.ExecuteSqlRawAsync(
-                        "UPDATE containers SET status = {0}, updated_at = NOW() WHERE id = {1}",
-                        "WRITTEN_OFF", container.Id);
+                        "UPDATE containers SET status = {0}, notes = {1}, updated_at = NOW() WHERE id = {2}",
+                        "WRITTEN_OFF", reason, container.Id);
 
                     context.StockMovements.Add(new StockMovement
                     {
