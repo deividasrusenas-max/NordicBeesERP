@@ -72,7 +72,10 @@
                 @(FormatAmountHelper.Trim((delivery.TotalAmount - delivery.PaidAmount), 2))
             </MudTd>
             <MudTd DataLabel="Būsena">
-                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(delivery.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(delivery.Status, _statusDisplay)</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(delivery.Status, _statusDisplay)"
+                    Icon="@(!string.IsNullOrEmpty(delivery.InvoiceNumber) ? Icons.Material.Filled.Receipt : null)">
+                    @StatusDisplayHelper.GetLabel(delivery.Status, _statusDisplay)
+                </MudChip>
             </MudTd>
         </RowTemplate>
     </MudTable>
