@@ -1,5 +1,6 @@
 @page "/warehouse/delivery-pricing"
 @rendermode InteractiveServer
+@using NordicBeesERP.Models
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Components.Dialogs
 @using NordicBeesERP.Helpers
@@ -8,6 +9,7 @@
 @inject ICustomerService CustomerService
 @inject IHoneyTypeService HoneyTypeService
 @inject IProductService ProductService
+@inject IInvoiceService InvoiceService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
@@ -105,9 +107,20 @@
                 <MudTd>
                     @if (d.InvoiceId != null)
                     {
-                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
-                            StartIcon="@Icons.Material.Filled.Receipt"
-                            Href="@($"/invoices/{d.InvoiceId}")">@d.InvoiceNumber</MudButton>
+                        var invStatus = GetInvoiceStatus(d.InvoiceId.Value);
+                        <div class="d-flex align-center gap-1">
+                            <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                                StartIcon="@Icons.Material.Filled.Receipt"
+                                Href="@($"/invoices/{d.InvoiceId}")">@d.InvoiceNumber</MudButton>
+                            @if (invStatus == InvoiceStatus.Draft)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Neatspausdinta</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Atspausdinta</MudChip>
+                            }
+                        </div>
                     }
                     else
                     {
@@ -190,6 +203,17 @@
         {
             _suppliers = await CustomerService.GetSuppliersAsync();
             _deliveries = await DeliveryService.GetAllAsync();
+
+            var invoiceIds = _deliveries.Where(d => d.InvoiceId != null).Select(d => d.InvoiceId!.Value).Distinct().ToList();
+            _invoiceStatusById.Clear();
+            if (invoiceIds.Any())
+            {
+                var allInvoices = await InvoiceService.GetInvoicesAsync(take: 5000);
+                foreach (var inv in allInvoices.Where(i => invoiceIds.Contains(i.Id)))
+                {
+                    _invoiceStatusById[inv.Id] = inv.Status;
+                }
+            }
         }
         finally
         {
@@ -197,6 +221,9 @@
             StateHasChanged();
         }
     }
+
+    private Dictionary<int, InvoiceStatus> _invoiceStatusById = new();
+    private InvoiceStatus GetInvoiceStatus(int invoiceId) => _invoiceStatusById.TryGetValue(invoiceId, out var s) ? s : InvoiceStatus.Draft;
 
     private void OpenPricingDetail(int deliveryId)
     {

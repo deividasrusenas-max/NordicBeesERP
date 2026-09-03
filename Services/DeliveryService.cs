@@ -32,6 +32,8 @@ public class DeliveryService : IDeliveryService
                 d.BarrelsReturned,
                 d.NeedReturnBarrels,
                 d.Notes,
+                d.InvoiceId,
+                d.InvoiceNumber,
                 d.CreatedAt,
                 d.UpdatedAt,
                 PaidAmount = context.SupplierPayments
@@ -56,6 +58,8 @@ public class DeliveryService : IDeliveryService
             BarrelsReturned = d.BarrelsReturned,
             NeedReturnBarrels = d.NeedReturnBarrels,
             Notes = d.Notes,
+            InvoiceId = d.InvoiceId,
+            InvoiceNumber = d.InvoiceNumber,
             CreatedAt = d.CreatedAt,
             UpdatedAt = d.UpdatedAt,
             PaidAmount = d.PaidAmount
