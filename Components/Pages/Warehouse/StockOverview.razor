@@ -154,6 +154,83 @@
         </MudPaper>
     }
 
+    <!-- WRITTEN_OFF view (ported from WriteOffHistory.razor) -->
+    @if (_viewType == "WRITTEN_OFF")
+    {
+        <StandardListFilterBar>
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField T="string" Value="@_writeOffSearchText" ValueChanged="UpdateWriteOffSearchAsync"
+                        Label="Paieška (kodas, tiekėjas, rūšis)"
+                        Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                        Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudDateRangePicker T="DateTime?" DateRange="@_writeOffDateRange" DateRangeChanged="UpdateWriteOffDateRangeAsync"
+                        Label="Nurašymo data" Variant="Variant.Text" FullWidth="@true" Clearable="@true" Editable="true" DateFormat="yyyy-MM-dd" />
+                </MudItem>
+                @if (!string.IsNullOrWhiteSpace(_writeOffSearchText) || _writeOffDateRange?.Start != null || _writeOffDateRange?.End != null)
+                {
+                    <MudItem xs="12">
+                        <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff" Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" OnClick="ClearWriteOffFilters">Išvalyti filtrus</MudButton>
+                    </MudItem>
+                }
+            </MudGrid>
+        </StandardListFilterBar>
+
+        @if (_writeOffLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (!FilteredWriteOffContainers.Any())
+        {
+            <MudAlert Severity="Severity.Info">Nurašytų konteinerių nėra</MudAlert>
+        }
+        else
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="pa-3" Elevation="0" Style="background:#ffebee; border-radius:8px">
+                        <MudText Typo="Typo.caption">Nurašyta vnt.</MudText>
+                        <MudText Typo="Typo.h5">@FilteredWriteOffContainers.Count()</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudPaper Class="pa-3" Elevation="0" Style="background:#ffebee; border-radius:8px">
+                        <MudText Typo="Typo.caption">Nurašyta kg</MudText>
+                        <MudText Typo="Typo.h5">@FilteredWriteOffContainers.Sum(c => c.NetWeight).ToString("N1")</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudTable T="Container" Items="FilteredWriteOffContainers.ToList()" Dense="true" Hover="true" Striped="true" RowsPerPage="50">
+                <HeaderContent>
+                    <MudTh>ID</MudTh>
+                    <MudTh>Tipas</MudTh>
+                    <MudTh>Tiekėjas</MudTh>
+                    <MudTh>Rūšis</MudTh>
+                    <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                    <MudTh>Sandėlis</MudTh>
+                    <MudTh>Priežastis</MudTh>
+                    <MudTh>Data</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="c">
+                    <MudTd><strong>@c.ContainerCode</strong></MudTd>
+                    <MudTd>@(c.ContainerType == "BARREL" ? "Statinė" : "Kibirai")</MudTd>
+                    <MudTd>@GetSupplierName(c.SupplierId)</MudTd>
+                    <MudTd>@GetHoneyTypeName(c.HoneyTypeId)</MudTd>
+                    <MudTd Style="text-align:right">@c.NetWeight.ToString("N1")</MudTd>
+                    <MudTd>@GetWarehouseName(c.WarehouseId)</MudTd>
+                    <MudTd>@(string.IsNullOrWhiteSpace(c.Notes) ? "—" : c.Notes)</MudTd>
+                    <MudTd>@c.UpdatedAt.ToString("yyyy-MM-dd")</MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
+                </PagerContent>
+            </MudTable>
+        }
+    }
+
     <!-- Transfer Dialog -->
     <MudDialog @bind-Visible="_transferDialogVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true }">
         <TitleContent>
@@ -254,6 +331,13 @@
 
     // Top-level view switcher (Likučiai / Nurašyta / Perkėlimai) — UI + URL state only for now
     private string _viewType = "STOCK";
+
+    // WRITTEN_OFF view (ported from WriteOffHistory.razor) — separate fields so they never collide with the STOCK-view filters above
+    private List<Container> _writeOffContainers = new();
+    private bool _writeOffLoading = true;
+    private bool _writeOffContainersLoaded;
+    private string _writeOffSearchText = string.Empty;
+    private DateRange? _writeOffDateRange;
 
     // Client-side date-range + free-text filter applied on top of the server-fetched _containers
     private IEnumerable<Container> FilteredContainers => _containers.Where(c =>
@@ -438,6 +522,16 @@
     [SupplyParameterFromQuery(Name = "view")]
     public string? View { get; set; }
 
+    // WRITTEN_OFF view filters — deliberately "wo"-prefixed so they never collide with the STOCK view's q/from/to params above
+    [SupplyParameterFromQuery(Name = "woq")]
+    public string? WriteOffQ { get; set; }
+
+    [SupplyParameterFromQuery(Name = "wofrom")]
+    public string? WriteOffFrom { get; set; }
+
+    [SupplyParameterFromQuery(Name = "woto")]
+    public string? WriteOffTo { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
@@ -470,7 +564,84 @@
         if (!_filterWarehouseId.HasValue && _warehouses.Any())
             _filterWarehouseId = _warehouses.First().Id;
 
+        ReadWriteOffUrlParams();
+
         await LoadData();
+
+        // WRITTEN_OFF view — load once on first entry into this view (guarded so filter-keystroke
+        // navigations don't refetch); does NOT touch the STOCK-view _containers.
+        if (_viewType == "WRITTEN_OFF" && !_writeOffContainersLoaded)
+            await LoadWriteOffDataAsync();
+    }
+
+    private void ReadWriteOffUrlParams()
+    {
+        _writeOffSearchText = WriteOffQ ?? string.Empty;
+        _writeOffDateRange = null;
+        if (!string.IsNullOrWhiteSpace(WriteOffFrom) && DateTime.TryParse(WriteOffFrom, out var woFrom))
+            _writeOffDateRange = new DateRange(woFrom, _writeOffDateRange?.End);
+        if (!string.IsNullOrWhiteSpace(WriteOffTo) && DateTime.TryParse(WriteOffTo, out var woTo))
+            _writeOffDateRange = new DateRange(_writeOffDateRange?.Start, woTo);
+    }
+
+    private async Task LoadWriteOffDataAsync()
+    {
+        _writeOffLoading = true;
+        StateHasChanged();
+        try
+        {
+            // _warehouses/_suppliers/_honeyTypes are already populated by OnInitializedAsync — no re-fetch here.
+            _writeOffContainers = await ContainerService.GetFilteredAsync(null, null, null, "WRITTEN_OFF", null);
+        }
+        finally
+        {
+            _writeOffLoading = false;
+            _writeOffContainersLoaded = true;
+            StateHasChanged();
+        }
+    }
+
+    // Client-side filter for the WRITTEN_OFF view (ported from WriteOffHistory.razor's GetFilteredContainers,
+    // renamed to use _writeOffContainers) — never touches STOCK-view _containers/_dateRange.
+    private IEnumerable<Container> FilteredWriteOffContainers => _writeOffContainers.Where(c =>
+    {
+        var q = _writeOffSearchText?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(q) &&
+            !(c.ContainerCode?.ToLowerInvariant().Contains(q) ?? false) &&
+            !GetSupplierName(c.SupplierId).ToLowerInvariant().Contains(q) &&
+            !GetHoneyTypeName(c.HoneyTypeId).ToLowerInvariant().Contains(q))
+            return false;
+        if (_writeOffDateRange?.Start != null && c.UpdatedAt.Date < _writeOffDateRange.Start.Value.Date) return false;
+        if (_writeOffDateRange?.End != null && c.UpdatedAt.Date > _writeOffDateRange.End.Value.Date) return false;
+        return true;
+    });
+
+    private Task UpdateWriteOffSearchAsync(string value)
+    {
+        _writeOffSearchText = value ?? string.Empty;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("woq", string.IsNullOrWhiteSpace(_writeOffSearchText) ? null : _writeOffSearchText),
+            ("view", _viewType != "STOCK" ? _viewType : null)));
+        return Task.CompletedTask;
+    }
+
+    private Task UpdateWriteOffDateRangeAsync(DateRange? range)
+    {
+        _writeOffDateRange = range;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("wofrom", range?.Start?.ToString("yyyy-MM-dd")),
+            ("woto", range?.End?.ToString("yyyy-MM-dd")),
+            ("view", _viewType != "STOCK" ? _viewType : null)));
+        return Task.CompletedTask;
+    }
+
+    private Task ClearWriteOffFilters()
+    {
+        _writeOffSearchText = string.Empty;
+        _writeOffDateRange = null;
+        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+            ("view", _viewType != "STOCK" ? _viewType : null)));
+        return Task.CompletedTask;
     }
 
     private async Task LoadData()
