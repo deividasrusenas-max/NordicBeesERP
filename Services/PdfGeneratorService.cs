@@ -69,6 +69,8 @@ namespace NordicBeesERP.Services
             {
                 invoice.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == invoice.CustomerId);
                 invoice.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == invoice.Id).ToList();
+                if (invoice.DeliveryId.HasValue)
+                    invoice.Delivery = context.Deliveries.FirstOrDefault(d => d.Id == invoice.DeliveryId.Value);
                 if (invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
                     invoice.Language = invoice.Customer.DefaultLanguage;
             }
@@ -98,6 +100,8 @@ namespace NordicBeesERP.Services
             {
                 invoice.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == invoice.CustomerId);
                 invoice.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == invoice.Id).ToList();
+                if (invoice.DeliveryId.HasValue)
+                    invoice.Delivery = context.Deliveries.FirstOrDefault(d => d.Id == invoice.DeliveryId.Value);
                 if (invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
                     invoice.Language = invoice.Customer.DefaultLanguage;
             }
@@ -328,7 +332,7 @@ namespace NordicBeesERP.Services
                         var displayVatRate = isReverseCharge6 ? 6m : line.VatRate;
                         
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(rowNum++.ToString()).FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(line.Description).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(GetLineDescription(line, invoice, isReverseCharge6)).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignCenter().Text(line.Unit ?? "").FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatQuantity(line.Quantity)).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
@@ -392,6 +396,13 @@ namespace NordicBeesERP.Services
             });
         }
         
+        private static string GetLineDescription(InvoiceLine line, Invoice invoice, bool isReverseCharge6)
+        {
+            if (isReverseCharge6 && invoice.Delivery != null)
+                return $"{line.Description}. Pristatymo nr.: {invoice.Delivery.DeliveryNumber}";
+            return line.Description ?? "";
+        }
+
         // =====================================================
         // LOKALIZACIJA - LT/EN METODAS
         // =====================================================
@@ -905,6 +916,8 @@ namespace NordicBeesERP.Services
                     {
                         inv.Customer = context.BusinessPartners.FirstOrDefault(bp => bp.Id == inv.CustomerId);
                         inv.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == inv.Id).ToList();
+                        if (inv.DeliveryId.HasValue)
+                            inv.Delivery = context.Deliveries.FirstOrDefault(d => d.Id == inv.DeliveryId.Value);
                         if (inv.Customer != null && !string.IsNullOrEmpty(inv.Customer.DefaultLanguage))
                             inv.Language = inv.Customer.DefaultLanguage;
                         invoices.Add(inv);

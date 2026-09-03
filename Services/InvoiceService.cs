@@ -691,7 +691,7 @@ namespace NordicBeesERP.Services
                     new InvoiceLine
                     {
                         LineNumber = 1,
-                        Description = $"{delivery.RawMaterialType?.Name ?? "Žaliava"} - {delivery.DeliveryNumber}",
+                        Description = delivery.RawMaterialType?.Name ?? "Žaliava",
                         Quantity = delivery.TotalNetWeight,
                         Unit = "kg",
                         PriceExclVat = unitPrice,
