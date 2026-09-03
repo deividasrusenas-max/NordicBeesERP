@@ -45,113 +45,116 @@
         </MudChipSet>
     </MudStack>
 
-    <!-- Filters -->
-    <StandardListFilterBar>
-        <MudGrid>
-            <MudItem xs="12" sm="6" md="4">
-                <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Variant="Variant.Text" Clearable="@true">
-                    @foreach (var w in _warehouses)
-                    {
-                        <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4">
-                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis, sandėlis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4">
-                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="@true" />
-            </MudItem>
-            @if (!string.IsNullOrWhiteSpace(_search)
-                || _filterStatus != null
-                || _dateRange?.Start != null
-                || _dateRange?.End != null
-                || (_filterWarehouseId.HasValue && _warehouses.Any() && _filterWarehouseId.Value != _warehouses.First().Id))
-            {
-                <MudItem xs="12">
-                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
-                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                               OnClick="ClearFilters">
-                        Išvalyti filtrus
-                    </MudButton>
-                </MudItem>
-            }
-        </MudGrid>
-    </StandardListFilterBar>
-
-    <!-- Status chips row (separate from filter bar, no label) -->
-    <div class="d-flex flex-wrap gap-2 mb-3">
-        @foreach (var status in _containerStatusDisplay)
-        {
-            var isSelected = _filterStatus == status.Key;
-            <MudChip T="string"
-                     Color="@(isSelected ? status.Value.Color : Color.Default)"
-                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatus(status.Key))"
-                     Size="Size.Small"
-                      Style="@("text-transform:none;" + (isSelected ? "" : " opacity:0.7"))">
-                @status.Value.Label
-            </MudChip>
-        }
-    </div>
-
-    <!-- Summary cards -->
-    <MudGrid Class="mb-4">
-        <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
-                <MudText Typo="Typo.caption">Statinės</MudText>
-                <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BARREL") vnt.</MudText>
-                <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BARREL").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
-                <MudText Typo="Typo.caption">Bendras netto</MudText>
-                <MudText Typo="Typo.h5">@_containers.Sum(c => c.NetWeight).ToString("N1") kg</MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
-                <MudText Typo="Typo.caption">Kibirai</MudText>
-                <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BUCKET_GROUP") vnt.</MudText>
-                <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="6" md="3">
-            <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
-                <MudText Typo="Typo.caption">Bičių duona</MudText>
-                <MudText Typo="Typo.h5">@_biciuDuonaWeight.ToString("N1") kg</MudText>
-                <MudText Typo="Typo.body2" Style="color:#64748b">@_biciuDuonaCount vnt.</MudText>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-
-    <!-- Category hierarchy -->
-    <MudExpansionPanels Dense="true" MultiExpansion="true" Class="mb-3">
-        @foreach (var group in CategoryGroups)
-        {
-            @RenderGroup(group)
-        }
-    </MudExpansionPanels>
-
-    @if (_selectedContainers.Any())
+    @if (_viewType == "STOCK")
     {
-        <MudPaper Class="pa-3 mt-3" Elevation="2" Style="border-radius:8px; position:sticky; bottom:16px; background:white">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                <MudText>Pasirinkta: <strong>@_selectedContainers.Count</strong> vnt. | @_selectedContainers.Sum(c => c.NetWeight).ToString("N1") kg</MudText>
-                <MudStack Row="true" Spacing="2">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                        StartIcon="@Icons.Material.Filled.MoveDown"
-                        OnClick="OpenTransferDialog">Perkelti</MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
-                        StartIcon="@Icons.Material.Filled.Label"
-                        OnClick="OpenAssignHoneyTypeDialog">Priskirti rūšį</MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
-                        StartIcon="@Icons.Material.Filled.DeleteForever"
-                        OnClick="OpenWriteOffDialog">Nurašyti</MudButton>
+        <!-- Filters -->
+        <StandardListFilterBar>
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSelect T="int?" Value="_filterWarehouseId" ValueChanged="@(async (int? v) => { _filterWarehouseId = v; await ApplyFiltersFromUrl(); })" Label="Sandėlis" Variant="Variant.Text" Clearable="@true">
+                        @foreach (var w in _warehouses)
+                        {
+                            <MudSelectItem T="int?" Value="w.Id">@w.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync" Label="Paieška (kodas, tiekėjas, rūšis, sandėlis)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="@true" Immediate="@true" FullWidth="@true" Variant="Variant.Text" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync" Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="@true" />
+                </MudItem>
+                @if (!string.IsNullOrWhiteSpace(_search)
+                    || _filterStatus != null
+                    || _dateRange?.Start != null
+                    || _dateRange?.End != null
+                    || (_filterWarehouseId.HasValue && _warehouses.Any() && _filterWarehouseId.Value != _warehouses.First().Id))
+                {
+                    <MudItem xs="12">
+                        <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                                   Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                                   OnClick="ClearFilters">
+                            Išvalyti filtrus
+                        </MudButton>
+                    </MudItem>
+                }
+            </MudGrid>
+        </StandardListFilterBar>
+
+        <!-- Status chips row (separate from filter bar, no label) -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach (var status in _containerStatusDisplay)
+            {
+                var isSelected = _filterStatus == status.Key;
+                <MudChip T="string"
+                         Color="@(isSelected ? status.Value.Color : Color.Default)"
+                         Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ToggleStatus(status.Key))"
+                         Size="Size.Small"
+                          Style="@("text-transform:none;" + (isSelected ? "" : " opacity:0.7"))">
+                    @status.Value.Label
+                </MudChip>
+            }
+        </div>
+
+        <!-- Summary cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                    <MudText Typo="Typo.caption">Statinės</MudText>
+                    <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BARREL") vnt.</MudText>
+                    <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BARREL").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                    <MudText Typo="Typo.caption">Bendras netto</MudText>
+                    <MudText Typo="Typo.h5">@_containers.Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                    <MudText Typo="Typo.caption">Kibirai</MudText>
+                    <MudText Typo="Typo.h5">@_containers.Count(c => c.ContainerType == "BUCKET_GROUP") vnt.</MudText>
+                    <MudText Typo="Typo.body2" Style="color:#64748b">@_containers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudPaper Elevation="0" Class="pa-3" Style="background:#f8fafc; border-radius:12px; height:90px; display:flex; flex-direction:column; justify-content:space-between">
+                    <MudText Typo="Typo.caption">Bičių duona</MudText>
+                    <MudText Typo="Typo.h5">@_biciuDuonaWeight.ToString("N1") kg</MudText>
+                    <MudText Typo="Typo.body2" Style="color:#64748b">@_biciuDuonaCount vnt.</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Category hierarchy -->
+        <MudExpansionPanels Dense="true" MultiExpansion="true" Class="mb-3">
+            @foreach (var group in CategoryGroups)
+            {
+                @RenderGroup(group)
+            }
+        </MudExpansionPanels>
+
+        @if (_selectedContainers.Any())
+        {
+            <MudPaper Class="pa-3 mt-3" Elevation="2" Style="border-radius:8px; position:sticky; bottom:16px; background:white">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText>Pasirinkta: <strong>@_selectedContainers.Count</strong> vnt. | @_selectedContainers.Sum(c => c.NetWeight).ToString("N1") kg</MudText>
+                    <MudStack Row="true" Spacing="2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                            StartIcon="@Icons.Material.Filled.MoveDown"
+                            OnClick="OpenTransferDialog">Perkelti</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                            StartIcon="@Icons.Material.Filled.Label"
+                            OnClick="OpenAssignHoneyTypeDialog">Priskirti rūšį</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                            StartIcon="@Icons.Material.Filled.DeleteForever"
+                            OnClick="OpenWriteOffDialog">Nurašyti</MudButton>
+                    </MudStack>
                 </MudStack>
-            </MudStack>
-        </MudPaper>
+            </MudPaper>
+        }
     }
 
     <!-- WRITTEN_OFF view (ported from WriteOffHistory.razor) -->
