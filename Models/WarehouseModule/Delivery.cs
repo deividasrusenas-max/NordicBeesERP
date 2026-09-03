@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -59,6 +60,18 @@ public class Delivery
 
     [Column("invoice_number")]
     public string? InvoiceNumber { get; set; }
+
+    [Column("transport_cost_deduction")]
+    [Precision(10, 2)]
+    public decimal? TransportCostDeduction { get; set; }
+
+    [Column("barrel_cost_deduction")]
+    [Precision(10, 2)]
+    public decimal? BarrelCostDeduction { get; set; }
+
+    [Column("other_cost_deduction")]
+    [Precision(10, 2)]
+    public decimal? OtherCostDeduction { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
