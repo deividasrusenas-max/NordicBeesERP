@@ -102,3 +102,161 @@ rules:
           catch ($EXTYPE $EX) { ...; Snackbar.Add(...); ... }
       - pattern-not: |
           catch ($EXTYPE $EX) { ...; _logger.Log...(...); ... }
+
+  - id: nordicbees-schema-drift-unverified-column-mapping
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      A nullable C# property (int?, string?, etc.) is being passed as an
+      ExecuteSqlRawAsync positional parameter without a ?? fallback to a
+      guaranteed-non-null value. This project has a recurring, real incident
+      class where the C# model declares a property nullable while the actual
+      DB column is NOT NULL (schema drift — the model and migration are out
+      of sync). When such a null value reaches the DB it fails at runtime
+      with "Column 'x' cannot be null" even though the code compiles cleanly.
+      This exact mechanism has recurred FOUR times in this project:
+      Delivery.cs (2026-07-17), credit_notes.applied_invoice_id create/edit
+      paths (2026-08-24, twice — once per column), and a test fixture
+      (2026-08-27). Before writing any nullable property into an
+      INSERT/UPDATE via ExecuteSqlRawAsync, verify the real DB column's
+      nullability (DESCRIBE <table>, or check Migrations/
+      20260602150000_InitialCreate.cs) and add a ?? fallback to a known
+      non-null value (e.g. an existing entity field) if the column is NOT
+      NULL. See AGENTS.md "Database writes" and Docs/BUGLOG.md entries for
+      error class `schema-drift-unverified-column-mapping`.
+    patterns:
+      - pattern-either:
+          - pattern: $CTX.Database.ExecuteSqlRawAsync("... INSERT ...", ..., $ARG, ...)
+          - pattern: $CTX.Database.ExecuteSqlRawAsync("... UPDATE ...", ..., $ARG, ...)
+      - metavariable-regex:
+          metavariable: $ARG
+          regex: ^\w+(\.\w+)+$
+      - pattern-not-regex: 'ExecuteSqlRawAsync\s*\([^;]*\?\?'
+
+  - id: nordicbees-ef-connection-pool-race-last-insert-id
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      LAST_INSERT_ID() (or SCOPE_IDENTITY()/@@IDENTITY) is being read via a
+      separate SqlQueryRaw/ExecuteSqlRawAsync call after an INSERT, without
+      the connection being explicitly held open across both statements.
+      LAST_INSERT_ID() is CONNECTION-SCOPED in MySQL/MariaDB; EF Core's
+      connection pooling serves each ExecuteSqlRawAsync/SqlQueryRaw call on
+      a potentially different physical connection, so the read returns 0 (or
+      a stale value) instead of the row just inserted. This has caused real
+      incidents in this project TWICE: order_lines FK insert (2026-07-17) and
+      ArtworkService.CreateAssetAsync (2026-08-26 — returned id 0, breaking
+      the entire create→navigate flow). The fix is to wrap both statements
+      in `await _context.Database.OpenConnectionAsync()` ... `finally { await
+      _context.Database.CloseConnectionAsync(); }` so they run on the same
+      MySQL session. See AGENTS.md "Database writes" and Docs/BUGLOG.md
+      entries for error class `ef-connection-pool-race-last-insert-id`.
+    patterns:
+      - pattern-either:
+          - pattern-regex: 'SqlQueryRaw[^;]*LAST_INSERT_ID\(\)'
+          - pattern-regex: 'ExecuteSqlRawAsync\s*\(\s*"[^"]*SELECT\s+LAST_INSERT_ID\(\)[^"]*"'
+          - pattern-regex: 'SqlQueryRaw[^;]*SCOPE_IDENTITY\(\)'
+          - pattern-regex: 'SqlQueryRaw[^;]*@@IDENTITY'
+      - pattern-not-regex: 'OpenConnectionAsync'
+
+  - id: nordicbees-layout-lifecycle-unguarded-db-call
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      An awaited Service call (a method that can throw, e.g. any *Service.
+      *Async(...)) appears inside a Blazor component's lifecycle method
+      (OnInitializedAsync / OnParametersSetAsync / OnAfterRenderAsync) or an
+      event handler without being wrapped in try/catch. An unhandled
+      exception in a layout's lifecycle method, or in any component's event
+      handler, TERMINATES the entire Blazor Server circuit — every open page
+      for that user goes blank and unresponsive until they manually reload.
+      This has caused real incidents in this project: MainLayout.razor's
+      OnInitializedAsync calling CompanySettingsService.GetSettingsAsync()
+      unguarded (2026-08-18), and InvoiceView.razor's HandleConfirm plus 7
+      sibling handlers calling InvoiceService methods unguarded (2026-08-23).
+      Wrap every Service call in a .razor file that can throw in try/catch,
+      and surface the error via Snackbar.Add(ex.Message, Severity.Error) so
+      the user sees what went wrong instead of a silently dead circuit. See
+      AGENTS.md and Docs/BUGLOG.md entries for error class
+      `layout-lifecycle-unguarded-db-call`.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              protected override async Task OnInitializedAsync()
+              {
+                ...;
+                await $SERVICE.$METHOD(...);
+                ...
+              }
+          - pattern: |
+              protected override async Task OnParametersSetAsync()
+              {
+                ...;
+                await $SERVICE.$METHOD(...);
+                ...
+              }
+          - pattern: |
+              protected override async void OnAfterRenderAsync(bool firstRender)
+              {
+                ...;
+                await $SERVICE.$METHOD(...);
+                ...
+              }
+      - pattern-not: |
+          protected override async Task OnInitializedAsync()
+          {
+            ...;
+            try {
+              ...;
+              await $SERVICE.$METHOD(...);
+              ...
+            }
+            catch ($EXTYPE $EX) { ... }
+            ...
+          }
+      - pattern-not: |
+          protected override async Task OnParametersSetAsync()
+          {
+            ...;
+            try {
+              ...;
+              await $SERVICE.$METHOD(...);
+              ...
+            }
+            catch ($EXTYPE $EX) { ... }
+            ...
+          }
+      - pattern-not: |
+          protected override async void OnAfterRenderAsync(bool firstRender)
+          {
+            ...;
+            try {
+              ...;
+              await $SERVICE.$METHOD(...);
+              ...
+            }
+            catch ($EXTYPE $EX) { ... }
+            ...
+          }
+
+  - id: nordicbees-mariadb-datetime-precision-default-mismatch
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      A SQL DATETIME(n) or TIMESTAMP(n) column definition (n > 0, i.e. with
+      explicit fractional-seconds precision) is being given a bare
+      `DEFAULT CURRENT_TIMESTAMP` without the matching `(n)` precision
+      argument. MariaDB/MySQL REJECTS this at CREATE TABLE time with
+      ERROR 1067 "Invalid default value" — when a datetime column declares a
+      fractional precision, the CURRENT_TIMESTAMP default function must be
+      called with the SAME precision (e.g. `DATETIME(6) ... DEFAULT
+      CURRENT_TIMESTAMP(6)`), or the statement fails before any table is
+      created. This caused a real incident in this project on 2026-08-26
+      (Artwork multi-file/label-types migration scripts, both agent-authored
+      with the identical latent defect). Write `DEFAULT CURRENT_TIMESTAMP(n)`
+      to match the column's `(n)`, or use bare `DATETIME` / bare
+      `CURRENT_TIMESTAMP` (both precision 0) — never mix a precise column
+      with an imprecise default. See AGENTS.md "Migrations" and Docs/BUGLOG.md
+      entry for error class `mariadb-datetime-precision-default-mismatch`.
+    patterns:
+      - pattern-regex: '(DATETIME|TIMESTAMP)\s*\(\s*[1-9]\d*\s*\)[^,;]*DEFAULT\s+CURRENT_TIMESTAMP\s*([^((]|$)'
