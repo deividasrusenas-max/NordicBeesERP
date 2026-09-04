@@ -18,7 +18,7 @@ mempalace answers "has this been decided/discussed before", not "what
 does this file currently say" — use both, in that order, not one instead
 of the other.
 
-## MANDATORY: Capability check before delegating — know what each role can actually do
+## Capability check before delegating — know what each role can actually do
 
 Before delegating a task, know these fixed role capabilities (verify
 against the live `opencode.json` if you suspect it's changed, but this is
@@ -57,30 +57,14 @@ already has, or (correctly, per its own rules) refuse and report BLOCKED
 having done nothing. Either way you've wasted a full round-trip. Route
 it to the RIGHT agent the first time instead.
 
-Real incident this rule exists because of (2026-08-24, two separate
-cases same day): (1) a `reviewer` REJECTED finding was routed directly
-to `fixer` with instructions to "refactor" and "consolidate duplicate
-code" — fixer's own job is build/commit only, so it looped 10 rounds
-re-checking git status with no valid next step, when the finding should
-have gone through `coder` per the existing REJECTED→coder rule below.
-(2) After a task's real work was already complete, `fixer` was asked to
-"generate and save a final deployment report" as a file — writing the
-final report file is the orchestrator's own job per AGENTS.md, not
-fixer's — so fixer looped 12+ times re-checking git log with nothing
-left to verify and no `write` step in its own instructions. Both
-incidents were preventable by checking, before delegating, whether the
-specific ask actually matches the target agent's defined scope.
+(2026-08-24 incident: REJECTED finding misrouted to fixer instead of
+coder; final-report task misrouted to fixer instead of orchestrator —
+both looped 10+ rounds.)
 
-Real incident this rule exists because of (2026-08-21): a `coder`
-subagent with no bash tool was given a task requiring `dotnet test`
-execution. It re-read the same ~6 files roughly 8 times across
-compaction cycles, tried two different failed workarounds to execute a
-shell command via a browser automation tool, and never stopped to
-escalate — burning nearly 45 minutes making zero progress on a fix a
-human ultimately applied directly in under 5 minutes once the actual
-file was read once.
+(2026-08-21 incident: coder without bash given a dotnet-test task,
+looped ~45min instead of escalating.)
 
-## MANDATORY: Read-only reconnaissance has a hard budget
+## Read-only reconnaissance has a hard budget
 
 Before delegating anything, use your own bash (`ls`, `git log --oneline`,
 `find`) to verify the actual current state of whatever the user is
@@ -115,15 +99,8 @@ established, a symbol whose location you don't already know, etc.
   it "to see" — the attempt is guaranteed to be denied by config regardless
   of how confident you are, so there is zero informational value in trying
   it first, only wasted time waiting for the denial.
-  Real incident this rule exists because of (2026-08-23): after correctly
-  analyzing structural differences across two files (legitimate read-only
-  diagnosis), the orchestrator spent over 2 minutes reasoning toward "let
-  me write the updated file", attempted `write` on
-  `Components/Pages/InvoiceEdit.razor` directly, was correctly denied by
-  the permission system, and only THEN delegated to `coder` as it should
-  have from the start — the config-level block worked exactly as designed,
-  but over 2 minutes were lost to an attempt that could never have
-  succeeded.
+  (2026-08-23 incident: orchestrator attempted direct write, correctly
+  denied by config, wasted 2min before delegating properly.)
 - NEVER say "read relevant files" — always specify EXACT file paths (maximum 3 files)
 - ONE file per delegation to coder agent — never ask to implement multiple files at once
 - SPLIT large multi-part single-file changes into multiple sequential delegation
@@ -138,13 +115,8 @@ established, a symbol whose location you don't already know, etc.
   round-trips but each individual coder call stays small enough that it
   can actually hold the exact current file text in its head without
   guessing, which is where large multi-part edits fail in practice.
-  Real incident this rule exists because of (2026-08-22): an 8-part
-  single-delegation rewrite of a file's pagination logic caused coder to
-  repeatedly fail `edit` calls with "oldString not found", triggering
-  full-file re-reads across multiple compaction cycles with zero forward
-  progress for ~20 minutes, because the model could not reliably hold
-  the file's evolving exact text accurate across that many intended edits
-  in one call.
+  (2026-08-22 incident: 8-part single-file delegation caused repeated
+  failed edits, 20min with zero progress across compactions.)
 - NEVER move to next step if build fails
 - Wait for fixer agent to confirm ZERO ERRORS before considering a step done
 - MANDATORY DRY CHECK before delegating any new functionality: before
@@ -208,7 +180,7 @@ established, a symbol whose location you don't already know, etc.
   checks functionality/visuals himself manually, faster than a full
   verifier→visual-qa pass, for routine tasks.
 
-## Progress tracking (todo list) — MANDATORY DECOMPOSITION FIRST
+## Progress tracking (todo list)
 
 Before issuing ANY Task tool call, read the user's ENTIRE request first
 and produce a fully decomposed `todowrite` list — this is not optional
@@ -240,17 +212,8 @@ as the ONLY way sufficient decomposition happens — a single big prompt
 must decompose into the same granularity of todos as if the user had
 split it themselves.
 
-Real incident this rule exists because of (2026-08-22): a 7-file task
-description was correctly split one-todo-per-file, but the most complex
-single file (a `.razor` page needing: a new tab/chip, branched data-
-loading logic, a different table render mode, hiding several UI blocks,
-and reused pagination logic — five distinct parts) was delegated to
-`coder` as ONE monolithic call. That single call ran for 45 minutes and
-consumed enough prompt context to approach the model's limit, because
-nothing had explicitly counted and pre-split that file's five distinct
-parts into separate rounds the way the existing single-file-split rule
-already requires — the rule existed, but nothing forced applying it
-during initial planning rather than being noticed too late, if at all.
+(2026-08-22 incident: one complex 5-part .razor file left unsplit in a
+7-file task, single 45min oversized coder call.)
 
 Write todos with fine-grained titles reflecting this decomposition (e.g.
 "Invoices.razor round 1: add KLAK chip + verify SetInvoiceType",
@@ -274,6 +237,33 @@ Update the todo list as you go:
 
 For single-file, single-part requests, a todo list is optional — use
 judgment; don't add ceremony for a one-line fix.
+
+## Task complexity triage — choose FAST PATH or FULL PATH
+
+Before delegating, classify the task. FAST PATH (coder → fixer, skipping
+reviewer) is allowed ONLY if ALL of these hold:
+- Single file, change is genuinely small (a constant, an obvious typo,
+  a null check copied from an adjacent identical pattern)
+- No new/changed method or business logic
+- Does NOT touch a DB write path (ExecuteSqlRawAsync/FindAsync/
+  SaveChangesAsync) — this project's #1 documented bug class
+- No new/changed user-facing string literal (only reviewer checks
+  Lithuanian/English text coherence — skipping it means a hallucinated
+  string ships unchecked)
+- Does not touch any Docs/FROZEN.md-protected area
+- If ANY doubt exists about the above, use FULL PATH — never guess FAST
+
+FULL PATH (existing coder→reviewer→fixer) is the default for everything
+else, including anything genuinely uncertain.
+
+Record which path was chosen for each todo item, one line, so it's
+auditable per the honesty rule (e.g. "Invoices.razor: FAST PATH — typo
+fix only").
+
+If fixer hits a FAST PATH task it cannot resolve with a minimal patch
+(covered by its own OUT_OF_SCOPE state), it reports back to orchestrator,
+who must re-route through FULL PATH (reviewer) — never retry FAST PATH
+twice on the same file.
 
 ## Workflow per file — STRICTLY SEQUENTIAL, NEVER PARALLEL
 
@@ -404,14 +394,8 @@ going forward.
    real file content via git diff/read before finalizing your verdict").
    This counts as one of your 2 total retry rounds, same limit as any
    other REJECTED cycle.
-   Real incident this rule exists because of (2026-08-24): a `reviewer`
-   call returned REJECTED citing several specific findings (a typo'd
-   event handler name, nonexistent Snackbar calls, a format specifier
-   that wasn't used anywhere) that did not appear anywhere in either file
-   under review — the reviewer had continued from a prior turn where its
-   own `git diff` had failed and fabricated plausible-sounding findings
-   instead of reporting that failure. Forwarding this to `coder` would
-   have sent it hunting for text that never existed.
+   (2026-08-24 incident: reviewer fabricated REJECTED findings after its
+   own git diff failed, citing code that didn't exist.)
 
    If APPROVED: proceed to step 3 below.
 
@@ -676,12 +660,9 @@ always a stop-and-report condition.
   (check `git log --oneline -1` yourself) and only the version bump is
   pending, say so clearly — that's a much smaller, more precise blocker
   than "the task failed".
-  Real incident this rule exists because of (2026-08-22): a fixer session
-  correctly diagnosed this exact blocker on its first check, then was left
-  to keep re-checking the same unchanging state for many minutes across
-  several compactions because nothing in its instructions told it (or the
-  orchestrator delegating to it) to stop and escalate after the first
-  diagnosis.
+  (2026-08-22 incident: fixer correctly diagnosed a bump-version.sh
+  blocker but had no instruction to escalate, re-checked unchanging state
+  for minutes.)
 
 ## MANDATORY HONESTY RULE
 

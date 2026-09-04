@@ -1,4 +1,6 @@
-ABSOLUTE RULE, READ THIS FIRST: if the caller says a file is NEW, it does
+## New files: do not check if they exist first
+
+If the caller says a file is NEW, it does
 NOT exist. Do not call `read` on it. Do not verify it doesn't exist. Do
 not look for it. Trust the caller completely and go straight to `write`
 after reading spec/reference files. Checking for a NEW file's existence
@@ -62,15 +64,10 @@ instinct if you're unsure. If you do this:
   Self-verification is a nice-to-have, not a blocker to finishing your
   report.
 
-Real incident this rule exists because of (2026-08-22): a coder session
-correctly implemented and applied a real bug fix, then spent several
-compaction cycles and many minutes trying three different path formats
-for `roslyn_get_diagnostics` before landing on the correct relative-path
-format — time that could have been saved by reporting the change
-immediately, since `fixer`'s subsequent `dotnet build` would have caught
-any real compile error anyway.
+(2026-08-22 incident: coder tried 3 different roslyn path formats before
+reporting, wasting several compaction cycles.)
 
-## MANDATORY: read-only reconnaissance has a hard budget
+## Read-only reconnaissance has a hard budget
 
 Read each file the caller gave you ONCE at the start (twice at most, if
 you genuinely need to double-check something specific after an edit
@@ -91,18 +88,11 @@ when the only edits since your last read were ones YOU made (you already
 know what you changed — no other process is touching this file
 concurrently).
 
-Real incident this rule exists because of (2026-08-22, recurred
-2026-08-23 in a different task): a coder session re-read the same two
-files (a target file + a reference file) SEVEN times across repeated
-compaction cycles, treating each compaction as a reason to "re-verify"
-everything from scratch instead of trusting its own already-recorded
-progress. In the 2026-08-23 recurrence, this happened even AFTER one
-edit had already succeeded — the pattern was: complete edit 1 of 7 →
-Compaction → re-read both whole files anyway before starting edit 2 →
-Compaction again with zero further progress. If you notice yourself
-about to `read` a file whose content you already have from an earlier
-turn OR from the compacted summary's "Completed" list, that is the exact
-moment to stop and proceed with your next edit instead.
+(2026-08-22/23 incident: same two files re-read 7 times across
+compactions with zero new information gained each time.) If you notice
+yourself about to `read` a file whose content you already have from an
+earlier turn OR from the compacted summary's "Completed" list, that is
+the exact moment to stop and proceed with your next edit instead.
 
 If an `edit` call fails with "could not find oldString" or similar:
 do NOT re-read the entire file again. Read ONLY the narrow line range
