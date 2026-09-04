@@ -173,8 +173,32 @@ it can be run manually if needed.
 
 ## Report format
 
-✅ DONE — zero errors, version bumped to X.X.X, committed, guardrail
-   score: X/100 [+ one-line note if not 100]
+EVERY fixer final report MUST end with one exact, machine-parseable
+line, byte-identical in form every single time — this is a hard rule,
+analogous to how reviewer.md's verdict must be literally APPROVED or
+REJECTED. The nordicbees-quality-monitor plugin parses this line
+exactly; free-form prose is NOT acceptable.
+
+    GUARDRAIL_SCORE=<N>
+
+where <N> is the numeric score from step 10's `agent-guardrails check`
+(e.g. GUARDRAIL_SCORE=95). If the check was SKIPPED — skipped per
+step 10's "not found" logic (CLI not found and user informed), or the
+task explicitly did not run it — use exactly:
+
+    GUARDRAIL_SCORE=N/A
+
+The GUARDRAIL_SCORE= line must be on its OWN final line of the report,
+not buried in prose. Keep the normal human-readable summary above it.
+
+Examples:
+
+✅ DONE — zero errors, version bumped to X.X.X, committed
+GUARDRAIL_SCORE=95
+
 ❌ BLOCKED — cannot proceed: [exact diagnostic output/error list]
+GUARDRAIL_SCORE=N/A
+
 🚫 OUT_OF_SCOPE — [the part that doesn't fit steps 1-10] [+ a normal
-   DONE/BLOCKED report for whatever part of the task DOES fit, if any]
+   DONE/BLOCKED report for whatever part of the task DOES fit]
+GUARDRAIL_SCORE=<N or N/A>
