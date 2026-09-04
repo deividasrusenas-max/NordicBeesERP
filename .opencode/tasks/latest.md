@@ -1,127 +1,109 @@
-# Task: Migration risk assessment for PartnerType → role-flags redesign
+# Task: Full PartnerType code inventory + duplicate-pair decision brief
 
-## Type: READ-ONLY INVESTIGATION (no code changes) — DATA RISK FOCUS
+## Type: READ-ONLY INVESTIGATION (no code changes)
 
 ## Context
-`Docs/PARTNER_TYPE_ARCHITECTURE_PLAN.md` proposes replacing the single
-`PartnerType` enum with independent boolean role flags (`IsCustomer`,
-`IsSupplier`, `IsExpenseSupplier`, `IsIndividual`), based on how SAP and
-Odoo model business partners.
+`Docs/PARTNER_TYPE_ARCHITECTURE_PLAN.md` (read this in full first,
+especially section 7 — it has verified PROD numbers) proposes replacing
+`PartnerType` with independent role-flag booleans. Before writing any
+migration code, we need two things prepared for the human to review:
 
-Before any schema/code change, we need a HONEST risk assessment specific
-to THIS database and codebase — the plan must not be taken on faith. The
-user is specifically worried about (1) existing invoices/expense invoices
-that reference suppliers and their expense category assignments, and
-(2) whether the migration could silently break something. Find out for
-real, don't assume the plan is safe.
+1. A genuinely COMPLETE inventory of every place `PartnerType` is used in
+   code (not a partial/summarized list — actual file:line for every hit).
+2. A decision-ready brief for each of the 7 confirmed customer/supplier
+   duplicate pairs (listed in the plan doc, section 7.2), with enough
+   detail that the human can decide "merge" or "keep separate" for each
+   pair without having to go dig through the database himself.
 
-## Critical questions to answer with evidence (file:line, or actual SQL
-query results if you run read-only queries against the dev DB per the
-project's normal read-only DB conventions)
+## Part A — Complete PartnerType code inventory
 
-### 1. Duplicate-record risk (HIGHEST PRIORITY)
-The old `PartnerType` enum could only hold ONE value per row. If a single
-real-world business needed to be BOTH a goods supplier AND an expense
-supplier, the only way to represent that under the old model may have
-been to create TWO separate `BusinessPartner` rows for the same entity
-(one `Supplier`, one `ExpenseSupplier`).
+- Grep the ENTIRE codebase (`.cs` and `.razor` files, excluding `bin/`
+  and `obj/`) for: `PartnerType`, `partner_type`, and the raw string
+  literals `"customer"`, `"supplier"`, `"expense_supplier"`, `"both"`
+  (case-insensitive) — but only report string-literal hits that appear
+  in a context plausibly related to business partners (skip obvious
+  false positives like an unrelated "customer" in a comment about
+  something else; use judgement, but err toward including borderline
+  cases rather than silently dropping them).
+- For every hit, produce a table row: file, line number, a short code
+  snippet (the actual line, not a paraphrase), and classification:
+  - EF LINQ comparison
+  - Raw SQL string (`ExecuteSqlRawAsync`/`FromSqlRaw`/inline SQL text)
+  - Razor UI conditional/binding
+  - Enum/switch statement
+  - Seed/test data
+  - DbContext model configuration (`OnModelCreating`)
+- Flag every "Raw SQL string" hit with **HIGH RISK** — these won't be
+  caught by the C# compiler if the underlying column semantics change.
+- Confirm the exact current definition of the `idx_partner_type` index
+  and any other index/constraint on `business_partners` involving
+  `PartnerType`, quoted from `NordicBeesErpContext.cs` `OnModelCreating`
+  (not just described — quote the actual `HasIndex`/`HasKey` call).
 
-- Query (or write the exact SQL for the human to run) to find pairs of
-  `business_partners` rows that share the same `VatCode` or `CompanyCode`
-  or a near-identical `Name`, but have different `PartnerType` values.
-  Report every such pair found, with their ids, names, and types.
-- If duplicates exist: check whether they have DIFFERENT sets of
-  invoices/expense invoices/payments attached (i.e. real historical data
-  split across the "same" business partner) — this determines whether a
-  future merge step would need to reassign foreign keys.
+## Part B — Decision brief for the 7 duplicate pairs
 
-### 2. Do invoices/expense invoices snapshot partner type, or read it live?
-- Check `Invoice`, `ExpenseInvoice`, `CreditNote`, `Payment` models for
-  any column that stores a copy of the partner's type/category at
-  document-creation time (similar to the known `customer_vat_code`
-  snapshot pattern already in this project).
-- If no snapshot exists, confirm every report/PDF/list that displays
-  "Klientas"/"Tiekėjas" for a historical document is reading it live from
-  `BusinessPartner.PartnerType` at render time (meaning old documents
-  would automatically reflect new fields with no migration needed for
-  display) — find the actual query and quote it.
+For EACH of these 7 pairs (ids from `Docs/PARTNER_TYPE_ARCHITECTURE_PLAN.md`
+section 7.2 — do not re-derive them, use these exact ids):
 
-### 3. Full inventory of `PartnerType` usage (not the partial list from
-   the prior audit — a genuinely complete grep)
-- Grep the entire codebase (all `.cs` and `.razor` files) for:
-  `PartnerType`, `partner_type`, `"customer"`, `"supplier"`,
-  `"expense_supplier"`, `"both"` (case-insensitive, scoped to files that
-  also reference `BusinessPartner`/`Supplier`/`Customer` to avoid noise).
-- For EVERY hit, classify it as: (a) EF LINQ comparison, (b) raw SQL
-  string (`ExecuteSqlRawAsync`/`FromSqlRaw`), (c) UI conditional
-  (Razor `@if`/binding), (d) enum/switch statement, (e) seed/test data.
-- Flag anything in category (b) — raw SQL is NOT caught by the compiler
-  if the column semantics change, so these are the highest silent-break
-  risk.
-- Check `NordicBeesErpContext.cs` `OnModelCreating` for any unique
-  constraint or index involving `PartnerType` (the user's memory notes a
-  composite index on `(IsActive, PartnerType)` — confirm exact definition
-  and whether any UNIQUE constraint depends on it, which would affect
-  whether duplicate-role rows are even allowed today).
+| Name | customer id | supplier id |
+|---|---|---|
+| Zita Rutkauskienė | 12 | 294 |
+| Vaidas Arbutavičius | 65 | 333 |
+| Tomas Balčiūnas | 78 | 326 |
+| AURIMAS BERNOTAS | 79 | 328 |
+| Žilvinas Macijauskas | 85 | 185 |
+| Regina Žilinskienė | 89 | 170 |
+| LAIMUTIS ŽALALIS | 92 | 173 |
 
-### 4. Expense supplier matching logic — exact current behavior
-- Read `ExpenseService.AutoAssignSupplierAsync` in full (not just the
-  audit's summary) and quote the EXACT current filter/candidate-selection
-  logic — does it filter candidate suppliers by `PartnerType ==
-  ExpenseSupplier || PartnerType == Both` today? Confirm precisely.
-- Read `AssignSupplierDialog` and `ResolveSupplierDialog` in full for the
-  same — exact current filter predicates, quoted.
-- Determine: if candidate filtering changed from
-  "`PartnerType == ExpenseSupplier`" to "`IsExpenseSupplier == true`",
-  would the CANDIDATE SET actually change for current production data,
-  or would it be identical (i.e. is this a safe no-op rename, or would it
-  suddenly surface previously-hidden goods suppliers as expense-invoice
-  matches)? Answer with actual counts from the dev DB if possible
-  (e.g. `SELECT COUNT(*) FROM business_partners WHERE partner_type =
-  'expense_supplier'` vs what a hypothetical `IsExpenseSupplier` backfill
-  would produce).
+Using the project's normal read-only DB convention (write the exact
+`mariadb` CLI SELECT statements needed; you may run them against the DEV
+DB at `100.110.26.80` per the project's dev-DB read access convention,
+since the human already confirmed dev and prod show identical duplicate
+ids/pattern for these specific rows), gather for BOTH ids in each pair:
 
-### 5. DefaultExpenseCategoryId — current real usage on existing data
-- Query (or provide SQL): how many `ExpenseInvoice` rows currently have a
-  `CategoryId` that was auto-assigned from a supplier's
-  `DefaultExpenseCategoryId` vs manually set vs still null? (If this
-  can't be determined precisely from data alone, say so and explain what
-  would be needed to find out.)
-- Confirm: does any report (XLSX/PDF) group or total expenses BY
-  supplier's CURRENT `DefaultExpenseCategoryId` rather than by the
-  invoice's own stored `CategoryId`? If so, that's a live dependency
-  that would be affected by any future category-reassignment feature —
-  quote the exact code.
+1. Full partner record: address, city, postal code, phone, email, bank
+   account, VAT code, company code, national id number, payment terms,
+   default VAT rate, default expense category, is_active, created_at.
+2. Every invoice (`invoices` table) referencing that id as `customer_id`
+   — invoice number, date, status, total amount.
+3. Every payment (`payments` table) referencing that id as `customer_id`.
+4. Every expense invoice (`expense_invoices`) referencing that id as
+   `supplier_id`.
+5. Every credit note (`credit_notes`) referencing that id.
 
-### 6. Blast radius outside Suppliers/Customers/Expense pages
-- Grep for `PartnerType` usage in: `Reports/` folder (DebtReconciliation,
-  SalesByCustomer, UnpaidInvoices, etc.), any dashboard/KPI snapshot code,
-  and `Services/SearchBusinessPartners`-style search endpoints.
-- For each hit found outside the pages already covered by the prior
-  audit, note it — these are the ones NOT yet accounted for in the
-  migration plan.
+Then, for each pair, write a short recommendation (2-4 sentences):
+- Does the evidence support "clearly the same real-world person/entity,
+  should be merged"? (e.g. identical address+phone, or identical VAT
+  code like the Zita pair already confirmed)
+- Or does something suggest they might legitimately be different
+  contexts that shouldn't be merged?
+- If data exists on BOTH sides (the 3 "split" pairs from the plan doc),
+  explicitly note that a merge would require reassigning FKs from one id
+  to the other, and estimate how many rows across which tables would
+  need updating.
 
-## Honest verdict (required section in the report)
+## Part C — Check for additional supplier/supplier name-duplicates
+While gathering the above, also run this query and report results with
+the same decision-brief treatment (name, address, VAT/company code
+comparison, and FK counts) for any pairs found:
 
-After gathering the above, give a direct, non-diplomatic answer to:
-**"Is the role-flags migration safe to do incrementally as planned, or
-does the duplicate-record risk (question 1) mean a data-merge step must
-happen FIRST, before any schema change?"**
-
-If duplicates are found: do NOT propose the merge implementation in this
-task — just quantify the problem (how many pairs, how much historical
-data on each side) so the human can decide whether to merge, keep both
-records, or take a different approach entirely.
+```sql
+SELECT name, COUNT(*) AS cnt, GROUP_CONCAT(id) AS ids
+FROM business_partners
+WHERE partner_type IN ('supplier','expense_supplier')
+GROUP BY name
+HAVING COUNT(*) > 1;
+```
 
 ## Output
 
 Write the full report to
-`.opencode/reports/partner-type-migration-risk-<YYYYMMDD>-<HHMM>.md`.
-
-Do NOT modify any files. Do NOT write any migration or backfill SQL in
-this task — this is risk discovery only.
+`.opencode/reports/partner-type-code-inventory-and-merge-brief-<YYYYMMDD>-<HHMM>.md`
+with two clearly separated sections: "Part A — Code Inventory" and
+"Part B/C — Duplicate Pair Decision Brief". Do NOT propose or write any
+migration/merge SQL — this is discovery and decision-support only. Do
+NOT modify any files or DB rows.
 
 ## Final step (required)
 
-Run `./bump-version.sh patch` at the end of this task (no code changed,
-just a version marker for the investigation checkpoint).
+Run `./bump-version.sh patch` at the end of this task.
