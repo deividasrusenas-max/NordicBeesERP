@@ -305,7 +305,7 @@ re-labeling the symptom.
 - **Guardrail added**: semgrep rule `nordicbees-stringcomparison-in-linq`
 - **Category**: EF-core
 - **Error class**: `ef-linq-untranslatable-stringcomparison`
-- **Status**: monitoring — this is a mechanical (semgrep) guardrail, structurally stronger than a prompt reminder since it can't be skipped by an agent simply not reading a sentence; still marked monitoring rather than stable because no confirmed exposure count has been tracked yet, not because the guardrail itself is weak
+- **Status**: escalated — SECOND incident in this class (2026-07-17 invoice search, recurrence 2026-08-25 order-page invoice picker). The semgrep rule exists and catches the pattern, but enforcement wiring (pre-commit/CI) was missing until 2026-09-04; this entry's guardrail was effectively unenforced at the time of recurrence.
 
 ### 2026-07-17 — DBNull mapping error creating orders
 - **Symptom**: "no store type mapping for properties of type 'DBNull'" on order creation.
@@ -323,7 +323,7 @@ re-labeling the symptom.
 - **Guardrail added**: already covered by `dotnet-efcore-nordicbees` skill's connection-scope guidance (pre-existing rule, reinforced)
 - **Category**: EF-core
 - **Error class**: `ef-connection-pool-race-last-insert-id`
-- **Status**: monitoring — this is a prompt/skill-text guardrail (not mechanical), so it's the weaker kind — worth watching for recurrence more closely than the semgrep-backed entries above
+- **Status**: escalated — second incident in this class (first 2026-07-17 order_lines, recurrence 2026-08-26 Artwork CreateAssetAsync). The prompt/skill-text guardrail (connection-scope guidance) demonstrably did not hold; propose mechanical check (semgrep/analyzer for LAST_INSERT_ID() outside held-open connection) wired into pre-commit/CI.
 
 ### 2026-07-17 — Delivery.cs column/type mismatch
 - **Symptom**: "Unknown column 'd.inspection_by'" loading invoice details with a linked delivery.
@@ -510,7 +510,7 @@ re-labeling the symptom.
 - **Guardrail added**: none mechanical yet. Candidate: extend `.agent-guardrails/nordicbees-rules.yaml` (semgrep) with a rule flagging any SQL `DATETIME(n)` or `TIMESTAMP(n)` column (n > 0) whose `DEFAULT CURRENT_TIMESTAMP` clause omits the matching `(n)` precision — this is a purely syntactic, zero-false-positive check since the two must always match in MariaDB.
 - **Category**: schema/migration
 - **Error class**: `mariadb-datetime-precision-default-mismatch`
-- **Status**: monitoring — first occurrence, but appeared independently in two sibling agent-authored scripts on the same day, suggesting this is a systematic gap in how migration SQL is generated rather than a one-off slip. Worth fixing mechanically before a third instance ships un-caught.
+- **Status**: N/A — the Guardrail line states "none mechanical yet" meaning no guardrail was actually added; per BUGLOG.md format definition, N/A applies when no guardrail exists (nothing to monitor effectiveness of), and this error class is effectively UNGUARDED — a periodic review should treat this as a highest-priority candidate for adding an actual mechanical guardrail (semgrep rule for DATETIME(n) DEFAULT CURRENT_TIMESTAMP without matching precision).
 
 ### 2026-08-26 — Artwork new-asset creation returned id 0 (LAST_INSERT_ID on pooled connection) — RECURRENCE
 - **Symptom**: Creating a new Artwork asset (AssetCreateDialog → ArtworkBrandPage.OpenCreateAsset) navigated to `/artwork/asset/0`. Because the detail page and the multi-file upload page key off the route id (`/artwork/asset/{id}`, `/artwork/upload/{id}`), the asset could not be opened or uploaded — the whole create→upload flow dead-ended at a non-existent asset 0. The backend `GetAssetDetailAsync(0)` correctly rejected id 0 (returns null), so the page showed an error rather than data — which masked the real cause: the id was never 0 in the DB, the RETURNED id was simply wrong.
