@@ -88,11 +88,36 @@ function extractVerdict(text: string): string | null {
   return null
 }
 
-function extractGuardrailScore(text: string): number | null {
-  // Tries several phrasings a model might use to report the
-  // agent-guardrails score, since the exact wording isn't guaranteed:
-  // "Score: 95/100", "score 95 / 100", "95 out of 100", "guardrail
-  // score of 95/100", etc.
+/**
+ * Extracts the agent-guardrails score from a fixer's output text.
+ *
+ * Prefers the exact machine-parseable form mandated by fixer.md:
+ *   GUARDRAIL_SCORE=<N>    (numeric, 0-100)  -> { score: <number>, failed: false }
+ *   GUARDRAIL_SCORE=N/A    (the skip case) -> { score: "N/A", failed: false }
+ * If the GUARDRAIL_SCORE= line exists but its value is unparseable
+ * (e.g. "abc" or out-of-range like 150), returns { score: null, failed: true }.
+ *
+ * Falls back to several free-form phrasings a model might use for older/other
+ * fixer variants ("Score: 95/100", "score 95 / 100", "95 out of 100",
+ * "guardrail score of 95/100", etc.) -> { score: <number>, failed: false }.
+ *
+ * If neither form is found, returns { score: null, failed: true } — `failed`
+ * means no extractable guardrail outcome was found at all (used to surface
+ * extraction problems distinctly from "guardrails not run").
+ */
+function extractGuardrailScore(text: string): { score: number | "N/A" | null; failed: boolean } {
+  // 1) Exact machine form mandated by fixer.md: GUARDRAIL_SCORE=<value>
+  const exact = text.match(/GUARDRAIL_SCORE\s*=\s*([^\n\r]*)/)
+  if (exact) {
+    const raw = exact[1].trim()
+    if (raw === "N/A") return { score: "N/A", failed: false }
+    const n = Number(raw)
+    if (Number.isFinite(n) && n >= 0 && n <= 100) return { score: n, failed: false }
+    // Line present but unparseable / out of range
+    return { score: null, failed: true }
+  }
+
+  // 2) Free-form fallback for older/other fixer variants
   const patterns = [
     /score\s*:?\s*(\d{1,3})\s*\/\s*100/i,
     /(\d{1,3})\s*\/\s*100/i,
@@ -102,10 +127,12 @@ function extractGuardrailScore(text: string): number | null {
     const m = text.match(re)
     if (m) {
       const n = parseInt(m[1], 10)
-      if (Number.isFinite(n) && n >= 0 && n <= 100) return n
+      if (Number.isFinite(n) && n >= 0 && n <= 100) return { score: n, failed: false }
     }
   }
-  return null
+
+  // 3) Nothing found — extraction failure
+  return { score: null, failed: true }
 }
 
 /**
@@ -282,7 +309,11 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
         record.verdict = extractVerdict(outputText)
       }
       if (subagent === "fixer") {
-        record.guardrail_score = extractGuardrailScore(outputText)
+        const g = extractGuardrailScore(outputText)
+        record.guardrail_score = g.score
+        if (g.failed) {
+          record.guardrail_score_extraction_failed = true
+        }
       }
 
       appendRecord(logPath, reportsDir, record)
