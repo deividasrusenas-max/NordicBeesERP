@@ -48,7 +48,22 @@ const STALE_MS = 10 * 60 * 1000 // 10 minutes with no "completed" match = assume
 // Fast in-memory path for the common case (before/after in the same
 // process). Sequential-only workflow (per orchestrator.md) means a
 // simple FIFO queue per subagent type is sufficient here.
-const pendingStarts: Record<string, { callId: string; startedAt: number }[]> = {}
+//
+// nToolCalls: running count of ALL tool calls (read, edit, grep, task,
+// bash, ...) that fire while this task call is in-flight — i.e. between
+// its "tool.execute.before" and matching "tool.execute.after". Counted
+// per task call_id, not globally. This is pure tracking only: there is
+// no circuit breaker / auto-abort based on it.
+const pendingStarts: Record<string, { callId: string; startedAt: number; nToolCalls: number }[]> = {}
+
+/** Increments the in-flight tool-call counter for every active task call (if any). */
+function countInFlightToolCall() {
+  for (const queue of Object.values(pendingStarts)) {
+    for (const entry of queue) {
+      entry.nToolCalls += 1
+    }
+  }
+}
 
 const taskId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -162,6 +177,13 @@ function sweepStale(logPath: string, reportsDir: string) {
     if (!Number.isFinite(startedTs)) continue
     if (now - startedTs < STALE_MS) continue // still plausibly in-flight, don't flag yet
 
+    // Per-tool-call events are not persisted to disk (only started/
+    // completed/interrupted records are), so for a call whose process is
+    // still alive the in-memory counter is the only source; if the
+    // process died, that value is unknowable and we default to 0.
+    const nToolCalls = pendingStarts[startedRec.agent as string]
+      ?.find((e) => e.callId === callId)?.nToolCalls ?? 0
+
     appendRecord(logPath, reportsDir, {
       ts: new Date().toISOString(),
       task_id: startedRec.task_id,
@@ -170,8 +192,16 @@ function sweepStale(logPath: string, reportsDir: string) {
       model: startedRec.model,
       status: "interrupted",
       duration_sec: Math.round((now - startedTs) / 100) / 10,
+      n_toolcalls: nToolCalls,
       note: "no matching 'completed' record found within the stale window — likely Ctrl+C, crash, or a stuck subagent that never returned",
     })
+
+    // Drop the entry so it is not counted again by a future sweep.
+    const queue = pendingStarts[startedRec.agent as string]
+    if (queue) {
+      const idx = queue.findIndex((e) => e.callId === callId)
+      if (idx !== -1) queue.splice(idx, 1)
+    }
   }
 }
 
@@ -182,18 +212,27 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
   return {
     "tool.execute.before": async (input: any, second: any) => {
       const tool = getToolName(input, second)
-      if (tool !== "task") return
       const args = getArgs(input, second)
       const subagent = args?.subagent_type as string | undefined
+
+      let callId: string | undefined
+      if (tool === "task" && subagent && MODEL_NAMES[subagent]) {
+        // Best-effort cleanup of any orphaned calls from a previous
+        // (possibly killed) process, before recording this new one.
+        sweepStale(logPath, reportsDir)
+
+        callId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const startedAt = Date.now()
+        ;(pendingStarts[subagent] ??= []).push({ callId, startedAt, nToolCalls: 0 })
+      }
+
+      // Count EVERY tool call (task or otherwise) that happens while at
+      // least one task call is in-flight — the task's own start event is
+      // counted toward its own total because the entry was just pushed.
+      countInFlightToolCall()
+
+      if (tool !== "task") return
       if (!subagent || !MODEL_NAMES[subagent]) return
-
-      // Best-effort cleanup of any orphaned calls from a previous
-      // (possibly killed) process, before recording this new one.
-      sweepStale(logPath, reportsDir)
-
-      const callId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-      const startedAt = Date.now()
-      ;(pendingStarts[subagent] ??= []).push({ callId, startedAt })
 
       const promptText = (args?.prompt as string | undefined) ?? ""
 
@@ -217,6 +256,7 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
 
       const started = pendingStarts[subagent]?.shift()
       const durationSec = started ? Math.round((Date.now() - started.startedAt) / 100) / 10 : null
+      const nToolCalls = started?.nToolCalls ?? 0
 
       // Search across every plausible location for the tool's textual
       // output, since the exact shape/parameter isn't guaranteed (see
@@ -235,6 +275,7 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
         model: MODEL_NAMES[subagent],
         status: "completed",
         duration_sec: durationSec,
+        n_toolcalls: nToolCalls,
       }
 
       if (subagent === "reviewer") {
