@@ -164,7 +164,84 @@ daug rizikos vienu commit'u paliesti duomenų modelį + servisus + UI.
 
 ---
 
-**Kitas žingsnis:** jei planas tinka, rašau investigation prompt'ą 1-am
-etapui (migracija + backfill scriptas), NE dar kodo pakeitimų — kad
-OpenCode surastų VISAS vietas, kur šiuo metu naudojamas `PartnerType`,
-prieš darant schema keitimą.
+## 7. Realiais PROD duomenimis patikrinti faktai (2026-09-04)
+
+Ankstesnė šio plano versija rėmėsi vien kodo analize ir OpenCode audito
+ataskaita. Po tiesioginio patikrinimo `lakstena-dev` PROD DB (ne dev
+kopijoje — abi bazės rodo TĄ PATĮ realų vaizdą), paaiškėjo tikslesnis,
+iš dalies kitoks vaizdas nei pirminė hipotezė:
+
+### 7.1 `PartnerType` pasiskirstymas (PROD)
+```
+customer:          95
+supplier:          93
+expense_supplier:  19
+```
+`expense_supplier` REALIAI naudojamas — ankstesnė prielaida, kad šis
+enum'o variantas "mirusi funkcija", buvo KLAIDINGA (remtasi vien dev
+duomenimis, kurie tuo metu neturėjo šio tipo įrašų).
+
+### 7.2 Klientas/Tiekėjas dublikatai — PATVIRTINTA, 7 poros
+Tas pats žmogus įvestas du kartus (kaip `customer` IR kaip `supplier`),
+identiškai ir dev, ir prod:
+
+| Vardas | customer ID | supplier ID | Sąskaitos (customer/supplier pusėje) |
+|---|---|---|---|
+| Zita Rutkauskienė (tas pats VAT+įm.kodas) | 12 | 294 | 1 / 2 — **išskaidyta** |
+| Tomas Balčiūnas | 78 | 326 | 1 / 1 — **išskaidyta** |
+| AURIMAS BERNOTAS | 79 | 328 | 1 / 1 — **išskaidyta** |
+| Vaidas Arbutavičius | 65 | 333 | 3 / 0 |
+| Žilvinas Macijauskas | 85 | 185 | 0 / 4 |
+| Regina Žilinskienė | 89 | 170 | 0 / 1 |
+| LAIMUTIS ŽALALIS | 92 | 173 | 0 / 2 |
+
+3 iš 7 porų turi **realiai išskaidytą** sąskaitų istoriją abiejose
+pusėse — jei kas nors žiūri tik vieną iš dviejų įrašų, mato NEPILNĄ
+šio žmogaus sąskaitų vaizdą. Tai jau egzistuojanti problema, nesusijusi
+su būsimu modelio keitimu — pati savaime verta atskiro sprendimo.
+
+### 7.3 `AssignSupplierDialog` filtras neatitinka realaus naudojimo
+Dialogas rodo tik `PartnerType IN (ExpenseSupplier, Both)` — 19 įrašų.
+Bet realūs `expense_invoices.supplier_id` priskyrimai PROD'e:
+```
+customer:          6   ← šitų šis dialogas NIEKADA nerodytų
+supplier:          25  ← nei šitų
+expense_supplier:  73
+```
+31 iš 104 esamų expense-sąskaitos priskyrimų veda į partnerius, kurių
+tipas NĖRA `ExpenseSupplier`/`Both`. Tai reiškia, kad tie priskyrimai
+buvo padaryti kitu keliu (per `AssignSupplierAsync`, kuris, kaip
+patvirtinta skaitant `ExpenseService.cs`, IŠVIS netikrina
+`PartnerType` prieš įrašydamas `supplier_id`), arba partnerio tipas
+buvo pakeistas jau po priskyrimo. Bet kuriuo atveju — **`PartnerType`
+šiandien jau NĖRA patikimas predictorius**, kas realiai naudojama kaip
+expense tiekėjas. Tai tiesiogiai patvirtina role-flags sprendimo
+pagrįstumą (7-8 skyriai), bet reikalauja pakeisti backfill taisyklę:
+
+**Atnaujinta backfill taisyklė `IsExpenseSupplier`:**
+```sql
+IsExpenseSupplier = (PartnerType = 'expense_supplier')
+                     OR (id IN (SELECT DISTINCT supplier_id FROM expense_invoices
+                                 WHERE supplier_id IS NOT NULL))
+```
+Vien enum'o kopijavimo NEPAKAKTŲ — būtų prarasta 31 realiai naudojamo
+tiekėjo matomumas naujame modelyje.
+
+### 7.4 Peržiūrėta išvada
+Ankstesnė (6 skyriaus) rollout strategija architektūriškai lieka
+teisinga, bet reikalauja PAPILDOMO, ANKSTESNIO etapo:
+
+**Naujas 0-as etapas (prieš schema keitimą):** žmogaus atliekama 7
+klientas/tiekėjas dublikatų porų peržiūra (aukščiau lentelėje) —
+kiekvienai porai nuspręsti: sujungti į vieną `Both`-tipo įrašą
+(perkeliant FK iš vieno į kitą), ar palikti kaip du atskirus įrašus
+sąmoningai (jei tai realiai du skirtingi santykiai, ne duplikatas).
+Tai NEGALI būti automatizuota vien script'u, nes 3 poros turi realų
+duomenų pasidalijimą tarp abiejų pusių.
+
+---
+
+**Kitas žingsnis:** rašau investigation prompt'ą — ne dar kodo
+pakeitimų, o (a) pilną `PartnerType` naudojimo inventorių kode
+(kompiliatorius nepagaus raw SQL vietų) ir (b) paruoštą, žmogui
+skirtą sprendimų lentelę visoms 7 dublikatų poroms su pasiūlymu kiekvienai.
