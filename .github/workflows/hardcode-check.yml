@@ -65,3 +65,8 @@ jobs:
             exit 1
           fi
 
+      - name: Run Semgrep scan
+        run: |
+          pip install semgrep
+          semgrep scan --config=.semgrep.yml --error
+

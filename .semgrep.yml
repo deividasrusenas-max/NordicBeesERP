@@ -1,0 +1,2 @@
+rules:
+  - .agent-guardrails/nordicbees-rules.yaml
