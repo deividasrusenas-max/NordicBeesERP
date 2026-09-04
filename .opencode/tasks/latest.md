@@ -1,118 +1,126 @@
-# Task: Restructure Suppliers & Customers table columns (Šalis, Balansas, Išlaidų grupė)
+# Task: Investigate business-partner type system & expense-supplier/category assignment
 
-## Type: BUILD (code changes — includes one new service method, not just markup)
+## Type: READ-ONLY INVESTIGATION (no code changes)
 
-## Context
-Follow-up to `.opencode/reports/suppliers-customers-columns-audit-20260904-1200.md`.
-Read that report in full first — it has exact line numbers, current
-column diffs, and confirms all backing data already exists (no missing
-model fields).
+## Why
+Before touching the Suppliers/Customers add/edit dialogs, we need a clear,
+accurate picture of:
+1. How partner "types" (Tiekėjas/supplier, Pirkėjas/customer, Ūkininkas/
+   farmer, and any others) are actually modeled and distinguished in code
+   today — is it one shared table with a type flag/enum, separate tables,
+   or something else?
+2. How "expense supplier" (išlaidų tiekėjas) works and how a supplier
+   gets assigned a default expense group/category (`DefaultExpenseCategoryId`
+   → `ExpenseCategory`).
 
-## Target column layout
+The goal of this task is ONLY to gather and report facts. Do not propose
+or make any fixes yet — just surface the actual current behavior,
+inconsistencies, and any bugs/foot-guns you find, in enough detail that a
+human can then decide how the add/edit dialogs should change.
 
-### `/customers` table
-`Pavadinimas | Šalis | PVM | Mokėjimo term. | Balansas | Veiksmai`
+## Steps
 
-### `/suppliers` table — ALL THREE tab variants (Ūkininkai / Įmonės / Visi)
-`Pavadinimas | Šalis | PVM | Mokėjimo term. | Balansas | Išlaidų grupė | Veiksmai`
+### 1. Data model — partner types
+- Read `Models/Models_Part1.cs` and `Models/Models_Part2.cs` in full for
+  every partner-related class: `BusinessPartner`, `Supplier`, `Customer`,
+  and anything else that represents a person/company the business deals
+  with. For each, list every field related to "type" or classification
+  (enum, bool flags like `IsCustomer`/`IsSupplier`/`IsFarmer`, a
+  `PartnerType` string/enum field, `NationalIdNumber` vs `CompanyCode`
+  used as a farmer-vs-company signal, etc.) — quote the actual field
+  names and types.
+- Check whether `Supplier` and `Customer` are separate EF entities/tables
+  or the same table filtered by a type column. Check for any
+  inheritance (TPH/TPT) in the `DbContext`.
+- Grep the codebase for all distinct values ever assigned to any
+  "type"-like field (e.g. every literal string like `"Ūkininkas"`,
+  `"Įmonė"`, `"Tiekėjas"`, `"Pirkėjas"` etc.) to build a real inventory
+  of what type values actually exist in code, not just what the UI tabs
+  suggest.
 
-**Decision (already made, do not re-litigate):** unify all three Suppliers
-tab table variants to this single column set. This means:
-- Tab "Ūkininkai" (currently: Vardas / Asmens kodas / PVM% / Mokėjimo
-  term. / Aktyvus / Veiksmai) loses its `Asmens kodas` column and gains
-  `Šalis`, `Balansas`, `Išlaidų grupė`.
-- Tab "Įmonės" (currently: Pavadinimas / Įm. kodas / PVM kodas /
-  Numatyta kategorija / Mokėjimo term. / Aktyvus / Veiksmai) loses
-  `Įm. kodas` and `PVM kodas` as separate text columns, and its existing
-  `Numatyta kategorija` column becomes the `Išlaidų grupė` column (same
-  data — `ExpenseCategory.Name` via `DefaultExpenseCategoryId` — do NOT
-  render it twice; the audit's draft diff had it duplicated, that's a
-  drafting mistake, fix it to appear once).
-- Tab "Visi" (currently: Pavadinimas / Kodas / PVM% / Mokėjimo term. /
-  Aktyvus / Veiksmai) loses `Kodas`, gains `Šalis`, `Balansas`,
-  `Išlaidų grupė`.
-- All three use `Name` for "Pavadinimas" header (rename "Vardas" header
-  on the Ūkininkai tab to "Pavadinimas" for consistency).
-- All three show `DefaultVatRate` as the "PVM" column (percentage,
-  `N0` format + `%`), same as today.
-- `PaymentTermDays` stays as "Mokėjimo term." (already present, no change
-  needed to the underlying field).
-- The existing "Aktyvus" IsActive chip column is REMOVED from the table
-  (active/inactive filtering already lives in the external chip row from
-  the previous filter-bar task — confirmed no dependency in the audit).
+### 2. UI — how type is currently set/shown
+- Read `Components/Pages/Suppliers.razor` (all three tab branches) and
+  `Components/Pages/Customers.razor` fully, focusing on: how does the
+  Ūkininkai/Įmonės/Visi tab split work — is it a filter on a real type
+  field, or a heuristic (e.g. "has NationalIdNumber" = farmer)? Quote the
+  actual filter predicate for each tab.
+- Find and read the Create/Edit dialogs for suppliers and customers
+  (search `Components/` for `SupplierDialog`, `SupplierEdit`,
+  `CustomerDialog`, `CustomerEdit`, `AssignSupplierDialog`, or similarly
+  named files). For each, list every field on the form and whether/how
+  the user sets a "type" during creation or editing.
+- Check whether a single business partner (e.g. by `BusinessPartnerId`)
+  can simultaneously be both a supplier AND a customer in this data
+  model, and if so, whether the current UI/dialogs handle that
+  correctly or silently overwrite/duplicate records.
 
-### `/customers` table changes
-- Remove `Kodas` (CompanyCode) and `PVM kodas` (VatCode) columns.
-- Add `Šalis` (Country).
-- Keep `PVM%` (rename header to "PVM" for consistency with the spec) and
-  `Mokėjimo terminas` (or align header text to "Mokėjimo term." to match
-  Suppliers — pick one consistent label across both pages).
-- Remove `Aktyvus` column (status filtering already external, per prior
-  task).
-- Add `Balansas`.
+### 3. Expense-supplier & expense-category assignment
+- Find where "expense supplier" (a supplier used for expense invoices,
+  as opposed to a goods/production supplier) is distinguished from a
+  regular supplier, if at all — check `Services/ExpenseService.cs` (or
+  wherever expense invoice OCR/creation lives) for how it picks/matches
+  a supplier record.
+- Read the full definition of `ExpenseCategory` in `Models_Part2.cs` and
+  every place `DefaultExpenseCategoryId` is read or written (dialogs,
+  services, the expense invoice list/creation flow) — confirm whether
+  assigning a default category to a supplier is optional or required,
+  what happens when it's null, and whether an expense invoice can
+  override the supplier's default category per-invoice.
+- Check `Docs/BUGLOG.md` for any existing logged issues mentioning
+  supplier type, expense category, expense supplier, or partner type
+  mismatches.
 
-## Balance column — REQUIRED bulk implementation, not per-row
+### 4. Cross-reference with prior work
+- Read `.opencode/reports/suppliers-customers-columns-audit-20260904-1200.md`
+  and `.opencode/reports/suppliers-customers-columns-final-20260904-0141.md`
+  — the earlier column-restructure task found a `PartnerType`-like
+  concept during the audit; confirm exactly what it referred to and
+  whether it lines up with what you find in step 1, or contradicts it.
+- Check `.opencode/reports/payment-term-fix-20260903.md` and any
+  `assign-supplier-*` reports for related context on how suppliers get
+  matched/assigned during expense workflows.
 
-Per the audit: `DebtReconciliationService.GetReconciliationAsync` is
-per-partner and would cause an N+1 query problem if called per table
-row. Instead:
+### 5. Look actively for bugs/inconsistencies
+While reading, flag anything that looks like a real problem, for
+example (non-exhaustive — report whatever you actually find, don't
+force-fit these):
+- A farmer/individual (Ūkininkas) being treated as a company somewhere
+  (e.g. VAT code validation applied where a national ID should be used).
+- A partner that could logically be both supplier and customer, but the
+  schema/dialogs assume mutually exclusive roles.
+- An expense category default that's silently ignored somewhere in the
+  expense invoice flow.
+- Any place where a "type" string is compared with the wrong casing,
+  wrong literal, or a typo (Lithuanian diacritics mismatches are a known
+  recurring bug class in this project per `Docs/BUGLOG.md`).
 
-1. Add to `IDebtReconciliationService` (create this interface if it
-   doesn't already exist — check first, don't duplicate) a new method:
-   ```csharp
-   Task<Dictionary<int, decimal>> GetBalancesBulkAsync(IEnumerable<int> partnerIds, int? year = null);
-   ```
-   Implement with a single aggregate query (or a small fixed number of
-   queries) across Invoice/CreditNote/Payment tables, grouped by partner
-   id — do not loop calling the existing single-partner method N times.
-   Default `year` to the current year if null, matching the existing
-   method's convention.
-2. Register the interface in `Program.cs` if it's newly created.
-3. In `Suppliers.razor` and `Customers.razor`: inject the service, call
-   `GetBalancesBulkAsync` once after the partner list loads (in
-   `OnParametersSet`/`LoadSuppliers`/`LoadCustomers`), store as
-   `Dictionary<int, decimal> _balances`, and read from it in the row
-   template via `_balances.TryGetValue(id, out var b) ? ... : "—"`.
-4. **Sign convention (confirmed from existing code):** positive =
-   partner owes us, negative = we owe partner. Render as e.g.
-   `+1234.56 €` in a success-colored span when positive, `-1234.56 €` in
-   an error-colored span when negative, and plain `0.00 €` (or "—") when
-   zero. Use `MudText`/inline style with the project's existing color
-   tokens from `Docs/DESIGN_SYSTEM.md` — do NOT hardcode new hex colors;
-   reuse whatever class/token the project already uses for
-   positive/negative amounts (check `FormatAmount` helper /
-   `formatamount-trim-methods-20260825-1200.md` report for the existing
-   pattern before inventing a new one).
+## Output
 
-## Do NOT
-- Do not remove `CompanyCode`, `VatCode`, `NationalIdNumber` from the
-  underlying models or from the edit dialogs — only from the LIST TABLE
-  columns. They must remain editable in Create/Edit dialogs.
-- Do not touch `FROZEN.md`-scoped files (not needed for this change per
-  the audit).
-- Do not add a new xUnit test for `GetBalancesBulkAsync` as mandatory —
-  it's a read-only aggregate query, not a DB-write method, so the
-  project's "every DB-write method needs a test" rule doesn't apply.
-  Adding one is optional/nice-to-have, not required to finish this task.
+Write a full report to
+`.opencode/reports/partner-type-expense-category-audit-<YYYYMMDD>-<HHMM>.md`
+with these sections:
+1. **Data model summary** — exact fields/tables for partner typing, with
+   file:line references.
+2. **UI behavior summary** — how each tab/dialog currently reads/writes
+   type, with file:line references.
+3. **Expense-supplier & category assignment flow** — step-by-step of what
+   happens today from "supplier has DefaultExpenseCategoryId" to "expense
+   invoice uses a category", with file:line references.
+4. **Bugs & inconsistencies found** — a numbered list, each with: what's
+   wrong, exact file:line, why it's a problem, and severity (low/medium/
+   high) — no fix proposals yet, just the finding.
+5. **Open questions for the human** — anything genuinely ambiguous that
+   needs a product decision before dialogs can be redesigned (e.g. "should
+   a partner be allowed to be both supplier and customer?").
 
-## Verification (required before finishing)
-- `dotnet build` — actual output pasted in the report, 0 errors.
-- Manually confirm no N+1 query pattern was introduced (balances loaded
-  once per page load, not per row).
-- Reviewer subagent: quote every changed/added Lithuanian header string
-  verbatim in its verdict (Šalis, PVM, Mokėjimo term., Balansas,
-  Išlaidų grupė, Pavadinimas).
-- Confirm `?vat=21` filter on `/suppliers` still works correctly with the
-  new column set (manual check, no code change expected there).
-
-## Report
-Write the full work report to
-`.opencode/reports/suppliers-customers-columns-fix-<YYYYMMDD>-<HHMM>.md`,
-including actual `dotnet build` output and a diff summary per file.
+Do NOT modify any files in this task. Do NOT propose or write any fix
+plan — that comes in a later task once the human has reviewed this
+report.
 
 ## Final step (required)
-Run `./bump-version.sh patch` at the end of this task. Before running it,
-confirm `.opencode/tasks/latest.md` itself has no uncommitted diff
-blocking the script (this blocked the previous filter-bar task — check
-`git status --porcelain` first and report if it blocks again instead of
-silently skipping the bump).
+
+Run `./bump-version.sh patch` at the end of this task. Before running,
+check `git status --porcelain` — if `.opencode/tasks/latest.md` is the
+only uncommitted change, that's expected and fine (harness file, not
+code); note it in the report but proceed with the bump as usual for a
+read-only task (no code was changed, so this is just a version marker).
