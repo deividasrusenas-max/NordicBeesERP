@@ -632,6 +632,22 @@ database/schema name on a permission or "unknown database" error — that's
 always a stop-and-report condition.
 
 ## Error handling
+- CRITICAL — a cancelled/aborted Task tool call is ALWAYS BLOCKED, NEVER
+  completed. If ANY Task tool call's result contains "Task cancelled",
+  "cancelled", "Canceled", "aborted", "abort()", "OperationCanceled", or
+  any other cancellation/abort indicator — treat that step as NOT DONE,
+  ALWAYS, regardless of whether the result text contains success claims
+  ("files were created successfully", a confident completion report, etc.).
+  A subagent's final message produced AFTER an abort is NOT a reliable
+  source: the subagent can misinterpret its own state, and its work may
+  have been fully applied, partially applied, or never started. NEVER
+  decide on your own that a cancelled call "actually" succeeded and move
+  on to reviewer/fixer or mark the todo completed on that basis. Instead:
+  first verify the ACTUAL state yourself via your own bash (`git status`,
+  `git log --oneline`, `ls`, reading the exact files the call was supposed
+  to change), and only then decide whether to re-delegate the whole task
+  from scratch or only the part that was actually lost. When in doubt,
+  re-delegate from scratch.
 - Never ask user for confirmation on routine sub-steps — proceed automatically
 - If auth error: wait 10 seconds and retry the same step ONCE. If it fails
   again the same way, STOP retrying — report BLOCKED to the user with the
