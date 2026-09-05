@@ -114,3 +114,63 @@ Look for commit: `feat: restore working drag and drop using setupDropZone JS int
 - If this deploy includes a new EF migration, run `dotnet ef database update` manually on the target
   server BEFORE or immediately after the container restart — check the startup logs for a
   'pending migrations' warning to confirm.
+
+---
+
+## 9. BLAZOR NAVIGATION — forceLoad:true usage
+
+**Status:** ✅ WORKS (after fix — `forceLoad: true` removed from `UploadFirstVersion`)
+
+**Do not touch:** any `Navigation.NavigateTo` call with `forceLoad: true` outside genuine
+file/PDF download endpoints.
+
+Working mechanism:
+- SPA navigation (the default, no `forceLoad`) does NOT trigger a full browser reload —
+  it updates the URL via the History API and re-renders in place, so the ASP.NET cookie
+  authentication `LoginPath="/login"` redirect is never triggered for an already-authenticated
+  session.
+- `forceLoad: true` forces a real full browser reload (fresh HTTP GET) — on staging/prod this
+  hits the auth middleware, and unauthenticated requests are redirected to `/login`. This is
+  correct behavior ONLY for genuine file/PDF download endpoints that need a real browser GET
+  (e.g. `document.pdf` downloads); it must NOT be used for ordinary in-app page navigation.
+
+Reference: BUGLOG.md entry 2026-08-18 "Artwork Upload first version button redirects to /login
+on prod" — error class `blazor-forceload-fullreload-auth-redirect`. The sibling button that
+used SPA navigation (no `forceLoad`) worked correctly; the buggy one used `forceLoad: true`
+and redirected to `/login` on staging/prod. No mechanical guardrail exists for this — it is a
+documentation-only guardrail.
+
+---
+
+## 10. EF CORE LINQ — avoid enum array `.Contains()`
+
+**Status:** ⚠️ KNOWN RUNTIME BUG — do not use this pattern
+
+**Do not touch / do not write:** any EF Core LINQ `Where()`/`Any()`/`All()` predicate that
+uses `enumArray.Contains(x.EnumProperty)` or `enumList.Contains(x.EnumProperty)` (where the
+collection is an array/list of enum values and the property being tested is that same enum
+type).
+
+Working mechanism:
+- The .NET runtime (on this stack) throws an exception during EF Core's LINQ parameter
+  extraction phase when it encounters this pattern — the JIT/interpreter fails while
+  evaluating `array.Contains(enumValue)` against a `ReadOnlySpan<InvoiceStatus>` that EF
+  internally creates for the `.Contains()` call on an enum-typed collection. This is a
+  genuine CLR/interpreter issue, not an EF Core bug and not application logic — the code is
+  syntactically valid C# and compiles cleanly, so the failure only surfaces at runtime when
+  the query executes.
+- The fix is to replace with explicit `!=` comparisons chained together, e.g.:
+  ```csharp
+  // WRONG — triggers the interpreter bug at runtime:
+  var statuses = new[] { InvoiceStatus.Draft, InvoiceStatus.Cancelled };
+  invoices.Where(x => statuses.Contains(x.Status))
+
+  // CORRECT — expand to explicit comparisons:
+  invoices.Where(x => x.Status != InvoiceStatus.Draft && x.Status != InvoiceStatus.Cancelled)
+  ```
+
+Reference: BUGLOG.md entry 2026-08-29 — error class `enum-array-contains-readonlyspan-interpreter-bug`
+(`InvoiceService.GetMonthlySalesVolumeAsync()`). No mechanical guardrail exists for this — it is a
+documentation-only guardrail because the bug lives in the .NET runtime/interpreter itself and the
+pattern is syntactically valid C#, so semgrep cannot reliably distinguish it from legitimate,
+non-EF `.Contains()` usage.
