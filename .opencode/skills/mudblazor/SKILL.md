@@ -82,3 +82,27 @@ diagnostics on .razor files yourself; trust the build step instead.
 - **Removing an interface method can silently break an unrelated caller** — before deleting or renaming any interface method, `grep -rn "MethodName" .` first to confirm nothing still calls it (a background worker or a different page is a common blind spot).
 - **`@if`/`else` with a `@{ }` block right before a nested `@if` can cause RZ1010** — move the `@{ }` variable declaration before the `else`, or inline the expression directly into the `@if` condition, rather than putting `@{ }` as the first thing inside an `else` block.
 - **`@keyframes` in a `<style>` block needs `@@keyframes`** in a `.razor` file (Razor treats a bare `@` as the start of a C# expression).
+- **`MudCheckBox` with a non-bool `T=` silently never updates its backing state** — `MudCheckBox` extends `MudBooleanInput<T>` whose checked-input is a **bool**, and `CheckedChanged` is `EventCallback<bool>`. Binding it as e.g. `T="int"` + `Value="@p.BatchId"` + `CheckedChanged="@((int v) => ToggleBatchSelection(p.BatchId))"` compiles fine, the checkbox visually toggles, but the `(int v)` lambda never delivers the new bool state — so a backing collection (e.g. a `HashSet<int>`) is never updated and the selection count stays 0. BUGLOG 2026-08-25 (`mudblazor-checkbox-generic-value-binding`, commit `2fa979c` v0.11.276). **Wrong:**
+  ```razor
+  <MudCheckBox T="int" Value="@p.BatchId"
+               Checked="@_selectedBatchIds.Contains(p.BatchId)"
+               CheckedChanged="@((int v) => ToggleBatchSelection(p.BatchId))" />
+  ```
+  **Correct** (see `PaymentRegisterDialog.razor:102`) — always `T="bool"`, bind `Checked` to the real bool expression, and let the handler receive the new state:
+  ```razor
+  <MudCheckBox T="bool"
+               Checked="@_selectedBatchIds.Contains(p.BatchId)"
+               CheckedChanged="@((bool val) => ToggleBatchSelection(p.BatchId, val))" />
+  ```
+  with `ToggleBatchSelection(int batchId, bool isChecked)` explicitly `Add`-ing when `isChecked`, else `Remove`.
+- **`MudAutocomplete` default `SelectValueOnTab=false` means Tab only updates the display text, NOT the bound `Value`** — for inline form autocompletes where Tab is expected to commit the selection (e.g. moving to the next field), this silently leaves the bound value (and any derived state like `_selectedCustomerId`) as `null`, even though a client/item appears visually selected on screen. Save then fails validation ("Prašome pasirinkti klientą!") with no visible cause. BUGLOG 2026-08-21 (`mudblazor-autocomplete-tab-value-commit`, commit `1f4aaaf` v0.11.217, affected page `InvoiceCreate.razor` — line 78 now has `SelectValueOnTab="true"`). Fix: always set `SelectValueOnTab="true"` for inline form autocompletes where Tab must commit, keep `@bind-Text` for tracking the typed text, and add an `OnBlur` fallback that does an exact-match lookup against the search results to commit the selection if the user clicks away without pressing Tab/Enter:
+  ```razor
+  <MudAutocomplete T="Customer"
+                   @bind-Text="_clientSearchText"
+                   SearchFunc="@SearchCustomers"
+                   ToStringFunc="@FormatCustomerDisplay"
+                   ValueChanged="OnClientSelected"
+                   SelectValueOnTab="true"
+                   OnBlur="@(() => TryResolveSelectedCustomerFromText())"
+                   ... />
+  ```
