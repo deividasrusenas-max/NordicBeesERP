@@ -10,6 +10,7 @@ using NordicBeesERP.Services.Reports;
 using MudBlazor; // Pridėjome šią eilutę
 using MudBlazor.Services;
 using NordicBeesERP.Services.Artwork;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -129,6 +130,11 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+// QuestPDF license — set globally once at startup so every PDF-generating service
+// (current and future) is covered without each one remembering to set it per-method.
+// (BUGLOG: questpdf-license-not-set, e.g. DebtReconciliationPdfService 2026-08-26.)
+QuestPDF.Settings.License = LicenseType.Community;
 
 // 4. Pipeline konfigūracija
 if (!app.Environment.IsDevelopment())
