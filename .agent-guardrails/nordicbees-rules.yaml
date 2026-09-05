@@ -260,3 +260,72 @@ rules:
       entry for error class `mariadb-datetime-precision-default-mismatch`.
     patterns:
       - pattern-regex: '(DATETIME|TIMESTAMP)\s*\(\s*[1-9]\d*\s*\)[^,;]*DEFAULT\s+CURRENT_TIMESTAMP\s*([^((]|$)'
+
+  - id: nordicbees-ef-decimal-precision-annotation-missing
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      A `decimal` (or `decimal?`) property on an EF Core entity class
+      ([Table]-attributed, in the Models namespace) has no explicit precision
+      annotation — neither [Precision(p, s)] nor
+      [Column(TypeName="decimal(p,s)")]. Without one, the Pomelo MySQL provider
+      infers decimal(65,30) (its provider default) for the property, which
+      diverges from the real DB column type (e.g. decimal(5,2)). A future
+      `dotnet ef migrations add` would then emit an unintended, unreviewed
+      `ALTER COLUMN ... decimal(65,30)` against the live table — and any value
+      exceeding the actual column's scale silently truncates. This caused a real
+      incident in this project on 2026-08-27: four model classes declared
+      `decimal DefaultVatRate` with no precision annotation while the live DB
+      columns business_partners.default_vat_rate and company_settings.
+      default_vat_rate are decimal(5,2) (fixed in commit a6e7d9c by adding
+      [Precision(5, 2)]). Add [Precision(p, s)] (matching the ACTUAL DB column —
+      verify with DESCRIBE <table> or Migrations/20260602150000_InitialCreate.cs,
+      never guess) directly above the property, or use
+      [Column(TypeName="decimal(p,s)")]. See AGENTS.md "Database writes" and
+      Docs/BUGLOG.md entry for error class `ef-decimal-precision-annotation-missing`.
+    patterns:
+      # Scope to EF entity classes: a [Table]-attributed class in the Models
+      # namespace. (Deliberately [Table]-only, not "any Models class": the BUGLOG
+      # notes that [Table]-less aliases such as Supplier/Customer are NOT real
+      # tables, and view-models like WeeklyForecastItem live in the same
+      # namespace with bare decimal properties — flagging those would be noise.)
+      - pattern: |
+          [Table(...)]
+          ...
+          public $MODIFIERS? decimal $TYPE { get; set; } = ...;
+      - metavariable-regex:
+          metavariable: $TYPE
+          regex: ^\w+\??$
+      # Exclude properties that already carry an explicit precision annotation.
+      # Both accepted forms are matched here so a correctly-annotated property
+      # is never flagged (e.g. CompanySettings.DefaultVatRate [Precision(5, 2)]).
+      - pattern-not-regex: '\[Precision\s*\('
+      - pattern-not-regex: 'decimal\s*\(\s*\d+\s*,\s*\d+\s*\)'
+
+  - id: nordicbees-pdf-locale-string-hardcoded-outside-labels
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      A hardcoded string literal is being passed directly to a QuestPDF
+      .Text("...") call in a PDF-generating service. All visible UI text in
+      generated PDFs (titles, labels, headers) must route through the
+      LocalizationLabels record instead of inline literals — this keeps the
+      text localizable and consistent across documents. This caused a real
+      incident on 2026-08-24: the CreditNote PDF hardcoded its title as
+      .Text("KREDITINĖ SĄSKAITA FAKTŪRA") instead of labels.CreditNoteTitle,
+      and its label as "Credit invoice: {originalInvoiceNumber}" instead of
+      labels.CreditedInvoiceLabel. WARNING severity (not ERROR) because some
+      legitimate infrastructure strings exist — currency codes (EUR), ISO
+      date formats, numbers like "N2", and pure formatting strings are fine
+      inline; only visible UI text (Lithuanian/English words) must go through
+      LocalizationLabels. See AGENTS.md "Security scanning" and Docs/BUGLOG.md
+      entry for error class `pdf-locale-string-hardcoded-outside-labels`.
+    patterns:
+      # Direct literal: .Text("visible text") — the exact 2026-08-24 incident shape.
+      # Requires at least one alphabetic run of 3+ chars (Lithuanian/English words)
+      # so pure numbers, "N2", currency codes, and date-format tokens don't match.
+      - pattern-regex: '\.Text\(\s*"[^"]*[a-zA-ZÀ-ž]{3,}[^"]*"\s*\)'
+      # Exclude strings that are clearly formatting/infrastructure, not UI text:
+      # currency codes (EUR), ISO date format patterns (yyyy-MM-dd etc.), or
+      # short tokens like "N2" that happen to contain a 3-letter run.
+      - pattern-not-regex: '\.Text\(\s*"(?:EUR|USD|[A-Z]{3}|[0-9][^"]{0,10}|yyyy[^"]*|MM[^"]*|dd[^"]*)"\s*\)'
