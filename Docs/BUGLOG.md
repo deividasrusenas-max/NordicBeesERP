@@ -489,7 +489,7 @@ re-labeling the symptom.
 - **Symptom**: Generating the debt reconciliation PDF ("skolų suderinimo aktas") on `/reports/debt-reconciliation` threw an unhandled `System.Exception` from `QuestPDF.Drawing.DocumentGenerator.ValidateLicense()`; the PDF never downloaded.
 - **Root cause**: `DebtReconciliationPdfService.GeneratePdfAsync` called `document.GeneratePdf()` without first setting `QuestPDF.Settings.License = LicenseType.Community`. Every other PDF service in the repo (`DeliveryReceiptPdfService.cs:31`, `PdfGeneratorService.cs:63/113/615/895`) sets the Community license per-method before generating; the new service omitted it.
 - **Fix**: Added `QuestPDF.Settings.License = LicenseType.Community;` inside `GeneratePdfAsync`, immediately before `document.GeneratePdf()`.
-- **Guardrail added**: Any new QuestPDF-generating method must set the license before `GeneratePdf()` (matches the existing per-method pattern); consider a single global `QuestPDF.Settings.License` initialization in `Program.cs` to prevent recurrence.
+- **Guardrail added**: Global `QuestPDF.Settings.License = LicenseType.Community;` initialization in `Program.cs` (line 134, commit 4fcdeff) — covers all current and future PDF services automatically, eliminating the per-method pattern that was inconsistently followed.
 - **Category**: PDF generation / third-party license validation
 - **Error class**: `questpdf-license-not-set`
 - **Status**: monitoring
