@@ -107,3 +107,24 @@ Model files are not always where a spec document says they are. Known existing l
 - `Models/Printing/` — printing/labeling module models
 
 Always run `list`/`glob` on the target directory before creating a "new" file or assuming an "update" target's path — don't trust a plan document's stated path without checking, since these have been wrong before.
+
+---
+
+## Rule 6: Raw SQL SELECT expressions — match reader Get* call to actual DB return type
+
+Bare boolean/comparison expressions in a raw-SQL `SELECT` list (`<=`, `>`, `=`, etc.) return **Int64**, not Int32 and not bool, from MySQL/MariaDB via MySqlConnector. Calling `reader.GetInt32()` on such a column throws `InvalidCastException` at runtime — no build error, and the C# property type you're assigning to (e.g. a `bool`) gives you false confidence that the read is safe.
+
+```csharp
+// WRONG — MySQL returns the comparison as Int64; GetInt32 throws InvalidCastException:
+sql = "SELECT ..., (GREATEST(b.quantity - COALESCE(shipped_sum,0),0) <= 0) AS IsShipped ...";
+bool isShipped = reader.GetInt32(reader.GetOrdinal("IsShipped")) != 0;
+
+// CORRECT — CASE WHEN forces an Int32 literal:
+sql = "SELECT ..., CASE WHEN GREATEST(b.quantity - COALESCE(shipped_sum,0),0) <= 0 THEN 1 ELSE 0 END AS IsShipped ...";
+bool isShipped = reader.GetInt32(reader.GetOrdinal("IsShipped")) != 0;
+```
+
+- Always wrap computed boolean expressions in `CASE WHEN ... THEN 1 ELSE 0 END` to force Int32 (or use `GetInt64`/`GetBoolean` if the type is known).
+- When writing new raw SQL readers, verify the actual return type by checking what the DB returns for the expression — don't assume based on the C# property type.
+
+This is a reviewer-diligence + E2E-test guardrail — no mechanical semgrep rule exists yet (hard to detect statically without running the query). Source: BUGLOG 2026-08-25, error class `rawsql-reader-type-cast-mismatch` (`GetOrderPalletsAsync`, commit `c5599ed` v0.11.279).
