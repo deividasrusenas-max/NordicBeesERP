@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 
 namespace NordicBeesERP.Services
@@ -58,6 +59,10 @@ namespace NordicBeesERP.Services
                 BankAccount = bp.BankAccount,
                 Notes = bp.Notes,
                 IsActive = bp.IsActive,
+                IsCustomer = bp.IsCustomer,
+                IsSupplier = bp.IsSupplier,
+                IsExpenseSupplier = bp.IsExpenseSupplier,
+                IsIndividual = bp.IsIndividual,
                 SupplierFirstName = bp.SupplierFirstName,
                 SupplierLastName = bp.SupplierLastName,
                 NationalIdNumber = bp.NationalIdNumber,
@@ -105,6 +110,10 @@ namespace NordicBeesERP.Services
                 BankAccount = bp.BankAccount,
                 Notes = bp.Notes,
                 IsActive = bp.IsActive,
+                IsCustomer = bp.IsCustomer,
+                IsSupplier = bp.IsSupplier,
+                IsExpenseSupplier = bp.IsExpenseSupplier,
+                IsIndividual = bp.IsIndividual,
                 SupplierFirstName = bp.SupplierFirstName,
                 SupplierLastName = bp.SupplierLastName,
                 NationalIdNumber = bp.NationalIdNumber,
@@ -159,6 +168,10 @@ namespace NordicBeesERP.Services
                 BankAccount = partner.BankAccount,
                 Notes = partner.Notes,
                 IsActive = partner.IsActive,
+                IsCustomer = partner.IsCustomer,
+                IsSupplier = partner.IsSupplier,
+                IsExpenseSupplier = partner.IsExpenseSupplier,
+                IsIndividual = partner.IsIndividual,
                 SupplierFirstName = partner.SupplierFirstName,
                 SupplierLastName = partner.SupplierLastName,
                 NationalIdNumber = partner.NationalIdNumber,
@@ -265,9 +278,12 @@ namespace NordicBeesERP.Services
                         address = {4}, city = {5}, postal_code = {6}, country = {7}, country_code = {8},
                         phone = {9}, email = {10}, bank_account = {11}, payment_term_days = {12},
                         default_language = {13}, default_vat_rate = {14}, notes = {15}, is_active = {16},
-                        default_expense_category_id = {17}, updated_at = {18}
-                    WHERE id = {19}",
-                    supplier.PartnerType.ToString().ToLower(),
+                        default_expense_category_id = {17}, is_customer = {18}, is_supplier = {19},
+                        is_expense_supplier = {20}, is_individual = {21}, updated_at = {22}
+                    WHERE id = {23}",
+                    (supplier.IsCustomer || supplier.IsSupplier || supplier.IsExpenseSupplier
+                        ? PartnerRoleFlagsHelper.DeriveFromFlags(supplier.IsCustomer, supplier.IsSupplier, supplier.IsExpenseSupplier)
+                        : supplier.PartnerType).ToString().ToLower(),
                     supplier.Name ?? "",
                     supplier.CompanyCode ?? "",
                     supplier.VatCode ?? "",
@@ -285,6 +301,10 @@ namespace NordicBeesERP.Services
                     supplier.Notes ?? "",
                     supplier.IsActive,
                     supplier.DefaultExpenseCategoryId,
+                    supplier.IsCustomer,
+                    supplier.IsSupplier,
+                    supplier.IsExpenseSupplier,
+                    supplier.IsIndividual,
                     DateTime.Now,
                     supplier.Id);
                 return supplier;
@@ -293,7 +313,9 @@ namespace NordicBeesERP.Services
             {
                 partner = new BusinessPartner
                 {
-                    PartnerType = supplier.PartnerType
+                    PartnerType = (supplier.IsCustomer || supplier.IsSupplier || supplier.IsExpenseSupplier)
+                        ? PartnerRoleFlagsHelper.DeriveFromFlags(supplier.IsCustomer, supplier.IsSupplier, supplier.IsExpenseSupplier)
+                        : supplier.PartnerType
                 };
                 context.BusinessPartners.Add(partner);
             }
@@ -316,6 +338,10 @@ namespace NordicBeesERP.Services
             partner.BankAccount = supplier.BankAccount;
             partner.Notes = supplier.Notes;
             partner.IsActive = supplier.IsActive;
+            partner.IsCustomer = supplier.IsCustomer;
+            partner.IsSupplier = supplier.IsSupplier;
+            partner.IsExpenseSupplier = supplier.IsExpenseSupplier;
+            partner.IsIndividual = supplier.IsIndividual;
             partner.SupplierFirstName = supplier.SupplierFirstName;
             partner.SupplierLastName = supplier.SupplierLastName;
             partner.NationalIdNumber = supplier.NationalIdNumber;
