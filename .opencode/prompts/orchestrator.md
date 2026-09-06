@@ -423,44 +423,22 @@ ever builds/commits it.
 
 3. Only AFTER reviewer has returned APPROVED, WITH NO further changes
    needed to the file:
-   Task tool → `fixer` agent with these exact steps, to be run as
-   SEPARATE bash calls (never combined with && or any operator):
-     - Load skill: `git-workflow-nordicbees` (commit format, hardcode-check
-       rules) and, if the task touched a Service/migration/DbContext file,
-       also `dotnet-efcore-nordicbees`. If the task touched a .razor file
-       with a button/form/dialog, also load `verify-before-done` and
-       follow its call-chain tracing requirement before reporting done.
-     1. dotnet build
-     2. git status (check nothing unexpected/unrelated is modified before staging)
-     3. git add [exact file path(s) from THIS task only — never -A or .]
-     4. git diff --cached -- [same exact file path(s)] | grep "BUCKET_GROUP"
-        — checks ONLY the staged diff of this task's own file(s), never a
-        whole-repo grep. `BUCKET_GROUP` is a real, legitimate `ContainerType`
-        enum value used correctly throughout the warehouse module (barrels
-        vs bucket groups) — it will always appear if you (incorrectly)
-        grep the whole repo, so this check only matters if it appears
-        INSIDE the diff you're about to commit, and even then only as a
-        possible accidental debug leftover, not a real violation of the
-        legitimate enum value.
-     5. git commit -m "P0a: [FileName] — [what was done]" — use EXACTLY
-        the message given in this step's instructions, verbatim. fixer
-        must never invent its own commit message, even if it thinks its
-        wording is clearer or the change looks like "just a cleanup".
-     6. git log --oneline -1  — confirm the commit that was JUST made
-        contains this task's actual file AND has the exact message given
-        (check `git show --stat HEAD` if in doubt about the file; check
-        the log line itself for the message). A wrong file in the right
-        commit and a right file with a wrong/substituted message are both
-        failures — do NOT proceed to step 7 unless both are confirmed via
-        a real tool call result, not assumed.
-     7. ./bump-version.sh patch
-
-     IMPORTANT: bump-version.sh runs its own git add/commit/tag/push for
-     appsettings.json, NordicBeesERP.csproj, and itself — it does NOT touch
-     the file(s) from this task. It must run AFTER the actual code commit
-     (step 5), never before. Running it first risks a pushed version tag
-     with no corresponding code commit if anything fails between steps —
-     this has happened before, always keep this order.
+   Task tool → `fixer` agent. fixer already knows its own full build→fix-
+   loop→commit→bump-version→guardrail-check sequence from its own system
+   prompt (`fixer.md`'s "Your exact steps") — do not restate it here, that
+   is exactly the kind of duplication this file used to carry. Give it
+   only the two things it cannot know on its own:
+     - Load skill: `git-workflow-nordicbees` (always) and, if the task
+       touched a Service/migration/DbContext file, also
+       `dotnet-efcore-nordicbees`. If the task touched a .razor file with
+       a button/form/dialog, also load `verify-before-done` and follow its
+       call-chain tracing requirement before reporting done.
+     - The exact commit message to use, verbatim, INCLUDING its prefix —
+       fixer must never invent its own message or pick its own prefix.
+       Choose the prefix per `git-workflow-nordicbees`'s convention:
+       `P0a:` for labeling-module/task-tracked work, `fix:`/`feat:`/
+       `chore:` for general changes (that skill's own file has the exact
+       format and real examples — not repeated here).
    WAIT for this Task tool call to fully return a result before doing
    anything else.
 

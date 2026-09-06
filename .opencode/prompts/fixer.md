@@ -106,7 +106,10 @@ you reach a terminal state (above), stop checking.
    pre-existing files you did NOT touch — a match there is expected and
    irrelevant. A match INSIDE your own staged diff is only worth a
    second look if it resembles an accidental debug leftover.
-7. `git commit -m "P0a: <describe what was implemented>"`
+7. `git commit -m "<exact message given in this task's instructions>"` —
+   the prefix (`P0a:`, `fix:`, `feat:`, `chore:`, etc.) is whoever
+   delegated this task's choice per `git-workflow-nordicbees`'s
+   convention, not yours to pick — see rule below.
 8. `git log --oneline -1` — confirm the commit that was JUST made
    contains this task's actual file AND has the expected message, via a
    real tool call result, not assumed. A wrong file in the right commit
