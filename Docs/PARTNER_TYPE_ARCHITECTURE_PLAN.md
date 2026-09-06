@@ -324,5 +324,38 @@ dialoguose.
 SKAITO tik iš seno `PartnerType` — nauji laukai kol kas tik egzistuoja
 DB, bet joks kodas jų nenaudoja. Kitas investigation+build ciklas:
 perjungti servisų sluoksnį skaityti iš naujų boolean laukų (su fallback'u
-į seną `PartnerType`, kol UI dialogai dar jų neraso), tada UI sąrašų
+į seną `PartnerType`, kol UI dialogai dar jų nerašo), tada UI sąrašų
 filtrus (3.2 skyrius), tada vieningą dialogą (4.1 skyrius).
+
+---
+
+## 9. 2 ETAPAS ĮVYKDYTAS IR PATVIRTINTAS (2026-09-06)
+
+`CustomerService.cs`, `SupplierService.cs`, `InvoiceService.cs` (6 read
+filtrų iš viso) perjungti skaityti iš naujų `Is*` laukų, su fallback'u
+į seną `PartnerType` TIK kai visi trys role flag'ai vis dar `false`
+(reikštų naują, dar nemigruotą įrašą). Commit'ai: `24b859e`, `7f5932d`,
+`4f29e86` (v0.17.46→0.17.48). Kiekvienas failas patikrintas TIESIOGIAI
+(ne tik per report'ą) — visi pakeitimai sutampa žodis į žodį.
+
+**Tšskinis, sąmoningas elgesio pasikeitimas:** `SupplierService`
+tiekėjų sąraše dabar naudoja `IsExpenseSupplier` kaip pagrindinį
+(ne fallback) filtrą — tai išplės matomų kandidatų sąrašą, nes
+7.3 skyriuje rastas 31 realiai naudojamas išlaidų tiekėjas dabar
+taps matomas ten, kur anksčiau NEbuvo (senas enum filtras jų
+nematytų). Tai numatytas, teisingas pagerėjimas, ne broken behavior.
+
+**Nepaliesta (sąmoningai, Phase 3):**
+- Joks `.razor` failas (`AssignSupplierDialog`, `ResolveSupplierDialog`,
+  `Suppliers.razor`, `Customers.razor`, `TopHeader`) — vis dar skaito
+  seną `PartnerType` tiesiogiai inline.
+- `SaveSupplierAsync`/`SaveCustomerAsync` RAŠYMO logika — vis dar rašo
+  tik `partner_type`, NE naujus `Is*` laukus. Nauji partneriai iki
+  Phase 3 turės visus flag'us `false` ir pasikliaus fallback'u.
+- `CustomerService.ParsePartnerType()` LT/EN string maišymas — lieka
+  Phase 3 darbui, kai dialogai pereis prie checkbox'ų.
+
+**Kitas žingsnis — 3 Etapas (UI):** sąrašų filtrai (Suppliers.razor/
+Customers.razor tab'ai) + vieningas `PartnerEditDialog.razor` + rašymo
+logikos atnaujinimas, kad nauji/redaguoti partneriai pradėtų realiai
+išsaugoti naujus `Is*` laukus.
