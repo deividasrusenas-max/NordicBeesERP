@@ -43,27 +43,36 @@
                         @if (string.IsNullOrEmpty(PrefilledName))
                         {
                             <MudItem xs="12">
-                                <MudSelect T="PartnerType" @bind-Value="supplier.PartnerType" Label="Partnerio tipas"
-                                           Required="true" Variant="Variant.Outlined">
-                                    <MudSelectItem Value="@PartnerType.ExpenseSupplier">🏢 Išlaidų tiekėjas</MudSelectItem>
-                                    <MudSelectItem Value="@PartnerType.Supplier">🐝 Bitininkas / ūkininkas</MudSelectItem>
-                                    <MudSelectItem Value="@PartnerType.Both">🔄 Abu</MudSelectItem>
-                                    <MudSelectItem Value="@PartnerType.Customer">👤 Klientas</MudSelectItem>
-                                </MudSelect>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <MudSwitch @bind-Value="supplier.IsCustomer" Label="Klientas" Color="Color.Success" Variant="Variant.Outlined" />
+                                    <MudSwitch @bind-Value="supplier.IsSupplier" Label="Tiekėjas" Color="Color.Success" Variant="Variant.Outlined" />
+                                    <MudSwitch @bind-Value="supplier.IsExpenseSupplier" Label="Išlaidų tiekėjas" Color="Color.Success" Variant="Variant.Outlined" />
+                                    <MudSwitch @bind-Value="supplier.IsIndividual" Label="Fizinis asmuo / ūkininkas" Color="Color.Success" Variant="Variant.Outlined" />
+                                </div>
                             </MudItem>
                         }
                         <MudItem xs="12">
                             <MudTextField @bind-Value="supplier.Name" Label="Pavadinimas" Required="true"
                                           Variant="Variant.Outlined" MaxLength="255" />
                         </MudItem>
-                        <MudItem xs="6">
-                            <MudTextField @bind-Value="supplier.CompanyCode" Label="Įmonės kodas"
-                                          Variant="Variant.Outlined" MaxLength="20" />
-                        </MudItem>
-                        <MudItem xs="6">
-                            <MudTextField @bind-Value="supplier.VatCode" Label="PVM mokėtojo kodas"
-                                          Variant="Variant.Outlined" MaxLength="20" />
-                        </MudItem>
+                        @if (!supplier.IsIndividual)
+                        {
+                            <MudItem xs="6">
+                                <MudTextField @bind-Value="supplier.CompanyCode" Label="Įmonės kodas"
+                                              Variant="Variant.Outlined" MaxLength="20" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudTextField @bind-Value="supplier.VatCode" Label="PVM mokėtojo kodas"
+                                              Variant="Variant.Outlined" MaxLength="20" />
+                            </MudItem>
+                        }
+                        @if (supplier.IsIndividual)
+                        {
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="supplier.NationalIdNumber" Label="Asmens kodas"
+                                              Variant="Variant.Outlined" MaxLength="20" />
+                            </MudItem>
+                        }
                     </MudGrid>
                 </MudPaper>
 
@@ -219,6 +228,10 @@
                 CompanyCode = PrefilledCompanyCode ?? "",
                 BankAccount = PrefilledBankAccount ?? "",
                 PartnerType = PartnerType.ExpenseSupplier,
+                IsExpenseSupplier = true,
+                IsSupplier = false,
+                IsCustomer = false,
+                IsIndividual = false,
                 PaymentTermDays = 30,
                 DefaultVatRate = 21m,
                 DefaultLanguage = "lt",
@@ -230,6 +243,7 @@
             supplier = Supplier ?? new Supplier
             {
                 PartnerType = PartnerType.Supplier,
+                IsSupplier = true,
                 PaymentTermDays = 30,
                 DefaultVatRate = 21m,
                 DefaultLanguage = "lt",
