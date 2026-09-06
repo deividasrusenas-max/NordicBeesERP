@@ -58,10 +58,11 @@
         "lsp": "deny",
         "nordicbees-db": "allow",
         "semgrep": "allow",
-        "roslyn": "allow",
-        "mudblazor": "allow",
-        "microsoft-docs": "allow",
-        "playwright": "allow",
+        "roslyn": "deny",
+        "mudblazor": "deny",
+        "microsoft-docs": "deny",
+        "playwright": "deny",
+        "mempalace": "deny",
         "question": "deny",
         "semantic_search": "deny",
         "skill": "allow",
@@ -72,7 +73,8 @@
         "websearch": "deny"
       },
       "prompt": "{file:./.opencode/prompts/fixer.md}",
-      "steps": 5000
+      "steps": 5000,
+      "temperature": 0.1
     },
     "orchestrator": {
       "mode": "primary",
