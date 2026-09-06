@@ -649,10 +649,10 @@
     [
       "opencode-auto-resume@1.1.3",
       {
-        "chunkTimeoutMs": 180000,
-        "gracePeriodMs": 5000,
+        "chunkTimeoutMs": 420000,
+        "gracePeriodMs": 15000,
         "maxRetries": 3,
-        "subagentWaitMs": 120000
+        "subagentWaitMs": 300000
       }
     ]
   ],
