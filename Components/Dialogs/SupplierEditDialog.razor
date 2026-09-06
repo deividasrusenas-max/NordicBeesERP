@@ -54,47 +54,47 @@
                         </div>
                     }
                 </MudItem>
-
-                <MudItem xs="12" md="6">
-                    <MudTextField @key="@supplier.VatCode"
-                                  Value="@supplier.VatCode"
-                                  ValueChanged="@(async (string v) => { supplier.VatCode = v; await OnVatCodeChanged(); })"
-                                   Label="PVM mokėtojo kodas"
-                                   MaxLength="20"
-                                   Variant="Variant.Outlined"
-                                   Margin="Margin.Dense" />
-                    @if (_isCheckingVat)
-                    {
-                        <div class="d-flex align-center gap-1 mt-1">
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Tikrinama VIES...</MudText>
-                        </div>
-                    }
-                    else if (supplier.VatVerified == true)
-                    {
-                        <div class="d-flex align-center gap-1 mt-1">
-                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Style="height:18px;font-size:10px;padding:0 6px">VIES</MudChip>
-                            <MudText Typo="Typo.caption" Style="color:#16a34a">PVM patikrintas VIES</MudText>
-                        </div>
-                    }
-                    else if (supplier.VatVerified == false)
-                    {
-                        <div class="d-flex align-center gap-1 mt-1">
-                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
-                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined" Style="height:18px;font-size:10px;padding:0 6px">VIES</MudChip>
-                            <MudText Typo="Typo.caption" Style="color:#dc2626">PVM kodas negalioja VIES</MudText>
-                        </div>
-                    }
-                    else if (supplier.VatVerified == null && !string.IsNullOrWhiteSpace(supplier.VatCode))
-                    {
-                        <div class="d-flex align-center gap-1 mt-1">
-                            <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Default" Size="Size.Small" />
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Netikrinta</MudText>
-                        </div>
-                    }
-                </MudItem>
             }
+
+            <MudItem xs="12" md="6">
+                <MudTextField @key="@supplier.VatCode"
+                              Value="@supplier.VatCode"
+                              ValueChanged="@(async (string v) => { supplier.VatCode = v; await OnVatCodeChanged(); })"
+                               Label="PVM mokėtojo kodas"
+                               MaxLength="20"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense" />
+                @if (_isCheckingVat)
+                {
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Tikrinama VIES...</MudText>
+                    </div>
+                }
+                else if (supplier.VatVerified == true)
+                {
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Style="height:18px;font-size:10px;padding:0 6px">VIES</MudChip>
+                        <MudText Typo="Typo.caption" Style="color:#16a34a">PVM patikrintas VIES</MudText>
+                    </div>
+                }
+                else if (supplier.VatVerified == false)
+                {
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined" Style="height:18px;font-size:10px;padding:0 6px">VIES</MudChip>
+                        <MudText Typo="Typo.caption" Style="color:#dc2626">PVM kodas negalioja VIES</MudText>
+                    </div>
+                }
+                else if (supplier.VatVerified == null && !string.IsNullOrWhiteSpace(supplier.VatCode))
+                {
+                    <div class="d-flex align-center gap-1 mt-1">
+                        <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Default" Size="Size.Small" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Netikrinta</MudText>
+                    </div>
+                }
+            </MudItem>
 
             @if (supplier.IsIndividual)
             {
