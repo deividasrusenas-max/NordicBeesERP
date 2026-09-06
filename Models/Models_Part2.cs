@@ -139,6 +139,12 @@ namespace NordicBeesERP.Models
         // Default expense category for supplier expenses
         public int? DefaultExpenseCategoryId { get; set; }
         
+        // Role flag'ai (Phase 3) — atspindi BusinessPartner.Is* stulpelius
+        public bool IsCustomer { get; set; }
+        public bool IsSupplier { get; set; }
+        public bool IsExpenseSupplier { get; set; }
+        public bool IsIndividual { get; set; }
+
         // Tiekėjo specifiniai laukai (iš BusinessPartner)
         public string? SupplierFirstName { get; set; }
         public string? SupplierLastName { get; set; }
