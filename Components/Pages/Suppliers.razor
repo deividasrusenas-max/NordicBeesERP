@@ -398,14 +398,14 @@
             IEnumerable<Supplier> list;
             if (_isWarehouse)
             {
-                list = suppliers?.Where(s => !string.IsNullOrEmpty(s.NationalIdNumber)) ?? [];
+                list = suppliers?.Where(s => s.IsIndividual) ?? [];
             }
             else
             {
                 list = _tabIndex switch
                 {
-                    1 => suppliers?.Where(s => !string.IsNullOrEmpty(s.NationalIdNumber)) ?? [],
-                    2 => suppliers?.Where(s => !string.IsNullOrEmpty(s.CompanyCode) || (string.IsNullOrEmpty(s.NationalIdNumber) && string.IsNullOrEmpty(s.CompanyCode))) ?? [],
+                    1 => suppliers?.Where(s => s.IsIndividual) ?? [],
+                    2 => suppliers?.Where(s => !s.IsIndividual) ?? [],
                     _ => suppliers ?? []
                 };
             }
