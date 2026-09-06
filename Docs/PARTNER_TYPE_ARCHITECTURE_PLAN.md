@@ -359,3 +359,61 @@ nematytų). Tai numatytas, teisingas pagerėjimas, ne broken behavior.
 Customers.razor tab'ai) + vieningas `PartnerEditDialog.razor` + rašymo
 logikos atnaujinimas, kad nauji/redaguoti partneriai pradėtų realiai
 išsaugoti naujus `Is*` laukus.
+
+---
+
+## 10. 3 ETAPO 1 RAUNDAS ĮVYKDYTAS IR PATVIRTINTAS (2026-09-06, v0.17.51)
+
+Investigacija (`partner-type-phase3-ui-spec-20260906-0750.md`) rado
+**5 dialogus** (ne 2-3, kaip manėta): `SupplierEditDialog`,
+`SupplierCreateDialog` (OCR), `CustomerCreateDialog`,
+`AssignSupplierDialog`, `ResolveSupplierDialog`. Rekomendacija — NE
+vienas unifikuotas dialogas iš karto (per daug skirtumu: enum vs string
+`PartnerType`, 3 skirtingi VAT lauko valdikliai, klientui unikalus
+dublikatų tikrinimas) — vietoj to laipsniškas 1/2/3 raundų planas.
+
+**1 raundas atliktas:**
+- Pridėti `Is*` laukai `Supplier`/`Customer` DTO.
+- Visi 3 kūrimo/redagavimo dialogai perjungti nuo `PartnerType`
+  select'o/enum'o prie 4 switch'ų (be emoji — pašalinti iš
+  `SupplierCreateDialog`, pažeidė `DESIGN_SYSTEM.md`).
+- `SaveSupplierAsync`/`SaveCustomerAsync` dabar RAŠO visus 4 naujų
+  laukus (ne tik skaito) — UPDATE SQL parametrų numeracija patikrinta
+  TIESIOGIAI (24 ir 23 parametrai atitinkamai, visi teisingoje vietoje).
+- `PartnerRoleFlagsHelper.DeriveFromFlags` — nauja pagalbinė klasė,
+  išveda legacy `partner_type` reikšmę iš flag'ų (Both > ExpenseSupplier
+  > Supplier > Customer prioritetas), naudojama abiejų servisų.
+- **Realios klaidos irštaisytos** (įrašyta `Docs/BUGLOG.md` kaip
+  `partner-roleflag-stale-enum-read`): `TopHeader.razor` klaidingai
+  žymėjo ExpenseSupplier/Both partnerius kaip "Klientas"; `AssignSupplierDialog`
+  filtras paslėpdavo 31 realiai naudojamą išlaidų tiekėją (7.3 skyriaus
+  spraga) — dabar `IsExpenseSupplier` pagrindu.
+- `ResolveSupplierDialog` trečias, servisus apeinantis rašymo kelias —
+  rastas ir pataisytas (dabar nustato `IsExpenseSupplier=true`).
+- Pridėti xUnit testai flag'ų išsaugojimui abiejuose servisuose.
+
+**Šalutinis radinys — test DB (`nordic_bees_erp_test`) buvo smarkiai
+atsilikusi nuo dev/prod schemos:** trūko ir naujų `is_*` stulpelių, IR
+anksčiau (09-03) pridėtų `barrel_cost_deduction`/`other_cost_deduction`/
+`transport_cost_deduction` stulpelių `deliveries` lentelėje, IR 9
+`__EFMigrationsHistory` įrašų (bookkeeping spraga, ne realus schema
+trūkumas — nepatvirtinta pilnai, bet testai po 2 realiu trūkstamų
+stulpelių rinkinių pataisymo praėjo 45/45). **Rekomenduojama at atskirai
+kada nors sinchronizuoti `__EFMigrationsHistory` visų trijų aplinkų
+tarpe, kad išvengti panašių siurprizų ateityje.**
+
+**Nepaliesta (sąmoningai, 2/3 Raundas):**
+- `Suppliers.razor` `FilteredSuppliers` tab'ų (Ūkininkai/Įmonės/Visi)
+  filtro logika — vis dar `NationalIdNumber`/`CompanyCode` euristika,
+  NE `IsIndividual`.
+- Dialogų unifikacija į vieną `PartnerEditDialog.razor`.
+
+**Žinoma duomenų spraga, palikta rankiniam taisymui:** Vaidas
+Arbutavičius (id 65) `is_individual=0`, nors realiai ūkininkas —
+su naujais tab filtrais (2 Raundas) atsidurs Įmonių tab'e, kol
+rankiniu būdu nepataisysi.
+
+**Kitas žingsnis — 2 Raundas:** `Suppliers.razor` tab filtrų perjungimas
+į `IsIndividual` (Ūkininkai/Įmonės) + `IsSupplier` (Visi bazė).
+`Customers.razor` jau atitinka standartą per servisų sluoksnį, papildomo
+darbo nereikia.
