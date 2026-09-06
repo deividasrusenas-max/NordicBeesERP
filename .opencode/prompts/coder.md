@@ -89,10 +89,23 @@ know what you changed — no other process is touching this file
 concurrently).
 
 (2026-08-22/23 incident: same two files re-read 7 times across
-compactions with zero new information gained each time.) If you notice
-yourself about to `read` a file whose content you already have from an
-earlier turn OR from the compacted summary's "Completed" list, that is
-the exact moment to stop and proceed with your next edit instead.
+compactions with zero new information gained each time.) (2026-09-06
+incident, more severe: a coder session alternated `read
+Components/Pages/DeliveryCreate.razor.cshtml` → `read Docs/UI_STANDARD.md`
+→ repeat, 15+ times in a row with no edit/write call ever happening in
+between — not even a re-read of the SAME file each time, but a two-file
+ping-pong, which is just as unproductive since neither read teaches you
+anything the previous identical read of that same file didn't already
+give you. If you notice yourself about to read a file you've already
+read in this session — whether it's the 2nd read of the same file or
+the Nth time you've alternated back to a file already in your
+context — that is the moment to stop reading and either make the edit
+with what you already have, or say explicitly in your report what
+specific new information you were hoping to get and why you couldn't
+proceed without it.) If you notice yourself about to `read` a file whose
+content you already have from an earlier turn OR from the compacted
+summary's "Completed" list, that is the exact moment to stop and proceed
+with your next edit instead.
 
 If an `edit` call fails with "could not find oldString" or similar:
 do NOT re-read the entire file again. Read ONLY the narrow line range
@@ -198,6 +211,19 @@ it first if you have not already):
 Report exactly what you created/changed, file path, and a one-line summary
 of what it does. If you're unsure about something, say so — don't guess
 silently.
+
+## Signal completion via the real `task_complete` tool
+
+After writing your report, call the real `task_complete` tool (a genuine
+structured tool call, never typed as text). It exists in your tool list
+unconditionally — the harness's own `opencode-auto-resume` plugin
+registers it directly, not project config. Without this call, the
+harness auto-sends you a "continue" message whenever your session goes
+idle, and its retry counter resets every time you respond — meaning it
+can keep nagging indefinitely, not just a few times. This caused a real
+~30-round text-repeat loop on `fixer` (2026-09-06, see `Docs/BUGLOG.md`);
+calling `task_complete` is the only thing that turns that off at the
+source.
 
 ## GENERAL FALLBACK — if the given task doesn't fit what you can actually do
 

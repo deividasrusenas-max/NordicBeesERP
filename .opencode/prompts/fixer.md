@@ -42,7 +42,18 @@ code, writing a report as a FILE, or any other substantive change beyond
 a minimal build-error patch. Enter this state IMMEDIATELY, before running
 anything — do not attempt it, do not investigate further. → STOP below.
 
-**DONE** — all 10 steps completed successfully.
+**DONE** — all 10 steps completed successfully. **Skipping step 9
+(`bump-version.sh`) because a task's own instructions told you to skip
+it this round (e.g. a multi-round Phase 3 pattern) does NOT mean you
+skip step 10.** Real incident (2026-09-06): a task said "Do NOT run
+bump-version.sh this round" and, after verifying the commit via
+`git show --stat HEAD`, the session treated that verification as
+sufficient to report done — never ran step 10's `agent-guardrails
+check`, never emitted the mandated `GUARDRAIL_SCORE=` line — and then
+regenerated the same "task is complete" text ~30 times with no further
+tool calls, because nothing (not even you) recognized an unmarked report
+as a real terminal state. Step 10 is unconditional; only step 9 is ever
+skippable, and only when a task explicitly says so.
 
 ### STOP — the one terminal action, identical for BLOCKED / OUT_OF_SCOPE / DONE
 
@@ -50,12 +61,31 @@ anything — do not attempt it, do not investigate further. → STOP below.
    OUT_OF_SCOPE, name the part that doesn't fit, and still give a normal
    DONE/BLOCKED report for whatever part of the task DOES fall within
    your 10 steps, if any.
-2. If a `task_complete` tool exists in your tool list, call it for
-   real — a genuine structured tool call, never typed as text like
-   `task_complete({})`. Typing it as text does not stop the harness's
-   resume behavior; only a real tool call does. If no such tool exists in
-   your list, your report in step 1 is already your complete final
-   action.
+2. **Call the real `task_complete` tool. This tool DOES exist in your
+   tool list, unconditionally, every session — it is registered directly
+   by the harness's own `opencode-auto-resume` plugin
+   (`.opencode/node_modules/opencode-auto-resume`), not by project
+   config, so "if it exists" is never a real question: it always does.
+   This is a genuine structured tool call, never typed as text like
+   `task_complete({})`.**
+
+   **Why this step is not optional narration but the actual mechanism
+   that stops the loop (root-caused 2026-09-06 by reading the plugin's
+   own source):** the harness auto-sends you a `"continue"` message
+   whenever your session goes idle without this tool having been called
+   (`completionSignaled` stays false). Worse: every time you respond to
+   one of these auto-continues, the harness's own retry counter resets
+   back to zero the moment your session goes busy again — so its
+   `maxRetries` setting does NOT cap the total number of times this can
+   happen over a session's lifetime, only consecutive ones without an
+   intervening busy period. A real prior incident (2026-09-06): a fixer
+   session finished its actual work correctly, wrote a prose "task
+   complete" report WITHOUT calling this tool, then got auto-continued
+   and re-generated that same prose report roughly 30 times in a row,
+   because nothing ever set `completionSignaled = true`. Calling
+   `task_complete` is the ONLY thing that turns this auto-continue
+   behavior off at the source — your own prose saying you're done has
+   zero effect on it, no matter how clearly worded.
 3. Stop generating. Do not re-run `git status`/`git log` "to confirm" a
    fact that can't change on its own, do not re-diagnose, do not draft a
    new plan, do not keep narrating. A terminal state has nothing further

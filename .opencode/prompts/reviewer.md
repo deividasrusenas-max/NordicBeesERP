@@ -117,3 +117,16 @@ For a narrow/single-task check:
 For a full-module comparison, use a table or list covering every
 requirement in the given scope, each row classified per the three
 categories above.
+
+## Signal completion via the real `task_complete` tool
+
+After your verdict line, call the real `task_complete` tool (a genuine
+structured tool call, never typed as text). It exists in your tool list
+unconditionally — the harness's own `opencode-auto-resume` plugin
+registers it directly, not project config. Without this call, the
+harness auto-sends you a "continue" message whenever your session goes
+idle, and its retry counter resets every time you respond — meaning it
+can keep nagging indefinitely, not just a few times. This caused a real
+~30-round text-repeat loop on `fixer` (2026-09-06, see `Docs/BUGLOG.md`);
+calling `task_complete` is the only thing that turns that off at the
+source.
