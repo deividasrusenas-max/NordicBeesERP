@@ -19,11 +19,12 @@
     <DialogContent>
         <MudGrid>
             <MudItem xs="12">
-                <MudSelect T="PartnerType" @bind-Value="supplier.PartnerType" Label="Partnerio tipas" Required="true" Variant="Variant.Outlined" Margin="Margin.Dense">
-                    <MudSelectItem T="PartnerType" Value="@PartnerType.Supplier">Tiekėjas</MudSelectItem>
-                    <MudSelectItem T="PartnerType" Value="@PartnerType.Customer">Klientas</MudSelectItem>
-                    <MudSelectItem T="PartnerType" Value="@PartnerType.Both">Tiekėjas ir Klientas</MudSelectItem>
-                </MudSelect>
+                <div class="d-flex flex-wrap gap-3">
+                    <MudSwitch @bind-Value="supplier.IsCustomer" Label="Klientas" Color="Color.Success" Variant="Variant.Outlined" />
+                    <MudSwitch @bind-Value="supplier.IsSupplier" Label="Tiekėjas" Color="Color.Success" Variant="Variant.Outlined" />
+                    <MudSwitch @bind-Value="supplier.IsExpenseSupplier" Label="Išlaidų tiekėjas" Color="Color.Success" Variant="Variant.Outlined" />
+                    <MudSwitch @bind-Value="supplier.IsIndividual" Label="Fizinis asmuo / ūkininkas" Color="Color.Success" Variant="Variant.Outlined" />
+                </div>
             </MudItem>
             
             <MudItem xs="12">
@@ -31,35 +32,46 @@
                              MaxLength="255" Variant="Variant.Outlined" Margin="Margin.Dense" @key="supplier.Name" />
             </MudItem>
             
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="supplier.CompanyCode" Label="Įmonės kodas" 
-                             MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" @key="supplier.CompanyCode" />
-                @if (_lookupLoading)
-                {
-                    <div class="d-flex align-center gap-1 mt-1">
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Ieškoma...</MudText>
-                    </div>
-                }
-                else if (_lookupResult != null && _lookupResult.Found)
-                {
-                    <div class="d-flex align-center gap-1 mt-1">
-                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
-                        <MudChip T="string" Size="Size.Small" Color="@(_lookupResult.Source == LookupSource.Jars ? Color.Primary : Color.Info)" Variant="Variant.Outlined" Style="height:18px;font-size:10px;padding:0 6px">@_lookupResult.Source.ToString().ToUpper()</MudChip>
-                        <MudText Typo="Typo.caption" Style="color:#16a34a">@_lookupResult.StatusLabel</MudText>
-                    </div>
-                }
-            </MudItem>
-            
-            <MudItem xs="12" md="6">
-                <MudTextField @key="@supplier.VatCode"
-                              Value="@supplier.VatCode"
-                              ValueChanged="@(async (string v) => { supplier.VatCode = v; await OnVatCodeChanged(); })"
-                              Label="PVM mokėtojo kodas"
-                              MaxLength="20"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
-            </MudItem>
+            @if (!supplier.IsIndividual)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.CompanyCode" Label="Įmonės kodas" 
+                                  MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" @key="supplier.CompanyCode" />
+                    @if (_lookupLoading)
+                    {
+                        <div class="d-flex align-center gap-1 mt-1">
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Ieškoma...</MudText>
+                        </div>
+                    }
+                    else if (_lookupResult != null && _lookupResult.Found)
+                    {
+                        <div class="d-flex align-center gap-1 mt-1">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                            <MudChip T="string" Size="Size.Small" Color="@(_lookupResult.Source == LookupSource.Jars ? Color.Primary : Color.Info)" Variant="Variant.Outlined" Style="height:18px;font-size:10px;padding:0 6px">@_lookupResult.Source.ToString().ToUpper()</MudChip>
+                            <MudText Typo="Typo.caption" Style="color:#16a34a">@_lookupResult.StatusLabel</MudText>
+                        </div>
+                    }
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @key="@supplier.VatCode"
+                                  Value="@supplier.VatCode"
+                                  ValueChanged="@(async (string v) => { supplier.VatCode = v; await OnVatCodeChanged(); })"
+                                  Label="PVM mokėtojo kodas"
+                                  MaxLength="20"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudItem>
+            }
+
+            @if (supplier.IsIndividual)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="supplier.NationalIdNumber" Label="Asmens kodas" 
+                                  MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            }
             
             <MudItem xs="12">
                 <MudTextField @bind-Value="supplier.Address" Label="Adresas" Lines="2" Variant="Variant.Outlined" Margin="Margin.Dense" />
@@ -163,6 +175,10 @@
         supplier = Supplier ?? new Supplier
         {
             PartnerType = PartnerType.Supplier,
+            IsSupplier = true,
+            IsCustomer = false,
+            IsExpenseSupplier = false,
+            IsIndividual = false,
             PaymentTermDays = 30,
             DefaultVatRate = 0m,
             DefaultLanguage = "lt",
