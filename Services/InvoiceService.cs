@@ -473,8 +473,10 @@ namespace NordicBeesERP.Services
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.BusinessPartners
                 .Where(bp => bp.IsActive &&
-                             (bp.PartnerType == PartnerType.Customer ||
-                              bp.PartnerType == PartnerType.Both))
+                             (bp.IsCustomer
+                              || (bp.IsCustomer == false && bp.IsSupplier == false && bp.IsExpenseSupplier == false
+                                  && (bp.PartnerType == PartnerType.Customer
+                                      || bp.PartnerType == PartnerType.Both))))
                 .GroupJoin(
                     context.Invoices,
                     bp => bp.Id,
@@ -623,7 +625,9 @@ namespace NordicBeesERP.Services
             
             // Get customer associated with this ERP user
             return await context.BusinessPartners
-                .Where(bp => bp.PartnerType == PartnerType.Customer)
+                .Where(bp => bp.IsCustomer
+                             || (bp.IsCustomer == false && bp.IsSupplier == false && bp.IsExpenseSupplier == false
+                                 && bp.PartnerType == PartnerType.Customer))
                 .Select(bp => bp.Id)
                 .FirstOrDefaultAsync();
         }
