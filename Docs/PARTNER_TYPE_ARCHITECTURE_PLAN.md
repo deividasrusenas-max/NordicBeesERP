@@ -417,3 +417,40 @@ rankiniu būdu nepataisysi.
 į `IsIndividual` (Ūkininkai/Įmonės) + `IsSupplier` (Visi bazė).
 `Customers.razor` jau atitinka standartą per servisų sluoksnį, papildomo
 darbo nereikia.
+
+---
+
+## 11. 3 ETAPO 2 RAUNDAS ĮVYKDYTAS — PHASE 3 PILNAI BAIGTAS (2026-09-06, v0.17.52)
+
+`Suppliers.razor` `FilteredSuppliers` — 4 predikato eilutės pakeistos
+iš `NationalIdNumber`/`CompanyCode` euristikos į `IsIndividual`/`!IsIndividual`.
+Commit `911bdbf`, bump `07fc842` (v0.17.52). `dotnet test` praėjo 45/45
+ABIEM DB kontekstais (su ir be `TEST_DB_CONNECTION`). Reviewer patvirtino
+pagal tikrą `git diff` — tik 4 eilutės pakeistos, niekas kitas neliestas.
+
+**Rastas ir ištaisytas proceso trukumas (ne kodo klaida):** Round 2
+verifikacija atskleidė, kad ankstesnėje sesijoje backfill SQL buvo
+paleistas TIK prieš PROD (per `lakstena-dev` SSH) — DEV (100.110.26.80)
+gavo TIK schema pakeitimą (`dotnet ef database update`), niekada negavo
+pačių `UPDATE` duomenų. DEV visi 188 įrašai turėjo `is_*=0`. Ištaisyta
+2026-09-06 — backfill paleistas tiesiogiai prieš DEV (per `mysql_query`
+įrankį), rezultatas: 89 customer, 54+34 supplier (iš jų 54 individual),
+11 expense_supplier — iš viso 188, jokio praradimo. DEV niekada negavo
+Phase 0 sujungimo (sąmoningai, pagal žmogaus nurodymą "dev tik
+testiniai duomenys") — todėl DEV neturi jokių `both`-tipo įrašų, tai
+laukiama, ne klaida.
+
+**PHASE 3 STATUSAS: BAIGTAS.** Visų 3 dialogų (Supplier Edit/Create,
+Customer Create) flag UI + rašymo keliai + sąrašų tab filtrai dabar
+pilnai veikia per naujus `Is*` laukus abiejose (DEV+PROD) aplinkose.
+
+**Lieka (sąmoningai atidėta arba rankinis darbas, ne skubu):**
+- Round 3: dialogų unifikacija į vieną `PartnerEditDialog.razor`
+- Cleanup etapas: seno `PartnerType` stulpelio pašalinimas (po stabilaus
+  gamybos ciklo)
+- Expense flow: kategorijos pasikeitimo pasiūlymo funkcija (3.3 skyriaus
+  verslo taisyklė, dar neparasyta)
+- Rankiniai duomenų pataisymai: Vaidas Arbutavičius `is_individual`,
+  Tomo/Aurimo bendras asmens kodas
+- `__EFMigrationsHistory` sinchronizavimas tarp DEV/PROD/test aplinkų
+  (bookkeeping tvarka)
