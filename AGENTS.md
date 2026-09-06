@@ -30,21 +30,17 @@ Windows PowerShell note: if `npx` or `npm` is blocked by the `.ps1` shim policy,
 
 **FAILURE TO RUN THIS COMMAND = INCOMPLETE WORK.**
 
-## MANDATORY: Task Contract
+## Task Contract — planned, never implemented (do not re-introduce without a real mechanism)
 
-If `.agent-guardrails/task-contract.json` exists:
-
-- **MUST** stay inside the declared scope (allowed paths, intended files).
-- **MUST** run the required commands listed in the contract.
-- **MUST** update `.agent-guardrails/evidence/current-task.md` with commands run, notable results, and residual risk.
-
-If no contract exists and the task is non-trivial, **MUST** run:
-
-```bash
-agent-guardrails plan --task "<task description>"
-```
-
-Then implement inside the generated contract.
+A `.agent-guardrails/task-contract.json`-based scoping mechanism was planned
+here but never actually built: `find .agent-guardrails -name task-contract.json`
+and a grep across 300+ `.opencode/reports/*.md` and all of `Docs/` both return
+zero hits (2026-09-06 audit) — the file has never once existed on disk, and
+`agent-guardrails plan` has never been observed generating one. Removed the
+MANDATORY section describing it so a future session doesn't waste time looking
+for a mechanism that isn't there. If per-task scope contracts are wanted again,
+they need to be actually wired up (and evidenced by real generated files) before
+being documented as MANDATORY here.
 
 ## MANDATORY: Working Rules
 
