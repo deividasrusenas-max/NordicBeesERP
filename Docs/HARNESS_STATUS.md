@@ -292,6 +292,70 @@ reference. See the harness-optimization-plan.md conversation for context.
 
 ---
 
+## §15a. Items 12-14 completed (2026-09-06, later same day) — circuit
+    breaker is live
+
+Follow-up pass, same day as §15 above. Full design and evidence:
+`.opencode/planning/circuit-breaker-and-semgrep-plan.md`.
+
+**Item 12 — loop circuit-breaker, live**: `.opencode/plugin/nordicbees-circuit-breaker.ts`
+(commit `ca996f7`) subscribes to `message.part.updated` tool parts (the
+same mechanism already proven in `.opencode/reports/abort-smoke.log`,
+2026-09-05) and calls `client.session.abort()` on a subagent session
+showing a same-tool-streak of 8 or an identical-args-streak of 3
+consecutive calls, with a high (1000) absolute-ceiling backstop. Detection
+is deliberately repetition-based, not a bare raw-count threshold — real
+`task-stats.jsonl` data showed one genuinely-completed task at 748 tool
+calls, higher than every one of 18 confirmed-stuck/interrupted sessions
+(max 229) in the same dataset, so a raw threshold couldn't reliably
+separate the two distributions.
+
+Scoped to subagent sessions only (`session.created` with `parentID`
+present) — the orchestrator's own top-level session is never tracked or
+abortable, regardless of its own tool-call pattern. This scoping gap was
+caught in review before implementation, not after.
+
+**Empirically validated before finalizing** (not just designed and
+shipped): a live `opencode run --agent orchestrator --print-logs
+--log-level DEBUG` test run, with temporary debug logging since removed,
+delegated a real read-only Mode-B check to `reviewer`. Confirmed via the
+real server log (not just the plugin's own output) that the reviewer
+subagent's `session.created` event carried `parentID=<orchestrator
+session>` exactly as designed, and — across a run that included multiple
+reviewer turns and a compaction cycle — zero cases of a
+`message.part.updated` event arriving for a session that hadn't already
+been registered via `session.created`. Also confirmed `ToolPart.state`'s
+`input` field (not `raw`) is what's actually populated at `"completed"`
+status, validating the identical-args-hash design. The reviewer subagent's
+read-only constraint held throughout (`git status` clean after the test
+run, no stray edits).
+
+Resolves 6 BUGLOG.md loop-family entries (Status updated in each, NOT
+flipped to `stable` — waiting for a real clean exposure window):
+`post-completion-continue-loop`, `deadlock-constraint-conflict`,
+`idle-no-input-loop`, `plan-without-execution-gap`,
+`harness-blocked-state-not-terminated`,
+`self-diagnosed-loop-no-behavioral-stop`.
+
+**Item 13 — corrected, not just flipped**: `ef-linq-untranslatable-stringcomparison`'s
+two BUGLOG entries claimed semgrep enforcement wiring worked since
+2026-09-04. It didn't — the §15 pass above found and fixed two independent
+bugs in that wiring (a pre-commit hook path-resolution bug, and a
+`.semgrep.yml` include-syntax bug that crashed semgrep outright) that
+meant it never actually ran successfully until 2026-09-06. Corrected both
+entries' Status text rather than flipping to `stable` as originally
+proposed — real functioning enforcement has existed for less than a day.
+
+**Item 14 — new semgrep rule, tested before adding**:
+`nordicbees-enum-array-contains-in-linq-where` added to
+`.agent-guardrails/nordicbees-rules.yaml` (14th rule). Validated (not just
+proposed) against the real incident shape, the real fix, legitimate
+non-enum `.Contains()` calls, and the whole current codebase (118 files) —
+zero false positives, one true positive on the synthetic incident
+reproduction.
+
+---
+
 ## 0. READ THIS FIRST — current state in one paragraph
 
 The harness was consolidated from a messy 4-tool-era setup (Kilo Code +
