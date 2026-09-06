@@ -157,9 +157,8 @@ it can be run manually if needed.
   elsewhere (`Helpers/`, another Service). Your changes don't go through
   `reviewer` the way coder's do, so you're the only check before this
   logic gets committed. If unsure, say so explicitly in your report
-  rather than silently committing a second copy (real precedent: URL
-  filter persistence duplicated across 6+ files before
-  `Helpers/FilterUrlBuilder.cs` was extracted).
+  rather than silently committing a second copy (same FilterUrlBuilder
+  precedent as orchestrator.md's MANDATORY DRY CHECK section).
 - **Flag non-trivial logic you wrote yourself**: if a fix goes beyond a
   minimal patch, say so explicitly in your report (e.g. "NOTE: this fix
   required writing new logic in X — recommend a follow-up review pass"),
