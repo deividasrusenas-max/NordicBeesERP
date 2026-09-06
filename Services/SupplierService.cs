@@ -288,8 +288,9 @@ namespace NordicBeesERP.Services
                         phone = {9}, email = {10}, bank_account = {11}, payment_term_days = {12},
                         default_language = {13}, default_vat_rate = {14}, notes = {15}, is_active = {16},
                         default_expense_category_id = {17}, is_customer = {18}, is_supplier = {19},
-                        is_expense_supplier = {20}, is_individual = {21}, updated_at = {22}
-                    WHERE id = {23}",
+                        is_expense_supplier = {20}, is_individual = {21}, vat_verified = {22},
+                        vat_verified_at = {23}, vat_verified_name = {24}, updated_at = {25}
+                    WHERE id = {26}",
                     (supplier.IsCustomer || supplier.IsSupplier || supplier.IsExpenseSupplier
                         ? PartnerRoleFlagsHelper.DeriveFromFlags(supplier.IsCustomer, supplier.IsSupplier, supplier.IsExpenseSupplier)
                         : supplier.PartnerType).ToString().ToLower(),
@@ -314,6 +315,9 @@ namespace NordicBeesERP.Services
                     supplier.IsSupplier,
                     supplier.IsExpenseSupplier,
                     supplier.IsIndividual,
+                    supplier.VatVerified,
+                    supplier.VatVerifiedAt,
+                    supplier.VatVerifiedName,
                     DateTime.Now,
                     supplier.Id);
                 return supplier;
@@ -351,6 +355,9 @@ namespace NordicBeesERP.Services
             partner.IsSupplier = supplier.IsSupplier;
             partner.IsExpenseSupplier = supplier.IsExpenseSupplier;
             partner.IsIndividual = supplier.IsIndividual;
+            partner.VatVerified = supplier.VatVerified;
+            partner.VatVerifiedAt = supplier.VatVerifiedAt;
+            partner.VatVerifiedName = supplier.VatVerifiedName;
             partner.SupplierFirstName = supplier.SupplierFirstName;
             partner.SupplierLastName = supplier.SupplierLastName;
             partner.NationalIdNumber = supplier.NationalIdNumber;
