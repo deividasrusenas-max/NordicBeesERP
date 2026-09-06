@@ -214,8 +214,8 @@
                 {
                     Group = "Partneriai",
                     Title = bp.Name,
-                    Subtitle = bp.PartnerType == PartnerType.Supplier ? "Tiekėjas" : "Klientas",
-                    Href = bp.PartnerType == PartnerType.Supplier ? "/suppliers" : "/customers"
+                    Subtitle = bp.IsCustomer && !bp.IsSupplier && !bp.IsExpenseSupplier ? "Klientas" : "Tiekėjas",
+                    Href = bp.IsCustomer && !bp.IsSupplier && !bp.IsExpenseSupplier ? "/customers" : "/suppliers"
                 })
                 .ToList();
 
