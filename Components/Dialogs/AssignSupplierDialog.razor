@@ -149,11 +149,9 @@
                 _pendingSupplierName = _invoice.PendingSupplierName ?? "";
                 _pendingSupplierVat = _invoice.PendingSupplierVat ?? "";
 
-                // Load suppliers: PartnerType in (ExpenseSupplier, Both) and IsActive=true
+                // Load suppliers: IsExpenseSupplier=true and IsActive=true
                 _suppliers = await context.BusinessPartners
-                    .Where(p => (p.PartnerType == PartnerType.ExpenseSupplier ||
-                                 p.PartnerType == PartnerType.Both) &&
-                                p.IsActive)
+                    .Where(p => p.IsExpenseSupplier && p.IsActive)
                     .OrderBy(s => s.Name)
                     .ToListAsync();
             }
@@ -269,9 +267,7 @@
         {
             await using var context = DbFactory.CreateDbContext();
             _suppliers = await context.BusinessPartners
-                .Where(p => (p.PartnerType == PartnerType.ExpenseSupplier ||
-                             p.PartnerType == PartnerType.Both) &&
-                            p.IsActive)
+                .Where(p => p.IsExpenseSupplier && p.IsActive)
                 .OrderBy(s => s.Name)
                 .ToListAsync();
         }
