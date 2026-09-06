@@ -114,7 +114,7 @@
         {
             await using var context = DbFactory.CreateDbContext();
             _suppliers = await context.BusinessPartners
-                .Where(p => p.PartnerType == PartnerType.ExpenseSupplier || p.PartnerType == PartnerType.Both || p.PartnerType == PartnerType.Supplier)
+                .Where(p => p.IsExpenseSupplier || p.IsSupplier)
                 .Select(p => new SupplierDto { Id = p.Id, Name = p.Name })
                 .ToListAsync();
         }
@@ -144,6 +144,8 @@
                     VatCode = _newSupplierVat,
                     Address = _newSupplierAddress,
                     PartnerType = PartnerType.ExpenseSupplier,
+                    IsExpenseSupplier = true,
+                    IsSupplier = false,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
