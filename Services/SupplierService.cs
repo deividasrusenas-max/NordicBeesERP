@@ -30,9 +30,12 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             var all = await context.BusinessPartners.ToListAsync();
-            var filtered = all.Where(bp => bp.PartnerType == Models.PartnerType.Supplier 
-                                         || bp.PartnerType == Models.PartnerType.Both
-                                         || bp.PartnerType == Models.PartnerType.ExpenseSupplier)
+            var filtered = all.Where(bp => bp.IsSupplier
+                                         || bp.IsExpenseSupplier
+                                         || (bp.IsSupplier == false && bp.IsCustomer == false && bp.IsExpenseSupplier == false
+                                             && (bp.PartnerType == Models.PartnerType.Supplier
+                                                 || bp.PartnerType == Models.PartnerType.Both
+                                                 || bp.PartnerType == Models.PartnerType.ExpenseSupplier)))
                               .ToList();
             var result = filtered.Select(bp => new Supplier
             {
@@ -74,9 +77,12 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             var all = await context.BusinessPartners.ToListAsync();
-            var filtered = all.Where(bp => bp.PartnerType == Models.PartnerType.Supplier 
-                                         || bp.PartnerType == Models.PartnerType.Both
-                                         || bp.PartnerType == Models.PartnerType.ExpenseSupplier)
+            var filtered = all.Where(bp => bp.IsSupplier
+                                         || bp.IsExpenseSupplier
+                                         || (bp.IsSupplier == false && bp.IsCustomer == false && bp.IsExpenseSupplier == false
+                                             && (bp.PartnerType == Models.PartnerType.Supplier
+                                                 || bp.PartnerType == Models.PartnerType.Both
+                                                 || bp.PartnerType == Models.PartnerType.ExpenseSupplier)))
                               .ToList();
             return filtered.Select(bp => new Supplier
             {
