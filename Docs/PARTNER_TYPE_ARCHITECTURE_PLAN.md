@@ -241,7 +241,88 @@ duomenų pasidalijimą tarp abiejų pusių.
 
 ---
 
-**Kitas žingsnis:** rašau investigation prompt'ą — ne dar kodo
-pakeitimų, o (a) pilną `PartnerType` naudojimo inventorių kode
-(kompiliatorius nepagaus raw SQL vietų) ir (b) paruoštą, žmogui
-skirtą sprendimų lentelę visoms 7 dublikatų poroms su pasiūlymu kiekvienai.
+**STATUSAS: 0 ETAPAS ĮVYKDYTAS (2026-09-04, PROD).** Visos 10 porų
+sėkmingai sujungtos tiesiai PROD DB (dev buvo praleistas pagal aiškų
+žmogaus sprendimą — "dev tik testiniai duomenys, negaištam laiko").
+
+Vykdymo eiga:
+1. OpenCode paruošė `.sql` draft'ą su visais 12 rastų FK/potencialių FK
+   ryšių (dev schemos pagrindu) — kiekvienas blokas su numatytu
+   `ROLLBACK`.
+2. Prieš vykdant, Claude palygino draft'ą su tiesioginiu PROD SELECT
+   patikrinimu — visi laukai/reikšmės sutapo, IŠSKYRUS tai, kad PROD
+   NETURI `supplier_approvals` lentelės (ji buvo tik dev schemoje).
+3. Pirmas vykdymo bandymas sustojo per `UPDATE supplier_approvals` (klaida
+   `1146: table doesn't exist`) — MariaDB automatiškai atšaukė
+   nebaigtą transakciją, jokių duomenų pažeidimų.
+4. `supplier_approvals` eilutės pašalintos iš scripto (`sed` filtru), likusios
+   10 lentelių patvirtintos kaip realiai egzistuojančios PROD schemoje.
+5. Antras vykdymas praėjo be klaidų. Visi 10 "pralaimėjusių" įrašų —
+   `is_active=0` su `[MERGED into id X]` pėdsaku `notes` lauke. Visi 7
+   customer/supplier survivor'iai — `partner_type='both'`. 3
+   supplier/supplier poros — tipas nepakeistas (teisingai). Visi backfill'ai
+   (national_id_number, phone, default_expense_category_id) patvirtinti
+   tiksliai atitinkantys.
+6. Sąskaitų FK perkėlimas patvirtintas: 12→3 (1+2), 65→3 (nepakito), 326→2
+   (1+1), 328→2 (1+1) — visi sutapo su prognozuotais skaičiais.
+
+**Neišspręsta, sąmoningai palikta atskiram sprendimui:** `326`
+(Tomas Balčiūnas) ir `328` (Aurimas Bernotas) vis dar dalinasi identišku
+`national_id_number` (`302905315`) IR identišku adresu/banko lauku
+("P. Širvio g. 3, Juodupė, Rokiškio raj." / "Paysera LT UAB") — tai rodo,
+kad vienas iš šių dviejų įrašų buvo sukurtas nukopijavus kitą kaip
+šabloną. Reikia atskirai surasti teisingus kiekvieno asmens duomenis.
+
+**Kitas žingsnis:** 1 etapas (role-flags schema migracija) gali prasidėti,
+kai žmogus nuspręs tęsti — pradedant investigation prompt'u pilnam
+`PartnerType` naudojimo inventoriui kode (šis inventorius jau iš dalies
+atliktas `.opencode/reports/partner-type-code-inventory-and-merge-brief-20260904-1700.md`,
+reikia tik atnaujinti pagal PROD schemą, ne dev).
+
+---
+
+## 8. 1 ETAPAS ĮVYKDYTAS IR PATVIRTINTAS (2026-09-06, PROD)
+
+### 8.1 Schema
+4 nauji stulpeliai (`is_customer`, `is_supplier`, `is_expense_supplier`,
+`is_individual`) pridėti prie `business_partners`:
+- **DEV**: `dotnet ef database update` — sėkmingai, migracija
+  `20260905201154_AddPartnerRoleFlags` užregistruota su `ProductVersion
+  8.0.0` (dev anomalija, nesvarbi vykdymui).
+- **PROD**: `dotnet ef` negalėjo pasiekti prod DB tiesiogiai iš Mac'o
+  (`127.0.0.1` iš Mac'o reikštų patį Mac'ą, ne `lakstena-dev`) —
+  pritaikyta rankiniu `ALTER TABLE` + rankinis `INSERT INTO
+  __EFMigrationsHistory` su `ProductVersion 10.0.0` (atitinka realias kitas
+  prod migracijas, patikrinta prieš vykdant).
+- Migracijos failas išvalytas nuo EF automatiškai sugeneruoto
+  `UpdateData` triukšmo (nesusijusių `artwork_brands`/`raw_material_types`
+  timestamp pakeitimų) prieš taikant — liko tik 4 `AddColumn`/`DropColumn`.
+- Senas `PartnerType` stulpelis NEpaliestas, kaip planuota.
+
+### 8.2 Backfill
+Paleista PROD per transakciją (numatytas `ROLLBACK`, patikrinta, tada
+`COMMIT`):
+- `IsCustomer`/`IsSupplier` — tiesioginis mapping iš `PartnerType`.
+- `IsExpenseSupplier` — enum reikšmė ARBA realus naudojimas
+  `expense_invoices.supplier_id` (išvengta 7.3 skyriuje rastos
+  spragos — vien enum'o nepakaktų).
+- `IsIndividual` — euristika pagal `national_id_number` buvimą.
+
+**Rezultatas (PROD, po backfill):** 207 partneriai iš viso, jokio
+praradimo/dubliavimo (89+49+32+26+6+4+1 = 207, sutampa su prieš
+migraciją buvusiu 95+93+19). Visi 7 Phase 0 metu sujungti partneriai
+sėkmingai gavo `is_customer=1 AND is_supplier=1`.
+
+**Pastebėjimas kitam žingsniui:** Vaidas Arbutavičius (id 65) gavo
+`is_individual=0`, nes nė vienoje iš dviejų (dabar sujungtų) įrašo pusių
+niekada nebuvo užpildytas `national_id_number`. Jei jis realiai yra
+fizinis asmuo/ūkininkas, reikės rankiniu būdu patikslinti Phase 2/3 UI
+dialoguose.
+
+### 8.3 Kitas žingsnis — 2 Etapas (servisų sluoksnis)
+`CustomerService.cs`, `SupplierService.cs`, `ExpenseService.cs` dar
+SKAITO tik iš seno `PartnerType` — nauji laukai kol kas tik egzistuoja
+DB, bet joks kodas jų nenaudoja. Kitas investigation+build ciklas:
+perjungti servisų sluoksnį skaityti iš naujų boolean laukų (su fallback'u
+į seną `PartnerType`, kol UI dialogai dar jų neraso), tada UI sąrašų
+filtrus (3.2 skyrius), tada vieningą dialogą (4.1 skyrius).

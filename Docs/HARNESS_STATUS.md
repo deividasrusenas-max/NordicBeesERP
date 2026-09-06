@@ -5,6 +5,193 @@ everything from scratch or performing worse than this session did.)
 
 ---
 
+## §13. UNAUDITED: skill-injection plugin quality (found 2026-09-05, NOT fixed)
+
+### The honest gap this section exists to close
+
+A prior session (2026-09-04/05) did substantial harness hardening:
+BUGLOG.md discipline, semgrep CI wiring, n_toolcalls tracking, a
+confirmed-working loop circuit-breaker (`client.session.abort()` +
+an orchestrator rule that any "Task cancelled" result is ALWAYS
+BLOCKED, never treated as completed — see the orchestrator.md
+"Error handling" section, commit `c3aa302`), and closed all 8 remaining
+HIGH-stakes BUGLOG error classes with real guardrails.
+
+That session's summary described the harness as "sutvarkyta" (sorted
+out) — **this was true only for the specific items on that session's
+worklist, not a full audit of every harness mechanism.** In particular,
+`.opencode/plugin/nordicbees-skill-inject.ts` was read once, early in
+that session, ONLY to confirm a factual claim in orchestrator.md
+("git-workflow-nordicbees and llm-code-quality-gate are force-injected
+for every reviewer call" — confirmed true). **Its regex rules' quality,
+specificity, and correctness were never evaluated.** This section
+documents a real problem found in that plugin during a LATER session,
+still unfixed.
+
+### The concrete finding
+
+While reviewing a live orchestrator→coder delegation for a one-file
+migration cleanup task (touching only
+`Migrations/20260905201154_AddPartnerRoleFlags.cs`), the coder's actual
+prompt was inspected. It contained, injected as `<forced-skill-injection>`
+blocks:
+
+- `mudblazor` — irrelevant, no `.razor` file involved
+- `dotnet-efcore-nordicbees` — relevant, but **injected TWICE, in full,
+  verbatim, as two separate blocks in the same prompt**
+- `verify-before-done` — irrelevant (no Service-layer DB write, this is
+  a migration file edit)
+- `playwright-e2e-nordicbees` — irrelevant, no UI/browser testing task
+- `crud-completeness` — irrelevant, **also injected twice**
+- `llm-code-quality-gate` — legitimately always-on, fine
+
+Only `dotnet-efcore-nordicbees` (once) was actually needed for this
+task. The rest is pure token waste — six large skill files, two of them
+duplicated, injected into a prompt whose real, useful instruction was
+~15 lines at the very end.
+
+### Two separate problems to fix
+
+1. **Duplication bug (fix first, mechanical, low-risk):**
+   `dotnet-efcore-nordicbees` and `crud-completeness` were injected
+   TWICE each in the same delegation. Read
+   `.opencode/plugin/nordicbees-skill-inject.ts` in full and determine
+   the root cause — likely candidates: the plugin's hook fires more
+   than once per delegation (e.g. both a `tool.execute.before` AND some
+   other hook independently matching the same regex), or the RULES
+   array has two separate regex entries that both match the same
+   delegation text and neither de-dupes against skills already queued
+   for injection in the same call. Fix so each matched skill is injected
+   at most once per delegation, regardless of how many regex rules
+   matched it.
+
+2. **Over-broad regex matching (fix second, needs judgment, higher-risk
+   of breaking legitimate matches if done carelessly):** `mudblazor`,
+   `verify-before-done`, and `playwright-e2e-nordicbees` all fired for a
+   task that touched only a `.cs` migration file with zero UI/Service
+   involvement. Read the RULES array and determine what pattern(s)
+   matched — likely something broad like a generic "database"/
+   "migration"/"schema" keyword match that doesn't actually check the
+   target file's extension or path. Tighten each rule to match on
+   actual file-type/path signals (e.g. `mudblazor` should require a
+   `.razor` path in the delegation's "Read"/"Implement" file list, not
+   just the word "component" or similar appearing anywhere in the text).
+   Before changing any regex, write down what SHOULD trigger each skill
+   (a short truth table: skill → file-type/keyword that should trigger
+   it) and verify the current regex against that table, rather than
+   guessing a fix and hoping it's narrower without checking it's still
+   correctly broad enough for genuine cases.
+
+### Verification approach for whichever session picks this up
+
+1. Fix the duplication bug first (mechanical, should be easy to confirm
+   fixed: same test delegation as above should show each skill at most
+   once).
+2. For the over-broad-matching fix, don't just eyeball the regex —
+   construct a small set of test delegation strings (a `.razor` file
+   task, a `.cs` Service-layer task, a migration-only task, a raw-SQL
+   reader task) and manually trace which regex rules SHOULD fire for
+   each, before touching any pattern. Then run the actual plugin logic
+   (or a standalone Node script requiring the same regex constants)
+   against those test strings to confirm actual vs. expected.
+3. This is a good candidate for a NEW BUGLOG.md entry once fixed:
+   `Error class: skill-injection-duplicate-and-overbroad-match`,
+   `Category: harness`, since it's a process/infra defect, not an
+   application bug — consistent with how this file already treats
+   harness-process defects as legitimate BUGLOG entries (see the
+   existing `reviewer-self-approval`, `context-loss-compaction`-style
+   entries elsewhere in Docs/BUGLOG.md).
+
+### Broader open question this raises — flag to the user, don't silently decide
+
+The user asked, on discovering this: "why is this not already fixed if
+the harness was 'sutvarkyta'?" The honest answer (recorded here so the
+next session doesn't have to re-derive it): prior hardening work was
+done against a **specific worklist** (BUGLOG risk audit findings, a
+known circuit-breaker gap), not a **systematic, mechanism-by-mechanism
+audit of the entire `.opencode/plugin/` and `.opencode/plugins/`
+directory**. It is plausible other plugins/mechanisms have similar
+unaudited quality issues. Whether to now do a full systematic audit of
+every plugin (not just skill-inject) is a scope decision for the user
+to make explicitly at the start of the next session — don't assume the
+answer and don't silently expand scope beyond what's asked.
+
+---
+
+## §14. CORRECTED (2026-09-06): the "repeated wrong skill-name loop" and subsequent "hallucinating file paths" incidents were a llama-swap CONFIG FILE corruption, NOT a sampling or model problem
+
+### What this section originally claimed (now known wrong)
+
+An earlier version of this section claimed a real production loop
+incident proved GPU-side sampling fixes (DRY/repeat_penalty) were
+insufficient, and prioritized wiring the circuit-breaker's
+abort-on-threshold logic as the fix. That framing was WRONG. Keeping
+this note so a future session doesn't waste time re-deriving the
+sampling angle from the original (misleading) incident description
+below.
+
+### What actually happened, found after further live debugging
+
+During the same session, after DRY/repeat_penalty parameters were added
+to `coder`/`fixer` in `llama-swap-config.yaml` on the GPU server, an
+assistant-provided "full config restore" snippet accidentally omitted
+the file's `models:` and `groups:` top-level keys (it only contained
+the three `coder`/`fixer`/`reviewer` model blocks, unindented, meant as
+a partial excerpt but pasted by the user as a full-file replacement).
+This silently corrupted `llama-swap-config.yaml`'s structure. After
+restart, `llama-swap` returned `{"error":"no router for requested
+model","src":"llama-swap"}` / HTTP 404 for every `/v1/chat/completions`
+call to `coder`/`fixer`/`reviewer`.
+
+The bizarre-looking "hallucinated" file paths seen in the OpenCode
+session transcript (`noBrrbee-erp`, `NOBraBeeErP`, escalating to
+nonsensical dates like "2116") were NOT the model generating anything
+— they were the OpenCode client's own retry/fallback behavior reacting
+to a stream of 404/"no router" errors from every real inference
+attempt. A direct raw `curl -X POST .../v1/chat/completions` against
+`coder` during this window would have shown the 404 immediately; this
+was confirmed AFTER the fact once the config was repaired (a `curl`
+before repair reproduced the exact `"no router for requested model"`
+error; the identical call after repairing and restarting returned a
+normal completion).
+
+**Fix applied:** the full, correct `llama-swap-config.yaml` (all 6
+models: `coder`, `uncensored`, `fixer`, `reviewer`, `vl-ocr`, `general`,
+plus the `groups:`/`healthCheckTimeout`/etc. top-level keys) was
+rewritten from a known-good copy and the service restarted. Verified via
+`python3 -c "import yaml; ..."` (all 6 model keys present) and a real
+`curl -X POST /v1/chat/completions` against `coder` returning a normal
+completion.
+
+### What remains true and still open (unaffected by this correction)
+
+- The DRY/repeat_penalty sampling parameters ARE still present on
+  `coder`/`fixer` as of this writing — they were never proven harmful,
+  only wrongly blamed for a config-file bug. No action needed on them
+  unless a genuine, config-verified sampling-related repetition issue
+  is found later.
+- §13 (skill-injection duplication/over-broad-matching bug) is UNRELATED
+  to this incident and remains open — still worth fixing.
+- The circuit-breaker abort-on-threshold wiring (mentioned in the
+  now-corrected original §14) may still be worth finishing on its own
+  merits (genuine in-session model loops, distinct from this incident,
+  were separately confirmed possible via `client.session.abort()` in an
+  earlier session) — but this specific incident is no longer evidence
+  for its urgency, since it wasn't actually a model-loop scenario at all.
+
+### Lesson for how config changes are communicated/applied in future sessions
+
+When providing a "full file" replacement for any config file, always
+paste the ACTUAL complete file content (verified against the last known
+good full copy), never a partial excerpt implicitly assumed to be
+understood as partial — a partial snippet pasted as a full-file
+replacement is a silent, structurally-valid-looking YAML corruption
+that produces confusing, hard-to-diagnose downstream symptoms (routing
+errors that get misattributed to model/sampling behavior) rather than
+an obvious immediate error.
+
+---
+
 ## 0. READ THIS FIRST — current state in one paragraph
 
 The harness was consolidated from a messy 4-tool-era setup (Kilo Code +

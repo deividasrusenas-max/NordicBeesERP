@@ -119,6 +119,18 @@ namespace NordicBeesERP.Models
         [Column("partner_type")]
         public PartnerType PartnerType { get; set; }
 
+        [Column("is_customer")]
+        public bool IsCustomer { get; set; }
+
+        [Column("is_supplier")]
+        public bool IsSupplier { get; set; }
+
+        [Column("is_expense_supplier")]
+        public bool IsExpenseSupplier { get; set; }
+
+        [Column("is_individual")]
+        public bool IsIndividual { get; set; }
+
         [Required]
         [MaxLength(255)]
         [Column("name")]

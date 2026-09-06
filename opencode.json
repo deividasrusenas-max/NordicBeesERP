@@ -472,10 +472,7 @@
       "wc *": "allow"
     },
     "doom_loop": "allow",
-    "external_directory": {
-      "/tmp/*": "allow",
-      "/tmp/ApiCheck/*": "allow"
-    },
+    "external_directory": "allow",
     "glob": "allow",
     "grep": "allow",
     "list": "allow",
