@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// This file lives at <repoRoot>/.githooks/pre-commit (tracked; wired via
+// `git config core.hooksPath .githooks`) — repoRoot is exactly ONE level
+// up from here. The prior untracked .git/hooks/pre-commit version used
+// THREE levels of ".." (correct for a script physically at
+// <repoRoot>/.git/hooks/pre-commit), which is one level too many for this
+// tracked location — carry that fixed math forward if this file is ever
+// moved again.
+const repoRoot = path.resolve(__dirname, "..");
+const configPath = path.join(repoRoot, ".agent-guardrails", "config.json");
+
+if (!existsSync(configPath)) {
+  process.exit(0);
+}
+
+try {
+  // Points directly at the real rules file, not .semgrep.yml — confirmed
+  // (2026-09-06) that .semgrep.yml's `rules: [path]` include syntax
+  // crashes semgrep 1.169.0 outright; see .semgrep.yml's own comment.
+  execFileSync("semgrep", ["scan", "--config=.agent-guardrails/nordicbees-rules.yaml", "--error"], {
+    cwd: repoRoot,
+    stdio: "inherit"
+  });
+} catch (err) {
+  process.stderr.write("\n🔍 Semgrep scan failed.\n");
+  process.stderr.write("Fix the findings or skip with: git commit --no-verify\n\n");
+  process.exit(1);
+}
+
+try {
+  execFileSync("npx", ["agent-guardrails", "check", "--base-ref", "HEAD~1"], {
+    cwd: repoRoot,
+    stdio: "inherit"
+  });
+  process.exit(0);
+} catch (err) {
+  process.stderr.write("\n🛡️  Guardrail check failed.\n");
+  process.stderr.write("Fix the issues or skip with: git commit --no-verify\n\n");
+  process.exit(1);
+}

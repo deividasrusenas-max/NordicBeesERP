@@ -68,5 +68,8 @@ jobs:
       - name: Run Semgrep scan
         run: |
           pip install semgrep
-          semgrep scan --config=.semgrep.yml --error
+          # Points directly at the real rules file, not .semgrep.yml — confirmed
+          # (2026-09-06) that .semgrep.yml's `rules: [path]` include syntax
+          # crashes semgrep outright; see .semgrep.yml's own comment.
+          semgrep scan --config=.agent-guardrails/nordicbees-rules.yaml --error
 

@@ -11,6 +11,27 @@ Before writing ANY code, you MUST read:
 
 Skipping this step is a RULE VIOLATION.
 
+## One-time machine setup: local pre-commit hook
+
+The local pre-commit enforcement (semgrep + `agent-guardrails check`) lives at
+the tracked path `.githooks/pre-commit`, not `.git/hooks/pre-commit` — `.git/`
+is never part of a checked-out tree, so a hook placed only there silently does
+not exist after a fresh clone. On a new machine (including the planned
+bare-metal Ubuntu move), run once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+**Before enabling this**, be aware it currently blocks on pre-existing findings
+in `Tests/*.cs` (`nordicbees-notracking-savechanges` firing on legitimate xUnit
+test setup code) — confirmed 2026-09-06 by running the hook standalone. It was
+NOT enabled by default as part of this fix specifically to avoid silently
+blocking every future commit on an unrelated, untriaged finding — decide how to
+handle those first (fix the test pattern, or add a scoped exclusion), then run
+the command above. CI (`.github/workflows/hardcode-check.yml`) already runs the
+same scan on every push regardless of whether this local hook is enabled.
+
 ## MANDATORY: Guardrail Check Before Finishing
 
 **NEVER tell the user "task done" without running this command:**

@@ -1,2 +1,19 @@
-rules:
-  - .agent-guardrails/nordicbees-rules.yaml
+# Intentionally NOT a real rule list. This file previously used
+# `rules: [.agent-guardrails/nordicbees-rules.yaml]` to include the project's
+# real custom rules by path — confirmed (2026-09-06) that this crashes
+# semgrep 1.169.0 outright with `ValueError: unroll_dict called but object
+# was actually str`, because semgrep's `rules:` list expects rule OBJECTS,
+# not path strings; there is no such file-inclusion feature. This was never
+# actually verified working when it was added (the wiring report explicitly
+# said so — "I could not execute semgrep scan myself... that will be proven
+# on first CI run / local commit" — it never was, until now).
+#
+# The real rules live at .agent-guardrails/nordicbees-rules.yaml — every
+# invocation (CI, pre-commit hook, manual) should point --config directly
+# at that file, not at this one. This file is kept as a harmless, valid
+# no-op (rather than deleted) only so a bare `semgrep scan` with no
+# --config flag (which auto-loads .semgrep.yml by convention) doesn't
+# crash — it will simply find zero rules from this file, which is
+# correct: use --config .agent-guardrails/nordicbees-rules.yaml explicitly
+# instead of relying on auto-discovery of this file.
+rules: []
