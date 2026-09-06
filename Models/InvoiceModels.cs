@@ -102,6 +102,13 @@ namespace NordicBeesERP.Models
         public string? CountryCode { get; set; } = "LT";
         public string? Country { get; set; } = PdfLocalization.CountryLt;
         public string? Notes { get; set; }
+
+        // Role flag'ai (Phase 3) — atspindi BusinessPartner.Is* stulpelius
+        public bool IsCustomer { get; set; }
+        public bool IsSupplier { get; set; }
+        public bool IsExpenseSupplier { get; set; }
+        public bool IsIndividual { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         // Laikini laukai (ne duomenų bazėje)
