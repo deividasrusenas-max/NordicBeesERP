@@ -5,7 +5,7 @@ everything from scratch or performing worse than this session did.)
 
 ---
 
-## §13. UNAUDITED: skill-injection plugin quality (found 2026-09-05, NOT fixed)
+## §13. skill-injection plugin quality (found 2026-09-05; duplication bug FIXED 2026-09-06, see §15 — over-broad regex matching still open)
 
 ### The honest gap this section exists to close
 
@@ -52,7 +52,9 @@ duplicated, injected into a prompt whose real, useful instruction was
 
 ### Two separate problems to fix
 
-1. **Duplication bug (fix first, mechanical, low-risk):**
+1. **Duplication bug — FIXED 2026-09-06, see §15 for the confirmed root
+   cause and fix (an idempotency guard, same pattern as
+   `nordicbees-reminder.ts`).** Original analysis kept below for record:
    `dotnet-efcore-nordicbees` and `crud-completeness` were injected
    TWICE each in the same delegation. Read
    `.opencode/plugin/nordicbees-skill-inject.ts` in full and determine
@@ -189,6 +191,104 @@ replacement is a silent, structurally-valid-looking YAML corruption
 that produces confusing, hard-to-diagnose downstream symptoms (routing
 errors that get misattributed to model/sampling behavior) rather than
 an obvious immediate error.
+
+---
+
+## §15. Harness-optimization pass (2026-09-06) — executed
+   `.opencode/planning/harness-optimization-plan.md`, in order
+
+Full plan and evidence for every item below is in
+`.opencode/planning/harness-optimization-plan.md` (audited 2026-09-06) and
+`.opencode/planning/verify-plugin-enhancement.md` (the fixer-claim-check
+design, tested against real historical reports before being written). This
+section is the terse summary; read those two files for the "why", not this
+one. 9 commits, `harness-optimize-pre-20260906..HEAD`.
+
+**Fixed, live bugs (not just text cleanup):**
+- `nordicbees-skill-inject.ts` double-injection bug (§13's original finding)
+  — added an idempotency guard (`c7bdfea`). Root cause confirmed: the hook
+  re-scans already-injected text on a second firing, and the injected
+  wrapper/skill content still matches the same trigger keywords.
+- `.git/hooks/pre-commit` was untracked (would silently vanish on the
+  planned Ubuntu migration) AND, discovered while moving it, already
+  non-functional on this machine for two independent reasons: a
+  path-resolution bug (three `..` from the wrong location, meaning its
+  `.agent-guardrails/config.json` existence guard always failed and the
+  hook silently exited 0 without ever running semgrep/agent-guardrails
+  since 2026-09-04), and `.semgrep.yml`'s `rules: [path]` include syntax
+  crashing semgrep 1.169.0 outright (confirmed via direct testing — not a
+  documented semgrep feature). Fixed both; now tracked at
+  `.githooks/pre-commit` (`dd7a919`). **Deliberately left disabled**
+  (`core.hooksPath` not set) — the fixed hook correctly finds real,
+  untriaged pre-existing `nordicbees-notracking-savechanges` matches in
+  `Tests/*.cs` that would block every future commit repo-wide if enabled
+  now. One-time enable command + this caveat documented in AGENTS.md.
+- Added fixer claim-vs-git-reality checks to `nordicbees-verify.ts`
+  (`ab55384`) — a successful build doesn't verify a cited commit hash is
+  real or a claimed mechanism (e.g. "added a foreign key") is actually in
+  the diff (BUGLOG `fixer-fabricated-implementation-claim`, 2026-08-26).
+  Three additive, fixer-only, annotate-not-block checks; validated against
+  4 real historical `.opencode/reports/*.md` files and their actual git
+  history before being written (see verify-plugin-enhancement.md) —
+  including one confirmed would-be false positive each caught and fixed
+  for the file-presence check and the mechanism-keyword check.
+
+**Deleted:**
+- `AGENTS.md`'s "MANDATORY: Task Contract" section (`127a3a8`) —
+  `.agent-guardrails/task-contract.json` has never once existed on disk
+  (confirmed: zero hits across `.agent-guardrails/` and 300+
+  `.opencode/reports/*.md`).
+
+**Migration-bug fixes, with one correction to the original plan mid-execution:**
+- `docs/PROJECT_STATE.md` → `Docs/PROJECT_STATE.md` casing fixed in
+  `AGENTS.md`/`orchestrator.md` (`174972e`). **The plan's proposed second
+  step — "delete the stray lowercase `docs/` directory" — was wrong and
+  was NOT executed**: verified via `ls -i`/`stat` that `docs/` and `Docs/`
+  are the SAME directory on this machine (APFS case-insensitive-but-
+  preserving), not two copies; deleting it would have deleted the real
+  `Docs/` tree. Only the two text references were fixed. Still a real
+  migration bug for case-sensitive Ubuntu ext4, just narrower than the
+  plan assumed — see the plan file's own corrected item 1 for detail.
+- `infra/llama-swap-config.yaml` — GPU-host config backup, pending (file
+  wasn't found at the path the user intended to save it to; will be added
+  in a follow-up once available — not blocking anything else in this pass).
+
+**Deduplicated** (items 8-11 of the plan, one commit each —
+`84e829d`/`31a6882`/`8ee720c`/`b5160b0`): the FilterUrlBuilder DRY-check
+incident story (4 files → 1 canonical + pointers), the bash no-chaining
+rule (moved to a new AGENTS.md canonical section), the relative-paths rule
+(verifier.md tightened), and orchestrator.md's restatement of fixer's own
+already-known build→commit→bump-version sequence (trimmed to just the two
+things fixer can't know on its own — skill choice and the commit message).
+Also reconciled a real found-along-the-way inconsistency: fixer.md's own
+commit-message example implied a hardcoded `P0a:` prefix, contradicting
+`git-workflow-nordicbees`'s documented `P0a:`-vs-`fix:`/`feat:`/`chore:`
+convention — fixer.md now says the prefix is whoever delegates the task's
+choice, not fixer's to invent.
+
+**Two dedup candidates from the original plan, downgraded to "keep" on
+closer reading** (not touched): `coder.md`'s relative-paths mention (it's
+actually Roslyn-tool-specific guidance, not a retelling of the incident),
+and `nordicbees-reminder.ts` (a deliberate compensating mechanism for weak
+local-model middle-of-prompt attention, not blind duplication — removing
+it would be a real regression, not a cleanup).
+
+**Net size effect — read this before assuming dedup shrank the harness**:
+AGENTS.md + the 7 prompt files went from 105,428 bytes to 105,477 bytes
+(`wc -c`, tag `harness-optimize-pre-20260906` vs. current) — essentially
+flat, marginally larger. AGENTS.md grew (+2,089 bytes: the new canonical
+bash-syntax section, the task-contract dead-end note, the pre-commit setup
+note) by more than the prompt files shrank combined (-2,040 bytes across
+5 files). This matches the plan's own verdict exactly: the value delivered
+here was fixing live bugs and removing duplicate *maintenance burden* (one
+source of truth instead of three or four), not reducing raw byte count —
+anyone measuring this pass by KB saved will conclude it did nothing; that
+would be the wrong metric.
+
+**Not done, explicitly paused pending your decision**: Step 6 (AGENTS.md
+role-relevance trim / possible split into per-role files) — needs a
+decision on granularity before touching file structure other tooling may
+reference. See the harness-optimization-plan.md conversation for context.
 
 ---
 
