@@ -218,8 +218,11 @@ namespace NordicBeesERP.Services
             
             customer.UpdatedAt = DateTime.Now;
             
-            // Konvertuoti PartnerType string į enum
-            PartnerType partnerType = ParsePartnerType(customer.PartnerType);
+            // Konvertuoti PartnerType: jei nustatytas bent vienas vaidmens ženklas,
+            // partner_type išvedamas iš ženklų; kitaip — senoji string analizė
+            PartnerType partnerType = (customer.IsCustomer || customer.IsSupplier || customer.IsExpenseSupplier)
+                ? PartnerRoleFlagsHelper.DeriveFromFlags(customer.IsCustomer, customer.IsSupplier, customer.IsExpenseSupplier)
+                : ParsePartnerType(customer.PartnerType);
             
             if (customer.Id == 0)
             {
@@ -245,6 +248,10 @@ namespace NordicBeesERP.Services
                     DefaultVatRate = customer.DefaultVatRate,
                     Notes = customer.Notes,
                     IsActive = customer.IsActive,
+                    IsCustomer = customer.IsCustomer,
+                    IsSupplier = customer.IsSupplier,
+                    IsExpenseSupplier = customer.IsExpenseSupplier,
+                    IsIndividual = customer.IsIndividual,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -278,8 +285,12 @@ namespace NordicBeesERP.Services
                         default_vat_rate = {14},
                         notes = {15},
                         is_active = {16},
-                        updated_at = {17}
-                    WHERE id = {18}",
+                        is_customer = {17},
+                        is_supplier = {18},
+                        is_expense_supplier = {19},
+                        is_individual = {20},
+                        updated_at = {21}
+                    WHERE id = {22}",
                     partnerType.ToString().ToLower(),
                     customer.Name,
                     customer.CompanyCode,
@@ -297,6 +308,10 @@ namespace NordicBeesERP.Services
                     customer.DefaultVatRate,
                     customer.Notes,
                     customer.IsActive,
+                    customer.IsCustomer,
+                    customer.IsSupplier,
+                    customer.IsExpenseSupplier,
+                    customer.IsIndividual,
                     DateTime.Now,
                     customer.Id);
 
