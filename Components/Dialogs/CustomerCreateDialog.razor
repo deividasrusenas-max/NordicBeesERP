@@ -15,13 +15,12 @@
     <DialogContent>
         <MudGrid>
             <MudItem xs="12">
-                <MudSelect T="string" @bind-Value="customer.PartnerType" Label="Partnerio tipas" Required="true"
-                           Variant="Variant.Outlined" Margin="Margin.Dense">
-                    <MudSelectItem T="string" Value="@("Customer")">Klientas</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Supplier")">Tiekėjas</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Both")">Abu (Klientas ir Tiekėjas)</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("ExpenseSupplier")">Išlaidų tiekėjas</MudSelectItem>
-                </MudSelect>
+                <div class="d-flex flex-wrap gap-3">
+                    <MudSwitch @bind-Value="customer.IsCustomer" Label="Klientas" Color="Color.Success" Variant="Variant.Outlined" />
+                    <MudSwitch @bind-Value="customer.IsSupplier" Label="Tiekėjas" Color="Color.Success" Variant="Variant.Outlined" />
+                    <MudSwitch @bind-Value="customer.IsExpenseSupplier" Label="Išlaidų tiekėjas" Color="Color.Success" Variant="Variant.Outlined" />
+                    <MudSwitch @bind-Value="customer.IsIndividual" Label="Fizinis asmuo / ūkininkas" Color="Color.Success" Variant="Variant.Outlined" />
+                </div>
             </MudItem>
             
             <MudItem xs="12">
@@ -197,6 +196,7 @@
         customer = Customer ?? new Customer
         {
             PartnerType = "Customer",
+            IsCustomer = true,
             PaymentTermDays = 30,
             DefaultVatRate = 0m,
             DefaultLanguage = "lt",
