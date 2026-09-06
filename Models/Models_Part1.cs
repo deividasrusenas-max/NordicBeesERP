@@ -144,6 +144,16 @@ namespace NordicBeesERP.Models
         [Column("vat_code")]
         public string? VatCode { get; set; }
 
+        [Column("vat_verified")]
+        public bool? VatVerified { get; set; }        // null = never checked, true = valid, false = confirmed invalid
+
+        [Column("vat_verified_at")]
+        public DateTime? VatVerifiedAt { get; set; }
+
+        [MaxLength(255)]
+        [Column("vat_verified_name")]
+        public string? VatVerifiedName { get; set; }  // official registered name from VIES
+
         [Column("address")]
         public string? Address { get; set; }
 
