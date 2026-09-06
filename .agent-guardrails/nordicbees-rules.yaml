@@ -329,3 +329,24 @@ rules:
       # currency codes (EUR), ISO date format patterns (yyyy-MM-dd etc.), or
       # short tokens like "N2" that happen to contain a 3-letter run.
       - pattern-not-regex: '\.Text\(\s*"(?:EUR|USD|[A-Z]{3}|[0-9][^"]{0,10}|yyyy[^"]*|MM[^"]*|dd[^"]*)"\s*\)'
+
+  - id: nordicbees-enum-array-contains-in-linq-where
+    languages: [csharp]
+    severity: WARNING
+    message: >
+      Array/list built from enum literals (e.g. new[] { Status.A, Status.B })
+      then checked with .Contains() inside an EF Core LINQ Where()/Any()/All()
+      predicate triggers a known .NET runtime interpreter bug (ReadOnlySpan<TEnum>
+      parameter extraction). See Docs/FROZEN.md #10 / BUGLOG.md
+      enum-array-contains-readonlyspan-interpreter-bug (2026-08-29). Replace with
+      explicit != comparisons chained together.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              var $ARR = new[] { $ENUM.$V1, $ENUM.$V2, ... };
+              ...
+              $Q.Where($X => $ARR.Contains($X.$PROP));
+          - pattern: |
+              var $ARR = new $T[] { $ENUM.$V1, $ENUM.$V2, ... };
+              ...
+              $Q.Where($X => $ARR.Contains($X.$PROP));
