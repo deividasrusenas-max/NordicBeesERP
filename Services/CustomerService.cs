@@ -255,6 +255,9 @@ namespace NordicBeesERP.Services
                     IsSupplier = customer.IsSupplier,
                     IsExpenseSupplier = customer.IsExpenseSupplier,
                     IsIndividual = customer.IsIndividual,
+                    VatVerified = customer.VatVerified,
+                    VatVerifiedAt = customer.VatVerifiedAt,
+                    VatVerifiedName = customer.VatVerifiedName,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -292,8 +295,11 @@ namespace NordicBeesERP.Services
                         is_supplier = {18},
                         is_expense_supplier = {19},
                         is_individual = {20},
-                        updated_at = {21}
-                    WHERE id = {22}",
+                        vat_verified = {21},
+                        vat_verified_at = {22},
+                        vat_verified_name = {23},
+                        updated_at = {24}
+                    WHERE id = {25}",
                     partnerType.ToString().ToLower(),
                     customer.Name,
                     customer.CompanyCode,
@@ -315,6 +321,9 @@ namespace NordicBeesERP.Services
                     customer.IsSupplier,
                     customer.IsExpenseSupplier,
                     customer.IsIndividual,
+                    customer.VatVerified,
+                    customer.VatVerifiedAt,
+                    customer.VatVerifiedName,
                     DateTime.Now,
                     customer.Id);
 
