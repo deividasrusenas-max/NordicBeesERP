@@ -85,4 +85,125 @@ public class CustomerServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", id);
     }
+
+    [Fact]
+    public async Task SaveCustomerAsync_Insert_PersistsRoleFlagsAndDerivedPartnerType()
+    {
+        var service = new CustomerService(_fixture.Factory, NullLogger<CustomerService>.Instance);
+
+        // The Both combination: IsCustomer + IsSupplier → derives legacy partner_type "both"
+        var dto = new Customer
+        {
+            Id = 0,
+            Name = $"Test Save Customer {Guid.NewGuid():N}",
+            City = "Vilnius",
+            CountryCode = "LT",
+            Country = "Lithuania",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            IsCustomer = true,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = false,
+        };
+
+        var saved = await service.SaveCustomerAsync(dto);
+
+        // SaveCustomerAsync returns the DTO with the new row Id populated (INSERT branch)
+        Assert.True(saved.Id > 0);
+
+        // Verify with a brand-new context — proves the write reached the database
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == saved.Id);
+
+        Assert.NotNull(reloaded);
+        Assert.True(reloaded!.IsCustomer);
+        Assert.True(reloaded.IsSupplier);
+        Assert.False(reloaded.IsExpenseSupplier);
+        Assert.False(reloaded.IsIndividual);
+        Assert.Equal("both", reloaded.PartnerType.ToString().ToLower());
+
+        // Clean up
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", saved.Id);
+    }
+
+    [Fact]
+    public async Task SaveCustomerAsync_Update_PersistsRoleFlagsAndDerivedPartnerType()
+    {
+        // Arrange: insert a base partner to get a real auto-incremented id
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var uniqueName = $"Test Update Customer {Guid.NewGuid():N}";
+        var now = DateTime.UtcNow;
+
+        var inserted = new BusinessPartner
+        {
+            PartnerType = PartnerType.Supplier,
+            Name = uniqueName,
+            CompanyCode = "TPC",
+            City = "Kaunas",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 7,
+            DefaultVatRate = 0m,
+            IsActive = true,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = false,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        context.BusinessPartners.Add(inserted);
+        await context.SaveChangesAsync();
+        var id = inserted.Id;
+        Assert.True(id > 0);
+
+        var service = new CustomerService(_fixture.Factory, NullLogger<CustomerService>.Instance);
+
+        // Customer-only combination → derives legacy partner_type "customer"
+        var dto = new Customer
+        {
+            Id = id,
+            Name = uniqueName,
+            CompanyCode = "TPC",
+            City = "Kaunas",
+            CountryCode = "LT",
+            Country = "Lithuania",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 7,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            IsCustomer = true,
+            IsSupplier = false,
+            IsExpenseSupplier = false,
+            IsIndividual = false,
+        };
+
+        await service.SaveCustomerAsync(dto);
+
+        // Verify with a brand-new context — proves the UPDATE reached the database
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == id);
+
+        Assert.NotNull(reloaded);
+        Assert.True(reloaded!.IsCustomer);
+        Assert.False(reloaded.IsSupplier);
+        Assert.False(reloaded.IsExpenseSupplier);
+        Assert.False(reloaded.IsIndividual);
+        Assert.Equal("customer", reloaded.PartnerType.ToString().ToLower());
+
+        // Clean up
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", id);
+    }
 }
