@@ -39,7 +39,10 @@ namespace NordicBeesERP.Services
                     VatCode = x.Partner.VatCode,
                     PaymentTermDays = x.Partner.PaymentTermDays,
                     DefaultLanguage = x.Partner.DefaultLanguage,
-                    DefaultVatRate = x.Partner.DefaultVatRate
+                    DefaultVatRate = x.Partner.DefaultVatRate,
+                    VatVerified = x.Partner.VatVerified,
+                    VatVerifiedAt = x.Partner.VatVerifiedAt,
+                    VatVerifiedName = x.Partner.VatVerifiedName
                 })
                 .ToListAsync();
         }
