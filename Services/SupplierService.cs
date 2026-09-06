@@ -68,7 +68,10 @@ namespace NordicBeesERP.Services
                 NationalIdNumber = bp.NationalIdNumber,
                 PartnerType = bp.PartnerType,
                 SupplierType = bp.SupplierType,
-                DefaultExpenseCategoryId = bp.DefaultExpenseCategoryId
+                DefaultExpenseCategoryId = bp.DefaultExpenseCategoryId,
+                VatVerified = bp.VatVerified,
+                VatVerifiedAt = bp.VatVerifiedAt,
+                VatVerifiedName = bp.VatVerifiedName
             })
             .OrderBy(s => s.Name.TrimStart('"', '\'', ' ', '('))
             .ToList();
@@ -119,7 +122,10 @@ namespace NordicBeesERP.Services
                 NationalIdNumber = bp.NationalIdNumber,
                 PartnerType = bp.PartnerType,
                 SupplierType = bp.SupplierType,
-                DefaultExpenseCategoryId = bp.DefaultExpenseCategoryId
+                DefaultExpenseCategoryId = bp.DefaultExpenseCategoryId,
+                VatVerified = bp.VatVerified,
+                VatVerifiedAt = bp.VatVerifiedAt,
+                VatVerifiedName = bp.VatVerifiedName
             })
             .OrderBy(s => s.Name)
             .ToList();
@@ -177,7 +183,10 @@ namespace NordicBeesERP.Services
                 NationalIdNumber = partner.NationalIdNumber,
                 PartnerType = partner.PartnerType,
                 SupplierType = partner.SupplierType,
-                DefaultExpenseCategoryId = partner.DefaultExpenseCategoryId
+                DefaultExpenseCategoryId = partner.DefaultExpenseCategoryId,
+                VatVerified = partner.VatVerified,
+                VatVerifiedAt = partner.VatVerifiedAt,
+                VatVerifiedName = partner.VatVerifiedName
             };
         }
 
