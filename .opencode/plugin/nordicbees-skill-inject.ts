@@ -69,6 +69,18 @@ export const NordicBeesSkillInjector: Plugin = async () => {
 
       const originalText: string = args[textField]
 
+      // Idempotency guard: if this hook already injected skills into this
+      // delegation text (e.g. tool.execute.before firing more than once for
+      // the same "task" call), do NOT re-scan and re-inject — the injected
+      // wrapper text and skill content themselves still match the same
+      // trigger keywords (`.razor`, `Migrations/`, etc.), so without this
+      // guard a second firing rebuilds the same skill Set and prepends a
+      // second full copy on top of the first. Confirmed root cause of the
+      // double-injection incident in Docs/HARNESS_STATUS.md §13. Same
+      // pattern already used in nordicbees-reminder.ts's `firstText.text.
+      // startsWith("[auto-reminder:")` guard.
+      if (originalText.startsWith("IMPORTANT: the following skill(s) are force-injected")) return
+
       const skillsToInject = new Set<string>(ALWAYS_FOR_AGENT[subagent] ?? [])
       for (const rule of RULES) {
         if (rule.pattern.test(originalText)) {
