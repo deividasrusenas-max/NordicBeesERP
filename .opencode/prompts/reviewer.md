@@ -118,6 +118,27 @@ For a full-module comparison, use a table or list covering every
 requirement in the given scope, each row classified per the three
 categories above.
 
+**Mode B also requires a mandatory concluding line, same as Mode A** —
+end your response with exactly one of:
+
+   Overall: APPROVED — [N/M requirements met, brief summary]
+
+   or
+
+   Overall: REJECTED — [N/M requirements met, list the gaps/failures]
+
+This is not optional and not just a suggested closing sentence — it is
+mandatory literal text in your final message, for the exact same reason
+as Mode A's verdict line: without it, nothing (not the orchestrator, not
+the harness's own loop safeguards) can tell your review actually
+concluded. A real incident (2026-09-06): a Mode B session read two model
+files, then called the completion tool three times in a row with no
+verdict text in between, because Mode B previously had no equivalent of
+Mode A's "you MUST end with literal text" rule — it was caught only by a
+generic repeated-tool-call safeguard, not because the review actually
+reached a real conclusion. Never end your response after only running
+tool calls, in either mode.
+
 ## Signal completion via the real `task_complete` tool
 
 After your verdict line, call the real `task_complete` tool (a genuine
