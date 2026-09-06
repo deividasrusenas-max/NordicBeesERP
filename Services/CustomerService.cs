@@ -21,7 +21,9 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             return await context.BusinessPartners
-                .Where(bp => bp.PartnerType == PartnerType.Customer || bp.PartnerType == PartnerType.Both)
+                .Where(bp => bp.IsCustomer
+                             || (bp.IsCustomer == false && bp.IsSupplier == false && bp.IsExpenseSupplier == false
+                                 && (bp.PartnerType == PartnerType.Customer || bp.PartnerType == PartnerType.Both)))
                 .GroupJoin(
                     context.Invoices,
                     bp => bp.Id,
@@ -203,7 +205,9 @@ namespace NordicBeesERP.Services
         {
             using var context = _dbFactory.CreateDbContext();
             return await context.BusinessPartners
-                .Where(bp => bp.PartnerType == PartnerType.Supplier || bp.PartnerType == PartnerType.Both)
+                .Where(bp => bp.IsSupplier
+                             || (bp.IsSupplier == false && bp.IsCustomer == false && bp.IsExpenseSupplier == false
+                                 && (bp.PartnerType == PartnerType.Supplier || bp.PartnerType == PartnerType.Both)))
                 .OrderBy(bp => bp.Name)
                 .ToListAsync();
         }
