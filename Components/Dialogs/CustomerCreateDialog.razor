@@ -1,5 +1,6 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
+@using NordicBeesERP.Helpers
 @using MudBlazor
 @inject IDialogService DialogService
 @inject ICustomerService CustomerService
@@ -181,6 +182,7 @@
 
 @code {
     [Inject] private ISnackbar snackbar { get; set; } = default!;
+    [Inject] private IViesService ViesService { get; set; } = default!;
     [CascadingParameter] public IMudDialogInstance? Dialog { get; set; }
     [Parameter] public Customer? Customer { get; set; }
     [Parameter] public EventCallback<Customer> OnCustomerCreated { get; set; }
@@ -190,6 +192,9 @@
     private CompanyLookupResult? _lookupResult = null;
     private string _lastCompanyCode = "";
     private int _vatRateKey = 0;
+    private string? _originalVatCode = "";
+    private bool _vatCheckStarted = false;
+    private bool _isCheckingVat = false;
 
     protected override void OnParametersSet()
     {
@@ -207,6 +212,8 @@
             PostalCode = "",
             IsActive = true
         };
+        // Užfiksuoti pradinį VAT kodą — VIES patikrai (palyginimui, ar pasikeitė)
+        _originalVatCode = customer.VatCode;
         if (customer.Id == 0)
         {
             customer.DefaultVatRate = 0m;
@@ -305,6 +312,12 @@
 
       protected override async Task OnAfterRenderAsync(bool firstRender)
       {
+          // VIES patvirtinimo patikra atidarytam esamam partneriui (vieną kartą per dialogą)
+          if (!_vatCheckStarted && customer.Id > 0 && !string.IsNullOrWhiteSpace(customer.VatCode))
+          {
+              _vatCheckStarted = true;
+              await RunVatVerificationCheckAsync();
+          }
           if (customer.Id > 0) return; // Don't auto-lookup for existing customers
           if (customer.CompanyCode != _lastCompanyCode && !string.IsNullOrWhiteSpace(customer.CompanyCode) && customer.CompanyCode.Length >= 6)
           {
@@ -328,11 +341,39 @@
           _lookupResult = result;
           await ApplyLookupResult(result);
       }
-     _lookupLoading = false;
-     StateHasChanged();
- }
+      _lookupLoading = false;
+      StateHasChanged();
+      // VIES patvirtinimo patikra — jei kodas pasikeitė arba dar nebuvo tikrintas
+      if (VatVerificationHelper.ShouldVerifyVies(customer.IsIndividual, customer.VatCode, _originalVatCode, customer.VatVerified))
+      {
+          await RunVatVerificationCheckAsync();
+      }
+  }
 
-      private async Task ApplyLookupResult(CompanyLookupResult result)
+      private async Task RunVatVerificationCheckAsync()
+      {
+          if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4) return;
+          _isCheckingVat = true; StateHasChanged();
+          try
+          {
+              var result = await ViesService.LookupAsync(customer.VatCode);
+              if (!result.ServiceAvailable)
+              {
+                  // VIES nepasiekiamas arba timeout — neištriname ankstesnio rezultato
+                  snackbar?.Add("VIES nepasiekiamas, patikrinta vėliau", Severity.Warning);
+                  return;
+              }
+              customer.VatVerified = result.IsValid;
+              customer.VatVerifiedAt = DateTime.UtcNow;
+              customer.VatVerifiedName = result.Name;
+          }
+          finally
+          {
+              _isCheckingVat = false; StateHasChanged();
+          }
+      }
+
+       private async Task ApplyLookupResult(CompanyLookupResult result)
       {
           if (string.IsNullOrEmpty(customer.Name) && !string.IsNullOrEmpty(result.Name))
              customer.Name = result.Name;
