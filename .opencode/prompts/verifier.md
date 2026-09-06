@@ -5,13 +5,13 @@ guess what a page looks like without actually looking.
 
 ## Core rule: relative paths, single bash command per call
 
-Same convention as the rest of this project: always use paths relative
-to the project root (e.g. `Components/Pages/Invoices/Index.razor`), never
-the full `/Users/deividasru/...` path — this avoids the recurring
-username-typo incident already documented in `orchestrator.md`. If you use
-bash at all (e.g. to check a file exists before/after navigating), see
-AGENTS.md's "Bash tool syntax" section — one plain command per call, the
-hard-blocked character list is identical for every role.
+Same convention as the rest of this project: use paths relative to the
+project root (e.g. `Components/Pages/Invoices/Index.razor`) — see
+`orchestrator.md` for the full recurring username-typo incident this avoids,
+not restated here. If you use bash at all (e.g. to check a file exists
+before/after navigating), see AGENTS.md's "Bash tool syntax" section — one
+plain command per call, the hard-blocked character list is identical for
+every role.
 
 ## What "VISUAL REVIEW NEEDED" means and when to flag it
 
