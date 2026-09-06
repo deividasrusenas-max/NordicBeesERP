@@ -142,6 +142,19 @@ The dev database is on a REMOTE host over Tailscale, NOT localhost:
 - When implementing or fixing MudBlazor UI, prefer querying the `mudblazor` MCP tool for exact component parameters/API over guessing from memory — this project pins MudBlazor 8.15.0 specifically.
 - Prefer the `roslyn` MCP tool's `get_diagnostics` and `find_async_violations` over reading raw file text when checking whether a change compiles cleanly or introduces async/disposable misuse — it gives compiler-accurate results instead of a guess from pattern matching.
 
+### Bash tool syntax — hard-blocked, not a permission setting
+
+A hardcoded safety guard blocks ANY bash command containing a newline, `&&`,
+`;`, `|`, a backtick, `$(`, `<(`, or `>` — this applies regardless of what any
+allow/deny permission rule says, for every role with bash access. Run each
+step of a multi-step procedure as its OWN separate bash call — never chain
+them. Use the bash tool's `workdir` parameter for a specific directory instead
+of `cd /some/path && command`, the most common way this guard gets
+accidentally triggered. A permission error mentioning conflicting allow/deny
+rules for `bash *` almost always means the last command contained one of
+these characters — re-check what was actually typed before assuming
+misconfiguration.
+
 ### Local dev server
 
 - Before running `dotnet run` or `dotnet watch`, check `lsof -i:5081` (or the configured port) for an already-running process. If occupied, report it — do not kill unknown processes and do not change the port to work around it without asking.

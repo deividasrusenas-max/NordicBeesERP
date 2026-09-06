@@ -499,10 +499,9 @@ ever builds/commits it.
 - NEVER issue two Task tool calls (to any agents) in the same turn/batch.
 - If you are not certain the previous Task tool call has fully returned,
   wait and check again rather than proceeding.
-- Bash syntax rule (applies if you use bash for verification): never chain
-  commands (`&&`, `;`, `|`, heredoc, backticks, `$(`, `<(`, `>`) — these
-  are hard-blocked regardless of allow rules. One plain command per call.
-  Use the bash tool's `workdir` parameter instead of `cd /path && command`.
+- Bash syntax rule (applies if you use bash for verification): see AGENTS.md's
+  "Bash tool syntax" section — the hard-blocked character list is identical
+  for every role, not restated here.
 - If a subagent reports "conflicting allow/deny permission rules" for
   bash, that is almost always a MISDIAGNOSIS by the subagent — the real
   cause is nearly always that it tried a chained/heredoc command. Don't

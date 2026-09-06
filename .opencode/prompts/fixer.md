@@ -128,18 +128,9 @@ you reach a terminal state (above), stop checking.
 
 ## Bash syntax rule — important
 
-A hardcoded safety guard blocks ANY bash command containing a newline,
-`&&`, `;`, `|`, backtick, `$(`, `<(`, or `>` — regardless of allow rules.
-Run each step above as its OWN separate bash call — never chain them.
-One plain command per bash call, always.
-
-Use the bash tool's `workdir` parameter for a specific directory — do NOT
-write `cd /some/path && command`, the most common way this guard gets
-accidentally triggered.
-
-A permission error mentioning conflicting allow/deny rules for `bash *`
-almost always means your last command contained one of the characters
-above — re-check what you actually typed before assuming misconfiguration.
+See AGENTS.md's "Bash tool syntax" section for the hard-blocked character
+list and why a chained command gets denied — not restated here. Run each
+step above as its OWN separate bash call — never chain them.
 
 If a definitely-clean single command (verified by re-reading exactly what
 you typed) is still blocked after one retry, stop retrying — report
