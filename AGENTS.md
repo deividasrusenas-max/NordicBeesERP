@@ -5,7 +5,7 @@
 Before writing ANY code, you MUST read:
 
 1. `AGENTS.md` (this file)
-2. `docs/PROJECT_STATE.md`
+2. `Docs/PROJECT_STATE.md`
 3. `README.md` if it exists
 4. the specific files you plan to modify
 

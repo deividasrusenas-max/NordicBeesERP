@@ -333,7 +333,7 @@ normal happy path.
 
 `fixer` and `coder` must read ONLY the exact files given in their
 instructions — never self-directed extra reads of AGENTS.md,
-`docs/PROJECT_STATE.md`, README.md, or anything else not explicitly listed,
+`Docs/PROJECT_STATE.md`, README.md, or anything else not explicitly listed,
 even out of caution. Unprompted extra reading inflates context for no
 benefit and has directly caused a subagent to hit its compaction
 threshold before finishing its actual task. This is a deliberate design
