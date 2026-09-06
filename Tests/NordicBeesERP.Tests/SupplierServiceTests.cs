@@ -90,4 +90,93 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", id);
     }
+
+    [Fact]
+    public async Task SaveSupplierAsync_Insert_PersistsRoleFlagsAndDerivesBothPartnerType()
+    {
+        var service = new SupplierService(_fixture.Factory);
+
+        var dto = new Supplier
+        {
+            Id = 0,
+            Name = $"Test Both Partner {Guid.NewGuid():N}",
+            City = "Vilnius",
+            CountryCode = "LT",
+            Country = "Lithuania",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            IsCustomer = true,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = false
+        };
+
+        var saved = await service.SaveSupplierAsync(dto);
+
+        Assert.True(saved.Id > 0);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == saved.Id);
+
+        Assert.NotNull(reloaded);
+        Assert.True(reloaded!.IsCustomer);
+        Assert.True(reloaded.IsSupplier);
+        Assert.False(reloaded.IsExpenseSupplier);
+        Assert.False(reloaded.IsIndividual);
+        Assert.Equal("both", reloaded.PartnerType.ToString().ToLower());
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", saved.Id);
+    }
+
+    [Fact]
+    public async Task SaveSupplierAsync_Update_PersistsRoleFlagsAndDerivesSupplierPartnerType()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestPartner($"Test Supplier Update {Guid.NewGuid():N}");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var id = partner.Id;
+
+        var service = new SupplierService(_fixture.Factory);
+
+        var dto = new Supplier
+        {
+            Id = id,
+            Name = partner.Name,
+            City = "Kaunas",
+            CountryCode = partner.CountryCode,
+            Country = partner.Country,
+            DefaultLanguage = partner.DefaultLanguage,
+            PaymentTermDays = partner.PaymentTermDays,
+            DefaultVatRate = partner.DefaultVatRate,
+            IsActive = partner.IsActive,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = false
+        };
+
+        await service.SaveSupplierAsync(dto);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == id);
+
+        Assert.NotNull(reloaded);
+        Assert.False(reloaded!.IsCustomer);
+        Assert.True(reloaded.IsSupplier);
+        Assert.False(reloaded.IsExpenseSupplier);
+        Assert.False(reloaded.IsIndividual);
+        Assert.Equal("supplier", reloaded.PartnerType.ToString().ToLower());
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", id);
+    }
 }
