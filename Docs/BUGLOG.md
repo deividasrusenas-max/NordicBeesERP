@@ -106,7 +106,7 @@ re-labeling the symptom.
   re-exposure.
 - **Category**: infra
 - **Error class**: `post-completion-continue-loop`
-- **Status**: escalated — user re-ran the same task after the `fixer.md`
+- **Status**: escalated → monitoring (2026-09-06, see note below) — user re-ran the same task after the `fixer.md`
   prompt fix was applied AND (later) after the fix itself was committed
   to git, and the Compaction→re-summarize loop recurred both times. This
   is objective evidence the Tier-3 prompt-text mitigation is
@@ -122,6 +122,13 @@ re-labeling the symptom.
   below and in `harness-blocked-state-not-terminated` (2026-08-22) —
   three separate incidents now point to the same missing Tier-1
   circuit-breaker as the real fix, not another prompt edit.
+  **Mechanical guardrail added 2026-09-06**: `.opencode/plugin/nordicbees-circuit-breaker.ts`
+  now auto-aborts a subagent session showing this exact repeated-call
+  signature (same-tool-streak of 8, or identical-args-streak of 3) — see
+  `.opencode/planning/circuit-breaker-and-semgrep-plan.md`. NOT flipping
+  this Status to `stable` — wait for a real clean exposure window under
+  the new enforcement first, same caution already applied to the
+  `ef-linq-untranslatable-stringcomparison` entries above.
 
 ### 2026-08-24 — Fixer deadlock: generates a plan violating its own constraint, never executes or escalates
 - **Symptom**: A `fixer` run hit `./bump-version.sh patch` refusing to
@@ -159,12 +166,20 @@ re-labeling the symptom.
   or denies it.
 - **Category**: infra
 - **Error class**: `deadlock-constraint-conflict`
-- **Status**: monitoring — but see the note above: this Error class and
+- **Status**: monitoring (unchanged word, now backed by a real mechanical
+  guardrail as of 2026-09-06, see note below) — but see the note above: this Error class and
   `post-completion-continue-loop` are both instances of the same deeper
   gap (no Tier-1 mechanical stop-loop circuit-breaker exists yet), and
   should be re-evaluated together, not independently, once the
   `n_toolcalls`-based circuit-breaker (see `HARNESS_STATUS.md` §13
   Etapas 0) is built.
+  **Mechanical guardrail added 2026-09-06**: `.opencode/plugin/nordicbees-circuit-breaker.ts`
+  now auto-aborts a subagent session showing this exact repeated-call
+  signature (same-tool-streak of 8, or identical-args-streak of 3) — see
+  `.opencode/planning/circuit-breaker-and-semgrep-plan.md`. NOT flipping
+  this Status to `stable` — wait for a real clean exposure window under
+  the new enforcement first, same caution already applied to the
+  `ef-linq-untranslatable-stringcomparison` entries above.
 
 ### 2026-08-24 — Orchestrator re-invokes agent cycle indefinitely on genuinely idle state (no new user input)
 - **Symptom**: A third, distinct loop type in the same session. Unlike
@@ -205,10 +220,18 @@ re-labeling the symptom.
 - **Guardrail added**: none yet.
 - **Category**: infra
 - **Error class**: `idle-no-input-loop`
-- **Status**: N/A — no guardrail exists yet; this is the highest-priority
-  of the three 2026-08-24 loop entries for the planned Tier-1
-  `n_toolcalls`/cycle-detection circuit-breaker, since it is structurally
-  unreachable by any prompt-text fix aimed at the agent's own behavior.
+- **Status**: N/A → monitoring (2026-09-06) — no guardrail existed at the
+  time of this entry; this was the highest-priority of the three 2026-08-24
+  loop entries for the planned Tier-1 `n_toolcalls`/cycle-detection
+  circuit-breaker, since it is structurally unreachable by any prompt-text
+  fix aimed at the agent's own behavior.
+  **Mechanical guardrail added 2026-09-06**: `.opencode/plugin/nordicbees-circuit-breaker.ts`
+  now auto-aborts a subagent session showing this exact repeated-call
+  signature (same-tool-streak of 8, or identical-args-streak of 3) — see
+  `.opencode/planning/circuit-breaker-and-semgrep-plan.md`. NOT flipping
+  this Status to `stable` — wait for a real clean exposure window under
+  the new enforcement first, same caution already applied to the
+  `ef-linq-untranslatable-stringcomparison` entries above.
 
 ### 2026-08-24 — SYNTHESIS: four loop types same day share one root pattern (plan-without-execution gap)
 - **Symptom**: A fourth loop (same day, after all three fixes above were
@@ -274,11 +297,18 @@ re-labeling the symptom.
   periodic BUGLOG review should treat all three as one family when
   evaluating whether the Tier-1 circuit-breaker and/or the `fixer.md`
   restructure actually resolved them)
-- **Status**: N/A — no guardrail exists; this is now the primary
-  evidence base for BOTH planned fixes (Tier-1 `n_toolcalls` circuit-
-  breaker AND the `fixer.md` structural rewrite), and neither should be
-  considered validated until re-tested against a real `fixer` task after
-  both are in place.
+- **Status**: N/A → monitoring (2026-09-06) — no guardrail existed at the
+  time of this entry; this was the primary evidence base for BOTH planned
+  fixes (Tier-1 `n_toolcalls` circuit-breaker AND the `fixer.md` structural
+  rewrite — the latter separately already done, see `fixer.md`'s
+  WORKING/BLOCKED/OUT_OF_SCOPE/DONE state machine).
+  **Mechanical guardrail added 2026-09-06**: `.opencode/plugin/nordicbees-circuit-breaker.ts`
+  now auto-aborts a subagent session showing this exact repeated-call
+  signature (same-tool-streak of 8, or identical-args-streak of 3) — see
+  `.opencode/planning/circuit-breaker-and-semgrep-plan.md`. NOT flipping
+  this Status to `stable` — wait for a real clean exposure window under
+  the new enforcement first, same caution already applied to the
+  `ef-linq-untranslatable-stringcomparison` entries above.
 
 ### 2026-07-17 — Order status stuck on draft after packing
 - **Symptom**: All lines packed, but order header status never advanced.
@@ -388,7 +418,14 @@ re-labeling the symptom.
 - **Guardrail added**: prompt-text rule (not mechanical) — see Status note.
 - **Category**: infra (harness/prompt bug)
 - **Error class**: `harness-blocked-state-not-terminated`
-- **Status**: monitoring — this is a prompt-text guardrail, the weaker kind (an agent could in principle still not weight/follow it under context pressure) — this Error class is a good candidate to watch closely for recurrence, and if it recurs, escalating to a mechanical circuit-breaker (e.g. the plugin auto-detecting N identical consecutive tool calls and injecting a hard stop) would be the appropriate escalation
+- **Status**: monitoring (unchanged word, now backed by a real mechanical guardrail as of 2026-09-06, see note below) — this is a prompt-text guardrail, the weaker kind (an agent could in principle still not weight/follow it under context pressure) — this Error class is a good candidate to watch closely for recurrence, and if it recurs, escalating to a mechanical circuit-breaker (e.g. the plugin auto-detecting N identical consecutive tool calls and injecting a hard stop) would be the appropriate escalation.
+  **Mechanical guardrail added 2026-09-06**: `.opencode/plugin/nordicbees-circuit-breaker.ts`
+  now auto-aborts a subagent session showing this exact repeated-call
+  signature (same-tool-streak of 8, or identical-args-streak of 3) — see
+  `.opencode/planning/circuit-breaker-and-semgrep-plan.md`. NOT flipping
+  this Status to `stable` — wait for a real clean exposure window under
+  the new enforcement first, same caution already applied to the
+  `ef-linq-untranslatable-stringcomparison` entries above.
 
 ### 2026-08-22 — nordicbees-quality-monitor.ts: hook argument shape assumed wrong parameter
 - **Symptom**: `duration_sec` was `null` for every single recorded task-stats entry for hours after the plugin was first written — the "started" lifecycle event was silently never being written at all.
@@ -548,7 +585,14 @@ re-labeling the symptom.
 - **Guardrail added**: none yet.
 - **Category**: infra
 - **Error class**: `self-diagnosed-loop-no-behavioral-stop` (new tag — distinct from `plan-without-execution-gap`: that family fails to execute a correctly stated PLAN; this one fails to honor a correctly stated STOP, and is doubly dangerous since the self-report reads as if the problem is already handled)
-- **Status**: N/A — no guardrail exists yet. First occurrence, and first documented loop incident on `coder` specifically (all four 2026-08-24 loop entries were `fixer`/orchestrator). Same underlying gap as the other loop entries: no Tier-1 mechanical circuit-breaker (`n_toolcalls`-based repeated-call detection) exists to catch this regardless of what the model's own text says. Reinforces that the planned Tier-1 circuit-breaker should trigger on repeated near-identical tool calls directly, not on any text-based self-report, since this incident shows the self-report cannot be trusted as a stopping signal even when accurate.
+- **Status**: N/A → monitoring (2026-09-06) — no guardrail existed at the time of this entry. First occurrence, and first documented loop incident on `coder` specifically (all four 2026-08-24 loop entries were `fixer`/orchestrator). Same underlying gap as the other loop entries: no Tier-1 mechanical circuit-breaker (`n_toolcalls`-based repeated-call detection) exists to catch this regardless of what the model's own text says. Reinforces that the planned Tier-1 circuit-breaker should trigger on repeated near-identical tool calls directly, not on any text-based self-report, since this incident shows the self-report cannot be trusted as a stopping signal even when accurate.
+  **Mechanical guardrail added 2026-09-06**: `.opencode/plugin/nordicbees-circuit-breaker.ts`
+  now auto-aborts a subagent session showing this exact repeated-call
+  signature (same-tool-streak of 8, or identical-args-streak of 3) — see
+  `.opencode/planning/circuit-breaker-and-semgrep-plan.md`. NOT flipping
+  this Status to `stable` — wait for a real clean exposure window under
+  the new enforcement first, same caution already applied to the
+  `ef-linq-untranslatable-stringcomparison` entries above.
 
 ### 2026-08-28 — Home dashboard KPI cards show 0 because CurrentValue read only from today's snapshot
 - **Symptom**: Home dashboard KPI cards (Statinės sandėlyje, Kibirai sandėlyje, Neįkainotos, Skolos tiekėjams) displayed 0 kg / 0 / 0 € even though live warehouse/supplier data existed — the values were blank/zero on any day before the 03:00 daily snapshot worker had run.
