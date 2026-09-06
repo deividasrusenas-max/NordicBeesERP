@@ -109,6 +109,11 @@ namespace NordicBeesERP.Models
         public bool IsExpenseSupplier { get; set; }
         public bool IsIndividual { get; set; }
 
+        // VIES PVM patikros rezultatas (iš BusinessPartner)
+        public bool? VatVerified { get; set; }
+        public DateTime? VatVerifiedAt { get; set; }
+        public string? VatVerifiedName { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         // Laikini laukai (ne duomenų bazėje)
