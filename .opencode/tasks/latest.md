@@ -1,124 +1,52 @@
-# Task: VIES VAT verification persisted at partner level (customers + suppliers)
+# TASK: Fix inert (non-clickable) VISI/ŪKININKAI/ĮMONĖS tabs on /suppliers — legacy MudChip parameters
 
-## Type: BUILD (schema + service + UI). DDL is human-applied per FROZEN.md — draft migration only, do not run `dotnet ef database update`.
+## Root cause (confirmed by investigation report `.opencode/reports/suppliers-tabs-rendering-investigation-20260907-0948.md`)
 
-## Context
-`Services/ViesService.cs` (`IViesService.LookupAsync(vatCode)`) already
-exists and works — it's currently only used transiently inside
-`ExpenseOcrService.ProcessAsync` for OCR'd invoices, with results
-snapshotted per-invoice on `expense_invoices` (`supplier_vat_verified`,
-`supplier_vat_verified_name` — do NOT touch these, unrelated). This task
-adds a SEPARATE, NEW capability: persisted VIES verification at the
-`business_partners` level, for both customers and suppliers.
+`Components/Pages/Suppliers.razor:61-98` — the three tabs use **legacy pre-v8 MudChip parameters** that no longer exist in the installed MudBlazor 8.15.0: `Checked`, `OnCheckedChange`, `SelectionGroup`. Because `MudComponentBase` has `[Parameter(CaptureUnmatchedValues = true)] UserAttributes`, these unknown parameter names do NOT cause a build error — they're silently captured and dumped as inert HTML attributes. Since no real `OnClick` or `MudChipSet` wiring exists, MudChip's internal `IsButton` check evaluates false, so the chip renders as a plain non-clickable `<div>` instead of a clickable button — hence it visually looks like static text and does nothing when clicked.
 
-Read `Components/Dialogs/SupplierEditDialog.razor` in full first (already
-read this session — has `OnVatCodeChanged()` hook, `supplier.VatCode`,
-`supplier.IsIndividual`). Also read `Components/Dialogs/CustomerCreateDialog.razor`
-in full to confirm its exact current VAT-code field/handler names before
-editing (may differ — verify, don't assume it mirrors Supplier's).
+The underlying C# logic (`_tabIndex`, `OnTabChanged`, `FilteredSuppliers`) is already correct and does NOT need to change — this is purely a markup/parameter-binding fix.
 
-## Step 1 — New columns on `business_partners` (draft migration, do not apply)
-```csharp
-public bool? VatVerified { get; set; }        // null = never checked, true = valid, false = confirmed invalid
-public DateTime? VatVerifiedAt { get; set; }
-public string? VatVerifiedName { get; set; }  // official registered name from VIES, for comparison
+## Required fix
+
+In `Components/Pages/Suppliers.razor:61-98`, for each of the three chips (VISI / ŪKININKAI / ĮMONĖS), remove `Checked`, `OnCheckedChange`, `SelectionGroup` and replace with an `OnClick` handler, following the exact same working pattern already used by the PVM chips (lines ~102-113) and Aktyvus/Neaktyvus chips (lines ~114-135) on the SAME page, and matching the reference pattern in `Invoices.razor:108-139` (quick-filter chips) per `Docs/FILTER_STANDARDIZATION_PLAN.md` §3.
+
+Target result for each chip (example for tab 0 — adapt index for 1 and 2):
+
+```razor
+<MudChip T="string"
+         Color="@(_tabIndex == 0 ? Color.Primary : Color.Default)"
+         Variant="@(_tabIndex == 0 ? Variant.Filled : Variant.Outlined)"
+         Size="Size.Small"
+         Style="@(_tabIndex == 0 ? "" : "opacity:0.7")"
+         OnClick="@(() => { if (_tabIndex != 0) OnTabChanged(0); })">
+    VISI
+</MudChip>
 ```
-Add to `Models/Models_Part1.cs` `BusinessPartner` class. Run
-`dotnet ef migrations add AddPartnerVatVerification` to generate the
-migration file only — do NOT apply it. Confirm the generated `Up()`/`Down()`
-match this project's `ADD COLUMN`/`DropColumn` conventions (check a recent
-migration file for the pattern, same as the Phase 1 role-flags migration
-did).
 
-## Step 2 — Add matching properties to the DTOs
-`Supplier` (`Models_Part2.cs`) and `Customer` (`InvoiceModels.cs`): add
-the same 3 properties. Map them in `SupplierService.GetSuppliersAsync`/
-`GetAllSuppliersAsync` and `CustomerService.GetCustomersAsync` (read
-paths — mirror however `IsIndividual` etc. were mapped in Phase 3).
+Keep the existing `Color`/`Variant`/`Size`/`Style` bindings exactly as they are — only `Checked`/`OnCheckedChange`/`SelectionGroup` need to be removed and replaced with `OnClick`. Keep the existing `@if (!_isWarehouse)` wrapping conditions around the VISI and ĮMONĖS chips unchanged. `OnTabChanged` already handles `?tab=` URL navigation — do not change its internals.
 
-## Step 3 — Verification logic (new helper, shared by both dialogs)
-Create a small shared method (e.g. static helper in a new
-`Helpers/VatVerificationHelper.cs`, or a method on `IViesService` itself
-if that fits the existing pattern better — use judgement) that, given a
-VAT code and the partner's current stored `VatVerified`/`VatVerifiedAt`/
-last-known VAT code, decides whether a fresh VIES check is needed:
-- Skip entirely if `IsIndividual == true` or VAT code is empty.
-- Check if: VAT code differs from what's persisted (changed since last
-  save/load), OR `VatVerified == null` (never checked).
-- Otherwise, do NOT re-check (avoid hammering VIES on every save/open).
+**Do NOT** attempt the alternative "just rename `Checked`→`Selected`, `OnCheckedChange`→`SelectedChanged`" — per the investigation report, that alone still leaves the chip non-clickable, since `IsButton` requires `OnClick.HasDelegate` OR a `MudChipSet` wrapper. Use the `OnClick` approach above (the MudChipSet wrapper alternative is not required — keep this fix minimal and consistent with the other working chips on this same page).
 
-On a successful VIES response: set `VatVerified = viesResult.IsValid`,
-`VatVerifiedAt = DateTime.UtcNow`, `VatVerifiedName = viesResult.Name`.
-On `ServiceAvailable == false` (VIES down/timeout): do NOT change
-`VatVerified`/`VatVerifiedAt` at all — leave whatever was there before,
-just show a transient "VIES nepasiekiamas, patikrinta vėliau" message in
-the UI for that render, don't persist an error state.
+## Scope
 
-## Step 4 — Wire into `SupplierEditDialog.razor`
-- On dialog open for an EXISTING supplier (`OnInitializedAsync`/
-  `OnParametersSet`, whichever fits the current lifecycle without
-  duplicating the `OnAfterRenderAsync` company-lookup pattern already
-  there): if the verification-needed check from Step 3 says yes, call
-  VIES and update the in-memory `supplier` object's 3 new fields
-  (display only — don't silently write to DB just from opening the
-  dialog; persist on Save per Step 5).
-- Extend the existing `OnVatCodeChanged()` handler: after the existing
-  JARS/company lookup logic, ALSO run the Step 3 check/call if the new
-  VAT code differs from the original.
-- Add a small status indicator next to the VAT code field, following the
-  existing `_lookupResult` badge pattern already in this file (green
-  check + "PVM patikrintas VIES" when `VatVerified == true`; red icon +
-  "PVM kodas negalioja VIES" when `VatVerified == false`; grey/neutral
-  "Netikrinta" when `VatVerified == null`; nothing extra needed for the
-  transient "VIES nepasiekiamas" case beyond a snackbar).
+Only touch `Components/Pages/Suppliers.razor` lines ~61-98 (the three tab chips). Do not touch the PVM chips, Aktyvus/Neaktyvus chips, `OnTabChanged`, `FilteredSuppliers`, or any other file — they are already confirmed working.
 
-## Step 5 — Wire into `CustomerCreateDialog.razor`
-Same treatment, using whatever the actual current VAT-code field/handler
-names are (confirm from your Step-1 read — do not assume they match
-Supplier's naming).
+## Verification gates
 
-## Step 6 — Persist on save
-`SupplierService.SaveSupplierAsync` and `CustomerService.SaveCustomerAsync`:
-add `vat_verified`, `vat_verified_at`, `vat_verified_name` to both the
-UPDATE raw SQL (renumber positional params carefully, same caution as
-Phase 3 Round 1) and the INSERT branch. Persist whatever values are
-currently on the in-memory DTO at save time (the dialog already
-populated them via Step 4/5's lazy-check).
-
-## Step 7 — Do NOT touch
-- `ExpenseOcrService.cs`'s existing per-invoice VIES usage or the
-  `expense_invoices.supplier_vat_verified*` columns — completely separate,
-  unrelated to this task.
-- `AssignSupplierDialog.razor` / `ResolveSupplierDialog.razor` — out of
-  scope for this task.
-- Any DDL execution — migration file only, human applies per FROZEN.md.
-
-## Step 8 — Draft the backfill (optional, do NOT apply)
-Since this is a brand-new concept (no legacy column to derive from),
-there's no meaningful backfill — existing rows will simply have
-`vat_verified = NULL` (never checked) until each is opened/saved once.
-Note this explicitly in the report; no backfill SQL needed for this task.
-
-## Verification (required before finishing)
 - `dotnet build` — 0 errors.
-- `dotnet test` — both with and without `TEST_DB_CONNECTION` (per the
-  pattern established in Phase 3 — if this exposes the SAME `nordic_bees_erp_test`
-  schema-drift issue for these 3 new columns, STOP and report exactly
-  which column is missing, same as before; do not fix test DB DDL
-  yourself).
-- Confirm the raw-SQL UPDATE param renumbering is correct — show the full
-  final SQL strings for both services in the report.
-- Manually trace through: (a) new supplier with VAT code → save → VIES
-  checked once, persisted; (b) existing supplier, open dialog, VAT code
-  unchanged, already verified → no VIES call made (confirm this via a
-  log statement or code trace, not just claiming it); (c) existing
-  supplier, VAT code edited to a different value → re-check triggered;
-  (d) `IsIndividual == true` → VIES never called regardless of VatCode
-  content (should be empty anyway, but defensive).
+- Reviewer verdict.
+- Grep the edited block to confirm `Checked`, `OnCheckedChange`, `SelectionGroup` no longer appear anywhere in `Suppliers.razor`.
 
 ## Report
-Write to
-`.opencode/reports/partner-vat-verification-<YYYYMMDD>-<HHMM>.md`.
 
-## Final step (required)
-Run `./bump-version.sh patch`.
+Write a full work report (diff summary, build output, verification) to `.opencode/reports/suppliers-tabs-fix-<timestamp>.md`. Use a real timestamp.
+
+## Final step
+
+Run `./bump-version.sh patch` as the last step — required, not optional.
+
+Call `task_complete` as a real structured tool call when done, not as plain text.
+
+## Before starting
+
+Verify `git branch --show-current == main` before making any changes.
