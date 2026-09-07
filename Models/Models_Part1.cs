@@ -224,6 +224,10 @@ namespace NordicBeesERP.Models
         [Column("supplier_type")]
         public string? SupplierType { get; set; }
 
+        [MaxLength(20)]
+        [Column("compensation_vat_code")]
+        public string? CompensationVatCode { get; set; }
+
         [Column("notes")]
         public string? Notes { get; set; }
 
