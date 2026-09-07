@@ -152,7 +152,21 @@
                     <MudTh Style="width:120px;">Veiksmai</MudTh>
                 </HeaderContent>
                 <RowTemplate Context="supplier">
-                    <MudTd>@supplier.Name</MudTd>
+                    <MudTd>
+                        @supplier.Name
+                        @{ var missingFields = SupplierFarmerHelper.GetMissingOrInvalidFields(supplier); }
+                        @if (missingFields.Count > 0)
+                        {
+                            <MudTooltip>
+                                <ChildContent>
+                                    <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Color="Color.Warning" Class="ml-1" />
+                                </ChildContent>
+                                <TooltipContent>
+                                    <MudText Typo="Typo.body2">@string.Join("; ", missingFields)</MudText>
+                                </TooltipContent>
+                            </MudTooltip>
+                        }
+                    </MudTd>
                     <MudTd>@(string.IsNullOrWhiteSpace(supplier.Country) ? "—" : supplier.Country)</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
@@ -196,7 +210,21 @@
                     <MudTh Style="width:120px;">Veiksmai</MudTh>
                 </HeaderContent>
                 <RowTemplate Context="supplier">
-                    <MudTd>@supplier.Name</MudTd>
+                    <MudTd>
+                        @supplier.Name
+                        @{ var missingFields = SupplierFarmerHelper.GetMissingOrInvalidFields(supplier); }
+                        @if (missingFields.Count > 0)
+                        {
+                            <MudTooltip>
+                                <ChildContent>
+                                    <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Color="Color.Warning" Class="ml-1" />
+                                </ChildContent>
+                                <TooltipContent>
+                                    <MudText Typo="Typo.body2">@string.Join("; ", missingFields)</MudText>
+                                </TooltipContent>
+                            </MudTooltip>
+                        }
+                    </MudTd>
                     <MudTd>@(string.IsNullOrWhiteSpace(supplier.Country) ? "—" : supplier.Country)</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
@@ -240,7 +268,21 @@
                     <MudTh Style="width:120px;">Veiksmai</MudTh>
                 </HeaderContent>
                 <RowTemplate Context="supplier">
-                    <MudTd>@supplier.Name</MudTd>
+                    <MudTd>
+                        @supplier.Name
+                        @{ var missingFields = SupplierFarmerHelper.GetMissingOrInvalidFields(supplier); }
+                        @if (missingFields.Count > 0)
+                        {
+                            <MudTooltip>
+                                <ChildContent>
+                                    <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Color="Color.Warning" Class="ml-1" />
+                                </ChildContent>
+                                <TooltipContent>
+                                    <MudText Typo="Typo.body2">@string.Join("; ", missingFields)</MudText>
+                                </TooltipContent>
+                            </MudTooltip>
+                        }
+                    </MudTd>
                     <MudTd>@(string.IsNullOrWhiteSpace(supplier.Country) ? "—" : supplier.Country)</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.DefaultVatRate.ToString("N0")%</MudTd>
                     <MudTd Class="lakstena-mono">@supplier.PaymentTermDays d.</MudTd>
