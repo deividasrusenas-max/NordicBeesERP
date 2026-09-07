@@ -397,4 +397,88 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", saved.Id);
     }
+
+    [Fact]
+    public async Task SaveSupplierAsync_IncompleteFarmer_SavesWithWarnings()
+    {
+        var service = new SupplierService(_fixture.Factory);
+
+        var dto = new Supplier
+        {
+            Id = 0,
+            Name = $"Test Farmer Warn {Guid.NewGuid():N}",
+            City = "Vilnius",
+            CountryCode = "LT",
+            Country = "Lithuania",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 14,
+            DefaultVatRate = 6m,
+            IsActive = true,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = true,
+            SupplierFirstName = "TestF",
+            SupplierLastName = null,
+            CompensationVatCode = null
+        };
+
+        var saved = await service.SaveSupplierAsync(dto);
+
+        Assert.True(saved.Id > 0);
+        Assert.NotEmpty(saved.SaveWarnings);
+        Assert.Contains(saved.SaveWarnings, w => w.Contains("pavardės"));
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == saved.Id);
+
+        Assert.NotNull(reloaded);
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", saved.Id);
+    }
+
+    [Fact]
+    public async Task SaveSupplierAsync_CompleteFarmer_NoWarnings()
+    {
+        var service = new SupplierService(_fixture.Factory);
+
+        var dto = new Supplier
+        {
+            Id = 0,
+            Name = $"Test Farmer OK {Guid.NewGuid():N}",
+            City = "Vilnius",
+            CountryCode = "LT",
+            Country = "Lithuania",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 14,
+            DefaultVatRate = 6m,
+            IsActive = true,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = true,
+            SupplierFirstName = "TestF",
+            SupplierLastName = "Farmer",
+            SupplierType = "Farmer",
+            CompensationVatCode = "100008534429"
+        };
+
+        var saved = await service.SaveSupplierAsync(dto);
+
+        Assert.True(saved.Id > 0);
+        Assert.Empty(saved.SaveWarnings);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == saved.Id);
+
+        Assert.NotNull(reloaded);
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", saved.Id);
+    }
 }

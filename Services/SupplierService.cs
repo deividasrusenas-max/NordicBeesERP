@@ -282,7 +282,10 @@ namespace NordicBeesERP.Services
         public async Task<Supplier> SaveSupplierAsync(Supplier supplier)
         {
             using var context = _dbFactory.CreateDbContext();
-            
+
+            // Warn (never block) about incomplete farmer data — the save always proceeds.
+            supplier.SaveWarnings = SupplierFarmerHelper.GetMissingOrInvalidFields(supplier);
+
             BusinessPartner partner;
             if (supplier.Id > 0)
             {
