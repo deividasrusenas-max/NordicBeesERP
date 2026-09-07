@@ -5,27 +5,50 @@ using System.Collections.Generic;
 
 public static class SupplierFarmerHelper
 {
-    public static bool IsFarmer(Supplier supplier) =>
-        supplier.IsIndividual
-        && (supplier.DefaultVatRate == 6m || supplier.DefaultVatRate == 21m);
+    // --- public API ---
 
-    public static List<string> GetMissingOrInvalidFields(Supplier supplier)
+    public static bool IsFarmer(Supplier supplier) =>
+        IsFarmer(supplier.IsIndividual, supplier.DefaultVatRate);
+
+    public static bool IsFarmer(BusinessPartner partner) =>
+        IsFarmer(partner.IsIndividual, partner.DefaultVatRate);
+
+    public static List<string> GetMissingOrInvalidFields(Supplier supplier) =>
+        CheckMissingOrInvalidFields(
+            supplier.IsIndividual, supplier.DefaultVatRate,
+            supplier.SupplierFirstName, supplier.SupplierLastName,
+            supplier.CompensationVatCode);
+
+    public static List<string> GetMissingOrInvalidFields(BusinessPartner partner) =>
+        CheckMissingOrInvalidFields(
+            partner.IsIndividual, partner.DefaultVatRate,
+            partner.SupplierFirstName, partner.SupplierLastName,
+            partner.CompensationVatCode);
+
+    // --- private shared cores (single source of truth) ---
+
+    private static bool IsFarmer(bool isIndividual, decimal defaultVatRate) =>
+        isIndividual && (defaultVatRate == 6m || defaultVatRate == 21m);
+
+    private static List<string> CheckMissingOrInvalidFields(
+        bool isIndividual, decimal defaultVatRate,
+        string? supplierFirstName, string? supplierLastName, string? compensationVatCode)
     {
         var result = new List<string>();
-        if (!IsFarmer(supplier)) return result;
+        if (!IsFarmer(isIndividual, defaultVatRate)) return result;
 
-        if (string.IsNullOrWhiteSpace(supplier.SupplierFirstName))
+        if (string.IsNullOrWhiteSpace(supplierFirstName))
             result.Add("Trūksta vardo (reikalinga ūkininkams)");
-        if (string.IsNullOrWhiteSpace(supplier.SupplierLastName))
+        if (string.IsNullOrWhiteSpace(supplierLastName))
             result.Add("Trūksta pavardės (reikalinga ūkininkams)");
 
-        if (supplier.DefaultVatRate == 6m)
+        if (defaultVatRate == 6m)
         {
-            if (string.IsNullOrWhiteSpace(supplier.CompensationVatCode))
+            if (string.IsNullOrWhiteSpace(compensationVatCode))
                 result.Add("Trūksta kompensacinio PVM tarifo kodo");
-            else if (CompensationVatCodeValidator.IsObsoleteFormat(supplier.CompensationVatCode))
+            else if (CompensationVatCodeValidator.IsObsoleteFormat(compensationVatCode))
                 result.Add("Kompensacinio PVM tarifo kodas yra pasenusio 13 skaitmenų formato — reikia perregistruoti");
-            else if (!CompensationVatCodeValidator.IsValid(supplier.CompensationVatCode))
+            else if (!CompensationVatCodeValidator.IsValid(compensationVatCode))
                 result.Add("Neteisingas kompensacinio PVM tarifo kodas");
         }
 

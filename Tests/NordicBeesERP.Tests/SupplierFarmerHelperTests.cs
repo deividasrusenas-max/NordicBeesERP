@@ -114,4 +114,78 @@ public class SupplierFarmerHelperTests
         farmer.CompensationVatCode = "100008534428"; // invalid code, but irrelevant at 21%
         Assert.Empty(SupplierFarmerHelper.GetMissingOrInvalidFields(farmer));
     }
+
+    private static BusinessPartner FarmerBp(decimal rate, bool individual = true) => new()
+    {
+        IsIndividual = individual,
+        DefaultVatRate = rate,
+        SupplierFirstName = "Jonas",
+        SupplierLastName = "Jonaitis",
+        CompensationVatCode = "100008534429",
+        PartnerType = PartnerType.Supplier,
+        Name = "Test Farmer",
+        Country = "Lithuania",
+        CountryCode = "LT",
+        DefaultLanguage = "LT",
+        IsActive = true,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
+
+    [Fact]
+    public void BusinessPartner_IsFarmer_MatchesSupplierBehavior()
+    {
+        Assert.True(SupplierFarmerHelper.IsFarmer(FarmerBp(6m)));
+        Assert.True(SupplierFarmerHelper.IsFarmer(FarmerBp(21m)));
+        Assert.False(SupplierFarmerHelper.IsFarmer(FarmerBp(0m)));
+        Assert.False(SupplierFarmerHelper.IsFarmer(FarmerBp(5m)));
+        Assert.False(SupplierFarmerHelper.IsFarmer(FarmerBp(21m, individual: false)));
+    }
+
+    [Fact]
+    public void BusinessPartner_GetMissingOrInvalidFields_MatchesSupplierBehavior()
+    {
+        var complete6 = FarmerBp(6m); // both names + valid code 100008534429
+        Assert.Empty(SupplierFarmerHelper.GetMissingOrInvalidFields(complete6));
+
+        var farmer21NoCode = FarmerBp(21m);
+        farmer21NoCode.CompensationVatCode = null; // code not required at 21%
+        Assert.Empty(SupplierFarmerHelper.GetMissingOrInvalidFields(farmer21NoCode));
+
+        var nonIndividual = new BusinessPartner
+        {
+            IsIndividual = false,
+            DefaultVatRate = 6m,
+            SupplierFirstName = null,
+            SupplierLastName = null,
+            CompensationVatCode = null,
+            PartnerType = PartnerType.Supplier,
+            Name = "Test Non-Individual",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        Assert.Empty(SupplierFarmerHelper.GetMissingOrInvalidFields(nonIndividual));
+    }
+
+    [Fact]
+    public void BusinessPartner_MissingNamesAndCode_Reported_For6Percent()
+    {
+        var farmer = FarmerBp(6m);
+        farmer.SupplierFirstName = null;
+        farmer.SupplierLastName = null;
+        farmer.CompensationVatCode = null;
+        Assert.Equal(3, SupplierFarmerHelper.GetMissingOrInvalidFields(farmer).Count);
+    }
+
+    [Fact]
+    public void BusinessPartner_CompensationCodeNotChecked_For21Percent()
+    {
+        var farmer = FarmerBp(21m);
+        farmer.CompensationVatCode = "100008534428"; // invalid code, but irrelevant at 21%
+        Assert.Empty(SupplierFarmerHelper.GetMissingOrInvalidFields(farmer));
+    }
 }
