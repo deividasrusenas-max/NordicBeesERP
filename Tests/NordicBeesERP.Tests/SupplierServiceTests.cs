@@ -355,6 +355,53 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task SaveSupplierAsync_Update_PersistsContactPhoneAndInvoiceEmailToRealDatabase()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestPartner($"Test Contact Fields {Guid.NewGuid():N}");
+        partner.DefaultVatRate = 6m;
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var id = partner.Id;
+
+        var service = new SupplierService(_fixture.Factory);
+
+        var invoiceEmail = $"contact{Guid.NewGuid():N}@example.com";
+        var dto = new Supplier
+        {
+            Id = id,
+            Name = partner.Name,
+            City = "Kaunas",
+            CountryCode = partner.CountryCode,
+            Country = partner.Country,
+            DefaultLanguage = partner.DefaultLanguage,
+            PaymentTermDays = partner.PaymentTermDays,
+            DefaultVatRate = 6m,
+            IsActive = partner.IsActive,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            ContactPhone = "8 600 12345",
+            InvoiceEmail = invoiceEmail
+        };
+
+        await service.SaveSupplierAsync(dto);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal("8 600 12345", reloaded!.ContactPhone);
+        Assert.Equal(invoiceEmail, reloaded.InvoiceEmail);
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", id);
+    }
+
+    [Fact]
     public async Task SaveSupplierAsync_InsertBranch_PersistsCompensationVatCodeToRealDatabase()
     {
         var service = new SupplierService(_fixture.Factory);

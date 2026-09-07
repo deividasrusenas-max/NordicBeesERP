@@ -311,8 +311,8 @@ namespace NordicBeesERP.Services
                         is_expense_supplier = {20}, is_individual = {21}, vat_verified = {22},
                         vat_verified_at = {23}, vat_verified_name = {24},
                         supplier_first_name = {25}, supplier_last_name = {26}, national_id_number = {27},
-                        supplier_type = {28}, compensation_vat_code = {29}, updated_at = {30}
-                    WHERE id = {31}",
+                        supplier_type = {28}, compensation_vat_code = {29}, contact_phone = {30}, invoice_email = {31}, updated_at = {32}
+                    WHERE id = {33}",
                     (supplier.IsCustomer || supplier.IsSupplier || supplier.IsExpenseSupplier
                         ? PartnerRoleFlagsHelper.DeriveFromFlags(supplier.IsCustomer, supplier.IsSupplier, supplier.IsExpenseSupplier)
                         : supplier.PartnerType).ToString().ToLower(),
@@ -345,6 +345,8 @@ namespace NordicBeesERP.Services
                     supplier.NationalIdNumber,
                     supplier.SupplierType,
                     supplier.CompensationVatCode,
+                    supplier.ContactPhone ?? "",
+                    supplier.InvoiceEmail ?? "",
                     DateTime.Now,
                     supplier.Id);
                 return supplier;
