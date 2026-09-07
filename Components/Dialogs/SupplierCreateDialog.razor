@@ -68,8 +68,23 @@
                         }
                         @if (supplier.IsIndividual)
                         {
+                            <MudItem xs="6">
+                                <MudTextField @bind-Value="supplier.SupplierFirstName" Label="Vardas"
+                                              Variant="Variant.Outlined" MaxLength="100" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudTextField @bind-Value="supplier.SupplierLastName" Label="Pavardė"
+                                              Variant="Variant.Outlined" MaxLength="100" />
+                            </MudItem>
                             <MudItem xs="12">
                                 <MudTextField @bind-Value="supplier.NationalIdNumber" Label="Asmens kodas"
+                                              Variant="Variant.Outlined" MaxLength="20" />
+                            </MudItem>
+                        }
+                        @if (supplier.IsIndividual && _vatRate == 6)
+                        {
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="supplier.CompensationVatCode" Label="Kompensacinio PVM tarifo kodas"
                                               Variant="Variant.Outlined" MaxLength="20" />
                             </MudItem>
                         }
