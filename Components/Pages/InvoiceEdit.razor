@@ -137,26 +137,23 @@
                                       OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })" />
                     </MudTd>
                       <MudTd DataLabel="Kiekis">
-                          <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined"
+                          <MudNumericField T="decimal" @bind-Value="line.Quantity" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined"
                               Margin="Margin.Dense" Min="0" Step="0.001M" Format="0.###"
-                              @key="(line, 0)"
-                              ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
+                              @key="(line, 0)" />
                       </MudTd>
                     <MudTd DataLabel="Vnt.">
                         <MudTextField T="string" @bind-Value="line.Unit" Variant="Variant.Outlined" 
                                       Margin="Margin.Dense" ReadOnly="false" />
                     </MudTd>
                 <MudTd DataLabel="Kaina">
-                    <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
+                    <MudNumericField T="decimal" @bind-Value="line.PriceExclVat" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined" 
                                      Margin="Margin.Dense" Min="0" Step="0.01M"
-                                     @key="(line, 1)"
-                                     ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
+                                     @key="(line, 1)" />
                 </MudTd>
                     <MudTd DataLabel="PVM %">
-                        <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
+                        <MudNumericField T="decimal" @bind-Value="line.VatRate" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined" 
                                          Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
-                                         @key="(line, 3)"
-                                         ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
+                                         @key="(line, 3)" />
                     </MudTd>
                 <MudTd DataLabel="Suma">
                     <MudTextField T="string" Value="@FormatAmountHelper.FormatAmount(line.LineTotal)" Variant="Variant.Outlined" 
