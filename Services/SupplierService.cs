@@ -283,7 +283,14 @@ namespace NordicBeesERP.Services
         {
             if (supplier.IsIndividual)
             {
-                supplier.Name = $"{supplier.SupplierFirstName} {supplier.SupplierLastName}".Trim();
+                var derivedName = $"{supplier.SupplierFirstName} {supplier.SupplierLastName}".Trim();
+                if (!string.IsNullOrWhiteSpace(derivedName))
+                {
+                    supplier.Name = derivedName;
+                }
+                // else: leave supplier.Name untouched — do NOT overwrite existing data
+                // with an empty string just because first/last name haven't been
+                // backfilled/entered yet.
             }
 
             using var context = _dbFactory.CreateDbContext();

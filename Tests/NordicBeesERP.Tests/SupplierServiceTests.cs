@@ -482,6 +482,48 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task SaveSupplierAsync_InsertIndividual_LegacyNameNotWipedWhenFirstAndLastNameEmpty()
+    {
+        var service = new SupplierService(_fixture.Factory);
+
+        var legacyName = $"Legacy Farmer Name {Guid.NewGuid():N}";
+        var dto = new Supplier
+        {
+            Id = 0,
+            Name = legacyName,
+            City = "Vilnius",
+            CountryCode = "LT",
+            Country = "Lithuania",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 14,
+            DefaultVatRate = 6m,
+            IsActive = true,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = true,
+            SupplierFirstName = null,
+            SupplierLastName = null,
+            SupplierType = "Farmer"
+        };
+
+        var saved = await service.SaveSupplierAsync(dto);
+
+        Assert.True(saved.Id > 0);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == saved.Id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal(legacyName, reloaded!.Name);
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", saved.Id);
+    }
+
+    [Fact]
     public async Task SaveSupplierAsync_CompleteFarmer_NoWarnings()
     {
         var service = new SupplierService(_fixture.Factory);
