@@ -155,6 +155,7 @@ namespace NordicBeesERP.Models
         public string? SupplierLastName { get; set; }
         public string? NationalIdNumber { get; set; }
         public string? SupplierType { get; set; }
+        public string? CompensationVatCode { get; set; }
         
         // Laikini laukai (ne duomenų bazėje)
         [NotMapped]
