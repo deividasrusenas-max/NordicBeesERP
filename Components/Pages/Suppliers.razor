@@ -25,6 +25,13 @@
         }
     </div>
 
+    @if (IncompleteFarmers.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+            <b>@IncompleteFarmers.Count</b> ūkininkams trūksta duomenų (vardo, pavardės arba kompensacinio PVM tarifo kodo). Prieš kuriant sąskaitas papildykite duomenis.
+        </MudAlert>
+    }
+
     @if (suppliers == null)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
@@ -281,6 +288,15 @@
     private bool _isManager;
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
+
+    // Farmers among the loaded suppliers that are missing data required
+    // for creating invoices (first name, last name, or, for 6%-rate farmers,
+    // the compensation VAT code). Uses the shared SupplierFarmerHelper —
+    // it already returns an empty list for non-farmers.
+    private List<Supplier> IncompleteFarmers =>
+        (suppliers ?? new List<Supplier>())
+            .Where(s => SupplierFarmerHelper.GetMissingOrInvalidFields(s).Count > 0)
+            .ToList();
 
     // URL query-string parameters (synchronized with filter state)
     [SupplyParameterFromQuery(Name = "q")]
