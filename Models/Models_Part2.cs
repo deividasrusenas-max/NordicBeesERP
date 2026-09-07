@@ -162,6 +162,8 @@ namespace NordicBeesERP.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         [NotMapped]
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        [NotMapped]
+        public List<string> SaveWarnings { get; set; } = new();
     }
 
     // =====================================================
