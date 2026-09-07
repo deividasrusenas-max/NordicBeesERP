@@ -169,7 +169,7 @@
                 </MudTd>
                 <MudTd DataLabel="Kiekis">
                     <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined"
-                                     Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M"
+                                     Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M" Format="0.###"
                                      @key="(line, 0)"
                                      ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
                 </MudTd>
@@ -726,10 +726,10 @@
         }
         
         // Reject a line with a non-empty description but a non-positive price (the most common zero-total cause)
-        var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat <= 0);
+        var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat < 0);
         if (badPriceLine is not null)
         {
-            _errorMessage = $"Eilutė '{badPriceLine.Description}' turi nulinę arba neigiamą kainą. Patikrinkite kainą prieš išsaugant.";
+            _errorMessage = $"Eilutė '{badPriceLine.Description}' turi neigiamą kainą. Patikrinkite kainą prieš išsaugant.";
             return false;
         }
 

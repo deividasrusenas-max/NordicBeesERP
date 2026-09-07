@@ -138,7 +138,8 @@
                     </MudTd>
                       <MudTd DataLabel="Kiekis">
                           <MudNumericField T="decimal" Value="@line.Quantity" Variant="Variant.Outlined"
-                              Margin="Margin.Dense" Min="0" Step="0.001M"
+                              Margin="Margin.Dense" Min="0" Step="0.001M" Format="0.###"
+                              @key="(line, 0)"
                               ValueChanged="@((decimal val) => { line.Quantity = val; CalculateLine(line); })" />
                       </MudTd>
                     <MudTd DataLabel="Vnt.">
@@ -148,11 +149,13 @@
                 <MudTd DataLabel="Kaina">
                     <MudNumericField T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined" 
                                      Margin="Margin.Dense" Min="0" Step="0.01M"
+                                     @key="(line, 1)"
                                      ValueChanged="@((decimal val) => { line.PriceExclVat = val; CalculateLine(line); })" />
                 </MudTd>
                     <MudTd DataLabel="PVM %">
                         <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
                                          Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
+                                         @key="(line, 3)"
                                          ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
                     </MudTd>
                 <MudTd DataLabel="Suma">
@@ -488,10 +491,10 @@
         }
 
         // Reject a line with a non-empty description but a non-positive price (the most common zero-total cause)
-        var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat <= 0);
+        var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat < 0);
         if (badPriceLine is not null)
         {
-            Snackbar.Add($"Eilutė '{badPriceLine.Description}' turi nulinę arba neigiamą kainą. Patikrinkite kainą prieš išsaugant.", Severity.Error);
+            Snackbar.Add($"Eilutė '{badPriceLine.Description}' turi neigiamą kainą. Patikrinkite kainą prieš išsaugant.", Severity.Error);
             return false;
         }
 
