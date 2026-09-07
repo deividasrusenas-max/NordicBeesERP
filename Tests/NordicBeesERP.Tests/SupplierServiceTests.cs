@@ -272,4 +272,102 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", id);
     }
+
+    [Fact]
+    public async Task SaveSupplierAsync_UpdateBranch_PersistsFarmerFieldsToRealDatabase()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestPartner($"Test Farmer {Guid.NewGuid():N}");
+        partner.DefaultVatRate = 6m;
+        partner.IsIndividual = true;
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var id = partner.Id;
+
+        var service = new SupplierService(_fixture.Factory);
+
+        var dto = new Supplier
+        {
+            Id = id,
+            Name = partner.Name,
+            City = "Kaunas",
+            CountryCode = partner.CountryCode,
+            Country = partner.Country,
+            DefaultLanguage = partner.DefaultLanguage,
+            PaymentTermDays = partner.PaymentTermDays,
+            DefaultVatRate = 6m,
+            IsActive = partner.IsActive,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = true,
+            SupplierFirstName = "TestF",
+            SupplierLastName = "Farmer",
+            NationalIdNumber = "10000000098",
+            SupplierType = "Farmer",
+            CompensationVatCode = "100008534429"
+        };
+
+        await service.SaveSupplierAsync(dto);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal("TestF", reloaded!.SupplierFirstName);
+        Assert.Equal("Farmer", reloaded.SupplierLastName);
+        Assert.Equal("10000000098", reloaded.NationalIdNumber);
+        Assert.Equal("Farmer", reloaded.SupplierType);
+        Assert.Equal("100008534429", reloaded.CompensationVatCode);
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", id);
+    }
+
+    [Fact]
+    public async Task SaveSupplierAsync_InsertBranch_PersistsCompensationVatCodeToRealDatabase()
+    {
+        var service = new SupplierService(_fixture.Factory);
+
+        var dto = new Supplier
+        {
+            Id = 0,
+            Name = $"Test Farmer Insert {Guid.NewGuid():N}",
+            City = "Vilnius",
+            CountryCode = "LT",
+            Country = "Lithuania",
+            DefaultLanguage = "lt",
+            PaymentTermDays = 14,
+            DefaultVatRate = 6m,
+            IsActive = true,
+            IsCustomer = false,
+            IsSupplier = true,
+            IsExpenseSupplier = false,
+            IsIndividual = true,
+            SupplierFirstName = "TestF",
+            SupplierLastName = "Farmer",
+            SupplierType = "Farmer",
+            CompensationVatCode = "100008534429"
+        };
+
+        var saved = await service.SaveSupplierAsync(dto);
+
+        Assert.True(saved.Id > 0);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == saved.Id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal("100008534429", reloaded!.CompensationVatCode);
+        Assert.Equal("TestF", reloaded.SupplierFirstName);
+        Assert.Equal("Farmer", reloaded.SupplierLastName);
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", saved.Id);
+    }
 }

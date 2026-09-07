@@ -289,8 +289,10 @@ namespace NordicBeesERP.Services
                         default_language = {13}, default_vat_rate = {14}, notes = {15}, is_active = {16},
                         default_expense_category_id = {17}, is_customer = {18}, is_supplier = {19},
                         is_expense_supplier = {20}, is_individual = {21}, vat_verified = {22},
-                        vat_verified_at = {23}, vat_verified_name = {24}, updated_at = {25}
-                    WHERE id = {26}",
+                        vat_verified_at = {23}, vat_verified_name = {24},
+                        supplier_first_name = {25}, supplier_last_name = {26}, national_id_number = {27},
+                        supplier_type = {28}, compensation_vat_code = {29}, updated_at = {30}
+                    WHERE id = {31}",
                     (supplier.IsCustomer || supplier.IsSupplier || supplier.IsExpenseSupplier
                         ? PartnerRoleFlagsHelper.DeriveFromFlags(supplier.IsCustomer, supplier.IsSupplier, supplier.IsExpenseSupplier)
                         : supplier.PartnerType).ToString().ToLower(),
@@ -318,6 +320,11 @@ namespace NordicBeesERP.Services
                     supplier.VatVerified,
                     supplier.VatVerifiedAt,
                     supplier.VatVerifiedName,
+                    supplier.SupplierFirstName,
+                    supplier.SupplierLastName,
+                    supplier.NationalIdNumber,
+                    supplier.SupplierType,
+                    supplier.CompensationVatCode,
                     DateTime.Now,
                     supplier.Id);
                 return supplier;
@@ -362,6 +369,7 @@ namespace NordicBeesERP.Services
             partner.SupplierLastName = supplier.SupplierLastName;
             partner.NationalIdNumber = supplier.NationalIdNumber;
             partner.SupplierType = supplier.SupplierType;
+            partner.CompensationVatCode = supplier.CompensationVatCode;
             partner.DefaultExpenseCategoryId = supplier.DefaultExpenseCategoryId;
             partner.UpdatedAt = DateTime.Now;
             
