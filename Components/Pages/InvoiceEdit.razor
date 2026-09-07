@@ -281,9 +281,9 @@
                     ProductId = line.ProductId,
                     ProductCode = line.ProductCode,
                     Description = line.Description,
-                    Quantity = line.Quantity,
+                    Quantity = line.Quantity / 1.0m, // normalize decimal scale (DB column carries fixed scale, e.g. 2.6500m) so the numeric field doesn't display trailing zeros
                     Unit = line.Unit,
-                    PriceExclVat = line.PriceExclVat,
+                    PriceExclVat = line.PriceExclVat / 1.0m,
                     VatRate = line.VatRate
                 });
             }

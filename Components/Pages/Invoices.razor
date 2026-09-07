@@ -595,8 +595,8 @@
         // Tab filters (applied after status filter)
         switch (_selectedTab)
         {
-            case 1: // Nesumokėtos
-                result = result.Where(i => i.Status == InvoiceStatus.Confirmed);
+            case 1: // Nesumokėtos arba dalinai apmokėtos — Confirmed statusas IR liko neapmokėtos sumos
+                result = result.Where(i => i.Status == InvoiceStatus.Confirmed && i.PaidAmount < i.TotalInclVat);
                 break;
             case 2: // Vėluojančios
                 result = result.Where(i => 

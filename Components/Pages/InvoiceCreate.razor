@@ -579,7 +579,7 @@
         line.ProductCode = product.Code;
         line.Description = product.Name;
         line.Unit = product.Unit;
-        line.PriceExclVat = _isPurchase ? product.PurchasePrice : product.SalePrice;
+        line.PriceExclVat = (_isPurchase ? product.PurchasePrice : product.SalePrice) / 1.0m; // normalize decimal scale so Kaina doesn't show trailing zeros
         CalculateLine(line);
     }
 
@@ -613,7 +613,7 @@
             line.ProductCode = selectedProduct.Code;
             line.Description = selectedProduct.Name;
             line.Unit = selectedProduct.Unit;
-            line.PriceExclVat = _isPurchase ? selectedProduct.PurchasePrice : selectedProduct.SalePrice;
+            line.PriceExclVat = (_isPurchase ? selectedProduct.PurchasePrice : selectedProduct.SalePrice) / 1.0m; // normalize decimal scale
             
             CalculateLine(line);
             
