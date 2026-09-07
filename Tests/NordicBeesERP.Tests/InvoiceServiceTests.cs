@@ -366,6 +366,108 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Fact]
+    public async Task CreateInvoiceFromDeliveryAsync_IncompleteFarmer_ThrowsAndCreatesNoInvoice()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Warehouse (unique code to avoid duplicate-entry across runs)
+        var warehouse = new Warehouse
+        {
+            Code = $"WH-{DateTime.UtcNow.Ticks % 10000000:D7}",
+            Name = $"Test Warehouse {DateTime.UtcNow.Ticks}",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Warehouses.Add(warehouse);
+        await context.SaveChangesAsync();
+        var warehouseId = warehouse.Id;
+
+        // 2. Supplier: an INCOMPLETE FARMER (6% individual) — non-empty VatCode and the same
+        //    minimum fields as the happy-path supplier, but missing first/last name and the
+        //    compensation VAT code required for a 6% farmer. This must pass every pre-existing
+        //    check so only the new farmer-completeness guard can fire.
+        var supplier = new BusinessPartner
+        {
+            PartnerType = PartnerType.Supplier,
+            Name = $"Test Farmer {DateTime.UtcNow.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            VatCode = "LT123456789",
+            PaymentTermDays = 14,
+            IsIndividual = true,
+            DefaultVatRate = 6m,
+            SupplierFirstName = null,
+            SupplierLastName = null,
+            CompensationVatCode = null,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.BusinessPartners.Add(supplier);
+        await context.SaveChangesAsync();
+        var supplierId = supplier.Id;
+
+        // 3. Delivery — deduction columns deliberately left unset: the migration that adds
+        //    them to nordic_bees_erp_test has not been applied yet, so EF must not try to
+        //    insert into those (nonexistent) columns here.
+        var delivery = new Models.WarehouseModule.Delivery
+        {
+            DeliveryDate = DateTime.UtcNow.Date,
+            SupplierId = supplierId,
+            WarehouseId = warehouseId,
+            Status = "RECEIVED",
+            TotalNetWeight = 100m,
+            TotalAmount = 200m,
+            BarrelsOwed = 0,
+            NeedReturnBarrels = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Deliveries.Add(delivery);
+        await context.SaveChangesAsync();
+        var deliveryId = delivery.Id;
+
+        // Act — the farmer-completeness guard must throw BEFORE any invoice write
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateInvoiceFromDeliveryAsync(
+                deliveryId, transportCost: 25m, barrelCost: 5m, otherCost: 0m));
+
+        Assert.Contains("ūkininko", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+        // Assert with a brand-new context: NO invoice row for this delivery and NO lines —
+        // proves the guard threw before any DB write.
+        try
+        {
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            var invoiceCount = await verifyContext.Invoices
+                .AsNoTracking()
+                .CountAsync(i => i.DeliveryId == deliveryId);
+            Assert.Equal(0, invoiceCount);
+
+            var lineCount = await verifyContext.InvoiceLines
+                .AsNoTracking()
+                .CountAsync(l => l.Invoice.CustomerId == supplierId && l.Invoice.DeliveryId == deliveryId);
+            Assert.Equal(0, lineCount);
+        }
+        finally
+        {
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE delivery_id = {0}", deliveryId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM deliveries WHERE id = {0}", deliveryId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM warehouses WHERE id = {0}", warehouseId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", supplierId);
+        }
+    }
+
     /// <summary>
     /// Reads the three deduction columns off a delivery. Returns null if those columns do not
     /// yet exist in nordic_bees_erp_test (the migration is generated but not human-applied),

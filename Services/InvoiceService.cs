@@ -6,6 +6,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 using System.Globalization;
 
@@ -666,6 +667,11 @@ namespace NordicBeesERP.Services
             var supplier = await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == invoiceSupplierId);
             if (supplier == null)
                 throw new InvalidOperationException($"Tiekėjas su id {invoiceSupplierId} nerastas");
+
+            var missingFarmerFields = SupplierFarmerHelper.GetMissingOrInvalidFields(supplier);
+            if (missingFarmerFields.Count > 0)
+                throw new InvalidOperationException(
+                    $"Negalima išrašyti sąskaitos — ūkininko duomenys neišsamūs: {string.Join("; ", missingFarmerFields)}");
 
             var deductions = transportCost + barrelCost + otherCost;
             var unitPrice = delivery.TotalNetWeight > 0
