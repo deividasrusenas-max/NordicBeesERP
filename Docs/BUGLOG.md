@@ -687,3 +687,12 @@ re-labeling the symptom.
 - **Category**: EF-core / runtime
 - **Error class**: `enum-array-contains-readonlyspan-interpreter-bug`
 - **Status**: monitoring
+
+### 2026-09-07 — Version bumped to v0.17.58 mid-task (premature), then 4+ sub-tasks committed without any bump
+- **Symptom**: During the farmer-validation build (compensation_vat_code feature), the version was bumped to v0.17.58 via `./bump-version.sh patch` (commit ef2f259) at a point where only scaffold/schema/model work (A1-A3) was committed and the feature was nowhere near complete. All subsequent feature commits (B1, B3, D3, D4, D1a) were then committed with **no** version bump, so the current HEAD version is misleading — it claims v0.17.58 while the bulk of the feature still isn't released.
+- **Root cause**: The bump-version step ran too early in the task sequence with no coordination about a single end-of-feature bump. The fixer subagent acted on the default "bump after every commit" instruction from git-workflow-nordicbees instead of holding the bump for a feature-complete gate (G1). No check enforced "bump only at a planned release point."
+- **Fix**: **NOT YET APPLIED** — the final bump (G1) is deferred until ALL remaining sub-tasks (D1b, B2, B4/C1, D2/D2T, E1, F1) land; only then bump once. Since v0.17.58 was pushed/tagged early, the one final bump still produces a single accurate release point for the whole feature; no intermediate version was shipped between sub-tasks.
+- **Guardrail added**: none beyond the instruction to hold the bump to G1 in this task's plan. Consider (future): git-workflow-nordicbees should be explicit that multi-part feature work gets exactly ONE bump at feature completion, and fixer must not bump mid-task unless the orchestrator's instruction names a bump step.
+- **Category**: infra (versioning)
+- **Error class**: `premature-version-bump-mid-task` (new tag)
+- **Status**: monitoring
