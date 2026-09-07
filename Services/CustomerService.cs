@@ -42,7 +42,9 @@ namespace NordicBeesERP.Services
                     DefaultVatRate = x.Partner.DefaultVatRate,
                     VatVerified = x.Partner.VatVerified,
                     VatVerifiedAt = x.Partner.VatVerifiedAt,
-                    VatVerifiedName = x.Partner.VatVerifiedName
+                    VatVerifiedName = x.Partner.VatVerifiedName,
+                    CompanyCode = x.Partner.CompanyCode,
+                    IsActive = x.Partner.IsActive
                 })
                 .ToListAsync();
         }
