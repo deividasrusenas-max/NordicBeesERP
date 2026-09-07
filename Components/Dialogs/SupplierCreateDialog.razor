@@ -280,6 +280,15 @@
                 supplier.Country = CountryFromCode(supplier.CountryCode.ToUpper());
 
             var savedSupplier = await SupplierService.SaveSupplierAsync(supplier);
+
+            // Show any farmer-completeness warnings (save never blocked), then close
+            if (savedSupplier.SaveWarnings is { Count: > 0 })
+            {
+                foreach (var warning in savedSupplier.SaveWarnings)
+                    snackbar?.Add(warning, Severity.Warning);
+            }
+
+            // Close dialog with result
             Dialog?.Close(savedSupplier);
         }
         catch (Exception ex)
