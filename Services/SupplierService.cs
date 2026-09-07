@@ -281,6 +281,11 @@ namespace NordicBeesERP.Services
 
         public async Task<Supplier> SaveSupplierAsync(Supplier supplier)
         {
+            if (supplier.IsIndividual)
+            {
+                supplier.Name = $"{supplier.SupplierFirstName} {supplier.SupplierLastName}".Trim();
+            }
+
             using var context = _dbFactory.CreateDbContext();
 
             // Warn (never block) about incomplete farmer data — the save always proceeds.
