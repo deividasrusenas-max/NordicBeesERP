@@ -2,6 +2,7 @@
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Data
 @using MudBlazor
+@using NordicBeesERP.Helpers
 @inject IDialogService DialogService
 @inject ISupplierService SupplierService
 @inject NordicBeesERP.Data.NordicBeesERPContext context
@@ -86,7 +87,35 @@
                                                   Value="@(_vatRate == 6 ? supplier.CompensationVatCode : supplier.VatCode)"
                                                   ValueChanged="@(async (string v) => { if (_vatRate == 6) { supplier.CompensationVatCode = v; } else { supplier.VatCode = v; } })"
                                                   Label="@(_vatRate == 6 ? "Kompensacinio PVM tarifo kodas" : "PVM mokėtojo kodas")"
-                                                  Variant="Variant.Outlined" MaxLength="20" />
+                                                   Variant="Variant.Outlined" MaxLength="20" />
+                                    @{ var compCode = supplier.CompensationVatCode; }
+                                    @if (_vatRate == 6)
+                                    {
+                                        @if (!string.IsNullOrWhiteSpace(compCode))
+                                        {
+                                            @if (CompensationVatCodeValidator.IsObsoleteFormat(compCode))
+                                            {
+                                                <div class="d-flex align-center gap-1 mt-1">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                                                    <MudText Typo="Typo.caption" Style="color:#dc2626">Pasenęs 13 skaitmenų formatas — reikia perregistruoti VMI</MudText>
+                                                </div>
+                                            }
+                                            else if (!CompensationVatCodeValidator.IsValid(compCode))
+                                            {
+                                                <div class="d-flex align-center gap-1 mt-1">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                                                    <MudText Typo="Typo.caption" Style="color:#dc2626">Neteisingas kompensacinio PVM tarifo kodas</MudText>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex align-center gap-1 mt-1">
+                                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                                    <MudText Typo="Typo.caption" Style="color:#16a34a">Kodas patvirtintas (kontrolinis skaitmuo teisingas)</MudText>
+                                                </div>
+                                            }
+                                        }
+                                    }
                                 </MudItem>
                             }
                         }
