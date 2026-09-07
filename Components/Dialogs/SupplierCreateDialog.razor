@@ -51,18 +51,17 @@
                                 </div>
                             </MudItem>
                         }
-                        <MudItem xs="12">
-                            <MudTextField @bind-Value="supplier.Name" Label="Pavadinimas" Required="true"
-                                          Variant="Variant.Outlined" MaxLength="255" />
-                        </MudItem>
+                        @if (!supplier.IsIndividual)
+                        {
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="supplier.Name" Label="Pavadinimas" Required="true"
+                                              Variant="Variant.Outlined" MaxLength="255" />
+                            </MudItem>
+                        }
                         @if (!supplier.IsIndividual)
                         {
                             <MudItem xs="6">
                                 <MudTextField @bind-Value="supplier.CompanyCode" Label="Įmonės kodas"
-                                              Variant="Variant.Outlined" MaxLength="20" />
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudTextField @bind-Value="supplier.VatCode" Label="PVM mokėtojo kodas"
                                               Variant="Variant.Outlined" MaxLength="20" />
                             </MudItem>
                         }
@@ -80,11 +79,11 @@
                                 <MudTextField @bind-Value="supplier.NationalIdNumber" Label="Asmens kodas"
                                               Variant="Variant.Outlined" MaxLength="20" />
                             </MudItem>
-                        }
-                        @if (supplier.IsIndividual && _vatRate == 6)
-                        {
                             <MudItem xs="12">
-                                <MudTextField @bind-Value="supplier.CompensationVatCode" Label="Kompensacinio PVM tarifo kodas"
+                                <MudTextField @key="@FarmerCodeKey"
+                                              Value="@(_vatRate == 6 ? supplier.CompensationVatCode : supplier.VatCode)"
+                                              ValueChanged="@(async (string v) => { if (_vatRate == 6) { supplier.CompensationVatCode = v; } else { supplier.VatCode = v; } })"
+                                              Label="@(_vatRate == 6 ? "Kompensacinio PVM tarifo kodas" : "PVM mokėtojo kodas")"
                                               Variant="Variant.Outlined" MaxLength="20" />
                             </MudItem>
                         }
@@ -200,6 +199,8 @@
 
     private Supplier supplier = new();
     private int _vatRate = 21;
+
+    private string FarmerCodeKey => _vatRate == 6 ? "comp" : "vat";
     private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
 
     private static string CountryFromCode(string code)
