@@ -48,3 +48,4 @@ Docs/Invoice pvz/
 # Agent task reports — ephemeral working notes, never committed (per AGENTS.md)
 .agent-reports/
 .opencode-backups/
+.opencode/tasks/latest.md
