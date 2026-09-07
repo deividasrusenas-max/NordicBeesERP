@@ -226,7 +226,8 @@ namespace NordicBeesERP.Services
                     bank_account = {12}, payment_term_days = {13},
                     default_language = {14}, default_vat_rate = {15}, notes = {16}, is_active = {17},
                     supplier_first_name = {18}, supplier_last_name = {19}, national_id_number = {20},
-                    supplier_type = {21}, default_expense_category_id = {22}, updated_at = {23}
+                    supplier_type = {21}, default_expense_category_id = {22}, updated_at = {23},
+                    compensation_vat_code = {25}
                 WHERE id = {24}",
                 partner.Name,
                 partner.CompanyCode,
@@ -252,7 +253,8 @@ namespace NordicBeesERP.Services
                 partner.SupplierType,
                 partner.DefaultExpenseCategoryId,
                 DateTime.Now,
-                partner.Id);
+                partner.Id,
+                partner.CompensationVatCode);
 
             partner.UpdatedAt = DateTime.Now;
             return partner;

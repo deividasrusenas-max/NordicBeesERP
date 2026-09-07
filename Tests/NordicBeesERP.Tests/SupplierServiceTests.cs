@@ -92,6 +92,33 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task UpdateBusinessPartnerAsync_PersistsCompensationVatCodeToRealDatabase()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestPartner($"Test Supplier {Guid.NewGuid():N}");
+        partner.CompensationVatCode = "100008534429";
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var id = partner.Id;
+
+        var service = new SupplierService(_fixture.Factory);
+
+        await service.UpdateBusinessPartnerAsync(partner);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var reloaded = await verifyContext.BusinessPartners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(bp => bp.Id == id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal("100008534429", reloaded!.CompensationVatCode);
+
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", id);
+    }
+
+    [Fact]
     public async Task SaveSupplierAsync_Insert_PersistsRoleFlagsAndDerivesBothPartnerType()
     {
         var service = new SupplierService(_fixture.Factory);
