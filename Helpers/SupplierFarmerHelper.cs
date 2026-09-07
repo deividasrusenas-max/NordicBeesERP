@@ -17,13 +17,15 @@ public static class SupplierFarmerHelper
         CheckMissingOrInvalidFields(
             supplier.IsIndividual, supplier.DefaultVatRate,
             supplier.SupplierFirstName, supplier.SupplierLastName,
-            supplier.CompensationVatCode);
+            supplier.CompensationVatCode,
+            supplier.NationalIdNumber, supplier.Address, supplier.BankAccount);
 
     public static List<string> GetMissingOrInvalidFields(BusinessPartner partner) =>
         CheckMissingOrInvalidFields(
             partner.IsIndividual, partner.DefaultVatRate,
             partner.SupplierFirstName, partner.SupplierLastName,
-            partner.CompensationVatCode);
+            partner.CompensationVatCode,
+            partner.NationalIdNumber, partner.Address, partner.BankAccount);
 
     // --- private shared cores (single source of truth) ---
 
@@ -32,7 +34,8 @@ public static class SupplierFarmerHelper
 
     private static List<string> CheckMissingOrInvalidFields(
         bool isIndividual, decimal defaultVatRate,
-        string? supplierFirstName, string? supplierLastName, string? compensationVatCode)
+        string? supplierFirstName, string? supplierLastName, string? compensationVatCode,
+        string? nationalIdNumber, string? address, string? bankAccount)
     {
         var result = new List<string>();
         if (!IsFarmer(isIndividual, defaultVatRate)) return result;
@@ -41,6 +44,19 @@ public static class SupplierFarmerHelper
             result.Add("Trūksta vardo (reikalinga ūkininkams)");
         if (string.IsNullOrWhiteSpace(supplierLastName))
             result.Add("Trūksta pavardės (reikalinga ūkininkams)");
+
+        if (string.IsNullOrWhiteSpace(nationalIdNumber))
+            result.Add("Asmens kodas nenurodytas");
+        else if (!LithuanianIdValidator.IsValid(nationalIdNumber))
+            result.Add("Neteisingas asmens kodas");
+
+        if (string.IsNullOrWhiteSpace(address))
+            result.Add("Adresas nenurodytas");
+
+        if (string.IsNullOrWhiteSpace(bankAccount))
+            result.Add("Banko sąskaitos numeris nenurodytas");
+        else if (!IbanValidator.IsValid(bankAccount))
+            result.Add("Neteisingas banko sąskaitos numeris");
 
         if (defaultVatRate == 6m)
         {

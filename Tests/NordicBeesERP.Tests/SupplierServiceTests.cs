@@ -546,6 +546,9 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
             SupplierFirstName = "TestF",
             SupplierLastName = "Farmer",
             SupplierType = "Farmer",
+            NationalIdNumber = "10000000098",
+            Address = "Testo g. 5, Vilnius",
+            BankAccount = "LT121000011101001000",
             CompensationVatCode = "100008534429"
         };
 

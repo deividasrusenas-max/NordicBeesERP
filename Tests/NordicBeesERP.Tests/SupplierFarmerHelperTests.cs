@@ -12,7 +12,10 @@ public class SupplierFarmerHelperTests
         DefaultVatRate = rate,
         SupplierFirstName = "Jonas",
         SupplierLastName = "Jonaitis",
-        CompensationVatCode = "100008534429"
+        CompensationVatCode = "100008534429",
+        NationalIdNumber = "10000000098", // valid per Lithuanian asmens kodas checksum
+        Address = "Testo g. 5, Vilnius",
+        BankAccount = "LT121000011101001000" // valid per IBAN MOD-97-10
     };
 
     [Fact]
@@ -115,6 +118,33 @@ public class SupplierFarmerHelperTests
         Assert.Empty(SupplierFarmerHelper.GetMissingOrInvalidFields(farmer));
     }
 
+    [Fact]
+    public void BankAccount_Invalid_Reported()
+    {
+        var farmer = Farmer(6m);
+        farmer.BankAccount = "LT121000011101001001"; // deliberately invalid checksum digit
+        var missing = SupplierFarmerHelper.GetMissingOrInvalidFields(farmer);
+        Assert.Contains("Neteisingas banko sąskaitos numeris", missing);
+    }
+
+    [Fact]
+    public void NationalIdNumber_Invalid_Reported()
+    {
+        var farmer = Farmer(6m);
+        farmer.NationalIdNumber = "10000000099"; // deliberately invalid checksum digit
+        var missing = SupplierFarmerHelper.GetMissingOrInvalidFields(farmer);
+        Assert.Contains("Neteisingas asmens kodas", missing);
+    }
+
+    [Fact]
+    public void Address_Missing_Reported()
+    {
+        var farmer = Farmer(6m);
+        farmer.Address = null;
+        var missing = SupplierFarmerHelper.GetMissingOrInvalidFields(farmer);
+        Assert.Contains("Adresas nenurodytas", missing);
+    }
+
     private static BusinessPartner FarmerBp(decimal rate, bool individual = true) => new()
     {
         IsIndividual = individual,
@@ -122,6 +152,9 @@ public class SupplierFarmerHelperTests
         SupplierFirstName = "Jonas",
         SupplierLastName = "Jonaitis",
         CompensationVatCode = "100008534429",
+        NationalIdNumber = "10000000098", // valid per Lithuanian asmens kodas checksum
+        Address = "Testo g. 5, Vilnius",
+        BankAccount = "LT121000011101001000", // valid per IBAN MOD-97-10
         PartnerType = PartnerType.Supplier,
         Name = "Test Farmer",
         Country = "Lithuania",
@@ -187,5 +220,14 @@ public class SupplierFarmerHelperTests
         var farmer = FarmerBp(21m);
         farmer.CompensationVatCode = "100008534428"; // invalid code, but irrelevant at 21%
         Assert.Empty(SupplierFarmerHelper.GetMissingOrInvalidFields(farmer));
+    }
+
+    [Fact]
+    public void BusinessPartner_BankAccount_Invalid_Reported_MatchesSupplierBehavior()
+    {
+        var farmer = FarmerBp(6m);
+        farmer.BankAccount = "LT121000011101001001"; // deliberately invalid checksum digit
+        var missing = SupplierFarmerHelper.GetMissingOrInvalidFields(farmer);
+        Assert.Contains("Neteisingas banko sąskaitos numeris", missing);
     }
 }
