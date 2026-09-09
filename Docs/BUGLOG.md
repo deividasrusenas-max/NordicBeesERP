@@ -816,3 +816,21 @@ re-labeling the symptom.
 - **Category**: EF-core
 - **Error class**: `unconditional-derived-field-overwrite-wipes-legacy-data` (new tag)
 - **Status**: monitoring
+
+### 2026-09-09 — Fixer looped across ~8 compaction cycles on a single-file commit, never reached `git add` — RECURRENCE
+- **Symptom**: `fixer` was delegated a plain commit task for one modified file (`Components/Dialogs/SupplierCreateDialog.razor`, the MudAutocomplete address-wipe fix). Over roughly eight consecutive compaction cycles it ran `git status`, received identical output every time, restated an identical correct plan ("Next Move: 1. dotnet build 2. git add <path> 3. git commit -m ... 4. git log --oneline -1"), and then compacted again. Across the whole run exactly one real action was performed — a single `dotnet build` (succeeded, 0 errors). `git add` never executed. The session was interrupted manually by the user; the commit was made by hand afterwards.
+- **Root cause**: RECURRENCE of `plan-without-execution-gap` (first family entries 2026-08-24). The compaction cycle is the amplifier: after each compaction the agent's first reflex is to re-establish state with `git status`, the state is unchanged, so it rebuilds the same plan and reaches the same point before the next compaction truncates it again. The underlying question — why a single-file commit task compacts at all against a 65536 context — is the separate entry below (`unconditional-skill-injection-context-bloat`), which is the enabling condition rather than the loop mechanism itself.
+- **Fix**: NOT YET APPLIED. The commit itself was completed manually by the user.
+- **Guardrail added**: none — and the existing one demonstrably did not fire. `.opencode/plugin/nordicbees-circuit-breaker.ts` detects same-tool-streak (8) and identical-args-streak (3) over CONSECUTIVE tool calls. Here the repeated `git status` calls were separated by compaction events and one `dotnet build`, so the streak counters reset and no abort was triggered. **This is a real detection gap: a loop spread across compaction boundaries is invisible to the current circuit-breaker.** Proposed (not implemented): make streak detection survive compaction — either by keying on identical-args-hash within a session regardless of adjacency, or by treating a compaction event as non-interrupting for streak purposes.
+- **Category**: infra (harness)
+- **Error class**: `plan-without-execution-gap`
+- **Status**: escalated — the prompt-text "report BLOCKED once and STOP" rule and the Tier-1 circuit-breaker both failed to stop this instance, for different reasons (the agent never considered itself blocked; the breaker's adjacency assumption was violated). Recommend fixing the breaker's compaction blindness rather than adding further prompt text.
+
+### 2026-09-09 — Unconditional skill injection fills a subagent's context on trivial tasks
+- **Symptom**: Two measurements the same day. (1) `reviewer` was delegated a trivial "count the lines in AuthService.cs" task and received a **16,368-character** prompt, taking 56s (`orchestrator-timing.jsonl`, `skills_injected: true`). (2) `fixer` was delegated a single-file commit and compacted repeatedly within seconds of starting, against a 65536-token context limit that a one-file commit should not approach — see the loop entry above.
+- **Root cause**: `.opencode/plugin/nordicbees-skill-inject.ts`'s `ALWAYS_FOR_AGENT` map injects full skill files unconditionally, with no task-complexity or content condition of any kind: `fixer` always receives `git-workflow-nordicbees`; `reviewer` always receives `git-workflow-nordicbees` + `llm-code-quality-gate`. This path was NOT touched by the same-day over-broad-regex fix (`skill-injection-overbroad-match`), which narrowed the keyword-matched `RULES` array only. The two are separate mechanisms in the same plugin.
+- **Fix**: NOT YET APPLIED.
+- **Guardrail added**: none. Note this is a cost/capacity defect rather than a correctness one on its own — but it is the enabling condition for the compaction loop above, so it is not merely a token-efficiency concern.
+- **Category**: infra (harness)
+- **Error class**: `unconditional-skill-injection-context-bloat` (new tag)
+- **Status**: monitoring
