@@ -50,6 +50,27 @@ apėjimų. Jei taskas reikalauja komandų vykdymo, jis eina fixer'iui.
 
 Temperatūros: coder 0.25, fixer 0.1, reviewer 0.1, verifier 0.1.
 
+**Leidimų numatytoji reikšmė yra `allow`.** Jei laukas neišvardintas agento
+`permission` bloke — jis leidžiamas. Dėl to `reviewer` techniškai turi `write`
+teisę, nors jo promptas sako „read-only auditor", o `glob`/`grep`/`list`
+leidžiami ir jam, ir orchestratoriui. Uždrausti reikia eksplicitiškai.
+
+**Orchestratorius neturi `write`** — jo realus mechanizmas yra scoped `edit`.
+Patikrinta: `edit` su tuščiu `oldString` sukuria naują failą, tai jis gali
+rašyti į `.opencode/reports/` nepaisant `write: deny`.
+
+### Ataskaitų taisyklė
+
+Ataskaitos failą rašo tas, kas turi `edit`/`write` teisę `.opencode/reports/` —
+praktikoje orchestratorius. Agentas be tos teisės grąžina ataskaitą **tekstu**
+savo atsakyme, ir tai yra atitikimas taisyklei, ne atsarginis variantas.
+
+Ankstesnė `AGENTS.md` formuluotė reikalavo rašyti failą „be išimčių" ir
+eksplicitiškai draudė tekstinį variantą — o `verifier`, `visual-qa` ir
+`design-review` neturi jokio rašymo įrankio. 2026-09-09 tai baigėsi tuo, kad
+`verifier` bandė POST'inti ataskaitą į penkis spėliotus HTTP endpoint'us per
+`playwright_browser_run_code_unsafe`. Circuit-breaker'is jį sustabdė.
+
 ---
 
 ## 3. Modeliai ir serveris
@@ -125,6 +146,8 @@ politiką paleidžiamas **tik** kai eksplicitiškai prašai naršyklės verifika
 
 ## 6. Kaip veikia vienas taskas
 
+### FULL PATH (numatytasis)
+
 1. Duodi orchestratoriui vieną didelį taską — nereikia pačiam skaidyti.
 2. Orchestratorius daro `todowrite` dekompoziciją: vienas todo per failą, o jei
    viename faile daugiau nei 3 skirtingi pakeitimai — priverstinis skaidymas į
@@ -139,6 +162,29 @@ build → minimalus taisymas → git status → git add → grep BUCKET_GROUP st
 diff'e → grep FindAsync/SaveChangesAsync staged diff'e → **dotnet test** →
 commit → git log patvirtinimas → **bump-version (tik jei eksplicitiškai
 paprašyta)** → agent-guardrails check.
+
+### FAST PATH
+
+`orchestrator.md` turi „Task complexity triage" sekciją: coder → fixer,
+praleidžiant reviewer. Leidžiama tik kai **visos** sąlygos tenkinamos:
+
+- vienas failas, tikrai mažas pakeitimas (konstanta, akivaizdi rašybos klaida,
+  null check nukopijuotas iš gretimo identiško šablono)
+- jokio naujo ar pakeisto metodo, jokios verslo logikos
+- neliečia DB rašymo kelio (`ExecuteSqlRawAsync`/`FindAsync`/`SaveChangesAsync`)
+- **nėra naujo ar pakeisto vartotojui matomo teksto** — tik reviewer tikrina
+  lietuvių/anglų teksto rišlumą, o 2026-08-24 į produkciją nuėjo hallucinuotas
+  string'as
+- neliečia `Docs/FROZEN.md` saugomų zonų
+- bet kokia abejonė → FULL PATH
+
+Pasirinktas kelias fiksuojamas prie kiekvieno todo. Jei fixer negali FAST PATH
+tasko išspręsti minimaliu patch'u — grąžina orchestratoriui, kuris
+permaršrutuoja per FULL PATH. Antro FAST PATH bandymo tam pačiam failui nebūna.
+
+⚠️ FAST PATH yra Tier 3 gynyba — nėra mechanizmo, kuris priverstų orchestratorių
+klasifikuoti. Ar realiai naudojamas, matosi iš `orchestrator-timing.jsonl`: du
+`task` įrašai (coder, fixer) = FAST PATH, trys su reviewer = FULL PATH.
 
 ---
 
@@ -244,6 +290,9 @@ praktiškai nesumažino.
 | `1022431` | Pašalintos mirusios `.clinerules/` ir `.kilo/` nuorodos. |
 | `ae17237` | Naujas `nordicbees-orchestrator-timing.ts`. |
 | `4bec053` | `orchestrator` gavo eksplicitinį `model: opencode/big-pickle` — iki tol lauko nebuvo visai ir jis krito į default'ą. |
+| `60fb231` | Pirmas taisymas verifier ataskaitų problemai (išimtis verifier'iui). |
+| `bbdc882` | `orchestrator-timing.ts` dabar rašo `started` įrašą iškart `task` call'ams — kabantis delegavimas nebelieka nematomas. |
+| `c07d4c8` | `60fb231` perrašytas kaip teigiama taisyklė vietoj išimčių sąrašo; `orchestrator.md` gavo atsakomybę išsaugoti subagento grąžintą ataskaitą. |
 
 Anksčiau tą pačią dieną: `nordicbees-skill-inject.ts` regex susiaurintas
 (`questpdf` nebe nuo bet kokio „PDF", `verify-before-done` nebe nuo `form`/
@@ -275,3 +324,19 @@ Taip pat nužudyta 5 paras kabėjusi OpenCode sesija (pid 85573).
 - **`Docs/PROJECT_STATE.md`** — 7 savaičių senumo šablonas su placeholder
   tekstu, o orchestratorius jį skaito kaip būsenos šaltinį.
 - **§8 coder+fixer merge** — sąmoningoje pauzėje, laukia baseline statistikos.
+- **`playwright_browser_run_code_unsafe`** — leidžia subagentui vykdyti bet kokį
+  JS, įskaitant `fetch()`. `--allowed-origins` šio vektoriaus nedengia (localhost
+  lieka pasiekiamas). Paliktas sąmoningai, nes reikalingas „batch known flows"
+  darbo eigai.
+- **Harness lint** — neparašytas. Per vieną dieną rasti penki tos pačios šeimos
+  prieštaravimai (nuoroda į tai, ko nėra): `.agent-reports/`, `.clinerules/`,
+  `.kilo/prompts/`, `\bService\.cs\b`, fixer žingsnių numeracija vs DONE
+  apibrėžimas. Mechaniškai tikrinamos trys klasės: mirusios failo nuorodos;
+  prompt'as liepia veiksmą, kurio `opencode.json` tam agentui neleidžia;
+  numeruotų žingsnių spragos ir vidiniai neatitikimai.
+- **Kokybės trendas nematuotas** — nėra nieko, kas atsakytų, ar po rugpjūčio
+  pakeitimų aplikacijos klaidų mažiau. `BUGLOG.md` datos ir `Category` leistų
+  suskaičiuoti bugų per savaitę rugpjūtį prieš rugsėjį. **2026-09-09 yra
+  nulinis taškas** — tą dieną pakeistas orchestratoriaus modelis, fixer'io
+  žingsniai ir nužudyta fone kabėjusi sesija; ankstesni duomenys yra kitos
+  konfigūracijos matavimas.
