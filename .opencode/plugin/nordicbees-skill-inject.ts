@@ -37,7 +37,15 @@ const RULES: { pattern: RegExp; skills: string[] }[] = [
   // §13: a pure-migration task's build-note aside "(Pre-existing MudBlazor
   // MUD0002 analyzer WARNINGS...)" injected the full mudblazor skill).
   { pattern: /(MudBlazor|MudStack|MudGrid|MudPaper|MudTable|MudDialog)[\s\S]*\.razor\b|\.razor\b[\s\S]*(MudBlazor|MudStack|MudGrid|MudPaper|MudTable|MudDialog)/i, skills: ["mudblazor"] },
-  { pattern: /\bService\.cs\b|Migrations\/|DbContext|ExecuteSqlRawAsync|NordicBeesErpContext/i, skills: ["dotnet-efcore-nordicbees"] },
+  // Dropped the leading \b before "Service" — it required a word boundary
+  // immediately before "Service", which never matches this project's own
+  // real *Service.cs naming convention (OrderService.cs, PaymentService.cs,
+  // etc — the prefix letter and "S" share no boundary). Found incidentally
+  // via test cases T2/T6 while fixing the over-broad rules above; this is
+  // the opposite defect (under-matching), pre-existing, unrelated to those
+  // fixes. Verified the widened pattern does NOT match: NordicBeesERP.csproj,
+  // Services.csproj, CustomerServiceTests.cs, "the service.csv export".
+  { pattern: /Service\.cs\b|Migrations\/|DbContext|ExecuteSqlRawAsync|NordicBeesErpContext/i, skills: ["dotnet-efcore-nordicbees"] },
   { pattern: /\bVAT\b|PVM|i\.SAF|isaf/i, skills: ["lithuanian-vat-isaf"] },
   // Bare \bPDF\b used to fire on any incidental mention of the word (e.g.
   // "attach as PDF" in unrelated prose) — now requires generation context,
