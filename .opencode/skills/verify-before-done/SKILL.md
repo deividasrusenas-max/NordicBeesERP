@@ -72,11 +72,20 @@ have one.
   when `TEST_DB_CONNECTION` is set in the environment — a failing test
   blocks the release exactly like a failing build.
 
-## If Playwright/browser testing becomes available later
+## Playwright E2E now exists — it complements this, it doesn't replace it
 
-If this project later adds Playwright-based Blazor E2E tests (testing
-the full UI-to-database path through a real browser, not just the
-Service layer), those complement — not replace — the xUnit Service-layer
-tests above. For UI wiring specifically (does the button actually call
-the Service method at all), the manual call-chain trace in steps 1-2
-above is still the enforced minimum until Playwright tests exist.
+Playwright-based Blazor E2E testing (the full UI-to-database path through
+a real browser, not just the Service layer) exists now, two ways:
+agent-driven, via the `playwright-e2e-nordicbees` skill; and persisted, as
+real xUnit tests in `Tests/Playwright/` (see `OrderModuleE2ETests.cs`).
+Both complement — they do not replace — the xUnit Service-layer tests
+above.
+
+For UI wiring specifically (does the button actually call the Service
+method at all), the manual call-chain trace in steps 1-2 above is still
+the ENFORCED MINIMUM regardless — per `orchestrator.md`'s default-skip
+policy, a Playwright check is opt-in/occasional (only run when the user
+explicitly asks for browser verification, or the task is genuinely too
+UI-behavior-sensitive to skip), not something run on every task. Do not
+treat "Playwright exists now" as a reason to skip the trace on a task
+where no Playwright check was actually run.

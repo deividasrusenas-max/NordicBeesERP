@@ -44,6 +44,33 @@ const SAME_TOOL_STREAK_THRESHOLD = 8
 const IDENTICAL_CALL_THRESHOLD = 3
 const ABSOLUTE_CEILING = 1000
 
+// Malformed/rejected tool-call streak (BUGLOG: tool-call-json-argument-
+// bleed-multicall, first occurrence 2026-09-09). Confirmed by reading the
+// actual installed OpenCode binary's own tool-dispatch logic (v1.18.30,
+// `strings` extraction — grepped for these exact literals and found them
+// live in the binary, not assumed): these are the three message prefixes
+// OpenCode itself uses when a tool call is rejected BEFORE the tool's own
+// execute() ever runs -- unknown tool name, no execute handler registered,
+// or the call's arguments failed schema/JSON decode (this last one is what
+// a truncated/argument-bled tool call actually surfaces as: "Invalid tool
+// input: " + the underlying JSON.parse/decode error message). A tool that
+// DID start executing and then threw its own runtime error (a failing
+// dotnet build, a nonzero bash exit) produces a different, tool-specific
+// message and must never count toward this streak -- only these three
+// prefixes mean "the call itself was rejected," which is never a
+// legitimate outcome for any role, unlike the repetition-based detectors
+// below which DO have legitimate cases (see SAME_TOOL_STREAK_MAX_DISTINCT_ARGS's
+// own comment for a concrete one). This is why this detector, uniquely
+// among all of this file's detectors, is NOT limited to subagentSessions --
+// see its own comment further down in the event handler.
+const MALFORMED_STREAK_THRESHOLD = 3
+const MALFORMED_ERROR_MAX_LEN = 400
+const MALFORMED_ERROR_PREFIXES = ["Unknown tool: ", "Tool has no execute handler: ", "Invalid tool input: "]
+
+function isMalformedToolError(error: string): boolean {
+  return MALFORMED_ERROR_PREFIXES.some((p) => error.startsWith(p))
+}
+
 // A pure text-only repeat loop (no tool calls at all between turns) is
 // aborted after this many consecutive near-identical completed text
 // parts. Real incident (2026-09-06): a fixer session correctly finished
@@ -125,15 +152,30 @@ function normalizeReportText(text: string): string {
 // tool-call pattern.
 const subagentSessions = new Set<string>()
 
+// Malformed-tool-call tracker — a SEPARATE map, deliberately keyed by
+// EVERY session this plugin observes (subagent AND top-level orchestrator
+// sessions alike), unlike `sessions` above which only exists for sessions
+// already in subagentSessions. See the detector's own comment in the event
+// handler for why.
+type MalformedTracker = { streak: number; recentErrors: string[]; seenPartIds: Set<string> }
+const malformedTrackers = new Map<string, MalformedTracker>()
+
 function cleanup(sessionID: string) {
   sessions.delete(sessionID)
   subagentSessions.delete(sessionID)
+  malformedTrackers.delete(sessionID)
 }
 
 function logAbort(
   logPath: string,
   reportsDir: string,
-  record: { sessionID: string; reason: string; history: CallRecord[]; totalToolCalls: number },
+  record: {
+    sessionID: string
+    reason: string
+    history: CallRecord[]
+    totalToolCalls: number
+    recentErrors?: string[]
+  },
 ) {
   try {
     if (!existsSync(reportsDir)) mkdirSync(reportsDir, { recursive: true })
@@ -175,6 +217,59 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
       if (event.type !== "message.part.updated") return
       const part = event.properties.part
 
+      // Malformed-tool-call detector — runs for EVERY session, including
+      // the top-level orchestrator session, BEFORE the subagent-only
+      // scoping guard below. Deliberate choice, not an oversight: the
+      // 2026-09-09 argument-bleed incident this guards against happened on
+      // the orchestrator's own top-level session (parentID=undefined,
+      // confirmed via .local/share/opencode/log/opencode.log), and a
+      // rejected/malformed tool call has no legitimate case for ANY role
+      // the way "many calls to the same tool" does for the orchestrator's
+      // own long bash reconnaissance sequences (that legitimate-repetition
+      // concern is specific to the three repetition-based detectors below,
+      // not to this one — see SAME_TOOL_STREAK_MAX_DISTINCT_ARGS's comment).
+      // A malformed-call streak means the model's own tool-call-generation
+      // is broken right now, at any level, so aborting the top-level
+      // session here is the correct outcome, not an over-broad one.
+      if (part.type === "tool" && part.state?.status === "completed") {
+        const tracker = malformedTrackers.get(part.sessionID)
+        if (tracker) tracker.streak = 0
+      } else if (part.type === "text" && part.time?.end) {
+        // Real TextPart completion signal (time.end set) — NOT
+        // part.state?.status, which the pre-existing text-repeat-loop
+        // detector below uses but TextPart has no `.state` field at all
+        // per the actual SDK type (@opencode-ai/sdk types.gen.d.ts) —
+        // flagging that as a separate, likely-real bug, not fixed here
+        // (out of scope for this task; that detector's own condition
+        // never evaluates true against a real TextPart as far as I can
+        // tell from the type definitions, but I have not proven it live).
+        const tracker = malformedTrackers.get(part.sessionID)
+        if (tracker) tracker.streak = 0
+      } else if (part.type === "tool" && part.state?.status === "error" && isMalformedToolError(part.state?.error ?? "")) {
+        const tracker = malformedTrackers.get(part.sessionID) ?? { streak: 0, recentErrors: [], seenPartIds: new Set() }
+        malformedTrackers.set(part.sessionID, tracker)
+        if (!tracker.seenPartIds.has(part.id)) {
+          tracker.seenPartIds.add(part.id)
+          tracker.streak += 1
+          const inputSnippet = JSON.stringify(part.state?.input ?? {}).slice(0, MALFORMED_ERROR_MAX_LEN)
+          const errorSnippet = (part.state?.error ?? "").slice(0, MALFORMED_ERROR_MAX_LEN)
+          tracker.recentErrors.push(`tool=${part.tool} error=${errorSnippet} input=${inputSnippet}`)
+          if (tracker.recentErrors.length > MALFORMED_STREAK_THRESHOLD) tracker.recentErrors.shift()
+
+          if (tracker.streak >= MALFORMED_STREAK_THRESHOLD) {
+            logAbort(logPath, reportsDir, {
+              sessionID: part.sessionID,
+              reason: "malformed-tool-call-streak",
+              history: [],
+              totalToolCalls: tracker.streak,
+              recentErrors: [...tracker.recentErrors],
+            })
+            await client.session.abort({ path: { id: part.sessionID } })
+            cleanup(part.sessionID)
+          }
+        }
+      }
+
       // Scoping guard: never track/abort a session we didn't register as
       // a subagent above — this is what keeps the orchestrator's own
       // top-level session permanently out of reach of this plugin.
@@ -187,8 +282,8 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
       // on the session so that ANY further tool call after this point is
       // treated as a post-terminal continuation loop, regardless of
       // whether it repeats an identical call or varies each time.
-      if (part.type === "text" && part.state?.status === "completed") {
-        const text: string = typeof part.text === "string" ? part.text : (part.state?.text ?? "")
+      if (part.type === "text" && part.time?.end) {
+        const text: string = part.text
         const state = sessions.get(part.sessionID) ?? newSessionState()
         sessions.set(part.sessionID, state)
 

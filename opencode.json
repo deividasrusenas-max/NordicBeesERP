@@ -24,7 +24,7 @@
         "roslyn": "allow",
         "mudblazor": "allow",
         "microsoft-docs": "allow",
-        "playwright": "allow",
+        "playwright": "deny",
         "question": "deny",
         "semantic_search": "deny",
         "skill": "allow",
@@ -435,7 +435,9 @@
         "--timeout-action",
         "15000",
         "--timeout-navigation",
-        "60000"
+        "60000",
+        "--allowed-origins",
+        "http://localhost:5081"
       ],
       "enabled": true,
       "type": "local"

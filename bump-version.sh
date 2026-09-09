@@ -49,7 +49,10 @@ fi
 # a failing test blocks the release just like a failing build.
 if [ -n "$TEST_DB_CONNECTION" ]; then
   echo "Running dotnet test (gate 1.5)..."
-  if ! dotnet test --nologo -v quiet > /tmp/bump-version-test.log 2>&1; then
+  # E2E tests (Category=E2E) need a running dev server + a real browser and
+  # are excluded here -- run them manually via
+  # `dotnet test --filter Category=E2E`, never automatically on every release.
+  if ! dotnet test --filter "Category!=E2E" --nologo -v quiet > /tmp/bump-version-test.log 2>&1; then
     echo "ERROR: bump-version.sh refused to run -- tests FAILED." >&2
     echo "See /tmp/bump-version-test.log for details:" >&2
     tail -n 40 /tmp/bump-version-test.log >&2

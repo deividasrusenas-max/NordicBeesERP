@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Playwright;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -12,17 +11,24 @@ namespace NordicBeesERP.Tests.Playwright;
 ///
 /// Prerequisites:
 ///   - Dev server running on http://localhost:5081
-///   - Admin user exists in DB (admin@lakstena.local / Admin123!)
+///   - Admin user exists in DB; credentials supplied via the
+///     NORDICBEES_E2E_ADMIN_EMAIL / NORDICBEES_E2E_ADMIN_PASSWORD
+///     environment variables (never hardcoded — see AGENTS.md "Secrets")
 ///   - At least one Customer and one Product exist in the database
 /// </summary>
+[Trait("Category", "E2E")]
 public class OrderModuleE2ETests : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
     private IBrowser? _browser;
     private IPage? _page;
     private readonly string _baseUrl = "http://localhost:5081";
-    private string _adminEmail;
-    private string _adminPassword;
+    private static readonly string _adminEmail =
+        Environment.GetEnvironmentVariable("NORDICBEES_E2E_ADMIN_EMAIL")
+        ?? throw new Exception("NORDICBEES_E2E_ADMIN_EMAIL not set — see AGENTS.md Secrets rule, this test never hardcodes credentials");
+    private static readonly string _adminPassword =
+        Environment.GetEnvironmentVariable("NORDICBEES_E2E_ADMIN_PASSWORD")
+        ?? throw new Exception("NORDICBEES_E2E_ADMIN_PASSWORD not set — see AGENTS.md Secrets rule");
     private readonly string _artifactsDir = ".playwright-mcp";
 
     // Captured during tests
@@ -37,20 +43,8 @@ public class OrderModuleE2ETests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // Load admin credentials from appsettings.Development.json
-        var config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: false)
-            .Build();
-
-        _adminEmail = config["Admin:Email"];
-        _adminPassword = config["Admin:Password"];
-
-        if (string.IsNullOrWhiteSpace(_adminEmail) || string.IsNullOrWhiteSpace(_adminPassword))
-            throw new Exception("Admin:Email/Admin:Password not found in appsettings.Development.json — see AGENTS.md");
-
         var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
-        _browser = await playwright.Chromium.LaunchAsync(new() { Headless = false });
+        _browser = await playwright.Chromium.LaunchAsync(new() { Headless = Environment.GetEnvironmentVariable("E2E_HEADED") != "1" });
         _page = await _browser.NewPageAsync();
 
         // Collect console messages
@@ -108,7 +102,7 @@ public class OrderModuleE2ETests : IAsyncLifetime
         // Navigate to orders list
         await _page!.GotoAsync($"{_baseUrl}/orders");
         await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await _page.WaitForTimeoutAsync(2000);
+        await _page.WaitForSelectorAsync("text=Naujas užsakymas");
 
         // Index.razor: "Naujas užsakymas" button navigates to /orders/create
         await _page.ClickAsync("text=Naujas užsakymas");
@@ -117,11 +111,10 @@ public class OrderModuleE2ETests : IAsyncLifetime
         // --- Select Customer ---
         // Create.razor: MudAutocomplete Label="Klientas *" with SearchFunc
         await _page.ClickAsync("input[aria-label=\"Klientas *\"]");
-        await _page.WaitForTimeoutAsync(500);
 
         // Type a broad search character to trigger dropdown
         await _page.TypeAsync("input[aria-label=\"Klientas *\"]", "a", new() { Delay = 50 });
-        await _page.WaitForTimeoutAsync(1500);
+        await _page.WaitForSelectorAsync("[role=\"option\"]");
 
         // Select first result from MudBlazor dropdown [role="option"]
         var firstCustomer = _page.Locator("[role=\"option\"]:has-text(\"a\")").First;
@@ -132,19 +125,18 @@ public class OrderModuleE2ETests : IAsyncLifetime
             firstCustomer = _page.Locator("[role=\"option\"]").First;
         }
         await firstCustomer.ClickAsync();
-        await _page.WaitForTimeoutAsync(1000);
+        await _page.WaitForSelectorAsync("[role=\"option\"]", new() { State = WaitForSelectorState.Detached });
 
         // --- Select Product for the first (and only) line ---
         // Create.razor: MudAutocomplete Placeholder="Ieškoti produkto..."
         await _page.ClickAsync("input[placeholder=\"Ieškoti produkto...\"]");
-        await _page.WaitForTimeoutAsync(500);
 
         await _page.TypeAsync("input[placeholder=\"Ieškoti produkto...\"]", "a", new() { Delay = 50 });
-        await _page.WaitForTimeoutAsync(1500);
+        await _page.WaitForSelectorAsync("[role=\"option\"]");
 
         var firstProduct = _page.Locator("[role=\"option\"]").First;
         await firstProduct.ClickAsync();
-        await _page.WaitForTimeoutAsync(1000);
+        await _page.WaitForSelectorAsync("[role=\"option\"]", new() { State = WaitForSelectorState.Detached });
 
         // --- Click "Išsaugoti" ---
         await _page.ClickAsync("button:text(\"Išsaugoti\")");
@@ -183,37 +175,38 @@ public class OrderModuleE2ETests : IAsyncLifetime
             // Fallback: go to orders list and click first row
             await _page.GotoAsync($"{_baseUrl}/orders");
             await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-            await _page.WaitForTimeoutAsync(2000);
+            await _page.WaitForSelectorAsync("text=Naujas užsakymas");
             await _page.Locator("table tbody tr").First.ClickAsync();
-            await _page.WaitForTimeoutAsync(3000);
+            await _page.WaitForSelectorAsync(".d-flex.align-center.gap-2");
         }
 
         await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await _page.WaitForTimeoutAsync(2000);
+        await _page.WaitForSelectorAsync(".d-flex.align-center.gap-2");
 
         // Detail.razor line 140-147: "Paruošti siuntimui" button (HTML-encoded as Paruo&#353;ti)
         await _page.ClickAsync("button:text(\"Paruošti siuntimui\")");
-        await _page.WaitForTimeoutAsync(2000);
+        // Wait for PackLineDialog to actually open (not in the original 5 rules —
+        // extended the same "wait for a real element used next" principle to the
+        // exact field filled immediately below).
+        await _page.WaitForSelectorAsync("input[aria-label=\"Partijos Nr.\"]");
 
         // PackLineDialog.razor should now be open
         // Fill "Partijos Nr." field
         await _page.FillAsync("input[aria-label=\"Partijos Nr.\"]", "LOT-E2E-2026-001");
 
         // Fill "Galiojimo data" — MudBlazor MudDatePicker
-        // Click the date picker input to open calendar
-        await _page.ClickAsync("input[aria-label=\"Galiojimo data\"]");
-        await _page.WaitForTimeoutAsync(1000);
-
-        // Type a future date directly (MudBlazor accepts YYYY-MM-DD format)
+        // Type a future date directly (MudBlazor accepts YYYY-MM-DD format).
+        // FillAsync sets the value directly regardless of whether the calendar
+        // was opened first, so the earlier click+wait did nothing useful.
         await _page.FillAsync("input[aria-label=\"Galiojimo data\"]", "2027-12-31");
         await _page.WaitForTimeoutAsync(500);
 
         // Click "Patvirtinti" in dialog
         await _page.ClickAsync("button:text(\"Patvirtinti\")");
 
-        // Blazor Server: wait for snackbar "Eilutė sėkmingai pakuota"
-        // Detail.razor line 343: Snackbar.Add("Eilutė sėkmingai pakuota.", ...)
-        await _page.WaitForTimeoutAsync(5000);
+        // Blazor Server: wait for the packed-line chip to actually appear
+        // (Detail.razor line 343: Snackbar.Add("Eilutė sėkmingai pakuota.", ...))
+        await _page.WaitForSelectorAsync("text=✓ Supakuota", new() { Timeout = 15000 });
 
         await TakeScreenshot("step3_line_packed.png");
 
@@ -249,7 +242,7 @@ public class OrderModuleE2ETests : IAsyncLifetime
             await _page!.GotoAsync($"{_baseUrl}/orders/{_createdOrderId}");
         }
         await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await _page.WaitForTimeoutAsync(3000);
+        await _page.WaitForSelectorAsync(".d-flex.align-center.gap-2");
 
         // Detail.razor line 165-173: "Kurjeris paėmė" button (only visible when status == "ready_for_pickup")
         var courierButton = _page.Locator("button:text(\"Kurjeris paėmė\")");
@@ -269,7 +262,7 @@ public class OrderModuleE2ETests : IAsyncLifetime
         else
         {
             await courierButton.ClickAsync();
-            await _page.WaitForTimeoutAsync(5000);
+            await _page.WaitForSelectorAsync("text=Išsiųstas", new() { Timeout = 15000 });
 
             await TakeScreenshot("step4_shipped.png");
 
@@ -298,7 +291,7 @@ public class OrderModuleE2ETests : IAsyncLifetime
             await _page!.GotoAsync($"{_baseUrl}/orders/{_createdOrderId}");
         }
         await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await _page.WaitForTimeoutAsync(3000);
+        await _page.WaitForSelectorAsync(".d-flex.align-center.gap-2");
 
         // Detail.razor line 190: invoice section visible only when status == "shipped" AND _isAdmin
         var invoiceSection = _page.Locator("text=Sąskaitos susiejimas");
@@ -326,7 +319,10 @@ public class OrderModuleE2ETests : IAsyncLifetime
             var invoicePage = await invoiceContext.NewPageAsync();
             await invoicePage.GotoAsync($"{_baseUrl}/invoices");
             await invoicePage.WaitForLoadStateAsync(LoadState.NetworkIdle);
-            await invoicePage.WaitForTimeoutAsync(3000);
+            // Not one of the originally enumerated Goto+NetworkIdle+Timeout
+            // instances, but the same principle applies: wait for the exact
+            // element used right below instead of guessing a fixed delay.
+            await invoicePage.WaitForSelectorAsync("table tbody tr");
 
             // Grab first invoice number from table
             var firstInvoiceCell = invoicePage.Locator("table tbody tr td").First;
@@ -350,7 +346,29 @@ public class OrderModuleE2ETests : IAsyncLifetime
 
         // Click "Susieti" button (Detail.razor line 225-232)
         await _page.ClickAsync("button:text(\"Susieti\")");
-        await _page.WaitForTimeoutAsync(5000);
+
+        // Wait for a snackbar (success OR error) to actually appear. Checked
+        // the real MudBlazor 8.15.0 source (MudSnackbarElement.razor) instead
+        // of assuming: every snackbar message renders with role="alert" —
+        // the outer #mud-snackbar-container in MudSnackbarProvider.razor is a
+        // static, always-present layout element and can't be used as the
+        // trigger. Confirmed no other role="alert" element exists on this
+        // page (grepped Components/Pages/Orders/ and Components/Layout/).
+        // "No snackbar at all" is a genuine, already-handled outcome (the
+        // tri-state check right below) — tolerate the timeout here instead
+        // of letting it throw and skip that check.
+        try
+        {
+            await _page.WaitForSelectorAsync("[role=\"alert\"]", new() { Timeout = 15000 });
+        }
+        catch (Microsoft.Playwright.PlaywrightException)
+        {
+            // No snackbar appeared within the timeout — confirmed via
+            // reflection against the real Microsoft.Playwright.dll (v1.45.0)
+            // that PlaywrightException is the only exception type this
+            // library exports; there is no separate TimeoutException. The
+            // success/error/neither check below already handles this case.
+        }
 
         await TakeScreenshot("step5_invoice_linked.png");
 
@@ -392,7 +410,7 @@ public class OrderModuleE2ETests : IAsyncLifetime
         // Navigate to orders list
         await _page!.GotoAsync($"{_baseUrl}/orders");
         await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await _page.WaitForTimeoutAsync(3000);
+        await _page.WaitForSelectorAsync("text=Naujas užsakymas");
 
         // Capture full-page screenshot
         await _page.ScreenshotAsync(new()

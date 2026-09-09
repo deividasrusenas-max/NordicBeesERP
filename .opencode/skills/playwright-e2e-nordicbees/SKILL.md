@@ -61,12 +61,62 @@ unproductive, messy changes on this project.
 4. Wait for the expected result — a Snackbar confirmation, a navigation, or the record appearing in a list (`browser_wait_for` or another snapshot).
 5. **Cross-check with the database** — after the UI action completes, use the `nordicbees-db` MCP tool to query the actual table and confirm the expected row/values exist. This is the step that actually proves the round-trip, not just that the UI "looked like" it worked.
 
+## Speed: batch known flows
+
+If the exact click/fill/assert sequence for a flow is already known — you
+are re-verifying a fix, or you already explored this exact flow once
+earlier this session — prefer ONE `browser_run_code_unsafe` script
+covering the whole navigate→fill→click→assert sequence over multiple
+separate tool calls. Each separate tool call is a full local-model round
+trip, and that round-trip cost — not the browser itself — is the main
+cost driver on this project's local GPU inference setup. Reserve
+step-by-step snapshot-then-act (steps 1-4 of the Basic verification
+pattern above, one action at a time) for genuinely new or unknown UI
+where you don't yet know the real selectors/refs.
+
+## Console/network error check
+
+After step 3 (the UI action) and before step 5 (the DB cross-check), also
+call `browser_console_messages` with `level: "error"` (and
+`browser_network_requests`, filtered to the relevant endpoint, if the
+flow involves an API/SignalR call). A silent JS/interop failure can leave
+the UI looking fine while the actual persist never happened or partially
+failed — this class of bug never surfaces as a Snackbar and won't show up
+in the `dotnet run` server console either, since it's client-side. Don't
+rely solely on the server console (per the section above) for this class
+of bug — check the browser's own console/network state directly.
+
 ## Project-specific notes
 
 - **Auth**: this app uses cookie-based ERP auth (`erp_users` table) — you may need to log in first via the login page before reaching most warehouse/delivery pages. Check for a test/seed user credential in `appsettings.Development.json` or ask rather than guessing credentials.
 - **MudBlazor components**: MudBlazor renders custom elements with ARIA roles — `browser_snapshot`'s accessibility tree should still expose them correctly (buttons, textboxes, comboboxes), but dialogs may render in a portal/overlay — if a dialog's fields don't appear in the snapshot immediately after opening it, wait briefly and re-snapshot.
 - **Cleanup**: if your test run creates real data (a delivery, a container, a non-conformance record), note this in your report — don't silently leave test data in the dev database without flagging it, since dev DB is shared.
 - **Never** run E2E verification against anything other than the local dev server / dev DB. Never point Playwright at a staging or production URL from an automated task.
+
+## Persisting flows as real xUnit/Playwright tests
+
+If a flow gets manually verified via this skill MORE THAN ONCE — check
+`git log`/`Docs/BUGLOG.md` for recurrence on the same page/flow — stop
+re-running a full LLM-driven session for it every time. Instead, persist
+the working navigate/fill/click/assert sequence as a new xUnit test
+method in `Tests/Playwright/`, following the existing structure in
+`Tests/Playwright/OrderModuleE2ETests.cs` (C#/xUnit + `Microsoft.Playwright`,
+`IAsyncLifetime` setup, `IBrowser`/`IPage`) — not a separate Node/TypeScript
+file or test runner, so there's no second test runner to maintain or wire
+into CI separately. **Every new `[Fact]` added here MUST carry
+`[Trait("Category", "E2E")]`** (see the class-level trait on
+`OrderModuleE2ETests` for the pattern) — `bump-version.sh`'s gate 1.5 runs
+`dotnet test --filter "Category!=E2E"`, deliberately excluding this
+category because E2E tests need a running dev server and a real browser
+and must never block or slow down an automatic release gate. Run them
+manually via `dotnet test --filter Category=E2E`. Forgetting the trait on
+a new test means it silently starts running (and likely failing, with no
+dev server up) inside every future release. This session's own
+live exploration (the actual selectors, refs, and assertions that worked,
+found via `browser_snapshot` and the Basic verification pattern above) is
+exactly the material needed to encode into the test method — don't
+re-derive it from scratch, transcribe what already worked into the
+Playwright C# API's equivalent calls.
 
 ## Report format
 

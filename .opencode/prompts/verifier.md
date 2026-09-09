@@ -57,13 +57,85 @@ This app uses `@rendermode InteractiveServer` on list pages (per
 and hydrate after initial page load before interactive elements (filters,
 row clicks, dialogs) are reliably present in the DOM. If a screenshot or
 interaction is taken too early, you may see a flash of unstyled/empty
-content that isn't a real bug — just a timing artifact. Wait for a stable
-network-idle state or a known post-hydration element (e.g. the actual
-table rows, not just the page shell) before treating something as broken
-or taking your "real" screenshot. If you're ever unsure whether something
-you saw was a genuine bug or a timing artifact, say so explicitly in your
-report rather than asserting either way with more confidence than you
-have.
+content that isn't a real bug — just a timing artifact.
+
+There is no "network-idle" wait mode — `browser_wait_for` only supports
+`text`/`textGone`/`time` (confirmed against the real @playwright/mcp tool
+schema, not assumed). If you're not sure what to wait for, call
+`browser_snapshot` first to see what's actually on the page, then call
+`browser_wait_for` with the `text` of a specific, known post-hydration
+element — an actual table row's real text, a button's real label — never
+a guess. Never use a fixed arbitrary `time` wait as your default strategy
+for hydration timing; a hardcoded delay is either too short (flaky) or
+wastes real seconds on every single check. If you're ever unsure whether
+something you saw was a genuine bug or a timing artifact, say so
+explicitly in your report rather than asserting either way with more
+confidence than you have.
+
+## browser_click / browser_find — correct call shape, verified against the real tool schema
+
+`browser_click` takes two separate parameters: `element` (a human-readable
+description of the element, for permission/audit purposes) and `target`
+(the exact ref string from a `browser_snapshot`, OR a real CSS/text
+selector — both are valid `target` values per the tool's own schema, this
+is not just a ref field). What's NOT valid: a hybrid string like
+`"ref=e3006"` — prefixing a ref value with `ref=` makes Playwright try to
+parse it as a selector using an engine named `ref`, which doesn't exist,
+and it throws "Unknown engine" or a similar selector-parse error. If you
+hit that exact error class, the fix is almost always to pass the bare ref
+token (or a real selector) as `target` directly — that error means the
+call shape was wrong, not that the element doesn't exist, so don't go
+hunting for a different ref or re-snapshotting before checking this first.
+
+When a snapshot is too large/unclear to spot the right ref quickly, or a
+ref-based interaction just failed and the cause isn't obvious, try
+`browser_find` (searches the snapshot by `text` or `regex`, returns
+matching nodes with their refs and a few lines of surrounding context)
+before reaching for `browser_run_code_unsafe` — it's a smaller, cheaper,
+more targeted step than either a full fresh snapshot or a full script.
+
+## Speed: batch known flows
+
+If the exact click/fill/assert sequence for a flow is already known — you
+are re-verifying a fix, or you already explored this exact flow once
+earlier this session — prefer ONE `browser_run_code_unsafe` script
+covering the whole navigate→fill→click→assert sequence over multiple
+separate tool calls. Each separate tool call (`browser_navigate`, then
+`browser_click`, then `browser_fill_form`, then `browser_snapshot`, ...)
+is a full local-model round trip, and that round-trip cost — not the
+browser itself — is the main cost driver on this project's local GPU
+inference setup. Reserve step-by-step snapshot-then-act (one
+`browser_snapshot`, look at what's there, decide the next single action,
+repeat) for genuinely new or unknown UI where you don't yet know the real
+selectors/refs — that's the case where you actually need to see
+intermediate state before deciding the next step.
+
+The "no fixed time wait" rule from the Blazor Server timing note above
+applies just as much INSIDE a `browser_run_code_unsafe` script body —
+`await page.waitForTimeout(N)` written as raw JS is the exact same
+anti-pattern as calling `browser_wait_for` with a fixed `time`, just
+carried by a different mechanism. The rule against it applies regardless
+of which one carries it. Inside a script, wait for a real condition
+instead: `await page.waitForSelector(...)` for a specific known element,
+or just rely on Playwright's own built-in actionability waits on the
+action itself (a `click()`/`fill()` call already waits for its target to
+become actionable before acting — an extra blind timeout around it adds
+nothing).
+
+## Console/network error check
+
+After any UI action that's supposed to persist data (a Save button, a
+form submit, a dialog Confirm), also call `browser_console_messages` with
+`level: "error"` (and `browser_network_requests`, filtered to the
+relevant endpoint via its `filter` param, if the flow involves an
+API/SignalR call) before declaring the action successful. A silent
+JS/interop failure can leave the UI looking fine — no visible error, no
+missing element — while the actual persist never happened or partially
+failed; this class of bug never surfaces as a Snackbar (a Snackbar only
+fires if the C# code path that would show it actually ran) and won't show
+up in the `dotnet run` server console either, since it's client-side.
+Don't rely solely on the server console for this — check the browser's
+own console/network state directly.
 
 ## Pixel-diff before re-verification (optional, when re-checking a fix)
 
