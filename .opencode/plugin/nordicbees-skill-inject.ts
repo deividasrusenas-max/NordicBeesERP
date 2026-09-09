@@ -32,14 +32,29 @@ function loadSkill(name: string): string | null {
 // (case-insensitive) anywhere in the delegation text.
 const RULES: { pattern: RegExp; skills: string[] }[] = [
   { pattern: /\.razor\b/i, skills: ["mudblazor"] },
-  { pattern: /MudBlazor|MudStack|MudGrid|MudPaper|MudTable|MudDialog/i, skills: ["mudblazor"] },
+  // Requires .razor co-occurrence — a bare component-name mention used to
+  // fire this with zero UI work involved (real incident, Docs/HARNESS_STATUS.md
+  // §13: a pure-migration task's build-note aside "(Pre-existing MudBlazor
+  // MUD0002 analyzer WARNINGS...)" injected the full mudblazor skill).
+  { pattern: /(MudBlazor|MudStack|MudGrid|MudPaper|MudTable|MudDialog)[\s\S]*\.razor\b|\.razor\b[\s\S]*(MudBlazor|MudStack|MudGrid|MudPaper|MudTable|MudDialog)/i, skills: ["mudblazor"] },
   { pattern: /\bService\.cs\b|Migrations\/|DbContext|ExecuteSqlRawAsync|NordicBeesErpContext/i, skills: ["dotnet-efcore-nordicbees"] },
   { pattern: /\bVAT\b|PVM|i\.SAF|isaf/i, skills: ["lithuanian-vat-isaf"] },
-  { pattern: /QuestPDF|IDocument\b|GeneratePdf|\bPDF\b|kokyb.s p.ym.jimas|certificate\b|CMR\b/i, skills: ["questpdf-nordicbees"] },
-  { pattern: /\bbutton\b(?<!back-button)|MudButton|\bdialog\b|OnClick|OnValidSubmit|\bform\b|write.*database|database.*write/i, skills: ["verify-before-done"] },
+  // Bare \bPDF\b used to fire on any incidental mention of the word (e.g.
+  // "attach as PDF" in unrelated prose) — now requires generation context,
+  // or one of the already-specific API names/known document types.
+  { pattern: /QuestPDF|IDocument\b|GeneratePdf|generat\w*[^\n]{0,40}\bPDF\b|\bPDF\b[^\n]{0,40}generat\w*|kokyb.s p.ym.jimas|certificate\b|CMR\b/i, skills: ["questpdf-nordicbees"] },
+  // Dropped \bform\b/\bbutton\b/\bdialog\b/write.*database/database.*write —
+  // fired on generic prose anywhere in the text. Requires a real identifier:
+  // a UI save-action handler, or a service-layer DB write call.
+  { pattern: /OnClick|OnValidSubmit|MudButton|SaveChangesAsync|ExecuteSqlRawAsync|INSERT INTO|UPDATE\s+\w+\s+SET/i, skills: ["verify-before-done"] },
   { pattern: /\bE2E\b|end-to-end|browser test|playwright|verify in browser|real browser/i, skills: ["playwright-e2e-nordicbees"] },
-  { pattern: /slow|performance|optimi[sz]e|N\+1|query.*speed|speed.*query/i, skills: ["efcore-performance-nordicbees"] },
-  { pattern: /Create\.razor|Edit\.razor|CRUD|all fields|every field|entity model|new column|new field|model.*propert/i, skills: ["crud-completeness"] },
+  // slow|performance|optimi[sz]e now require query/DB context nearby — used
+  // to fire on any performance mention (UI layout, build speed, etc).
+  { pattern: /N\+1|quer(y|ies)[^\n]{0,40}speed|speed[^\n]{0,40}quer(y|ies)|\b(slow|performance|optimi[sz]e)\b[^\n]{0,40}\b(quer(y|ies)|SQL|database|DbContext|index)\b|\b(quer(y|ies)|SQL|database|DbContext|index)\b[^\n]{0,40}\b(slow|performance|optimi[sz]e)\b/i, skills: ["efcore-performance-nordicbees"] },
+  // Dropped "all fields"/"every field"/"entity model"/"new column"/
+  // "new field"/"model.*propert" — generic phrasing unrelated to actual
+  // CRUD-surface parity. Kept only real path/identifier signals.
+  { pattern: /Create\.razor|Edit\.razor|\bCRUD\b/i, skills: ["crud-completeness"] },
 ]
 
 // Always inject these for the given subagent, regardless of task content.
