@@ -154,14 +154,22 @@ politiką paleidžiamas **tik** kai eksplicitiškai prašai naršyklės verifika
    kelis raundus.
 3. `coder` redaguoja → `reviewer` duoda APPROVED/REJECTED → jei REJECTED,
    grįžta **per `coder`**, niekada tiesiai į `fixer`.
-4. `fixer` bėga savo 12 žingsnių seką ir commit'ina.
+4. `fixer` bėga savo 13 žingsnių seką, commit'ina ir push'ina.
 5. Orchestratorius parašo ataskaitą į `.opencode/reports/`.
 
-Fixer'io seka po 2026-09-09 pakeitimų:
+Fixer'io seka po 2026-09-09 pakeitimų (13 žingsnių):
 build → minimalus taisymas → git status → git add → grep BUCKET_GROUP staged
 diff'e → grep FindAsync/SaveChangesAsync staged diff'e → **dotnet test** →
-commit → git log patvirtinimas → **bump-version (tik jei eksplicitiškai
-paprašyta)** → agent-guardrails check.
+commit → git log patvirtinimas → **git push** → **bump-version (tik jei
+eksplicitiškai paprašyta)** → agent-guardrails check.
+
+`git push` ir bump'as yra **nepriklausomi** žingsniai. Push vyksta kiekvienam
+commit'ui; bump — tik kai delegavimas jį įvardija. Push nesėkmė (rejected, no
+upstream, network) — BLOCKED ir stop, jokio pull/rebase/merge/retry.
+
+⚠️ Push į `main` trigerina staging deploy per `.github/workflows/deploy.yml`
+(stebi `main` ir `production`). Tai sąmoningas sprendimas — staging'u naudojasi
+tik Deividas kaip darbiniu stendu prieš keliant į `production`.
 
 ### FAST PATH
 
@@ -293,6 +301,7 @@ praktiškai nesumažino.
 | `60fb231` | Pirmas taisymas verifier ataskaitų problemai (išimtis verifier'iui). |
 | `bbdc882` | `orchestrator-timing.ts` dabar rašo `started` įrašą iškart `task` call'ams — kabantis delegavimas nebelieka nematomas. |
 | `c07d4c8` | `60fb231` perrašytas kaip teigiama taisyklė vietoj išimčių sąrašo; `orchestrator.md` gavo atsakomybę išsaugoti subagento grąžintą ataskaitą. |
+| `7506a70` | `fixer.md` gavo `git push` kaip 11-ą žingsnį — bump'as nebe vienintelis, kas push'ina. Seka perskaičiuota į 1–13. |
 
 Anksčiau tą pačią dieną: `nordicbees-skill-inject.ts` regex susiaurintas
 (`questpdf` nebe nuo bet kokio „PDF", `verify-before-done` nebe nuo `form`/
