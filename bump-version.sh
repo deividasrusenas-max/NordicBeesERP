@@ -63,8 +63,11 @@ else
 fi
 
 # GATE 2: refuse to release if any staged/modified .cs file matches the
-# #1 recurring anti-pattern (see .clinerules/nordicbees-standards.md,
-# "EF CORE UPDATE PATTERN" section): FindAsync() + SaveChangesAsync()
+# #1 recurring anti-pattern (see
+# .opencode/skills/dotnet-efcore-nordicbees/SKILL.md -- .clinerules/ was
+# deleted in the 2026-08-22 harness consolidation, this comment used to
+# point at the now-nonexistent .clinerules/nordicbees-standards.md):
+# FindAsync() + SaveChangesAsync()
 # in the same file (detached-entity write that silently persists 0 rows
 # under global NoTracking). This is a known, previously-shipped bug
 # class -- mechanical check instead of trusting any agent to remember.
