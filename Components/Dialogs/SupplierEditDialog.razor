@@ -9,6 +9,7 @@
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject ICompanyLookupService CompanyLookupService
 @inject ICompanySettingsService CompanySettingsService
+@inject IGooglePlacesService GooglePlaces
 
 <MudDialog>
     <TitleContent>
@@ -195,7 +196,19 @@
             }
 
             <MudItem xs="12">
-                <MudTextField @bind-Value="supplier.Address" Label="Adresas" Lines="2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudAutocomplete T="string"
+                                 @bind-Value="supplier.Address"
+                                 Label="Adresas"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 SearchFunc="@SearchPlaces"
+                                 ToStringFunc="@(s => s)"
+                                 Strict="false"
+                                 CoerceText="false"
+                                 ResetValueOnEmptyText="false"
+                                 MinCharacters="3"
+                                 ShowProgressIndicator="@_placesLoading"
+                                  OnValueChanged="(string? selected) => OnPlaceSelectedAsync(selected)" />
             </MudItem>
             
             <MudItem xs="12" md="6">
@@ -283,6 +296,9 @@
     private string? _originalVatCode = "";
     private bool _vatCheckStarted = false;
     private bool _isCheckingVat = false;
+    private string _sessionToken = "";
+    private readonly Dictionary<string, string> _descriptionToPlaceId = new();
+    private bool _placesLoading = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,6 +312,8 @@
 
     protected override void OnParametersSet()
     {
+        _sessionToken = Guid.NewGuid().ToString();
+
         supplier = Supplier ?? new Supplier
         {
             PartnerType = PartnerType.Supplier,
@@ -407,6 +425,62 @@
         {
             _isCheckingVat = false; StateHasChanged();
         }
+    }
+
+    private async Task<IEnumerable<string>> SearchPlaces(string? input, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(input) || input.Trim().Length < 3)
+            return Array.Empty<string>();
+
+        _placesLoading = true;
+        try
+        {
+            var suggestions = await GooglePlaces.AutocompleteAsync(input.Trim(), _sessionToken);
+            _descriptionToPlaceId.Clear();
+            foreach (var s in suggestions)
+                _descriptionToPlaceId[s.Description] = s.PlaceId;
+            return suggestions.Select(s => s.Description);
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+        finally
+        {
+            _placesLoading = false;
+        }
+    }
+
+    private async Task OnPlaceSelectedAsync(string? selectedDescription)
+    {
+        if (string.IsNullOrWhiteSpace(selectedDescription)) return;
+        if (!_descriptionToPlaceId.TryGetValue(selectedDescription, out var placeId)) return;
+
+        PlaceAddressDetails? details;
+        try
+        {
+            details = await GooglePlaces.GetPlaceDetailsAsync(placeId, _sessionToken);
+        }
+        catch
+        {
+            details = null;
+        }
+
+        // Session terminated after details call — start a fresh one for any further lookups
+        _sessionToken = Guid.NewGuid().ToString();
+
+        if (details is null)
+        {
+            snackbar?.Add("Nepavyko gauti adreso duomenų — įveskite rankiniu būdu", Severity.Warning);
+            return; // leave Address as the user typed; do not clear City/PostalCode
+        }
+
+        supplier.Address = details.StreetAddress;
+        supplier.City = details.City;
+        supplier.PostalCode = details.PostalCode;
+        supplier.Country = details.Country;
+        supplier.CountryCode = details.CountryCode;
+        _descriptionToPlaceId.Clear();
     }
 
     private async Task ApplyLookupResult(CompanyLookupResult result)
