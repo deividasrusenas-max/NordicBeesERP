@@ -89,6 +89,29 @@
             <MudNumericField T="long" @bind-Value="telegramChatGamyba" Label="Gamybos grupė (chat ID)" Variant="Variant.Outlined" Style="flex:1" />
         </MudStack>
     </MudPaper>
+
+    <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:8px">
+        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mb-3">Google Places API (adresų paieška)</MudText>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudTextField @bind-Value="googlePlacesApiKey" InputType="InputType.Password"
+                          Label="API Key" Style="flex:1"
+                          Variant="Variant.Outlined" />
+            <MudIconButton Icon="@Icons.Material.Filled.NetworkCheck"
+                           Color="Color.Primary"
+                           OnClick="TestGooglePlacesConnection"
+                           Title="Tikrinti ryšį" />
+            @if (googlePlacesStatus.HasValue)
+            {
+                <MudIcon Icon="@(googlePlacesStatus.Value ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                         Color="@(googlePlacesStatus.Value ? Color.Success : Color.Error)" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Default" Title="Nesukonfigūruota" />
+            }
+        </MudStack>
+    </MudPaper>
 </MudContainer>
 
 @code {
@@ -98,12 +121,16 @@
 
     [Inject] IExpenseOcrService ExpenseOcrService { get; set; } = default!;
     [Inject] TelegramNotificationService Telegram { get; set; } = default!;
+    [Inject] IGooglePlacesService GooglePlaces { get; set; } = default!;
 
     private string telegramBotToken = string.Empty;
     private long telegramChatSandelis;
     private long telegramChatUzsakymai;
     private long telegramChatGamyba;
     private bool? telegramStatus;
+
+    private string googlePlacesApiKey = string.Empty;
+    private bool? googlePlacesStatus;
 
     protected override async Task OnInitializedAsync()
     {
@@ -127,6 +154,18 @@
         telegramChatUzsakymai = long.TryParse((await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == "telegram_chat_uzsakymai"))?.SettingValue, out var tu) ? tu : 0;
         telegramChatGamyba = long.TryParse((await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == "telegram_chat_gamyba"))?.SettingValue, out var tg) ? tg : 0;
         telegramStatus = string.IsNullOrEmpty(telegramBotToken) ? null : true;
+
+        googlePlacesApiKey = (await context.AppSettings.FirstOrDefaultAsync(s => s.SettingKey == "google_places_api_key"))?.SettingValue ?? string.Empty;
+
+        // Automatically test connection if the key is configured
+        if (!string.IsNullOrEmpty(googlePlacesApiKey))
+        {
+            googlePlacesStatus = await GooglePlaces.IsHealthyAsync();
+        }
+        else
+        {
+            googlePlacesStatus = null; // Not configured - show neutral state
+        }
 
         // Automatically test connection if both values are configured
         if (!string.IsNullOrEmpty(azureDiEndpoint) && !string.IsNullOrEmpty(azureDiKey))
@@ -154,6 +193,7 @@
         await UpsertSettingAsync(context, "telegram_chat_sandelis", telegramChatSandelis.ToString());
         await UpsertSettingAsync(context, "telegram_chat_uzsakymai", telegramChatUzsakymai.ToString());
         await UpsertSettingAsync(context, "telegram_chat_gamyba", telegramChatGamyba.ToString());
+        await UpsertSettingAsync(context, "google_places_api_key", googlePlacesApiKey);
 
         Snackbar.Add("Nustatymai išsaugoti", Severity.Success);
     }
@@ -190,6 +230,20 @@
             ? "Telegram botas aktyvus"
             : "Telegram botas nepasiekiamas - patikrinkite tokeną",
             telegramStatus.Value ? Severity.Success : Severity.Error);
+
+        StateHasChanged();
+    }
+
+    private async Task TestGooglePlacesConnection()
+    {
+        await SaveSettingsAsync();
+
+        googlePlacesStatus = await GooglePlaces.IsHealthyAsync();
+
+        Snackbar.Add(googlePlacesStatus.Value
+            ? "Google Places API aktyvus"
+            : "Google Places API nepasiekiamas",
+            googlePlacesStatus.Value ? Severity.Success : Severity.Error);
 
         StateHasChanged();
     }
