@@ -268,9 +268,11 @@ twice on the same file.
 ## Workflow per file — STRICTLY SEQUENTIAL, NEVER PARALLEL
 
 `coder` and `fixer` are Task-tool subagents. `coder` writes/edits files.
-`fixer` runs its own full build/fix/grep/bump/commit cycle via its own
+`fixer` runs its own full build/fix/grep/test/commit cycle via its own
 bash — you do NOT need to run `dotnet build` or `git` yourself for the
-normal happy path.
+normal happy path. The version bump is NOT part of this default cycle —
+it only runs when you explicitly name it as the final step (see "Workflow
+per file" step 3 below).
 
 1. Task tool → `coder` agent with, IN THIS EXACT ORDER:
    - Load skill: [pick based on file type — `mudblazor` for any .razor file,
@@ -424,10 +426,13 @@ ever builds/commits it.
 3. Only AFTER reviewer has returned APPROVED, WITH NO further changes
    needed to the file:
    Task tool → `fixer` agent. fixer already knows its own full build→fix-
-   loop→commit→bump-version→guardrail-check sequence from its own system
-   prompt (`fixer.md`'s "Your exact steps") — do not restate it here, that
-   is exactly the kind of duplication this file used to carry. Give it
-   only the two things it cannot know on its own:
+   loop→commit→guardrail-check sequence from its own system prompt
+   (`fixer.md`'s "Your exact steps") — do not restate it here, that is
+   exactly the kind of duplication this file used to carry. fixer no
+   longer bumps the version by default — its default is to SKIP that step
+   (BUGLOG.md, `premature-version-bump-mid-task`: two real releases
+   shipped mid-task because the old default ran unless told not to). Give
+   it only the three things it cannot know on its own:
      - Load skill: `git-workflow-nordicbees` (always) and, if the task
        touched a Service/migration/DbContext file, also
        `dotnet-efcore-nordicbees`. If the task touched a .razor file with
@@ -439,6 +444,16 @@ ever builds/commits it.
        `P0a:` for labeling-module/task-tracked work, `fix:`/`feat:`/
        `chore:` for general changes (that skill's own file has the exact
        format and real examples — not repeated here).
+     - Whether to name the version bump as this delegation's final step.
+       If this task's work is genuinely feature-complete right now — not
+       one part of a multi-part sequence with more still to come —
+       explicitly instruct fixer to run its step 11 (`bump-version.sh`)
+       as the final step. If this is an intermediate part of multi-part
+       work, say NOTHING about the bump at all — fixer's default is to
+       skip it, and staying silent is exactly what keeps that default in
+       effect. Never name it "just in case" or out of habit; this is a
+       deliberate, one-time call for whichever delegation is actually the
+       last one for this task.
    WAIT for this Task tool call to fully return a result before doing
    anything else.
 
