@@ -725,18 +725,69 @@ re-labeling the symptom.
 - **Root cause**: The bump-version step ran too early in the task sequence with no coordination about a single end-of-feature bump. The fixer subagent acted on the default "bump after every commit" instruction from git-workflow-nordicbees instead of holding the bump for a feature-complete gate (G1). No check enforced "bump only at a planned release point."
 - **Fix**: **NOT YET APPLIED** — the final bump (G1) is deferred until ALL remaining sub-tasks (D1b, B2, B4/C1, D2/D2T, E1, F1) land; only then bump once. Since v0.17.58 was pushed/tagged early, the one final bump still produces a single accurate release point for the whole feature; no intermediate version was shipped between sub-tasks.
 - **Guardrail added**: none beyond the instruction to hold the bump to G1 in this task's plan. Consider (future): git-workflow-nordicbees should be explicit that multi-part feature work gets exactly ONE bump at feature completion, and fixer must not bump mid-task unless the orchestrator's instruction names a bump step.
+  **Guardrail added (2026-09-09)**: `fixer.md`'s rote "bump after every commit" default instruction was REMOVED (not appended to) — step 11 (`bump-version.sh`) now skips by default and only runs when the delegating instruction explicitly names it as the final step; `orchestrator.md` updated to match (name it explicitly for feature-complete work, say nothing for intermediate parts of multi-part work). Separately, the test suite and the FindAsync+SaveChangesAsync anti-pattern grep — which previously only ran inside `bump-version.sh` itself — were decoupled into `fixer.md`'s own per-commit steps 7-8 (commit `3686bb1`, before the conditional-bump change in `fa0f024`), so skipping the bump no longer means skipping those checks either.
+
+  This is still, honestly, a Tier-3 prompt-text defense, not the Tier-1
+  mechanical check this file's own escalation rule calls for once a class
+  is `escalated` — a `git-workflow-nordicbees` prompt sentence already
+  failed once for this exact error class (the "hold the bump for G1"
+  language above did not prevent the v0.17.65 recurrence below). Why this
+  attempt may differ in kind rather than being a repeat of that failure:
+  the earlier guardrail ADDED an instruction the model had to actively
+  remember to follow under context pressure — easy to drop. This one
+  REMOVES the instruction that produced the default behavior in the first
+  place, so there is no "bump after every commit" sentence left to
+  override, forget, or deprioritize. Whether an LLM can still talk itself
+  into running the bump "just in case" despite the removal is untested —
+  this is a real difference in kind, not a proven fix. A genuine Tier-1
+  mechanical gate (a script-level token/approval check) was designed this
+  session and explicitly rejected as disproportionate permanent friction
+  on every legitimate release for what is, at bottom, a rote-habit
+  problem — see this session's own discarded design. Do not flip Status
+  until this has survived a real multi-part task.
 - **Category**: infra (versioning)
 - **Error class**: `premature-version-bump-mid-task` (new tag)
-- **Status**: monitoring
+- **Status**: escalated (2026-09-09, updated from `monitoring` — this is
+  the first of two occurrences of the same class; see the v0.17.65 entry
+  below for the second, and the Guardrail line above for today's fix and
+  why Status is not being flipped to `monitoring`/`stable` yet)
 
 ### 2026-09-07 — Version bumped to v0.17.65 mid-task again (premature), final bump deferred — RECURRENCE
 - **Symptom**: During the farmer-supplier cleanup build, the version was bumped to v0.17.65 (commit `1f928a8`) after the farmer-Names-switch commits had landed but BEFORE the remaining task parts (farmer completeness validation, contact_phone/invoice_email persistence, dev-DB name backfill) were committed. Those parts were then committed as `b1b8d1d` and `957cfe8` with no version bump, so HEAD version v0.17.65 claims a release that still lacks the latest fixes.
 - **Root cause**: This is the SECOND occurrence of `premature-version-bump-mid-task` (first logged 2026-09-07 above, v0.17.58 bump mid-compensation-feature). The bump-version step keeps running before all planned changes land. The 0.17.63 bump (commit `7930325`) was likewise mid-task (only the Name auto-derive commit had landed); the follow-up commits (field reorder `1992980`, expense-category fix `41b5ce3`, create-dialog merge `7c305c2`) came only after the "real final" bump `def3b7b` (0.17.64). Same cause as the first occurrence: the git-workflow-nordicbees default "bump after every commit" with no enforced feature-complete gate.
 - **Fix**: NOT YET APPLIED — the final bump (G1) is deferred until ALL remaining parts (Parts 1-4, final report) land; exactly ONE bump to v0.17.66 at the very end.
 - **Guardrail added**: none mechanical. This is the second documented occurrence. Propose wiring the existing `.githooks/pre-commit` guardrail framework with a check that refuses `bump-version.sh` commits when the diff between the bump commit and the previous bump commit contains uncommitted feature changes preceding it, or an explicit `fixer` instruction hold: the orchestrator's fixer delegation for multi-part work must NOT include a bump step unless it names the final gate explicitly.
+  **Guardrail added (2026-09-09)**: same fix as the first occurrence above
+  — `fixer.md`'s rote bump-after-every-commit default instruction
+  REMOVED, not reinforced with another sentence; step 11 now skips by
+  default and requires the delegating instruction to explicitly name it
+  as the final step (`orchestrator.md` updated to match). The test suite
+  and FindAsync+SaveChangesAsync anti-pattern grep, previously only run
+  inside `bump-version.sh`, were decoupled into `fixer.md`'s own
+  per-commit steps 7-8 first (commit `3686bb1`), so the conditional bump
+  (commit `fa0f024`) does not also silently drop those checks.
+
+  Still a Tier-3 prompt-text defense, not the Tier-1 mechanical check this
+  entry's own Status already called for — a prompt-text guardrail failed
+  once already for this exact class (see the first occurrence's original
+  "hold the bump for G1" instruction, which did not prevent this second
+  occurrence). This attempt differs in kind, not just in wording: it
+  REMOVES the default-triggering instruction rather than adding a new
+  sentence asking the model to override that default — there is nothing
+  left to forget or deprioritize under context pressure. That is a real
+  structural difference from the failed guardrail, but it is not proven,
+  and a mechanical (script-level) alternative was designed this session
+  and explicitly turned down as disproportionate friction on every
+  legitimate release. See the first occurrence's Guardrail line for the
+  full reasoning; not repeated twice here.
 - **Category**: infra (versioning)
 - **Error class**: `premature-version-bump-mid-task`
 - **Status**: escalated — second occurrence within the same day as the first; the prompt/skill-text guardrail demonstrably did not hold. Recommend a mechanical pre-commit check (see Guardrail line) instead of another prompt-sentence copy.
+  **2026-09-09**: today's fix (see Guardrail line above) is itself still
+  prompt-text-class, not the mechanical check this line asks for — Status
+  stays `escalated` deliberately, not flipped to `monitoring`, until a
+  real multi-part task confirms the removed-instruction approach actually
+  holds.
 
 ### 2026-09-07 — Dev DB farmer supplier data drifted from production source list
 - **Symptom**: The dev database's `business_partners` table contained ~50 individual suppliers with NULL `supplier_first_name`/`supplier_last_name` and ~47 with empty `supplier_name_en`, `contact_phone`, `invoice_email`, and/or `vat_code` — while rows existed because production data was imported earlier. Farmer completeness validation (Part 1) flagged these as incomplete, and a name backfill had to be performed as a separate data task because the dev data was simply missing.
