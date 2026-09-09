@@ -316,7 +316,7 @@
     },
     "reviewer": {
       "mode": "all",
-      "model": "llama-swap/coder",
+      "model": "llama-swap/reviewer",
       "permission": {
         "agent_manager": "deny",
         "agent_manager_models": "deny",
