@@ -26,8 +26,26 @@ namespace NordicBeesERP.Tests.Playwright;
 ///
 /// These tests assert the observable regression property: after selecting a
 /// locality-level suggestion, the Address field ALWAYS holds the clicked
-/// description (never empty, never overwritten by an empty street). The tests
-/// never click Save — they cancel the dialog — so no database row is modified.
+/// description (never empty, never overwritten by an empty street). The two
+/// locality tests never click Save — they cancel the dialog — so no database
+/// row is modified.
+///
+/// Element location note: the address MudAutocomplete in these partner dialogs
+/// does NOT render any aria-label (probed live: 0 matches for
+/// input[aria-label="Adresas"], all dialog inputs have aria-label=null). The
+/// input IS reliably addressable as `input[onvaluechanged]` — exactly one
+/// match per dialog, since only the address autocomplete binds an
+/// onvaluechanged handler (OnPlaceSelectedAsync). All tests here locate it
+/// that way.
+///
+/// SupplierEditDialog_DoNothingSave_KeepsAddressInDatabase additionally covers
+/// the save path end-to-end: it opens a supplier's edit dialog (discovering at
+/// runtime one whose stored street address is non-empty), changes nothing,
+/// clicks Save, then RELOADS the list page and re-opens the same row by name.
+/// The reopened dialog initializes from a fresh database load, so comparing the
+/// address before vs. after is a real DB persistence assertion — a do-nothing
+/// save must never wipe or alter the stored address. It does not depend on the
+/// Google Places API at all (no typing into the field, no suggestions).
 ///
 /// Prerequisites:
 ///   - Dev server running on http://localhost:5081
@@ -100,8 +118,8 @@ public class PlacesAddressWipeRegressionTests : IAsyncLifetime
     /// </summary>
     private async Task SelectLocalitySuggestionAsync()
     {
-        await _page!.ClickAsync("input[aria-label=\"Adresas\"]");
-        await _page.TypeAsync("input[aria-label=\"Adresas\"]", "Rokiškis", new() { Delay = 50 });
+        await _page!.ClickAsync("input[onvaluechanged]");
+        await _page.TypeAsync("input[onvaluechanged]", "Rokiškis", new() { Delay = 50 });
 
         var suggestion = _page.Locator("[role=\"option\"]", new() { HasText = _localityDescription });
         try
@@ -123,7 +141,7 @@ public class PlacesAddressWipeRegressionTests : IAsyncLifetime
 
     private async Task<string> ReadAddressValueAsync()
     {
-        return await _page!.InputValueAsync("input[aria-label=\"Adresas\"]");
+        return await _page!.InputValueAsync("input[onvaluechanged]");
     }
 
     [Fact]
@@ -174,6 +192,80 @@ public class PlacesAddressWipeRegressionTests : IAsyncLifetime
         await TakeScreenshot("create_dialog_locality_kept_description.png");
 
         // Cancel — never save.
+        await _page.ClickAsync("text=Atšaukti");
+    }
+
+    [Fact]
+    public async Task SupplierEditDialog_DoNothingSave_KeepsAddressInDatabase()
+    {
+        await EnsureLoggedInAsync();
+
+        // Runtime discovery: the list view does not show the street address, so
+        // open each row's edit dialog until one with a non-empty stored address
+        // is found. Rows are NOT in stable order (a save re-sorts the list), so
+        // after saving we must re-locate the row by its NAME text.
+        string supplierName = string.Empty;
+        string addressBefore = string.Empty;
+
+        var rowCount = await _page!.Locator("tbody tr").CountAsync();
+        for (var i = 0; i < rowCount; i++)
+        {
+            await _page.Locator("tbody tr").Nth(i).Locator("button").First.ClickAsync();
+            await _page.WaitForSelectorAsync("text=Atšaukti");
+
+            var name = (await _page.Locator("tbody tr").Nth(i).Locator("td").First.TextContentAsync())?.Trim() ?? string.Empty;
+            var address = await ReadAddressValueAsync();
+
+            if (!string.IsNullOrWhiteSpace(address))
+            {
+                supplierName = name;
+                addressBefore = address;
+                _output.WriteLine($"Discovered supplier '{supplierName}' with stored address: '{addressBefore}'");
+                break;
+            }
+
+            // No address on this row — close without saving and try the next one.
+            await _page.ClickAsync("text=Atšaukti");
+            await _page.WaitForSelectorAsync(".mud-dialog", new() { State = WaitForSelectorState.Detached });
+        }
+
+        if (string.IsNullOrWhiteSpace(addressBefore))
+        {
+            throw new Xunit.Sdk.XunitException(
+                "No supplier row with a non-empty stored street address was found in the dev database. " +
+                "This regression test needs at least one such row to verify a do-nothing save keeps it.");
+        }
+
+        Assert.False(string.IsNullOrWhiteSpace(addressBefore));
+
+        // Do-nothing save: change nothing, just click Save.
+        await _page.ClickAsync("button:text(\"Išsaugoti\")");
+        await _page.WaitForSelectorAsync(".mud-dialog", new() { State = WaitForSelectorState.Detached, Timeout = 15_000 });
+
+        await TakeScreenshot("edit_dialog_do_nothing_save_saved.png");
+
+        // Force a fresh database round-trip BEFORE re-checking: reload the list
+        // page so the next dialog open repopulates from a freshly loaded entity.
+        await _page.GotoAsync($"{_baseUrl}/suppliers");
+        await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await _page.WaitForSelectorAsync("text=Naujas tiekėjas");
+
+        // Re-locate the SAME row by name (list order is not stable after a save).
+        var sameRow = _page.Locator("tbody tr", new() { HasText = supplierName }).First;
+        await sameRow.Locator("button").First.ClickAsync();
+        await _page.WaitForSelectorAsync("text=Atšaukti");
+
+        var addressAfter = await ReadAddressValueAsync();
+        _output.WriteLine($"Address after do-nothing save + reload: '{addressAfter}'");
+
+        // THE regression assertion: a do-nothing save must never wipe or alter
+        // the stored address. The reopened dialog initializes from a fresh
+        // database load, so this is an end-to-end DB persistence check.
+        Assert.Equal(addressBefore, addressAfter);
+
+        await TakeScreenshot("edit_dialog_do_nothing_save_kept_address.png");
+
+        // Cancel — leave no pending changes (browser is torn down by DisposeAsync anyway).
         await _page.ClickAsync("text=Atšaukti");
     }
 
