@@ -3,8 +3,10 @@
 @using NordicBeesERP.Data
 @using MudBlazor
 @using NordicBeesERP.Helpers
+@using NordicBeesERP.Services
 @inject IDialogService DialogService
 @inject ISupplierService SupplierService
+@inject IGooglePlacesService GooglePlaces
 @inject NordicBeesERP.Data.NordicBeesERPContext context
 
 <MudDialog>
@@ -163,8 +165,19 @@
                 <MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:#f0f4ff; border-radius:8px; border-left:4px solid #1976d2">
                     <MudGrid>
                         <MudItem xs="12">
-                            <MudTextField @bind-Value="supplier.Address" Label="Adresas"
-                                          Variant="Variant.Outlined" Lines="2" />
+                            <MudAutocomplete T="string"
+                                             @bind-Value="supplier.Address"
+                                             Label="Adresas"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             SearchFunc="@SearchPlaces"
+                                             ToStringFunc="@(s => s)"
+                                             Strict="false"
+                                             CoerceText="false"
+                                             ResetValueOnEmptyText="false"
+                                             MinCharacters="3"
+                                             ShowProgressIndicator="@_placesLoading"
+                                             OnValueChanged="(string? selected) => OnPlaceSelectedAsync(selected)" />
                         </MudItem>
                         <MudItem xs="4">
                             <MudTextField @bind-Value="supplier.City" Label="Miestas"
@@ -232,6 +245,10 @@
     private Supplier supplier = new();
     private int _vatRate = 21;
 
+    private string _sessionToken = "";
+    private readonly Dictionary<string, string> _descriptionToPlaceId = new();
+    private bool _placesLoading = false;
+
     private string FarmerCodeKey => _vatRate == 6 ? "comp" : "vat";
     private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
 
@@ -259,6 +276,8 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        _sessionToken = Guid.NewGuid().ToString();
+
         if (!string.IsNullOrEmpty(supplier.Name) && supplier.Name == PrefilledName) return;
 
         if (!string.IsNullOrEmpty(PrefilledName))
@@ -328,6 +347,62 @@
         {
             snackbar?.Add($"Klaida išsaugant tiekėją: {ex.Message}", Severity.Error);
         }
+    }
+
+    private async Task<IEnumerable<string>> SearchPlaces(string? input, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(input) || input.Trim().Length < 3)
+            return Array.Empty<string>();
+
+        _placesLoading = true;
+        try
+        {
+            var suggestions = await GooglePlaces.AutocompleteAsync(input.Trim(), _sessionToken);
+            _descriptionToPlaceId.Clear();
+            foreach (var s in suggestions)
+                _descriptionToPlaceId[s.Description] = s.PlaceId;
+            return suggestions.Select(s => s.Description);
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+        finally
+        {
+            _placesLoading = false;
+        }
+    }
+
+    private async Task OnPlaceSelectedAsync(string? selectedDescription)
+    {
+        if (string.IsNullOrWhiteSpace(selectedDescription)) return;
+        if (!_descriptionToPlaceId.TryGetValue(selectedDescription, out var placeId)) return;
+
+        PlaceAddressDetails? details;
+        try
+        {
+            details = await GooglePlaces.GetPlaceDetailsAsync(placeId, _sessionToken);
+        }
+        catch
+        {
+            details = null;
+        }
+
+        // Session terminated after details call — start a fresh one for any further lookups
+        _sessionToken = Guid.NewGuid().ToString();
+
+        if (details is null)
+        {
+            snackbar?.Add("Nepavyko gauti adreso duomenų — įveskite rankiniu būdu", Severity.Warning);
+            return; // leave Address as the user typed; do not clear City/PostalCode
+        }
+
+        supplier.Address = details.StreetAddress;
+        supplier.City = details.City;
+        supplier.PostalCode = details.PostalCode;
+        supplier.Country = details.Country;
+        supplier.CountryCode = details.CountryCode;
+        _descriptionToPlaceId.Clear();
     }
 
     private void CloseDialog()
