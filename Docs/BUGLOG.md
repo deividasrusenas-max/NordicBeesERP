@@ -834,3 +834,12 @@ re-labeling the symptom.
 - **Category**: infra (harness)
 - **Error class**: `unconditional-skill-injection-context-bloat` (new tag)
 - **Status**: monitoring
+
+### 2026-09-09 — Playwright E2E test project is not part of the solution — regression tests never compile/run in standard gates
+- **Symptom**: `Tests/Playwright/NordicBeesERP.Tests.csproj` is absent from `NordicBeesERP.sln` (grep on the sln: 0 references; the only csproj referenced resolves to `Tests/NordicBeesERP.Tests/...`). As a result, the standard `dotnet build`, `dotnet test`, and `bump-version.sh` gate 1.5 silently ignore the entire Playwright E2E suite — it is never compiled and never executed by any automated gate, so the regression tests exist only as documentation. Concrete evidence today: the save-based address-wipe regression test added in commit `11a4118` compiled only because the fixer was explicitly instructed to run `dotnet build Tests/Playwright/NordicBeesERP.Tests.csproj` directly; the plain solution build reports 0 errors while skipping it entirely. The class-level `[Trait("Category", "E2E")]` exclusion is a deliberate, correct design for the *execution* gate (E2E needs a live server + browser), but the project should still be *compiled* by the standard build.
+- **Root cause**: two csproj files share the same assembly/project name (`NordicBeesERP.Tests`) in different folders (`Tests/NordicBeesERP.Tests/` and `Tests/Playwright/`); when the Playwright project was created it was never added to the solution, so there is no compile-time check on any future edit to E2E test files.
+- **Fix**: NOT YET APPLIED. Recommended (future task): add `Tests/Playwright/NordicBeesERP.Tests.csproj` to `NordicBeesERP.sln` so E2E tests are at least compile-checked by `dotnet build`; keep excluding them from *execution* via the existing `--filter "Category!=E2E"` in `bump-version.sh` gate 1.5 (running them remains a manual, dev-server-on step per the e2e skill).
+- **Guardrail added**: none mechanical yet — temporary mitigation is that every coder/fixer delegation touching `Tests/Playwright/*` must explicitly build that project directly (as was done for `11a4118`). Propose a `.sln` entry as the real mechanical guardrail.
+- **Category**: infra (test harness)
+- **Error class**: `playwright-tests-not-in-solution` (new tag)
+- **Status**: monitoring
