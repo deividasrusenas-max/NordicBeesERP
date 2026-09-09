@@ -534,6 +534,19 @@ Three agents exist for this, each with a narrow job:
   the concrete rules in `Docs/UI_STANDARD.md` (header layout, filter
   styling, table conventions, etc.) rather than hunting for defects.
 
+**All three of these agents return their report as TEXT, never a file —
+this is expected, correct behavior, not a failed delegation.** Their
+`opencode.json` permission denies `write`/`edit`/`bash` entirely, by
+design (read-only roles); per AGENTS.md's "Final work report" rule, an
+agent without that permission returns text instead, and that IS
+compliance. Do NOT re-delegate the same check again because a report came
+back as text instead of a file — that's the normal, only possible shape
+of their output. If this task needs a durable record of what one of them
+found, YOU persist it: write their returned text to
+`.opencode/reports/<short-task-name>-<YYYYMMDD-HHMM>.md` yourself (you
+have `edit` permission scoped to that path) — do not assume it already
+happened, and do not ask the subagent to do it again.
+
 **Step 1:** Task tool → `verifier`, pointing it at the exact page/route to
 check. It navigates, screenshots, and its report will end with lines like
 `VISUAL REVIEW NEEDED: [path]` for anything UI-facing.

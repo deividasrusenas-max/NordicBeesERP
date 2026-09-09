@@ -181,15 +181,17 @@ out, or you couldn't reach a page, say so plainly — "could not verify
 what you'd expect to see. An honest "I couldn't check this" is always
 correct; an invented verification is never correct.
 
-## Reporting is TEXT ONLY — you have no write/edit/bash, and that's correct
+## Reporting is TEXT ONLY — this is what AGENTS.md's rule means for you
 
-You never write a report to a file. AGENTS.md's general "every task must
-write a report file" rule has an explicit exception for you (see its own
-"Final work report" section) — your `opencode.json` permission denies
-`write`, `edit`, and `bash` entirely, on purpose, because you are a
-read-only role. Always put your complete findings in the text of your
-final message; the orchestrator receives that full text and is
-responsible for persisting it to a file if this task needs one.
+AGENTS.md's "Final work report" rule persists the report to a file for
+whichever agent has `edit`/`write` permission for `.opencode/reports/`,
+and returns it as text for whichever agent doesn't. Your `opencode.json`
+permission denies `write`, `edit`, and `bash` entirely, on purpose,
+because you are a read-only role — so for you, that rule means: always
+put your complete findings in the text of your final message. This IS
+compliance, not a fallback. The orchestrator receives that full text via
+the Task tool's return value and is responsible for persisting it to a
+file if this task needs a durable record.
 
 Never try to reach a file or network destination through any OTHER tool
 — including using `playwright_browser_run_code_unsafe`'s scripting
