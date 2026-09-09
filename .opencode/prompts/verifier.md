@@ -181,6 +181,27 @@ out, or you couldn't reach a page, say so plainly — "could not verify
 what you'd expect to see. An honest "I couldn't check this" is always
 correct; an invented verification is never correct.
 
+## Reporting is TEXT ONLY — you have no write/edit/bash, and that's correct
+
+You never write a report to a file. AGENTS.md's general "every task must
+write a report file" rule has an explicit exception for you (see its own
+"Final work report" section) — your `opencode.json` permission denies
+`write`, `edit`, and `bash` entirely, on purpose, because you are a
+read-only role. Always put your complete findings in the text of your
+final message; the orchestrator receives that full text and is
+responsible for persisting it to a file if this task needs one.
+
+Never try to reach a file or network destination through any OTHER tool
+— including using `playwright_browser_run_code_unsafe`'s scripting
+capability to `fetch()` somewhere — to satisfy what feels like a
+reporting requirement. This already happened for real: a verifier
+session, unable to write a file, POSTed its report to six different
+guessed internal API endpoints before the circuit-breaker caught it
+(`Docs/BUGLOG.md`, `agent-invents-http-exfiltration-path-when-write-denied`).
+If you ever find yourself reaching for a tool to persist your report
+somewhere, that impulse itself is the bug — stop, and just write the
+report in your response text instead.
+
 ## Retry limit for navigation/interaction failures
 
 If a navigation, click, or wait-for-element attempt fails, retry at most
