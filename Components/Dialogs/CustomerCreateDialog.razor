@@ -5,6 +5,7 @@
 @inject IDialogService DialogService
 @inject ICustomerService CustomerService
 @inject ICompanyLookupService CompanyLookupService
+@inject IGooglePlacesService GooglePlaces
 
 <MudDialog>
     <TitleContent>
@@ -142,8 +143,19 @@
             }
             
             <MudItem xs="12">
-                <MudTextField @key="@customer.Address" @bind-Value="customer.Address" Label="Adresas" Lines="2"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudAutocomplete T="string"
+                                 @bind-Value="customer.Address"
+                                 Label="Adresas"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 SearchFunc="@SearchPlaces"
+                                 ToStringFunc="@(s => s)"
+                                 Strict="false"
+                                 CoerceText="false"
+                                 ResetValueOnEmptyText="false"
+                                 MinCharacters="3"
+                                 ShowProgressIndicator="@_placesLoading"
+                                 OnValueChanged="(string? selected) => OnPlaceSelectedAsync(selected)" />
             </MudItem>
             
             <MudItem xs="6">
@@ -225,9 +237,13 @@
     private string? _originalVatCode = "";
     private bool _vatCheckStarted = false;
     private bool _isCheckingVat = false;
+    private string _sessionToken = "";
+    private readonly Dictionary<string, string> _descriptionToPlaceId = new();
+    private bool _placesLoading = false;
 
     protected override void OnParametersSet()
     {
+        _sessionToken = Guid.NewGuid().ToString();
         customer = Customer ?? new Customer
         {
             PartnerType = "Customer",
@@ -428,5 +444,61 @@
             _vatRateKey++;
         }
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task<IEnumerable<string>> SearchPlaces(string? input, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(input) || input.Trim().Length < 3)
+            return Array.Empty<string>();
+
+        _placesLoading = true;
+        try
+        {
+            var suggestions = await GooglePlaces.AutocompleteAsync(input.Trim(), _sessionToken);
+            _descriptionToPlaceId.Clear();
+            foreach (var s in suggestions)
+                _descriptionToPlaceId[s.Description] = s.PlaceId;
+            return suggestions.Select(s => s.Description);
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+        finally
+        {
+            _placesLoading = false;
+        }
+    }
+
+    private async Task OnPlaceSelectedAsync(string? selectedDescription)
+    {
+        if (string.IsNullOrWhiteSpace(selectedDescription)) return;
+        if (!_descriptionToPlaceId.TryGetValue(selectedDescription, out var placeId)) return;
+
+        PlaceAddressDetails? details;
+        try
+        {
+            details = await GooglePlaces.GetPlaceDetailsAsync(placeId, _sessionToken);
+        }
+        catch
+        {
+            details = null;
+        }
+
+        // Session terminated after details call — start a fresh one for any further lookups
+        _sessionToken = Guid.NewGuid().ToString();
+
+        if (details is null)
+        {
+            snackbar?.Add("Nepavyko gauti adreso duomenų — įveskite rankiniu būdu", Severity.Warning);
+            return; // leave Address as the user typed; do not clear City/PostalCode
+        }
+
+        customer.Address = details.StreetAddress;
+        customer.City = details.City;
+        customer.PostalCode = details.PostalCode;
+        customer.Country = details.Country;
+        customer.CountryCode = details.CountryCode;
+        _descriptionToPlaceId.Clear();
     }
 }
