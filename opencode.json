@@ -78,6 +78,7 @@
     },
     "orchestrator": {
       "mode": "primary",
+      "model": "opencode/big-pickle",
       "permission": {
         "bash": {
           "*": "allow"
