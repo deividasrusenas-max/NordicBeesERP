@@ -130,7 +130,7 @@ The dev database is on a REMOTE host over Tailscale, NOT localhost:
 
 - Never create, switch, or delete git branches unless the task explicitly instructs it. Default to working directly on the currently checked-out branch.
 - Never leave `HEAD` in a detached state. If a `git checkout <commit>` is unavoidable, immediately create or move a branch to point at it in the same sequence of commands.
-- Never commit `.env*`, `*.bak_*`, or anything under `.kilo/secrets/` or `.opencode/secrets/`.
+- Never commit `.env*`, `*.bak_*`, or anything under `.opencode/secrets/`.
 
 ### Secrets
 

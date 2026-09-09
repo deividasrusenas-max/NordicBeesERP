@@ -58,9 +58,8 @@ have one.
   see `UpdateBusinessPartnerAsync_NullEmail_PersistsAsSqlNullNotEmptyString`
   for the exact pattern (this caught a real regression:
   `?? ""` silently converting NULL to `''`).
-- Per this project's own `.kilo/prompts/plan.md`/`code.md` rules: any task
-  that creates or modifies a DB-write method MUST include writing or
-  updating a corresponding test in the same delegation — not a
+- Any task that creates or modifies a DB-write method MUST include writing
+  or updating a corresponding test in the same delegation — not a
   deferrable follow-up. `reviewer` must confirm a test exists and
   actually exercises the changed path before approving.
 - Run tests with:

@@ -88,9 +88,9 @@ for f in $CHANGED_CS; do
 done
 if [ -n "$BAD_FILES" ]; then
   echo "ERROR: bump-version.sh refused to run." >&2
-  echo "The following changed file(s) contain both FindAsync( and SaveChangesAsync() -- this is the known anti-pattern from .clinerules/nordicbees-standards.md (detached entity, silent 0-row write under global NoTracking):" >&2
+  echo "The following changed file(s) contain both FindAsync( and SaveChangesAsync() -- this is the known anti-pattern from .opencode/skills/dotnet-efcore-nordicbees/SKILL.md (detached entity, silent 0-row write under global NoTracking):" >&2
   echo -e "$BAD_FILES" >&2
-  echo "Fix with ExecuteSqlRawAsync per .clinerules/nordicbees-standards.md, or if this is a false positive (e.g. genuine tracked-entity flow), review manually before bumping version." >&2
+  echo "Fix with ExecuteSqlRawAsync per .opencode/skills/dotnet-efcore-nordicbees/SKILL.md, or if this is a false positive (e.g. genuine tracked-entity flow), review manually before bumping version." >&2
   exit 1
 fi
 
