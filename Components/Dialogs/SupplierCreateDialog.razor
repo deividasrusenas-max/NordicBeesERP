@@ -391,17 +391,34 @@
         // Session terminated after details call — start a fresh one for any further lookups
         _sessionToken = Guid.NewGuid().ToString();
 
+        // MudAutocomplete's @bind-Value has ALREADY written the clicked suggestion
+        // description into supplier.Address before this handler runs. Never allow
+        // that value to be replaced with an empty string: locality-level places
+        // (no "route"/"street_number" address component) resolve to an empty
+        // StreetAddress, which used to wipe the stored address on save.
         if (details is null)
         {
-            snackbar?.Add("Nepavyko gauti adreso duomenų — įveskite rankiniu būdu", Severity.Warning);
-            return; // leave Address as the user typed; do not clear City/PostalCode
+            _descriptionToPlaceId.Clear();
+            snackbar?.Add("Nepavyko gauti adreso detalių — paliktas pasirinktas adresas", Severity.Warning);
+            return;
         }
 
-        supplier.Address = details.StreetAddress;
-        supplier.City = details.City;
-        supplier.PostalCode = details.PostalCode;
-        supplier.Country = details.Country;
-        supplier.CountryCode = details.CountryCode;
+        if (string.IsNullOrWhiteSpace(details.StreetAddress))
+        {
+            // No street component (e.g. a village/municipality): keep the clicked
+            // description as the address instead of overwriting it with "".
+            snackbar?.Add("Nerasta gatvės adreso dalis — įrašytas pasirinktas vietovės pavadinimas", Severity.Warning);
+        }
+        else
+        {
+            supplier.Address = details.StreetAddress;
+        }
+
+        // Fill only what the lookup actually returned — never clear existing values.
+        if (!string.IsNullOrWhiteSpace(details.City)) supplier.City = details.City;
+        if (!string.IsNullOrWhiteSpace(details.PostalCode)) supplier.PostalCode = details.PostalCode;
+        if (!string.IsNullOrWhiteSpace(details.Country)) supplier.Country = details.Country;
+        if (!string.IsNullOrWhiteSpace(details.CountryCode)) supplier.CountryCode = details.CountryCode;
         _descriptionToPlaceId.Clear();
     }
 
