@@ -26,6 +26,25 @@ import { join } from "path"
  * problem. Subagent sessions (coder/fixer/reviewer) are deliberately
  * excluded here; their own tool-call timing isn't what's missing.
  *
+ * "task" CALLS GET A "started" RECORD TOO (2026-09-09 fix): every other
+ * tool writes exactly one line, on "after" — fine for calls lasting
+ * milliseconds to a few seconds. A real fixer delegation once ran 8+
+ * minutes and looped; this file recorded nothing about it at all, because
+ * a call that never reaches "after" left no trace, which is exactly the
+ * case this instrumentation exists to diagnose. task-stats.jsonl already
+ * solves this correctly for subagent calls with its own started/completed
+ * split, so "task" calls here get the same treatment: a {"status":
+ * "started"} line at "before" (ts, session_id, call_id, tool,
+ * args_summary, prompt_chars, skills_injected), then the existing line at
+ * "after" gains {"status":"completed"}. Every other tool's "after" line
+ * is completely unchanged — no "status" field appears on non-task lines,
+ * so anything already parsing this file for those isn't affected. No
+ * retroactive "interrupted" record is written for a "started" line that
+ * never gets its "completed" match (unlike task-stats.jsonl's stale
+ * sweep) — that's deliberately out of scope here; a reader can already
+ * tell an in-flight-forever call apart from a normal one by the absence
+ * of a matching call_id with status "completed".
+ *
  * NOTE ON HOOK ARG SHAPE (same gotcha as nordicbees-quality-monitor.ts,
  * verified independently against the installed @opencode-ai/plugin type
  * defs, not just copied from that file's comment): "tool.execute.before"
@@ -162,13 +181,38 @@ export const NordicBeesOrchestratorTiming: Plugin = async ({ directory }) => {
         skillsInjected = promptText.startsWith(SKILL_INJECTION_MARKER)
       }
 
+      const argsSummary = summarizeArgs(tool, args)
+
       pending.set(`${sessionID}:${callID}`, {
         tool,
         startedAt: now,
-        argsSummary: summarizeArgs(tool, args),
+        argsSummary,
         promptChars,
         skillsInjected,
       })
+
+      // "task" calls only: a real fixer delegation once ran 8+ minutes and
+      // looped, and orchestrator-timing.jsonl recorded nothing about it,
+      // because this plugin only ever wrote a line on "after" — a call
+      // that never completes left no trace, which is exactly the case
+      // this file exists to diagnose. task-stats.jsonl already handles
+      // this correctly for subagent calls via its own "started" record;
+      // mirrored here for "task" only, not every tool, so non-task lines
+      // already written to this file keep their exact current shape (no
+      // "status" field appearing where it never did before).
+      if (tool === "task") {
+        const startedRecord: Record<string, unknown> = {
+          status: "started",
+          ts: new Date().toISOString(),
+          session_id: sessionID,
+          call_id: callID,
+          tool,
+        }
+        if (argsSummary !== undefined) startedRecord.args_summary = argsSummary
+        if (promptChars !== undefined) startedRecord.prompt_chars = promptChars
+        if (skillsInjected !== undefined) startedRecord.skills_injected = skillsInjected
+        appendRecord(logPath, reportsDir, startedRecord)
+      }
     },
 
     "tool.execute.after": async (input: any, second: any) => {
@@ -195,6 +239,11 @@ export const NordicBeesOrchestratorTiming: Plugin = async ({ directory }) => {
         gap_before_ms: gapBeforeMs,
         duration_ms: now - entry.startedAt,
       }
+      // "status" only added for "task" (which now also gets a "started"
+      // record above) — every other tool's line keeps its exact existing
+      // shape, so anything already parsing this file for non-task lines
+      // doesn't see a new field appear.
+      if (entry.tool === "task") record.status = "completed"
       if (entry.argsSummary !== undefined) record.args_summary = entry.argsSummary
       if (entry.promptChars !== undefined) record.prompt_chars = entry.promptChars
       if (entry.skillsInjected !== undefined) record.skills_injected = entry.skillsInjected
