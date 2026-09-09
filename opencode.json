@@ -40,7 +40,7 @@
     },
     "fixer": {
       "mode": "all",
-      "model": "llama-swap/fixer",
+      "model": "llama-swap/coder",
       "permission": {
         "agent_manager": "deny",
         "agent_manager_models": "deny",
@@ -84,16 +84,16 @@
           "*": "allow"
         },
         "edit": {
-        "*": "deny",
-        ".opencode/planning/*": "allow",
-        ".opencode/planning/**": "allow",
-        ".opencode/reports/*": "allow",
-        ".opencode/reports/**": "allow",
-        "Docs/BUGLOG.md": "allow",
-        ".agent-guardrails/evidence/*": "allow",
-        ".agent-guardrails/evidence/**": "allow"
-      },
-      "task": {
+          "*": "deny",
+          ".opencode/planning/*": "allow",
+          ".opencode/planning/**": "allow",
+          ".opencode/reports/*": "allow",
+          ".opencode/reports/**": "allow",
+          "Docs/BUGLOG.md": "allow",
+          ".agent-guardrails/evidence/*": "allow",
+          ".agent-guardrails/evidence/**": "allow"
+        },
+        "task": {
           "*": "deny",
           "coder": "allow",
           "fixer": "allow",
@@ -558,8 +558,13 @@
           "name": "Qwen2.5-VL-7B (Vision, via llama-swap)",
           "attachment": true,
           "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"]
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
           },
           "tool_call": false
         }
@@ -605,8 +610,13 @@
           "name": "Qwen2.5-VL-7B-Instruct",
           "attachment": true,
           "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"]
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
           },
           "tool_call": false
         }
@@ -648,17 +658,7 @@
     "prune": true,
     "reserved": 10000
   },
-  "plugin": [
-    [
-      "opencode-auto-resume@1.1.3",
-      {
-        "chunkTimeoutMs": 420000,
-        "gracePeriodMs": 15000,
-        "maxRetries": 3,
-        "subagentWaitMs": 300000
-      }
-    ]
-  ],
+  "plugin": [],
   "_plugin_disabled_2026-08-24": [
     [
       "opencode-auto-resume",
@@ -667,6 +667,17 @@
         "gracePeriodMs": 5000,
         "maxRetries": 3,
         "subagentWaitMs": 120000
+      }
+    ]
+  ],
+  "_plugin_disabled_test_20260909": [
+    [
+      "opencode-auto-resume@1.1.3",
+      {
+        "chunkTimeoutMs": 420000,
+        "gracePeriodMs": 15000,
+        "maxRetries": 3,
+        "subagentWaitMs": 300000
       }
     ]
   ]
