@@ -6,6 +6,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 using NordicBeesERP.Services.Dtos;
 using System.Text.Json;
@@ -19,19 +20,22 @@ namespace NordicBeesERP.Services
         private readonly ICompanySettingsService _companySettings;
         private readonly IPdfGeneratorService _pdfGeneratorService;
         private readonly IPaymentService _paymentService;
+        private readonly string _pdfBaseDir;
 
         public CreditNoteService(
             IDbContextFactory<NordicBeesERPContext> contextFactory,
             ICreditNoteNumberGenerator numberGenerator,
             ICompanySettingsService companySettings,
             IPdfGeneratorService pdfGeneratorService,
-            IPaymentService paymentService)
+            IPaymentService paymentService,
+            string? pdfBaseDir = null)
         {
             _contextFactory = contextFactory;
             _numberGenerator = numberGenerator;
             _companySettings = companySettings;
             _pdfGeneratorService = pdfGeneratorService;
             _paymentService = paymentService;
+            _pdfBaseDir = pdfBaseDir ?? "/var/lib/nordicbees/credit-notes";
         }
 
         // =====================================================
@@ -684,23 +688,28 @@ namespace NordicBeesERP.Services
 
         public async Task<byte[]> GeneratePdfAsync(int id)
         {
+            return await GeneratePdfBytesAsync(id);
+        }
+
+        private async Task<byte[]> GeneratePdfBytesAsync(int id)
+        {
             using var context = _contextFactory.CreateDbContext();
-            
+
             var creditNote = await context.CreditNotes
                 .Include(cn => cn.Customer)
                 .Include(cn => cn.Currency)
                 .Include(cn => cn.OriginalInvoice)
                 .Include(cn => cn.Lines)
                 .FirstOrDefaultAsync(cn => cn.Id == id);
-            
+
             if (creditNote == null)
                 throw new InvalidOperationException($"Credit note with ID {id} not found.");
-            
+
             var creditNoteLines = await context.CreditNoteLines
                 .Where(l => l.CreditNoteId == id)
                 .OrderBy(l => l.LineNumber)
                 .ToListAsync();
-            
+
             var lines = creditNoteLines.Select(l => new CreditNoteLineDto
             {
                 Id = l.Id,
@@ -720,7 +729,7 @@ namespace NordicBeesERP.Services
                 LotNumber = l.LotNumber,
                 CreatedAt = l.CreatedAt
             }).ToList();
-            
+
             // Fetch customer and currency
             var customer = creditNote.Customer;
             var currency = creditNote.Currency;
@@ -740,6 +749,59 @@ namespace NordicBeesERP.Services
                 originalInvoiceDate, 
                 appliedInvoiceNumber, 
                 createdByName);
+        }
+
+        public async Task<byte[]> GenerateAndSavePdfAsync(int id)
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            var creditNote = await context.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cn => cn.Id == id);
+            if (creditNote == null)
+                throw new InvalidOperationException($"Credit note with ID {id} not found.");
+
+            var isFinal = creditNote.Status != CreditNoteStatus.Draft;
+
+            // Serve cached copy when already frozen
+            if (isFinal && !string.IsNullOrWhiteSpace(creditNote.PdfPath))
+            {
+                var cached = PdfFileCache.TryRead(_pdfBaseDir, creditNote.PdfPath);
+                if (cached != null)
+                    return cached;
+            }
+
+            var pdfBytes = await GeneratePdfBytesAsync(id);
+
+            // Freeze only final credit notes
+            if (isFinal)
+            {
+                var relativePath = PdfFileCache.Save(
+                    _pdfBaseDir, creditNote.CreditDate.Year, $"{creditNote.CreditNoteNumber}.pdf", pdfBytes);
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE credit_notes SET pdf_path = {0}, updated_at = NOW() WHERE id = {1}",
+                    relativePath, id);
+            }
+
+            return pdfBytes;
+        }
+
+        public async Task SaveFinalizedPdfAsync(int id, byte[] pdfBytes)
+        {
+            if (pdfBytes == null || pdfBytes.Length == 0) return;
+
+            using var context = _contextFactory.CreateDbContext();
+
+            var creditNote = await context.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cn => cn.Id == id);
+            if (creditNote == null || creditNote.Status == CreditNoteStatus.Draft) return;
+
+            var relativePath = PdfFileCache.Save(
+                _pdfBaseDir, creditNote.CreditDate.Year, $"{creditNote.CreditNoteNumber}.pdf", pdfBytes);
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE credit_notes SET pdf_path = {0}, updated_at = NOW() WHERE id = {1}",
+                relativePath, id);
         }
 
         // =====================================================

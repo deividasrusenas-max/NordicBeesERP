@@ -389,6 +389,274 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Fact]
+    public async Task GenerateAndSavePdfAsync_PrintedCreditNote_SavesPdfAndWritesPdfPathToRealDatabase()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-{Guid.NewGuid():N}";
+        var creditNoteNumber = $"CN-{Guid.NewGuid():N}";
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-cn-{Guid.NewGuid():N}");
+        if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer {Guid.NewGuid():N}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id) VALUES ({0}, {1}, {2})",
+            invoiceNumber, now.Date, bpId);
+
+        // 4. Insert credit note via raw SQL with status = 'printed'
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, (SELECT id FROM invoices WHERE invoice_number = {2}), (SELECT id FROM invoices WHERE invoice_number = {3}), {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            creditNoteNumber, now, invoiceNumber, invoiceNumber, bpId, "TST", "LT", false, 0m, 0m, 0m, "printed", 1, now, now);
+
+        var creditNoteId = await setupContext.CreditNotes
+            .FromSqlRaw("SELECT id FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber)
+            .Select(cn => cn.Id)
+            .FirstOrDefaultAsync();
+
+        try
+        {
+            // 5. Act
+            var pdfGen = new TestPdfGeneratorService();
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                pdfGen,
+                new TestPaymentService(),
+                baseDir);
+            var pdfBytes = await service.GenerateAndSavePdfAsync(creditNoteId);
+
+            // 6. Assert: returned bytes are the marker bytes
+            Assert.Equal(pdfGen.PdfBytes, pdfBytes);
+
+            // 7. Re-read with a BRAND NEW DbContext: PdfPath is set and year-prefixed
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cn => cn.Id == creditNoteId);
+            Assert.NotNull(stored);
+            Assert.NotNull(stored!.PdfPath);
+            Assert.StartsWith($"{stored.CreditDate.Year}/", stored.PdfPath!);
+
+            // 8. The file exists on disk under baseDir and matches the marker bytes
+            var fullPath = Path.Combine(baseDir, stored.PdfPath!);
+            Assert.True(File.Exists(fullPath));
+            Assert.Equal(pdfGen.PdfBytes, File.ReadAllBytes(fullPath));
+        }
+        finally
+        {
+            // 9. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAndSavePdfAsync_ServesCachedCopy_WhenPdfPathAndFileExist()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-{Guid.NewGuid():N}";
+        var creditNoteNumber = $"CN-{Guid.NewGuid():N}";
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-cn-{Guid.NewGuid():N}");
+        if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer {Guid.NewGuid():N}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id) VALUES ({0}, {1}, {2})",
+            invoiceNumber, now.Date, bpId);
+
+        // 4. Insert credit note via raw SQL with status = 'printed'
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, (SELECT id FROM invoices WHERE invoice_number = {2}), (SELECT id FROM invoices WHERE invoice_number = {3}), {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            creditNoteNumber, now, invoiceNumber, invoiceNumber, bpId, "TST", "LT", false, 0m, 0m, 0m, "printed", 1, now, now);
+
+        var creditNoteId = await setupContext.CreditNotes
+            .FromSqlRaw("SELECT id FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber)
+            .Select(cn => cn.Id)
+            .FirstOrDefaultAsync();
+
+        try
+        {
+            // 5. Pre-create the cached file and record pdf_path on the row
+            var markerBytes = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34 }; // "%PDF-1.4"
+            var rel = $"{now.Year}/X-{Guid.NewGuid():N}.pdf";
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(baseDir, rel))!);
+            File.WriteAllBytes(Path.Combine(baseDir, rel), markerBytes);
+            await setupContext.Database.ExecuteSqlRawAsync(
+                "UPDATE credit_notes SET pdf_path = {0} WHERE id = {1}", rel, creditNoteId);
+
+            // 6. Act — generator must NOT be called because a cached copy exists
+            var pdfGen = new TestPdfGeneratorService { ThrowIfCalled = true };
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                pdfGen,
+                new TestPaymentService(),
+                baseDir);
+            var pdfBytes = await service.GenerateAndSavePdfAsync(creditNoteId);
+
+            // 7. Assert: served the cached copy without regenerating
+            Assert.Equal(markerBytes, pdfBytes);
+            Assert.Equal(0, pdfGen.GenerateCreditNotePdfAsyncCallCount);
+        }
+        finally
+        {
+            // 8. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAndSavePdfAsync_DraftCreditNote_NeverSavesOrWritesPdfPath()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-{Guid.NewGuid():N}";
+        var creditNoteNumber = $"CN-{Guid.NewGuid():N}";
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-cn-{Guid.NewGuid():N}");
+        if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer {Guid.NewGuid():N}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id) VALUES ({0}, {1}, {2})",
+            invoiceNumber, now.Date, bpId);
+
+        // 4. Insert credit note via raw SQL with status = 'draft'
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, (SELECT id FROM invoices WHERE invoice_number = {2}), (SELECT id FROM invoices WHERE invoice_number = {3}), {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            creditNoteNumber, now, invoiceNumber, invoiceNumber, bpId, "TST", "LT", false, 0m, 0m, 0m, "draft", 1, now, now);
+
+        var creditNoteId = await setupContext.CreditNotes
+            .FromSqlRaw("SELECT id FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber)
+            .Select(cn => cn.Id)
+            .FirstOrDefaultAsync();
+
+        try
+        {
+            // 5. Act
+            var pdfGen = new TestPdfGeneratorService();
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                pdfGen,
+                new TestPaymentService(),
+                baseDir);
+            var pdfBytes = await service.GenerateAndSavePdfAsync(creditNoteId);
+
+            // 6. Assert: generated live exactly once, but never saved / no pdf_path
+            Assert.Equal(pdfGen.PdfBytes, pdfBytes);
+            Assert.Equal(1, pdfGen.GenerateCreditNotePdfAsyncCallCount);
+
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cn => cn.Id == creditNoteId);
+            Assert.NotNull(stored);
+            Assert.Null(stored!.PdfPath);
+
+            // No *.pdf files exist anywhere under baseDir
+            Assert.False(Directory.Exists(baseDir) && Directory.GetFiles(baseDir, "*.pdf", SearchOption.AllDirectories).Length > 0);
+        }
+        finally
+        {
+            // 7. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
     // --- Minimal stub implementations for CreditNoteService constructor dependencies ---
 
     private sealed class TestCreditNoteNumberGenerator : ICreditNoteNumberGenerator
@@ -407,12 +675,20 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 
     private sealed class TestPdfGeneratorService : IPdfGeneratorService
     {
-        public byte[] GenerateInvoicePdf(int invoiceId) => Array.Empty<byte>();
-        public Task<byte[]> GenerateInvoicePdfAsync(int invoiceId) => Task.FromResult(Array.Empty<byte>());
+        public byte[] PdfBytes { get; set; } = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34 }; // "%PDF-1.4"
+        public int GenerateCreditNotePdfAsyncCallCount { get; private set; }
+        public bool ThrowIfCalled { get; set; }
+
+        public byte[] GenerateInvoicePdf(int invoiceId) => PdfBytes;
+        public Task<byte[]> GenerateInvoicePdfAsync(int invoiceId) => Task.FromResult(PdfBytes);
         public Task<byte[]> GenerateCreditNotePdfAsync(CreditNote creditNote, List<CreditNoteLineDto> lines, BusinessPartner? customer, Currency? currency, string? originalInvoiceNumber, DateTime? originalInvoiceDate, string? appliedInvoiceNumber, string? createdByName)
-            => Task.FromResult(Array.Empty<byte>());
+        {
+            GenerateCreditNotePdfAsyncCallCount++;
+            if (ThrowIfCalled) throw new InvalidOperationException("Generator must not be called when a cached copy exists");
+            return Task.FromResult(PdfBytes);
+        }
         public string GetPdfPath(string creditNoteNumber) => "/tmp/test.pdf";
-        public Task<byte[]> GenerateMultipleInvoicesPdfAsync(List<int> invoiceIds) => Task.FromResult(Array.Empty<byte>());
+        public Task<byte[]> GenerateMultipleInvoicesPdfAsync(List<int> invoiceIds) => Task.FromResult(PdfBytes);
     }
 
     private sealed class TestPaymentService : IPaymentService

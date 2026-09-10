@@ -95,6 +95,24 @@ namespace NordicBeesERP.Services
 
     Task<byte[]> GeneratePdfAsync(int id);
 
+        /// <summary>
+        /// Returns credit-note PDF bytes. For a final (non-Draft) credit note whose
+        /// PDF was already generated and cached (pdf_path set AND file present),
+        /// serves the cached byte-identical copy. Otherwise generates the PDF live;
+        /// and if the credit note is final, ALSO saves it to disk and records
+        /// pdf_path — freezing the content (incl. partner address) as of first
+        /// generation so reprints never change. Draft credit notes always generate
+        /// live and are never saved.
+        /// </summary>
+        Task<byte[]> GenerateAndSavePdfAsync(int id);
+        /// <summary>
+        /// Persists already-generated PDF bytes for a final credit note (used right
+        /// after the Draft→Printed transition when the print step already produced
+        /// the PDF): saves to disk and records pdf_path. No-op for Draft credit
+        /// notes / null or empty bytes / missing credit note.
+        /// </summary>
+        Task SaveFinalizedPdfAsync(int id, byte[] pdfBytes);
+
     // =====================================================
     // SET DISPUTED STATUS
     // =====================================================
