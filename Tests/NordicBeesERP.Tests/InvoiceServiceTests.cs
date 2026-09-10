@@ -468,6 +468,223 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    // =====================================================
+    // PDF FREEZE (GenerateAndSavePdfAsync) TESTS
+    // =====================================================
+
+    private static readonly byte[] MarkerPdfBytes =
+        new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34 }; // "%PDF-1.4"
+
+    [Fact]
+    public async Task GenerateAndSavePdfAsync_FinalInvoice_SavesPdfAndWritesPdfPathToRealDatabase()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        try
+        {
+            // Arrange: real partner + Confirmed invoice
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+            var partner = NewTestCustomer($"Test Customer {Guid.NewGuid():N}");
+            context.BusinessPartners.Add(partner);
+            await context.SaveChangesAsync();
+            var partnerId = partner.Id;
+
+            var invoice = NewTestInvoice(partnerId, $"INV-{Guid.NewGuid():N}");
+            invoice.Status = InvoiceStatus.Confirmed;
+            context.Invoices.Add(invoice);
+            await context.SaveChangesAsync();
+            var invoiceId = invoice.Id;
+
+            var pdfGen = new FakePdfGeneratorService { BytesToReturn = MarkerPdfBytes };
+            var service = new InvoiceService(_fixture.Factory, pdfGen, null!, baseDir);
+
+            // Act
+            var bytes = await service.GenerateAndSavePdfAsync(invoiceId);
+
+            // Assert: returned bytes are the generator's marker bytes
+            Assert.Equal(MarkerPdfBytes, bytes);
+            Assert.Equal(1, pdfGen.GenerateInvoicePdfAsyncCallCount);
+
+            // Assert: pdf_path persisted to the real database as a year-relative path
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await verifyContext.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            Assert.NotNull(stored);
+            Assert.False(string.IsNullOrWhiteSpace(stored!.PdfPath));
+            Assert.StartsWith(invoice.InvoiceDate.Year.ToString() + "/", stored.PdfPath);
+
+            // Assert: the file exists on disk with byte-identical content
+            var fullPath = Path.Combine(baseDir, stored.PdfPath!);
+            Assert.True(File.Exists(fullPath));
+            Assert.Equal(MarkerPdfBytes, File.ReadAllBytes(fullPath));
+
+            // Cleanup (FK-reverse: invoices → business_partners)
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", partnerId);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAndSavePdfAsync_ServesCachedCopy_WhenPdfPathAndFileExist()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        try
+        {
+            // Arrange: partner + Confirmed invoice with a pre-existing cached file
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+            var partner = NewTestCustomer($"Test Customer {Guid.NewGuid():N}");
+            context.BusinessPartners.Add(partner);
+            await context.SaveChangesAsync();
+            var partnerId = partner.Id;
+
+            var invoice = NewTestInvoice(partnerId, $"INV-{Guid.NewGuid():N}");
+            invoice.Status = InvoiceStatus.Confirmed;
+            var rel = $"{invoice.InvoiceDate.Year}/X-{Guid.NewGuid():N}.pdf";
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(baseDir, rel))!);
+            File.WriteAllBytes(Path.Combine(baseDir, rel), MarkerPdfBytes);
+            invoice.PdfPath = rel; // plain column — set before Add so it persists on insert
+            context.Invoices.Add(invoice);
+            await context.SaveChangesAsync();
+            var invoiceId = invoice.Id;
+
+            var pdfGen = new FakePdfGeneratorService { ThrowIfCalled = true };
+            var service = new InvoiceService(_fixture.Factory, pdfGen, null!, baseDir);
+
+            // Act
+            var bytes = await service.GenerateAndSavePdfAsync(invoiceId);
+
+            // Assert: served from cache — generator never invoked
+            Assert.Equal(MarkerPdfBytes, bytes);
+            Assert.Equal(0, pdfGen.GenerateInvoicePdfAsyncCallCount);
+
+            // Cleanup (FK-reverse)
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", partnerId);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAndSavePdfAsync_DraftInvoice_NeverSavesOrWritesPdfPath()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        try
+        {
+            // Arrange: partner + Draft invoice (NewTestInvoice default)
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+            var partner = NewTestCustomer($"Test Customer {Guid.NewGuid():N}");
+            context.BusinessPartners.Add(partner);
+            await context.SaveChangesAsync();
+            var partnerId = partner.Id;
+
+            var invoice = NewTestInvoice(partnerId, $"INV-{Guid.NewGuid():N}");
+            context.Invoices.Add(invoice);
+            await context.SaveChangesAsync();
+            var invoiceId = invoice.Id;
+
+            var pdfGen = new FakePdfGeneratorService { BytesToReturn = MarkerPdfBytes };
+            var service = new InvoiceService(_fixture.Factory, pdfGen, null!, baseDir);
+
+            // Act
+            var bytes = await service.GenerateAndSavePdfAsync(invoiceId);
+
+            // Assert: generated live exactly once, but nothing saved and no pdf_path written
+            Assert.Equal(MarkerPdfBytes, bytes);
+            Assert.Equal(1, pdfGen.GenerateInvoicePdfAsyncCallCount);
+
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await verifyContext.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            Assert.NotNull(stored);
+            Assert.True(string.IsNullOrWhiteSpace(stored!.PdfPath));
+
+            // No PDF file anywhere under baseDir (baseDir may not even exist)
+            var pdfFiles = Directory.Exists(baseDir)
+                ? Directory.GetFiles(baseDir, "*.pdf", SearchOption.AllDirectories)
+                : Array.Empty<string>();
+            Assert.Empty(pdfFiles);
+
+            // Cleanup (FK-reverse)
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", partnerId);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAndSavePdfAsync_ReprintReturnsByteIdenticalFrozenCopy_AfterAddressChange()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        try
+        {
+            // Arrange: partner + Confirmed invoice
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+            var partner = NewTestCustomer($"Test Customer {Guid.NewGuid():N}");
+            context.BusinessPartners.Add(partner);
+            await context.SaveChangesAsync();
+            var partnerId = partner.Id;
+
+            var invoice = NewTestInvoice(partnerId, $"INV-{Guid.NewGuid():N}");
+            invoice.Status = InvoiceStatus.Confirmed;
+            context.Invoices.Add(invoice);
+            await context.SaveChangesAsync();
+            var invoiceId = invoice.Id;
+
+            var pdfGen = new FakePdfGeneratorService { BytesToReturn = MarkerPdfBytes };
+            var service = new InvoiceService(_fixture.Factory, pdfGen, null!, baseDir);
+
+            // Act 1: first generation freezes the PDF
+            var bytes1 = await service.GenerateAndSavePdfAsync(invoiceId);
+            Assert.Equal(MarkerPdfBytes, bytes1);
+            Assert.Equal(1, pdfGen.GenerateInvoicePdfAsyncCallCount);
+
+            // Simulate the partner's address changing after issuance
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE business_partners SET address = {0}, updated_at = {1} WHERE id = {2}",
+                "Changed Street 99, Vilnius", DateTime.UtcNow, partnerId);
+
+            // Act 2: reprint must serve the frozen copy, not regenerate
+            var bytes2 = await service.GenerateAndSavePdfAsync(invoiceId);
+
+            // Assert: byte-identical reprint from cache — generator still called only once
+            Assert.NotNull(bytes2);
+            Assert.Equal(bytes1.Length, bytes2!.Length);
+            Assert.True(bytes2.SequenceEqual(bytes1));
+            Assert.Equal(1, pdfGen.GenerateInvoicePdfAsyncCallCount);
+
+            // Cleanup (FK-reverse)
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", partnerId);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
     /// <summary>
     /// Reads the three deduction columns off a delivery. Returns null if those columns do not
     /// yet exist in nordic_bees_erp_test (the migration is generated but not human-applied),
@@ -491,4 +708,24 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             return null;
         }
     }
+}
+
+/// <summary>Fake PDF generator producing deterministic marker bytes; also counts calls.</summary>
+sealed class FakePdfGeneratorService : IPdfGeneratorService
+{
+    public byte[] BytesToReturn { get; set; } = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34 }; // "%PDF-1.4"
+    public int GenerateInvoicePdfAsyncCallCount { get; private set; }
+    public bool ThrowIfCalled { get; set; }
+
+    public byte[] GenerateInvoicePdf(int invoiceId) => BytesToReturn;
+    public Task<byte[]> GenerateInvoicePdfAsync(int invoiceId)
+    {
+        GenerateInvoicePdfAsyncCallCount++;
+        if (ThrowIfCalled) throw new InvalidOperationException("Generator must not be called when a cached copy exists");
+        return Task.FromResult(BytesToReturn);
+    }
+    public Task<byte[]> GenerateCreditNotePdfAsync(CreditNote creditNote, List<Services.Dtos.CreditNoteLineDto> lines, BusinessPartner? customer, Currency? currency, string? originalInvoiceNumber, DateTime? originalInvoiceDate, string? appliedInvoiceNumber, string? createdByName)
+        => Task.FromResult(BytesToReturn);
+    public string GetPdfPath(string creditNoteNumber) => $"/pdf/credit_notes/{creditNoteNumber}.pdf";
+    public Task<byte[]> GenerateMultipleInvoicesPdfAsync(List<int> invoiceIds) => Task.FromResult(BytesToReturn);
 }

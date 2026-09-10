@@ -30,6 +30,26 @@ namespace NordicBeesERP.Services
         Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost, int? recipientSupplierId = null);
         Task<List<int>> GetInvoiceYearsAsync();
         Task<byte[]> GeneratePdfAsync(int invoiceId);
+
+        /// <summary>
+        /// Returns invoice PDF bytes. For a final (non-Draft) invoice whose
+        /// PDF was already generated and cached (pdf_path set AND file present),
+        /// serves the cached byte-identical copy. Otherwise generates the PDF
+        /// live; and if the invoice is final, ALSO saves it to disk and records
+        /// pdf_path — freezing the content (incl. partner address) as of first
+        /// generation so reprints never change. Draft invoices always generate
+        /// live and are never saved.
+        /// </summary>
+        Task<byte[]> GenerateAndSavePdfAsync(int invoiceId);
+
+        /// <summary>
+        /// Persists already-generated PDF bytes for a final invoice (used right
+        /// after the Draft→Confirmed transition when the confirm step already
+        /// produced the PDF): saves to disk and records pdf_path. No-op for
+        /// Draft invoices / null or empty bytes / missing invoice.
+        /// </summary>
+        Task SaveFinalizedPdfAsync(int invoiceId, byte[] pdfBytes);
+
         Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null);
         Task<List<Invoice>> SearchInvoicesAsync(string searchTerm, int customerId);
 
@@ -46,12 +66,14 @@ namespace NordicBeesERP.Services
         private readonly IDbContextFactory<NordicBeesERPContext> _contextFactory;
         private readonly IPdfGeneratorService _pdfGeneratorService;
         private readonly IAuthService _authService;
+        private readonly string _pdfBaseDir;
 
-        public InvoiceService(IDbContextFactory<NordicBeesERPContext> contextFactory, IPdfGeneratorService pdfGeneratorService, IAuthService authService)
+        public InvoiceService(IDbContextFactory<NordicBeesERPContext> contextFactory, IPdfGeneratorService pdfGeneratorService, IAuthService authService, string? pdfBaseDir = null)
         {
             _contextFactory = contextFactory;
             _pdfGeneratorService = pdfGeneratorService;
             _authService = authService;
+            _pdfBaseDir = pdfBaseDir ?? "/var/lib/nordicbees/invoices";
         }
 
         // =====================================================
@@ -580,6 +602,53 @@ namespace NordicBeesERP.Services
         public async Task<byte[]> GeneratePdfAsync(int invoiceId)
         {
             return await _pdfGeneratorService.GenerateInvoicePdfAsync(invoiceId);
+        }
+
+        public async Task<byte[]> GenerateAndSavePdfAsync(int invoiceId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var invoice = await context.Invoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null)
+                throw new InvalidOperationException($"Sąskaita {invoiceId} nerasta");
+
+            var isFinal = invoice.Status != InvoiceStatus.Draft;
+
+            // Serve cached copy when already frozen
+            if (isFinal && !string.IsNullOrWhiteSpace(invoice.PdfPath))
+            {
+                var cached = PdfFileCache.TryRead(_pdfBaseDir, invoice.PdfPath);
+                if (cached != null)
+                    return cached;
+            }
+
+            var pdfBytes = await _pdfGeneratorService.GenerateInvoicePdfAsync(invoiceId);
+
+            // Freeze only final invoices
+            if (isFinal)
+            {
+                var relativePath = PdfFileCache.Save(
+                    _pdfBaseDir, invoice.InvoiceDate.Year, $"{invoice.InvoiceNumber}.pdf", pdfBytes);
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE invoices SET pdf_path = {0}, updated_at = {1} WHERE id = {2}",
+                    relativePath, DateTime.UtcNow, invoiceId);
+            }
+
+            return pdfBytes;
+        }
+
+        public async Task SaveFinalizedPdfAsync(int invoiceId, byte[] pdfBytes)
+        {
+            if (pdfBytes == null || pdfBytes.Length == 0) return;
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var invoice = await context.Invoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null || invoice.Status == InvoiceStatus.Draft) return;
+
+            var relativePath = PdfFileCache.Save(
+                _pdfBaseDir, invoice.InvoiceDate.Year, $"{invoice.InvoiceNumber}.pdf", pdfBytes);
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE invoices SET pdf_path = {0}, updated_at = {1} WHERE id = {2}",
+                relativePath, DateTime.UtcNow, invoiceId);
         }
 
         // =====================================================
