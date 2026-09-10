@@ -88,7 +88,10 @@ of bug — check the browser's own console/network state directly.
 
 ## Project-specific notes
 
-- **Auth**: this app uses cookie-based ERP auth (`erp_users` table) — you may need to log in first via the login page before reaching most warehouse/delivery pages. Check for a test/seed user credential in `appsettings.Development.json` or ask rather than guessing credentials.
+- **Auth**: this app uses cookie-based ERP auth (`erp_users` table) — you may need to log in first via the login page before reaching most warehouse/delivery pages. Use these credentials directly for `localhost:5081` — do NOT search `appsettings.Development.json`, do NOT ask the orchestrator, do NOT guess or invent a different account:
+
+      Email: admin@nordicbees.lt
+      Password: aaaa
 - **MudBlazor components**: MudBlazor renders custom elements with ARIA roles — `browser_snapshot`'s accessibility tree should still expose them correctly (buttons, textboxes, comboboxes), but dialogs may render in a portal/overlay — if a dialog's fields don't appear in the snapshot immediately after opening it, wait briefly and re-snapshot.
 - **Cleanup**: if your test run creates real data (a delivery, a container, a non-conformance record), note this in your report — don't silently leave test data in the dev database without flagging it, since dev DB is shared.
 - **Never** run E2E verification against anything other than the local dev server / dev DB. Never point Playwright at a staging or production URL from an automated task.
