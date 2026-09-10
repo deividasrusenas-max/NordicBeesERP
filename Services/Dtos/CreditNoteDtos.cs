@@ -146,7 +146,6 @@ namespace NordicBeesERP.Services.Dtos
         public string? InvoiceCustomerName { get; set; }
         public string? InvoiceCustomerEmail { get; set; }
         public string? InvoiceCustomerPhone { get; set; }
-        public string? InvoiceCustomerAddress { get; set; }
 
         public List<CreditNoteLineDto> Lines { get; set; } = new List<CreditNoteLineDto>();
         
