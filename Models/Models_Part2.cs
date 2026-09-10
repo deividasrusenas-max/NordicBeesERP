@@ -344,6 +344,9 @@ public class Invoice
     [Column("notes")]
     public string? Notes { get; set; }
 
+    [Column("pdf_path")]
+    public string? PdfPath { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
