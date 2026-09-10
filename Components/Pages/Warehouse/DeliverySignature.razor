@@ -370,6 +370,8 @@ window.initSignatureCanvas = function(canvasId) {
     private string _inlinePhone = "";
     private string _inlineEmail = "";
     private string _inlineAddress = "";
+    private string _inlineCity = "";
+    private string _inlinePostalCode = "";
     private string _inlinePersonCode = "";
     private string _inlineIban = "";
     private bool _inlineNoEmail = false;
@@ -403,6 +405,8 @@ window.initSignatureCanvas = function(canvasId) {
             {
                 if (string.IsNullOrWhiteSpace(_supplier.Address))
                     _missingFields.Add("Adresas");
+                if (string.IsNullOrWhiteSpace(_supplier.City))
+                    _missingFields.Add("Miestas");
                 if (string.IsNullOrWhiteSpace(_supplier.CompanyCode) && string.IsNullOrWhiteSpace(_supplier.NationalIdNumber))
                     _missingFields.Add("Asmens kodas");
                 if (string.IsNullOrWhiteSpace(_supplier.BankAccount))
