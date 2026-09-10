@@ -42,7 +42,16 @@ Before touching any existing method in a Service class, check whether it uses `F
 
 ## Rule 2: Column names that don't exist in the model may still exist in the DB, and vice versa
 
-This project's C# model classes are sometimes out of sync with the actual DB schema (columns added directly via migration SQL without a matching `[Column]` property, or a property added without the DB column existing yet). **Never assume a column exists — or doesn't — based on the C# model alone.** If you have DB access, check `SHOW COLUMNS FROM <table>` directly. If you don't, say so explicitly in your report rather than guessing.
+This project's C# model classes are sometimes out of sync with the actual DB schema (columns added directly via migration SQL without a matching `[Column]` property, or a property added without the DB column existing yet). **Never assume a column exists — or doesn't — based on the C# model alone.**
+
+**Read `.opencode/db-schema.md` first.** It is a generated snapshot of the live
+`nordic_bees_erp` schema — every table, column, type, nullability, default,
+index and foreign key — refreshed automatically from `information_schema`.
+One read answers what a `SHOW COLUMNS` / `DESCRIBE` round trip would, without
+the tool call. Check its `generated:` header; if it looks old, or the answer
+you need isn't there, then query the DB directly (or run
+`scripts/dump-db-schema.sh`). If you have neither the file nor DB access, say
+so explicitly in your report rather than guessing.
 
 ---
 
