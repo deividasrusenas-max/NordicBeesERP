@@ -895,3 +895,237 @@ re-labeling the symptom.
 - **Category**: infra (test harness)
 - **Error class**: `playwright-tests-not-in-solution` (new tag)
 - **Status**: monitoring
+
+### 2026-09-10 — MCP tool-level permission denies keyed by bare server name never matched anything — every non-coder agent's "denied" MCP servers were fully open
+
+- **Recurrence check first**: grepped this file for `permission`, `mcp`,
+  `playwright`, `deny`, `circuit-breaker`, `nordicbees-db`, `server-name`,
+  `server-level`, `tool-level` — no prior entry covers a permission-key
+  matching mismatch of any kind. This is a new error class. However, the
+  fix for THIS entry was already half-discovered and half-applied before
+  today, without ever being written up — see Root cause.
+- **Symptom**: live incident — `coder` (subagent session
+  `ses_f75e6738dffetxh0YJb1FT5nHg`, spawned under orchestrator run
+  `9033f139`, task "Swap controller to GenerateAndSavePdfAsync") called
+  `playwright_browser_navigate` **101 times in a row** against the same
+  failing URL (`http://localhost:5081/credit-notes/create?...`,
+  `net::ERR_HTTP_RESPONSE_CODE_FAILURE` every time — confirmed via direct
+  query of `~/.local/share/opencode/opencode.db`'s `part` table for that
+  session: 104 tool parts total, 101 of them `playwright_browser_navigate`
+  with `state.status="error"`), until a human manually cancelled the
+  session at 07:03:47Z. `coder`'s `opencode.json` permission block has
+  `"playwright": "deny"` — coder should never have been able to call this
+  tool at all.
+- **Root cause**: confirmed by extracting and reading the actual
+  permission-resolution code from the installed OpenCode binary
+  (`~/.opencode/bin/opencode`, v1.18.30, `strings` + manual decode of the
+  minified `Permission` module — not assumed, not from upstream docs).
+  Three functions matter:
+  - `fromConfig(permissionObject)` turns EVERY top-level key of an agent's
+    `permission: {...}` block into one rule `{permission: <key>,
+    pattern: "*", action: <value>}` — the **key itself becomes a glob
+    pattern matched against the checked tool name**, not a fixed
+    category name.
+  - `evaluate(checkedName, checkedPattern, ...rulesets)` does
+    `rulesets.flat().findLast(rule => glob.match(checkedName,
+    rule.permission) && glob.match(checkedPattern, rule.pattern))`,
+    defaulting to `{action:"ask"}` if nothing matches — **last matching
+    rule in array order wins**, not most-specific.
+  - Agent construction does `permission = merge(FRAMEWORK_DEFAULT,
+    PROJECT_GLOBAL_PERMISSION, AGENT_OWN_PERMISSION)` where `merge` is
+    plain array concatenation and `FRAMEWORK_DEFAULT`'s first entry is
+    literally `{permission: "*", pattern: "*", action: "allow"}`.
+  - For every MCP tool call, the checked permission name is the full
+    `<server>_<tool>` string (confirmed both from `~/.local/share/
+    opencode/log/opencode.log`'s `message=evaluated permission=...` lines
+    across the whole 109MB log, e.g. `permission=playwright_browser_
+    navigate`, and from the `part` table's own `tool` field) — **never
+    the bare server name**. `glob.match("playwright_browser_navigate",
+    "playwright")` is false (a literal glob pattern only matches itself
+    exactly, not as a prefix), so a bare `"playwright": "deny"` key can
+    structurally never match any real playwright tool call. The ONLY
+    rule that ever matched was the framework's built-in `"*":"allow"` —
+    confirmed directly in the log for this exact incident: `timestamp=
+    2026-09-10T07:00:19Z ... message=evaluated permission=playwright_
+    browser_navigate pattern=* action.permission=* action.action=allow
+    action.pattern=*`, repeated for all 101 calls.
+  - Wildcards DO work as permission keys — proven by the same mechanism
+    that caused the bug: `"*"` itself is exactly such a key, and it
+    matched every checked name. A key like `"playwright_*"` glob-matches
+    `playwright_browser_navigate`, `playwright_browser_snapshot`, etc.
+    the same way. **Wildcard keys are the fix**, not exhaustive
+    enumeration (which the codebase had already tried twice, see below,
+    and both times under-covered the server's real tool surface).
+  - **This was already half-discovered, twice, and never connected or
+    written up**: (1) `coder`'s `nordicbees-db_mysql_query": "deny"`
+    sitting alongside the dead `"nordicbees-db": "deny"` — someone
+    already found the server-name key doesn't work and added the one
+    real tool name, but only for that one server, only for `coder`, and
+    apparently without realizing WHY the server-name key fails or that
+    the same fix was needed everywhere else. (2) Earlier the same day, a
+    prior session added 8 explicit `playwright_browser_*` tool-level
+    denies to `coder` after observing loop symptoms — a correct
+    diagnosis of the mechanism, but the real server exposes **21**
+    `playwright_browser_*` tools (enumerated from real historical calls
+    in `opencode.log`, not the upstream README), so 13 were still
+    silently open, including the exact one used to actually reach the
+    outside world: `playwright_browser_run_code_unsafe` was among the
+    8 covered — but `playwright_browser_navigate`, the one that actually
+    ran away 101 times, was ALSO among the 8 covered, meaning even the
+    partial patch had a hole for another reason (see Fix note below on
+    process-restart latency, since the log evidence for this specific
+    101-call incident predates the partial patch's file-mtime).
+- **Real tool names per server, enumerated from `~/.local/share/opencode/
+  log/opencode.log`'s own `message=evaluated permission=...` lines across
+  this install's full history (not memory, not upstream README)**:
+  playwright: 21 tools (browser_click, browser_close, browser_console_
+  messages, browser_evaluate, browser_file_upload, browser_fill_form,
+  browser_find, browser_hover, browser_navigate, browser_navigate_back,
+  browser_network_request, browser_network_requests, browser_press_key,
+  browser_resize, browser_run_code_unsafe, browser_select_option,
+  browser_snapshot, browser_tabs, browser_take_screenshot, browser_type,
+  browser_wait_for); mudblazor: 11; microsoft-docs: 3; mempalace: 12;
+  nordicbees-db: 1 (mysql_query); semgrep: 1 pseudo-tool
+  (semgrep_deprecation_notice — not a real analysis tool); roslyn: at
+  least 26 observed (orchestrator's own pre-existing ~90-entry explicit
+  roslyn_* allow/deny enumeration was cross-checked against these 26 and
+  covers all of them — that enumeration is real and working, left
+  untouched). Because the fix is a wildcard per server, this list does
+  not need to be exhaustive to be safe — any tool the server adds later
+  is covered automatically, unlike the enumeration approach that already
+  failed twice above.
+- **Audit result — which existing denies were real vs. silently doing
+  nothing, before today's fix** (`playwright: allow` on `verifier` is
+  intentional and correct — confirmed against `verifier.md`, which uses
+  `playwright_browser_run_code_unsafe` by name for its real job; `visual-
+  qa.md`/`design-review.md` were checked and neither ever mentions
+  playwright/browser — both only ever receive an already-captured
+  screenshot *path* to `read`, so denying them playwright is correct
+  intent with zero legitimate-need conflict):
+  - `coder`: `nordicbees-db` dead (tool-level entry saved it),
+    `playwright` dead (partial tool-level patch covered 8/21 tools).
+  - `fixer`: `roslyn`, `mudblazor`, `microsoft-docs`, `playwright`,
+    `mempalace` — ALL five dead, no tool-level mitigation existed at all.
+    Fixer had full, silent access to all 21 playwright tools, 26 roslyn
+    tools, 11 mudblazor tools, 3 microsoft-docs tools, and 12 mempalace
+    tools despite every one of them being configured `deny`.
+  - `orchestrator`: bare `roslyn: deny` dead but harmless (the real
+    ~90-entry roslyn_* enumeration already governs roslyn correctly);
+    `nordicbees-db` dead (tool-level entry saved it, same double-entry
+    pattern as coder).
+  - `verifier`, `visual-qa`, `design-review`: `nordicbees-db` dead (tool-
+    level entry saved it); `semgrep`, `roslyn`, `mudblazor`, `microsoft-
+    docs` — all four dead on all three agents, no mitigation. `visual-qa`
+    and `design-review` additionally had `playwright: deny` dead (21
+    tools silently open on agents whose own prompt files never use
+    playwright at all — pure unnecessary attack surface, now closed).
+  - `reviewer`: no MCP-server deny keys configured at all — nothing to
+    audit, not touched.
+- **Fix**: `opencode.json` — replaced every bare server-name deny with a
+  `<server>_*` wildcard deny on the agent that owns it, and consolidated
+  each already-present tool-level entry into the same wildcard (removing
+  the now-redundant bare key and, where present, the now-redundant exact-
+  tool-name key). `coder`'s 8 explicit `playwright_browser_*` denies and
+  `nordicbees-db_mysql_query` collapsed into `playwright_*`/`nordicbees-
+  db_*`. `fixer` gained real `roslyn_*`, `mudblazor_*`, `microsoft-docs_*`,
+  `playwright_*`, `mempalace_*` denies (previously all dead). `orchestrator`
+  gained a real `nordicbees-db_*` deny (was already effectively covered by
+  the tool-level entry; consolidated) and lost its dead bare `roslyn: deny`
+  line (removed as noise — the real enumeration is unaffected).
+  `verifier`/`visual-qa`/`design-review` gained real `nordicbees-db_*`,
+  `semgrep_*`, `roslyn_*`, `mudblazor_*`, `microsoft-docs_*` denies;
+  `visual-qa`/`design-review` additionally gained a real `playwright_*`
+  deny. No existing `allow` was touched (`coder`'s semgrep/roslyn/
+  mudblazor/microsoft-docs, `fixer`'s nordicbees-db/semgrep, `verifier`'s
+  playwright, all agents' `read`). NOT verified against a fresh live run
+  in this session — the change lands in `opencode.json`, but the harness's
+  own long-running `opencode` process (PID confirmed running since 08:22
+  local, i.e. before this edit's timestamp) builds its agent permission
+  rulesets once at process start; per `opencode.log`, no session has been
+  created since the edit landed, so this fix will not take effect for
+  that process's future delegations until it is restarted. Flagging this
+  explicitly so it isn't assumed live just because the file is correct.
+- **Guardrail added**: none mechanical. The wildcard-key pattern itself is
+  the durable fix (immune to a server adding new tools later, unlike
+  enumeration); no additional check was added to prevent a FUTURE bare
+  server-name key from being added by mistake, e.g. a semgrep rule
+  flagging a `permission` object key that matches a configured `mcp`
+  server name exactly (no trailing `_*` or `_<toolname>`) would catch
+  this class mechanically. Not implemented this session — recommended
+  follow-up.
+- **Category**: infra (harness)
+- **Error class**: `mcp-permission-key-server-name-vs-tool-name-mismatch`
+  (new tag)
+- **Status**: monitoring — root cause and fix are both mechanically
+  verified against the real installed binary's own resolution code, but
+  the fix has not yet been observed working against a real MCP tool call
+  in a live run (see the restart caveat above).
+
+### 2026-09-10 — Circuit-breaker's repetition detectors are blind to tool calls that end in `status="error"` — the 101-call playwright loop above produced zero circuit-breaker entries
+
+- **Symptom**: the incident in the entry directly above (`coder` session
+  `ses_f75e6738dffetxh0YJb1FT5nHg`, 101 consecutive `playwright_browser_
+  navigate` calls, same URL family, same failure) produced **zero**
+  entries in `.opencode/reports/circuit-breaker.jsonl` — confirmed by
+  grepping that file for the session ID (0 matches). This should have
+  tripped `same-tool-streak` (8 consecutive same-tool calls) within the
+  first 8 calls, and arguably `identical-args-streak` (3 consecutive
+  identical calls) even earlier for the calls sharing the exact same URL.
+  Neither fired, across all 101.
+- **Investigated first, not assumed**: the task description that prompted
+  this investigation asked whether `nordicbees-circuit-breaker.ts`'s
+  `getToolName` sees MCP tool calls. That function does not exist in this
+  file — `getToolName` is defined in `nordicbees-orchestrator-timing.ts`
+  and `nordicbees-quality-monitor.ts` (a different pair of plugins hooking
+  `tool.execute.before`/`after`). `nordicbees-circuit-breaker.ts` uses a
+  third, independent mechanism: it subscribes to the raw `message.part.
+  updated` event stream and reads `part.tool`/`part.state.status`
+  directly. So the literal question as asked doesn't apply to this file —
+  the real mechanism was found by querying `~/.local/share/opencode/
+  opencode.db`'s `part` table directly for the incident session's 104
+  tool parts.
+- **Root cause**: `nordicbees-circuit-breaker.ts` line 385 —
+  `if (part.type !== "tool" || part.state?.status !== "completed") return`
+  — gates ALL THREE repetition detectors (same-tool-streak, identical-
+  args-streak, cyclic-pattern-repeat) on `status === "completed"`. Every
+  one of the 101 `playwright_browser_navigate` calls in the real incident
+  had `state.status === "error"` (real Playwright navigation failure,
+  `net::ERR_HTTP_RESPONSE_CODE_FAILURE` — confirmed via the `part` table's
+  own `data` JSON, not inferred), so none of them were ever pushed into
+  `state.history`, and the repetition detectors never saw them at all.
+  Separately, the malformed-tool-call-streak detector (the one detector
+  that DOES look at `status === "error"` parts) only fires for 3 specific
+  message prefixes meaning the call was structurally rejected before
+  `execute()` ever ran (`"Unknown tool: "`, `"Tool has no execute handler:
+  "`, `"Invalid tool input: "`) — a real runtime failure from inside a
+  tool that DID start executing, like this one, is explicitly excluded by
+  that detector's own design (see its comment in the file), correctly,
+  since a legitimate build-fail-then-retry-with-different-args workflow
+  must not trip it. The net effect: **a tool call that fails with the
+  same real runtime error on every attempt is invisible to every
+  detector in this file** — same-tool-streak/identical-args-streak
+  require `completed`, malformed-streak requires one of 3 rejection-only
+  prefixes.
+- **Fix**: NOT APPLIED this session — per instructions, investigate and
+  report only, and log as its own error class if larger than a one-line
+  oversight. This is larger: naively changing the line-385 gate to also
+  accept `status === "error"` would feed erroring calls into the SAME
+  history array same-tool-streak/identical-args-streak already use, but
+  those two detectors were specifically threshold-tuned (see this file's
+  own `SAME_TOOL_STREAK_MAX_DISTINCT_ARGS` comment) against REAL completed-
+  call sessions, including legitimate multi-step bash workflows that
+  retry with different args after a failure; whether the same thresholds
+  are still correct once error-status calls are mixed in, whether errors
+  should count toward `ABSOLUTE_CEILING`, and whether this should apply
+  to all three detectors uniformly or be its own separate error-focused
+  detector (parallel to malformed-tool-call-streak, not merged into it)
+  all need the same kind of real-incident-vs-real-legitimate-session
+  replay this file's existing detectors were tuned against — not a same-
+  session patch.
+- **Guardrail added**: none — this entry IS the guardrail-gap record.
+- **Category**: infra (harness)
+- **Error class**: `circuit-breaker-blind-to-error-status-tool-calls`
+  (new tag)
+- **Status**: monitoring — not fixed, logged for awareness so the next
+  session that tunes this file's thresholds treats error-status
+  visibility as a known, scoped gap rather than rediscovering it.
