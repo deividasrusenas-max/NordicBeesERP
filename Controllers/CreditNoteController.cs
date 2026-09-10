@@ -54,7 +54,7 @@ namespace NordicBeesERP.Controllers
         {
             try
             {
-                var pdfBytes = await _creditNoteService.GeneratePdfAsync(id);
+                var pdfBytes = await _creditNoteService.GenerateAndSavePdfAsync(id);
                 return File(pdfBytes, "application/pdf", "Kreditine_saskaita.pdf");
             }
             catch (Exception ex)
