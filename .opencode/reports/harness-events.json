@@ -1,0 +1,65 @@
+[
+  {
+    "id": "decouple-per-commit-tests",
+    "ts": "2026-09-09T16:43:22Z",
+    "commit": "3686bb1",
+    "title": "Per-commit tests decoupled from bump-version.sh",
+    "description": "fixer.md gained steps 7-8 (staged-diff anti-pattern grep + `dotnet test --filter Category!=E2E`) running on EVERY commit, pre-commit gated, independent of whether a version bump happens. Previously these checks only ran inside bump-version.sh's GATE 1.5 / GATE 2, so any commit that skipped the bump also skipped the tests."
+  },
+  {
+    "id": "conditional-version-bump",
+    "ts": "2026-09-09T16:44:34Z",
+    "commit": "fa0f024",
+    "title": "Version bump made conditional, not a rote per-commit default",
+    "description": "fixer's step 11 (bump-version.sh) inverted: now SKIPS by default and only runs when the delegating instruction explicitly names it as the final/release step. Closes premature-version-bump-mid-task (BUGLOG.md, 2 occurrences 2026-09-07). Safe only because of the previous commit (3686bb1), which already runs tests independent of whether a bump happens."
+  },
+  {
+    "id": "orchestrator-big-pickle",
+    "ts": "2026-09-09T17:13:59Z",
+    "commit": "4bec053",
+    "title": "Orchestrator model set to opencode/big-pickle",
+    "description": "opencode.json: orchestrator agent's \"model\" field set explicitly to opencode/big-pickle (previously unset)."
+  },
+  {
+    "id": "fixer-to-27b-dense",
+    "ts": "2026-09-09T21:18:52Z",
+    "commit": "c0b0d23",
+    "title": "Fixer moved from 35B-A3B MoE to llama-swap/coder (27B dense)",
+    "description": "opencode.json: fixer's model changed llama-swap/fixer -> llama-swap/coder (27B dense Qwen3.8, replacing the 35B-A3B MoE backend), addressing the fixer loop investigated in BUGLOG.md's aborted-subagent-leaves-outer-task-call-unresolved entry. NOTE: task-stats.jsonl's own \"model\" display label for fixer is a separate static string that this change did NOT update -- it keeps reading \"Qwen3.6-35B-A3B (Fixer, via llama-swap)\" for fixer rows after this commit. The routing change is real (confirmed in opencode.json); the label just lags it."
+  },
+  {
+    "id": "auto-resume-disabled-again",
+    "ts": "2026-09-09T21:18:52Z",
+    "commit": "c0b0d23",
+    "title": "opencode-auto-resume plugin disabled (again, for a loop test)",
+    "description": "Same commit as the fixer model change: opencode.json's top-level \"plugin\" array emptied and the active opencode-auto-resume@1.1.3 config moved under an inert \"_plugin_disabled_test_20260909\" key. (It had also been disabled once before, on 2026-08-24, then re-enabled/re-pinned -- this is a second, independent disable.)"
+  },
+  {
+    "id": "reviewer-to-coder-brief",
+    "ts": "2026-09-09T21:20:06Z",
+    "commit": "692760b",
+    "title": "Reviewer briefly moved to llama-swap/coder (\"all three subagents on 27B dense\")",
+    "description": "opencode.json: reviewer's model changed llama-swap/reviewer -> llama-swap/coder. Reverted 69 seconds later by the next commit (907d427) -- included for completeness; effectively superseded almost immediately, so it should not show a meaningful before/after gap on its own."
+  },
+  {
+    "id": "reviewer-revert",
+    "ts": "2026-09-09T21:21:15Z",
+    "commit": "907d427",
+    "title": "Reviewer model reverted back to llama-swap/reviewer",
+    "description": "opencode.json: reviewer's model reverted llama-swap/coder -> llama-swap/reviewer, undoing the previous commit 69 seconds after it landed. (Commit message says \"fixer runs on 27B dense\" but the actual diff only touches reviewer's model field -- fixer had already been moved to llama-swap/coder by c0b0d23 two commits earlier.)"
+  },
+  {
+    "id": "reviewer-to-coder-current",
+    "ts": "2026-09-10T05:22:05Z",
+    "commit": null,
+    "title": "Reviewer moved to llama-swap/coder again (UNCOMMITTED)",
+    "description": "opencode.json's current working tree has reviewer's model set to llama-swap/coder (git diff shows llama-swap/reviewer -> llama-swap/coder, not yet committed as of this dashboard's data build). Timestamp is the file's mtime, not a commit time -- update this entry with the real commit hash once it lands."
+  },
+  {
+    "id": "cyclic-pattern-detection",
+    "ts": "2026-09-10T03:51:08Z",
+    "commit": "aa8c7f3",
+    "title": "Circuit-breaker: cyclic-pattern detection added",
+    "description": "nordicbees-circuit-breaker.ts gained detectCyclicPattern(): checks periods 2-8 for 5 exact back-to-back repetitions, additive alongside the existing same-tool-streak / identical-args-streak checks. Added after a real incident the same day (coder looped ~20 times on ResolveSupplierDialog.razor with a 5-step cycle neither existing detector could catch -- a structural blind spot, not a tuning issue). Per-session history buffer extended from 8 to 40 entries."
+  }
+]
