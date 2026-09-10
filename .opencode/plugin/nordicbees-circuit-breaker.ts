@@ -229,6 +229,40 @@ function cleanup(sessionID: string) {
   malformedTrackers.delete(sessionID)
 }
 
+// Lightweight always-on diagnostic log (BUGLOG: circuit-breaker-blind-to-
+// error-status-tool-calls, 2026-09-10). Added because answering "did this
+// plugin even see these events" for the mudblazor incident took an 8-minute
+// direct SQLite dive into opencode's own opencode.db, since nothing in this
+// file records its own liveness independently of an actual abort. Writes
+// ONE "observed" line per completed-or-errored tool-call part this plugin
+// sees, for EVERY session (subagent or not, mirroring the malformed-tool-
+// call detector's own unscoped reach) — so a future "why didn't this fire"
+// question is answerable by reading a file instead of the database:
+//   - zero lines for the incident's time window => this plugin (or the
+//     whole process) never saw the events at all;
+//   - lines with isSubagentTracked:false => the scoping guard excluded the
+//     session (see subagentSessions above), not a detection failure;
+//   - lines with status:"error" => this call was invisible to all three
+//     repetition detectors below (the confirmed 2026-09-10 gap);
+//   - a "checked" line (emitted later, once for every subagent-tracked
+//     completed call, see below) with cyclicVerdict:null repeatedly is a
+//     genuine "checked, found nothing" — as opposed to no "checked" line
+//     ever following an "observed" one for the same part, which would mean
+//     something between the two throws and is being silently swallowed
+//     somewhere in this file's own completed-call handling (this doubles
+//     as a live check for that possibility going forward, not just a
+//     one-off answer to the mudblazor incident).
+const DIAG_SEEN_MAX = 5000
+const diagSeenPartIds = new Set<string>()
+function diagLog(diagPath: string, reportsDir: string, record: Record<string, unknown>) {
+  try {
+    if (!existsSync(reportsDir)) mkdirSync(reportsDir, { recursive: true })
+    appendFileSync(diagPath, JSON.stringify({ ts: new Date().toISOString(), ...record }) + "\n", "utf8")
+  } catch {
+    // Diagnostics must never affect real detection — same defensive pattern as logAbort below.
+  }
+}
+
 function logAbort(
   logPath: string,
   reportsDir: string,
@@ -257,6 +291,7 @@ function logAbort(
 export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) => {
   const reportsDir = join(directory, ".opencode", "reports")
   const logPath = join(reportsDir, "circuit-breaker.jsonl")
+  const diagPath = join(reportsDir, "circuit-breaker-diag.jsonl")
 
   return {
     event: async ({ event }) => {
@@ -280,6 +315,25 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
 
       if (event.type !== "message.part.updated") return
       const part = event.properties.part
+
+      // "observed" diagnostic checkpoint — see diagLog's own comment above.
+      // Deliberately unconditional: runs before the malformed-tracker logic,
+      // before the subagentSessions scoping guard, before anything that
+      // could return early or throw, so its presence or absence is the
+      // ground truth for "did this plugin see this event at all."
+      if (part.type === "tool" && (part.state?.status === "completed" || part.state?.status === "error")) {
+        if (diagSeenPartIds.size > DIAG_SEEN_MAX) diagSeenPartIds.clear()
+        if (!diagSeenPartIds.has(part.id)) {
+          diagSeenPartIds.add(part.id)
+          diagLog(diagPath, reportsDir, {
+            stage: "observed",
+            sessionID: part.sessionID,
+            isSubagentTracked: subagentSessions.has(part.sessionID),
+            tool: part.tool,
+            status: part.state?.status,
+          })
+        }
+      }
 
       // Malformed-tool-call detector — runs for EVERY session, including
       // the top-level orchestrator session, BEFORE the subagent-only
@@ -463,6 +517,25 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
         cyclePeriod = cyclic.period
       }
       else if (total >= ABSOLUTE_CEILING) reason = "absolute-ceiling"
+
+      // "checked" diagnostic checkpoint — only reachable for a subagent-
+      // tracked, status:"completed" call that made it all the way through
+      // history-building and all three repetition checks. Pairs with the
+      // unconditional "observed" line above: an "observed" line for this
+      // exact part.id with no matching "checked" line means something in
+      // between (history push, commandKey, detectCyclicPattern) threw and
+      // was never caught — the exception-swallowing question from the
+      // mudblazor investigation, made checkable from now on without a
+      // repeat DB dive.
+      diagLog(diagPath, reportsDir, {
+        stage: "checked",
+        sessionID: part.sessionID,
+        historyLength: full.length,
+        sameToolStreak,
+        identicalStreak,
+        cyclicVerdict: cyclic,
+        reason,
+      })
 
       if (reason) {
         logAbort(logPath, reportsDir, {
