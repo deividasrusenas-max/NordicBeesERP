@@ -149,6 +149,18 @@
                         FullWidth="true" Class="mb-3" Adornment="Adornment.Start"
                         AdornmentIcon="@Icons.Material.Filled.Home" />
                 }
+                @if (string.IsNullOrWhiteSpace(_supplier?.City))
+                {
+                    <MudTextField @bind-Value="_inlineCity" Label="Miestas" Variant="Variant.Outlined"
+                        FullWidth="true" Class="mb-3" Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.LocationCity" />
+                }
+                @if (string.IsNullOrWhiteSpace(_supplier?.PostalCode))
+                {
+                    <MudTextField @bind-Value="_inlinePostalCode" Label="Pašto kodas" Variant="Variant.Outlined"
+                        FullWidth="true" Class="mb-3" Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.LocalPostOffice" />
+                }
                 @if (string.IsNullOrWhiteSpace(_supplier?.CompanyCode) && string.IsNullOrWhiteSpace(_supplier?.NationalIdNumber))
                 {
                     <MudTextField @bind-Value="_inlinePersonCode" Label="Asmens kodas" Variant="Variant.Outlined"
@@ -517,6 +529,16 @@ window.initSignatureCanvas = function(canvasId) {
                 {
                     updateParts.Add("address=@address");
                     updateParams.Add(new MySqlConnector.MySqlParameter("@address", _inlineAddress));
+                }
+                if (!string.IsNullOrWhiteSpace(_inlineCity))
+                {
+                    updateParts.Add("city=@city");
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@city", _inlineCity));
+                }
+                if (!string.IsNullOrWhiteSpace(_inlinePostalCode))
+                {
+                    updateParts.Add("postal_code=@postalcode");
+                    updateParams.Add(new MySqlConnector.MySqlParameter("@postalcode", _inlinePostalCode));
                 }
                 if (!string.IsNullOrWhiteSpace(_inlinePersonCode))
                 {
