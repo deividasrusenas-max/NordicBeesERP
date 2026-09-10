@@ -644,6 +644,8 @@ namespace NordicBeesERP.Services
                 Name = customer.Name,
                 CompanyCode = customer.CompanyCode,
                 Address = customer.Address,
+                City = customer.City,
+                PostalCode = customer.PostalCode,
                 VatCode = customer.VatCode,
                 Phone = customer.Phone,
                 Email = customer.Email,
@@ -760,7 +762,7 @@ namespace NordicBeesERP.Services
                                 col.Item().Text(text =>
                                 {
                                     text.Span(labels.AddressLabel).FontSize(9);
-                                    text.Span(seller?.Address ?? "").FontSize(9);
+                                    text.Span(Helpers.AddressFormatter.FormatFull(seller?.Address, seller?.PostalCode, seller?.City, seller?.Country)).FontSize(9);
                                 });
                                 if (!string.IsNullOrEmpty(seller?.VatCode))
                                 {
