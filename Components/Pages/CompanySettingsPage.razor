@@ -1,6 +1,7 @@
 @page "/settings/company"
 @inject ICompanySettingsService CompanySettingsService
 @inject ISnackbar Snackbar
+@inject IGooglePlacesService GooglePlaces
 
 <PageTitle>Įmonės rekvizitai</PageTitle>
 
@@ -24,8 +25,36 @@
                 <MudTextField @bind-Value="settings.VatCode" Label="PVM kodas" Required="true" Class="mb-3" />
             </MudItem>
             <MudItem xs="12" sm="12" md="12">
-                <MudTextField @bind-Value="settings.Address" Label="Adresas" Required="true" Lines="3" Class="mb-3" />
+                <MudAutocomplete T="string"
+                                 @bind-Value="settings.Address"
+                                 Label="Adresas"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 SearchFunc="@SearchPlaces"
+                                 ToStringFunc="@(s => s)"
+                                 Strict="false"
+                                 CoerceText="false"
+                                 ResetValueOnEmptyText="false"
+                                 MinCharacters="3"
+                                 ShowProgressIndicator="@_placesLoading"
+                                 OnValueChanged="(string? selected) => OnPlaceSelectedAsync(selected)" />
             </MudItem>
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.City" Label="Miestas" MaxLength="100" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.PostalCode" Label="Pašto kodas" MaxLength="20" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.Country" Label="Šalis" MaxLength="100" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="6">
+                <MudTextField @bind-Value="settings.CountryCode" Label="Šalies kodas" MaxLength="2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudItem>
+
             <MudItem xs="12" sm="6" md="6">
                 <MudTextField @bind-Value="settings.BankName" Label="Banko pavadinimas" Class="mb-3" />
             </MudItem>
@@ -49,9 +78,13 @@
     private CompanySettings settings = new CompanySettings();
     private bool _isSaving = false;
     private bool _settingsDirty = false;
+    private string _sessionToken = "";
+    private readonly Dictionary<string, string> _descriptionToPlaceId = new();
+    private bool _placesLoading = false;
 
     protected override async Task OnInitializedAsync()
     {
+        _sessionToken = Guid.NewGuid().ToString();
         try
         {
             settings = await CompanySettingsService.GetSettingsAsync();
@@ -84,5 +117,78 @@
 
             Snackbar.Add($"Klaida išsaugant: {ex.Message}", Severity.Error);
         }
+    }
+
+    private async Task<IEnumerable<string>> SearchPlaces(string? input, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(input) || input.Trim().Length < 3)
+            return Array.Empty<string>();
+
+        _placesLoading = true;
+        try
+        {
+            var suggestions = await GooglePlaces.AutocompleteAsync(input.Trim(), _sessionToken);
+            _descriptionToPlaceId.Clear();
+            foreach (var s in suggestions)
+                _descriptionToPlaceId[s.Description] = s.PlaceId;
+            return suggestions.Select(s => s.Description);
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+        finally
+        {
+            _placesLoading = false;
+        }
+    }
+
+    private async Task OnPlaceSelectedAsync(string? selectedDescription)
+    {
+        if (string.IsNullOrWhiteSpace(selectedDescription)) return;
+        if (!_descriptionToPlaceId.TryGetValue(selectedDescription, out var placeId)) return;
+
+        PlaceAddressDetails? details;
+        try
+        {
+            details = await GooglePlaces.GetPlaceDetailsAsync(placeId, _sessionToken);
+        }
+        catch
+        {
+            details = null;
+        }
+
+        // Session terminated after details call — start a fresh one for any further lookups
+        _sessionToken = Guid.NewGuid().ToString();
+
+        // MudAutocomplete's @bind-Value has ALREADY written the clicked suggestion
+        // description into settings.Address before this handler runs. Never allow
+        // that value to be replaced with an empty string: locality-level places
+        // (no "route"/"street_number" address component) resolve to an empty
+        // StreetAddress, which used to wipe the stored address on save.
+        if (details is null)
+        {
+            _descriptionToPlaceId.Clear();
+            Snackbar.Add("Nepavyko gauti adreso detalių — paliktas pasirinktas adresas", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(details.StreetAddress))
+        {
+            // No street component (e.g. a village/municipality): keep the clicked
+            // description as the address instead of overwriting it with "".
+            Snackbar.Add("Nerasta gatvės adreso dalis — įrašytas pasirinktas vietovės pavadinimas", Severity.Warning);
+        }
+        else
+        {
+            settings.Address = details.StreetAddress;
+        }
+
+        // Fill only what the lookup actually returned — never clear existing values.
+        if (!string.IsNullOrWhiteSpace(details.City)) settings.City = details.City;
+        if (!string.IsNullOrWhiteSpace(details.PostalCode)) settings.PostalCode = details.PostalCode;
+        if (!string.IsNullOrWhiteSpace(details.Country)) settings.Country = details.Country;
+        if (!string.IsNullOrWhiteSpace(details.CountryCode)) settings.CountryCode = details.CountryCode;
+        _descriptionToPlaceId.Clear();
     }
 }
