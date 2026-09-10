@@ -2134,6 +2134,10 @@ namespace NordicBeesERP.Migrations
                         .HasColumnType("int")
                         .HasColumnName("payment_term_days");
 
+                    b.Property<string>("PdfPath")
+                        .HasColumnType("longtext")
+                        .HasColumnName("pdf_path");
+
                     b.Property<bool>("ReverseCharge")
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("reverse_charge");
