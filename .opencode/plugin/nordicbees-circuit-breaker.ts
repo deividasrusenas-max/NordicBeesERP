@@ -44,6 +44,69 @@ const SAME_TOOL_STREAK_THRESHOLD = 8
 const IDENTICAL_CALL_THRESHOLD = 3
 const ABSOLUTE_CEILING = 1000
 
+// Cyclic multi-step pattern detector (BUGLOG:
+// circuit-breaker-blind-to-multi-step-cycles, first occurrence 2026-09-10).
+// Both checks above operate on a bounded CONSECUTIVE window requiring
+// uniformity across the whole window (same tool name for 8 calls, or same
+// tool+args for 3 calls) — a periodic cycle whose period is longer than 1
+// call structurally cannot satisfy either: a real incident looped ~20
+// times on the 5-step sequence skill(mempalace) -> roslyn_get_type_members
+// -> read -> read -> read (byte-identical args every cycle, confirmed from
+// the actual session DB), and circuit-breaker.jsonl has zero entries for
+// it, confirmed via `grep roslyn_get_type_members` returning nothing.
+//
+// CYCLE_MAX_PERIOD (8) and CYCLE_REPEAT_THRESHOLD (5) were chosen against
+// real data, not guessed: replayed the real incident's actual tool-call
+// sequence (fires at call #45 of 111 — well before its true ~20-cycle
+// length) and a real, legitimate, successful 518-tool-call fixer session
+// (task-stats.jsonl's own largest recorded n_toolcalls, 748, counted
+// in-flight calls across concurrent sessions; 518 is this one session's
+// own actual tool-call count) against several repeat thresholds first.
+// That legitimate session contains a real, coincidental 3-step cycle
+// (`git branch -v` -> `git log --oneline -5` -> `git status`, byte-
+// identical each time) that recurs 3-4 times in a row on its own, TWICE,
+// before the agent moved on and completed the task successfully —
+// meaning REPEAT_THRESHOLD=3 (matching IDENTICAL_CALL_THRESHOLD's own
+// value) and even 4 both false-positive on real, legitimate work; 5 is
+// the first threshold clean against this real session while still
+// catching the real incident with more than half its length to spare.
+// This is real evidence a naive low threshold is not acceptable here, the
+// same concern the 748-tool-call task raised in the first place.
+const CYCLE_MAX_PERIOD = 8
+const CYCLE_REPEAT_THRESHOLD = 5
+const HISTORY_MAX = CYCLE_MAX_PERIOD * CYCLE_REPEAT_THRESHOLD
+
+/**
+ * Looks for a period-P sequence of calls (2 <= P <= CYCLE_MAX_PERIOD) that
+ * repeats CYCLE_REPEAT_THRESHOLD times back to back, exact tool+argsHash
+ * match required for every position. Starts at period 2 deliberately —
+ * period 1 repeated K times is exactly what identical-args-streak (K=3,
+ * consecutive) already covers; this is additive, not a replacement.
+ * Checks the SHORTEST period first so a genuine short cycle (e.g. the
+ * real 5-step incident) is reported as period 5, not misidentified as a
+ * coincidental longer period that happens to also satisfy the tail.
+ */
+function detectCyclicPattern(history: CallRecord[]): { period: number; repeats: number } | null {
+  for (let period = 2; period <= CYCLE_MAX_PERIOD; period++) {
+    const needed = period * CYCLE_REPEAT_THRESHOLD
+    if (history.length < needed) continue
+    const tail = history.slice(-needed)
+    const block = tail.slice(0, period)
+    let matches = true
+    for (let rep = 1; rep < CYCLE_REPEAT_THRESHOLD && matches; rep++) {
+      const segment = tail.slice(rep * period, (rep + 1) * period)
+      for (let i = 0; i < period; i++) {
+        if (segment[i].tool !== block[i].tool || segment[i].argsHash !== block[i].argsHash) {
+          matches = false
+          break
+        }
+      }
+    }
+    if (matches) return { period, repeats: CYCLE_REPEAT_THRESHOLD }
+  }
+  return null
+}
+
 // Malformed/rejected tool-call streak (BUGLOG: tool-call-json-argument-
 // bleed-multicall, first occurrence 2026-09-09). Confirmed by reading the
 // actual installed OpenCode binary's own tool-dispatch logic (v1.18.30,
@@ -175,6 +238,7 @@ function logAbort(
     history: CallRecord[]
     totalToolCalls: number
     recentErrors?: string[]
+    cyclePeriod?: number
   },
 ) {
   try {
@@ -348,10 +412,17 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
 
       const argsHash = JSON.stringify(part.state?.input ?? {})
       state.history.push({ tool: part.tool, argsHash, callID: part.callID })
-      if (state.history.length > SAME_TOOL_STREAK_THRESHOLD) state.history.shift()
+      // Capped at HISTORY_MAX (40), not SAME_TOOL_STREAK_THRESHOLD (8) —
+      // the cyclic-pattern detector below needs up to CYCLE_MAX_PERIOD *
+      // CYCLE_REPEAT_THRESHOLD calls of context. same-tool-streak below
+      // explicitly slices the last 8 of this longer array rather than
+      // relying on the array's own length, so it keeps working exactly as
+      // before now that the array can hold more than 8 entries.
+      if (state.history.length > HISTORY_MAX) state.history.shift()
 
       const total = state.seenCallIDs.size
-      const last = state.history
+      const full = state.history
+      const last = full.slice(-SAME_TOOL_STREAK_THRESHOLD)
       // Diversity check ignores the `workdir` field on purpose: the same
       // logical bash command (e.g. "git status") sometimes carries an
       // explicit workdir and sometimes doesn't, purely depending on
@@ -378,13 +449,19 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
       const sameToolStreak = last.length === SAME_TOOL_STREAK_THRESHOLD &&
         last.every(h => h.tool === last[0].tool) &&
         distinctArgsInWindow <= SAME_TOOL_STREAK_MAX_DISTINCT_ARGS
-      const lastN = last.slice(-IDENTICAL_CALL_THRESHOLD)
+      const lastN = full.slice(-IDENTICAL_CALL_THRESHOLD)
       const identicalStreak = lastN.length === IDENTICAL_CALL_THRESHOLD &&
         lastN.every(h => h.tool === lastN[0].tool && h.argsHash === lastN[0].argsHash)
+      const cyclic = detectCyclicPattern(full)
 
       let reason: string | null = null
+      let cyclePeriod: number | undefined
       if (identicalStreak) reason = "identical-args-streak"
       else if (sameToolStreak) reason = "same-tool-streak"
+      else if (cyclic) {
+        reason = "cyclic-pattern-repeat"
+        cyclePeriod = cyclic.period
+      }
       else if (total >= ABSOLUTE_CEILING) reason = "absolute-ceiling"
 
       if (reason) {
@@ -393,6 +470,7 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
           reason,
           history: [...state.history],
           totalToolCalls: total,
+          ...(cyclePeriod !== undefined ? { cyclePeriod } : {}),
         })
         await client.session.abort({ path: { id: part.sessionID } })
         cleanup(part.sessionID)
