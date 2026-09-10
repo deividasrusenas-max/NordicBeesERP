@@ -31,15 +31,26 @@
 
         try
         {
-            var pdfBytes = await PdfService.GenerateInvoicePdfAsync(Id);
-            
+            using var context = DbContextFactory.CreateDbContext();
+            var invoice = await context.Invoices.FindAsync(Id);
+
+            byte[] pdfBytes;
+            if (invoice.Status == InvoiceStatus.Draft)
+            {
+                // Draft: generate live, download, then confirm and freeze the same bytes at issuance
+                pdfBytes = await PdfService.GenerateInvoicePdfAsync(Id);
+            }
+            else
+            {
+                // Final invoice: use the cached frozen copy if one exists (regenerates + saves on first final print)
+                pdfBytes = await InvoiceService.GenerateAndSavePdfAsync(Id);
+            }
+
             if (pdfBytes is not null && pdfBytes.Length > 0)
             {
-                using var context = DbContextFactory.CreateDbContext();
-                var invoice = await context.Invoices.FindAsync(Id);
                 var fileName = $"{invoice.InvoiceNumber}.pdf";
                 await DownloadPdfAsync(pdfBytes, fileName);
-                
+
                 // Update invoice status from Draft to Confirmed (PDF generation = "sending")
                 if (invoice.Status == InvoiceStatus.Draft)
                 {
@@ -52,8 +63,11 @@
                         // Log error but don't fail PDF download - the PDF was generated successfully
                         Console.WriteLine($"PDF kūrimo puslapis: nepavyko atnaujinti būsenos iš Draft į Confirmed: {statusEx.Message}");
                     }
+
+                    // Freeze the exact bytes that were just downloaded (no-op while still Draft)
+                    await InvoiceService.SaveFinalizedPdfAsync(Id, pdfBytes);
                 }
-                
+
                 await Task.Delay(3000);
                 Navigation.NavigateTo($"/invoices/{Id}");
             }
