@@ -59,6 +59,12 @@
                         <MudItem xs="12">
                             <MudTextField Label="Adresas" @bind-Value="_newSupplierAddress" Variant="Variant.Filled" />
                         </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Miestas" @bind-Value="_newSupplierCity" Variant="Variant.Filled" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Pašto kodas" @bind-Value="_newSupplierPostalCode" Variant="Variant.Filled" />
+                        </MudItem>
                     </MudGrid>
                 </MudPaper>
             }
@@ -96,6 +102,8 @@
     private string _newSupplierName = "";
     private string _newSupplierVat = "";
     private string _newSupplierAddress = "";
+    private string _newSupplierCity = "";
+    private string _newSupplierPostalCode = "";
     private int _selectedExistingSupplierId = 0;
     private List<SupplierDto> _suppliers = new();
 
@@ -143,6 +151,8 @@
                     Name = _newSupplierName,
                     VatCode = _newSupplierVat,
                     Address = _newSupplierAddress,
+                    City = _newSupplierCity,
+                    PostalCode = _newSupplierPostalCode,
                     PartnerType = PartnerType.ExpenseSupplier,
                     IsExpenseSupplier = true,
                     IsSupplier = false,
