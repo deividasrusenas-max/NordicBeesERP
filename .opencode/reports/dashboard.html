@@ -20,8 +20,23 @@ h2{font-size:13px;margin:0 0 12px;color:var(--dim);font-weight:600;
 .kpi .v{font-size:24px;font-weight:600;line-height:1.1}
 .kpi .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:16px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;position:relative}
 .panel.wide{grid-column:1/-1}
+.panel.zoomable{cursor:zoom-in;transition:border-color .12s}
+.panel.zoomable:hover{border-color:var(--acc)}
+.zoomhint{position:absolute;top:14px;right:14px;color:var(--dim);font-size:13px;opacity:0;transition:opacity .12s;pointer-events:none}
+.panel.zoomable:hover .zoomhint{opacity:1;color:var(--acc)}
+.zoomoverlay{position:fixed;inset:0;background:rgba(6,7,11,.8);z-index:100;display:flex;
+  align-items:center;justify-content:center;padding:28px}
+.zoomoverlay[hidden]{display:none}
+.zoombox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:24px 28px;
+  max-width:1180px;width:100%;max-height:92vh;overflow:auto;position:relative}
+.zoombox h2{margin-bottom:16px}
+.zoombox svg text{font-size:13px}
+.zoombox svg text.val{font-size:13px}
+.zoomclose{position:absolute;top:16px;right:16px;background:transparent;border:1px solid var(--line);
+  border-radius:6px;width:30px;height:30px;font-size:14px;line-height:1;cursor:pointer;color:var(--dim)}
+.zoomclose:hover{color:var(--ink);border-color:var(--acc)}
 .note{font-size:11px;color:var(--dim);margin-top:10px;line-height:1.5}
 .toolittle{font-size:12px;color:var(--dim);padding:18px 4px;text-align:center;border:1px dashed var(--line);border-radius:6px}
 svg{display:block;width:100%;overflow:visible}
@@ -91,6 +106,13 @@ details.task-item .deleg-wrap{padding:0 12px 10px}
   </span>
 </div>
 <div id="app"></div>
+<div id="zoomOverlay" class="zoomoverlay" hidden>
+  <div class="zoombox">
+    <button id="zoomClose" class="zoomclose" aria-label="Uždaryti" title="Uždaryti (Esc)">✕</button>
+    <h2 id="zoomTitle"></h2>
+    <div id="zoomBody"></div>
+  </div>
+</div>
 
 <script>
 const F = {
@@ -286,15 +308,19 @@ function syncRangeUI(){
 
 // ---------- generic SVG / format helpers ----------
 function svgOpen(w,h){ return `<svg viewBox="0 0 ${w} ${h}">`; }
-function yAxis(x0,y0,y1,max,w,ticks=4){
+function yAxis(x0,y0,y1,max,w,ticks=4,k=1){
   let s=`<line class="axis" x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}"/>`;
   for(let i=0;i<=ticks;i++){
     const v=max*i/ticks, y=y1-(y1-y0)*i/ticks;
     s+=`<line class="gl" x1="${x0}" y1="${y}" x2="${x0+w}" y2="${y}"/>`;
-    s+=`<text x="${x0-6}" y="${y+3}" text-anchor="end">${fmt(v)}</text>`;
+    s+=`<text x="${x0-6*k}" y="${y+3*k}" text-anchor="end">${fmt(v)}</text>`;
   }
   return s;
 }
+function legendRow(entries){
+  return `<div class="legend">${entries.map(e=>`<span><i style="background:${e.color}"></i>${esc(e.label)}</span>`).join('')}</div>`;
+}
+function noteBox(html){ return html ? `<div class="note">${html}</div>` : ''; }
 function fmt(v){
   if(v>=1000) return (v/1000).toFixed(v>=10000?0:1)+'k';
   return Number.isInteger(v)?v:v.toFixed(1);
@@ -314,8 +340,14 @@ function median(arr){
 }
 function toolittle(msg){ return `<div class="toolittle">per mažai duomenų${msg?' — '+esc(msg):''}</div>`; }
 
-// ---------- panel 1: agent outcomes ----------
-function panelOutcomes(deleg){
+// ---------- panels 1-6: chart-panel registry ----------
+// Each of these panels has three independent pieces — chart(data,k), legend(data), note(data) —
+// kept separate (rather than one HTML blob) specifically so the click-to-zoom overlay can call
+// the exact same chart() function again with a bigger k and get a freshly re-rendered, sharp
+// SVG (not a CSS scale-up), while legend/note are reused byte-for-byte in both sizes.
+const ZOOM_SCALE = 1.6;
+
+function outcomesGroups(deleg){
   const byAgent={};
   for(const d of deleg){
     if(!d.agent) continue;
@@ -324,183 +356,263 @@ function panelOutcomes(deleg){
     else if(d.status==='interrupted'){ a.interrupted++; if(d.unreliable) a.unreliable++; }
     else if(d.status==='incomplete') a.incomplete++;
   }
+  return byAgent;
+}
+function outcomesChart(deleg,k=1){
+  const byAgent=outcomesGroups(deleg);
   const agents=Object.keys(byAgent).sort((x,y)=>
     (byAgent[y].completed+byAgent[y].interrupted+byAgent[y].incomplete)-(byAgent[x].completed+byAgent[x].interrupted+byAgent[x].incomplete));
-  if(!agents.length) return toolittle('nėra delegavimų šiame intervale');
-
-  const W=460,H=40+agents.length*46,x0=92,bw=W-x0-46;
+  const W=460*k,x0=92*k,bw=W-x0-46*k,rowH=46*k,barH=18*k,rx=3*k;
+  const H=40*k+agents.length*rowH;
   let s=svgOpen(W,H);
   agents.forEach((a,i)=>{
     const d=byAgent[a], tot=d.completed+d.interrupted;
-    const y=20+i*46, pct=tot?d.completed/tot:0;
-    s+=`<text x="${x0-8}" y="${y+13}" text-anchor="end" class="val">${esc(a)}</text>`;
-    s+=`<rect x="${x0}" y="${y}" width="${bw}" height="18" rx="3" fill="#232833"/>`;
+    const y=20*k+i*rowH, pct=tot?d.completed/tot:0;
+    s+=`<text x="${x0-8*k}" y="${y+13*k}" text-anchor="end" class="val">${esc(a)}</text>`;
+    s+=`<rect x="${x0}" y="${y}" width="${bw}" height="${barH}" rx="${rx}" fill="#232833"/>`;
     if(tot){
-      s+=`<rect class="bar" x="${x0}" y="${y}" width="${bw*pct}" height="18" rx="3" fill="${C.ok}"/>`;
+      s+=`<rect class="bar" x="${x0}" y="${y}" width="${bw*pct}" height="${barH}" rx="${rx}" fill="${C.ok}"/>`;
       if(d.interrupted)
-        s+=`<rect class="bar" x="${x0+bw*pct}" y="${y}" width="${bw*(1-pct)}" height="18" rx="3" fill="${C.bad}"/>`;
+        s+=`<rect class="bar" x="${x0+bw*pct}" y="${y}" width="${bw*(1-pct)}" height="${barH}" rx="${rx}" fill="${C.bad}"/>`;
     }
-    s+=`<text x="${x0+bw+6}" y="${y+13}" class="val">${tot?Math.round(pct*100)+'%':'—'}</text>`;
+    s+=`<text x="${x0+bw+6*k}" y="${y+13*k}" class="val">${tot?Math.round(pct*100)+'%':'—'}</text>`;
     let line2 = `${d.completed} baigta · ${d.interrupted} nutraukta`;
     if(d.unreliable) line2 += ` (${d.unreliable} nepatikimos trukmės)`;
     if(d.incomplete) line2 += ` · ${d.incomplete} nebaigta`;
-    s+=`<text x="${x0}" y="${y+32}">${line2}</text>`;
+    s+=`<text x="${x0}" y="${y+32*k}">${line2}</text>`;
   });
   s+='</svg>';
-  return `<div class="legend"><span><i style="background:${C.ok}"></i>baigta</span>
-    <span><i style="background:${C.bad}"></i>nutraukta</span></div>`+s+
-    `<div class="note">Nutraukimas reiškia, kad sesija niekada nepasiekė „completed" — kilpa, ESC arba circuit-breaker abortas.
-    „Nebaigta" — yra „started" įrašas, bet nei „completed", nei „interrupted" (arba dar vykdoma, arba stebėjimas prarado pėdsaką);
-    tai NĖRA nulinė trukmė. „Nepatikimos trukmės" — pažymėta atskirai, žr. „Per užduotis" panelį.</div>`;
+  return s;
 }
 
-// ---------- panel 2: duration trend ----------
-function panelDuration(deleg, events, bounds){
-  const pts=deleg.filter(d=>d.status==='completed'&&d.duration_sec>0&&d.agent&&!d.unreliable);
-  if(pts.length<2) return toolittle(pts.length===1
-    ? `tik 1 baigtas delegavimas su trukme (${fmtDur(pts[0].duration_sec)}, ${esc(pts[0].agent)}) — negalima piešti tendencijos`
-    : 'nėra baigtų taskų su trukme šiame intervale');
+function durationPoints(deleg){
+  return deleg.filter(d=>d.status==='completed'&&d.duration_sec>0&&d.agent&&!d.unreliable);
+}
+function durationChart(deleg, events, k=1){
+  const pts=durationPoints(deleg);
   const agents=[...new Set(pts.map(p=>p.agent))];
   const t0=Math.min(...pts.map(p=>+new Date(p.ts_end)));
   const t1=Math.max(...pts.map(p=>+new Date(p.ts_end)));
   const max=Math.max(...pts.map(p=>p.duration_sec));
-  const W=460,H=250,x0=48,y0=14,y1=H-34,bw=W-x0-14;
+  const W=460*k,H=250*k,x0=48*k,y0=14*k,y1=H-34*k,bw=W-x0-14*k;
   const X=t=>x0+(t1===t0?bw/2:bw*((+new Date(t)-t0)/(t1-t0)));
   const Y=v=>y1-(y1-y0)*(v/max);
-  let s=svgOpen(W,H)+yAxis(x0,y0,y1,max,bw);
+  let s=svgOpen(W,H)+yAxis(x0,y0,y1,max,bw,4,k);
   const evtsInRange=(events||[]).filter(e=>{ const t=+new Date(e.ts); return t>=t0 && t<=t1; });
   for(const e of evtsInRange){
     const x=X(e.ts);
     s+=`<g class="evtmark"><line class="evtline" x1="${x}" y1="${y0}" x2="${x}" y2="${y1}"/>` +
        `<title>${esc(e.ts.slice(0,16).replace('T',' '))} · ${esc(e.commit||'uncommitted')} · ${esc(e.title)}\n\n${esc(e.description||'')}</title>` +
-       `<text class="evtlabel" x="${x+2}" y="${y0+8}" transform="rotate(90 ${x+2} ${y0+8})">${esc(e.title.slice(0,28))}</text></g>`;
+       `<text class="evtlabel" x="${x+2*k}" y="${y0+8*k}" transform="rotate(90 ${x+2*k} ${y0+8*k})">${esc(e.title.slice(0,28))}</text></g>`;
   }
   for(const a of agents){
     const ps=pts.filter(p=>p.agent===a).sort((m,n)=>new Date(m.ts_end)-new Date(n.ts_end));
     const col=AGENT_C[a]||C.dim;
     if(ps.length>1){
-      s+=`<polyline fill="none" stroke="${col}" stroke-width="1.5" opacity=".5" points="${
+      s+=`<polyline fill="none" stroke="${col}" stroke-width="${1.5*k}" opacity=".5" points="${
         ps.map(p=>X(p.ts_end)+','+Y(p.duration_sec)).join(' ')}"/>`;
     }
-    for(const p of ps) s+=`<circle cx="${X(p.ts_end)}" cy="${Y(p.duration_sec)}" r="3" fill="${col}"><title>${esc(a)} · ${fmtDur(p.duration_sec)} · ${esc(p.ts_end.slice(0,16).replace('T',' '))}</title></circle>`;
+    for(const p of ps) s+=`<circle cx="${X(p.ts_end)}" cy="${Y(p.duration_sec)}" r="${3*k}" fill="${col}"><title>${esc(a)} · ${fmtDur(p.duration_sec)} · ${esc(p.ts_end.slice(0,16).replace('T',' '))}</title></circle>`;
   }
   s+=`<line class="axis" x1="${x0}" y1="${y1}" x2="${x0+bw}" y2="${y1}"/>`;
-  s+=`<text x="${x0}" y="${y1+16}">${day(new Date(t0).toISOString())}</text>`;
-  s+=`<text x="${x0+bw}" y="${y1+16}" text-anchor="end">${day(new Date(t1).toISOString())}</text>`;
-  s+=`<text x="${x0-40}" y="${y0-2}">sek.</text></svg>`;
-  const leg=agents.map(a=>`<span><i style="background:${AGENT_C[a]||C.dim}"></i>${esc(a)}</span>`).join('');
+  s+=`<text x="${x0}" y="${y1+16*k}">${day(new Date(t0).toISOString())}</text>`;
+  s+=`<text x="${x0+bw}" y="${y1+16*k}" text-anchor="end">${day(new Date(t1).toISOString())}</text>`;
+  s+=`<text x="${x0-40*k}" y="${y0-2*k}">sek.</text></svg>`;
+  return s;
+}
+function durationLegend(deleg){
+  const agents=[...new Set(durationPoints(deleg).map(p=>p.agent))];
+  const entries=agents.map(a=>({color:AGENT_C[a]||C.dim,label:a}));
+  entries.push({color:C.acc2,label:'harness pokytis (kabinkite pelę)'});
+  return legendRow(entries);
+}
+function durationNote(deleg){
   const excluded = deleg.filter(d=>d.status==='completed'&&d.duration_sec>0&&d.unreliable).length;
-  return `<div class="legend">${leg}<span><i style="background:${C.acc2}"></i>harness pokytis (kabinkite pelę)</span></div>`+s+
-    `<div class="note">Kylanti kreivė prie panašaus dydžio promptų reiškia, kad agentas ieško to paties atsakymo vis ilgiau.
-    Punktyrinės linijos — harness pokyčiai iš harness-events.json.${excluded?` ${excluded} nepatikimos trukmės įrašų neįtraukta.`:''}</div>`;
+  return `Kylanti kreivė prie panašaus dydžio promptų reiškia, kad agentas ieško to paties atsakymo vis ilgiau.
+    Punktyrinės linijos — harness pokyčiai iš harness-events.json.${excluded?` ${excluded} nepatikimos trukmės įrašų neįtraukta.`:''}`;
 }
 
-// ---------- panel 3: circuit-breaker ----------
-function panelBreaker(cb){
-  if(!cb.length) return toolittle('nė vieno aborto šiame intervale');
+function breakerReasons(cb){
   const byReason={};
   for(const e of cb) byReason[e.reason]=(byReason[e.reason]||0)+1;
-  const rs=Object.entries(byReason).sort((a,b)=>b[1]-a[1]);
+  return Object.entries(byReason).sort((a,b)=>b[1]-a[1]);
+}
+function breakerChart(cb,k=1){
+  const rs=breakerReasons(cb);
   const max=Math.max(...rs.map(r=>r[1]));
-  const W=460,H=24+rs.length*34,x0=200,bw=W-x0-40;
+  const W=460*k,H=24*k+rs.length*34*k,x0=200*k,bw=W-x0-40*k;
   let s=svgOpen(W,H);
   rs.forEach(([r,n],i)=>{
-    const y=10+i*34;
-    s+=`<text x="${x0-8}" y="${y+13}" text-anchor="end" class="val">${esc(r)}</text>`;
-    s+=`<rect class="bar" x="${x0}" y="${y}" width="${Math.max(2,bw*n/max)}" height="18" rx="3" fill="${C.warn}"/>`;
-    s+=`<text x="${x0+Math.max(2,bw*n/max)+6}" y="${y+13}" class="val">${n}</text>`;
+    const y=10*k+i*34*k;
+    s+=`<text x="${x0-8*k}" y="${y+13*k}" text-anchor="end" class="val">${esc(r)}</text>`;
+    s+=`<rect class="bar" x="${x0}" y="${y}" width="${Math.max(2*k,bw*n/max)}" height="${18*k}" rx="${3*k}" fill="${C.warn}"/>`;
+    s+=`<text x="${x0+Math.max(2*k,bw*n/max)+6*k}" y="${y+13*k}" class="val">${n}</text>`;
   });
   s+='</svg>';
+  return s;
+}
+function breakerNote(cb){
   const avg=(cb.reduce((a,e)=>a+(e.totalToolCalls||0),0)/cb.length).toFixed(1);
-  return s+`<div class="note">Iš viso ${cb.length} abortų, vidutiniškai po ${avg} tool call'ų.
-    Ankstyvas abortas yra gerai — reiškia, kad kilpa pagauta greitai.</div>`;
+  return `Iš viso ${cb.length} abortų, vidutiniškai po ${avg} tool call'ų.
+    Ankstyvas abortas yra gerai — reiškia, kad kilpa pagauta greitai.`;
 }
 
-// ---------- panel 4: reviewer verdicts ----------
-function panelVerdicts(deleg){
+function verdictsCounts(deleg){
   const v=deleg.filter(d=>d.agent==='reviewer'&&d.verdict);
   const ap=v.filter(d=>/APPROVED/i.test(d.verdict)&&!/REJECTED/i.test(d.verdict)).length;
   const rj=v.filter(d=>/REJECTED/i.test(d.verdict)).length;
   const noVerdict=deleg.filter(d=>d.agent==='reviewer'&&d.status==='completed'&&!d.verdict).length;
-  if(!v.length&&!noVerdict) return toolittle('nėra reviewer duomenų šiame intervale');
-  const tot=ap+rj;
-  const W=460,H=120,x0=20,bw=W-40;
+  return {ap,rj,noVerdict,tot:ap+rj,hasData: v.length>0||noVerdict>0};
+}
+function verdictsChart(deleg,k=1){
+  const {ap,rj,noVerdict,tot}=verdictsCounts(deleg);
+  const W=460*k,H=120*k,x0=20*k,bw=W-40*k;
   let s=svgOpen(W,H);
-  s+=`<rect x="${x0}" y="30" width="${bw}" height="26" rx="4" fill="#232833"/>`;
+  s+=`<rect x="${x0}" y="${30*k}" width="${bw}" height="${26*k}" rx="${4*k}" fill="#232833"/>`;
   if(tot){
-    s+=`<rect x="${x0}" y="30" width="${bw*ap/tot}" height="26" rx="4" fill="${C.ok}"/>`;
-    if(rj) s+=`<rect x="${x0+bw*ap/tot}" y="30" width="${bw*rj/tot}" height="26" rx="4" fill="${C.bad}"/>`;
+    s+=`<rect x="${x0}" y="${30*k}" width="${bw*ap/tot}" height="${26*k}" rx="${4*k}" fill="${C.ok}"/>`;
+    if(rj) s+=`<rect x="${x0+bw*ap/tot}" y="${30*k}" width="${bw*rj/tot}" height="${26*k}" rx="${4*k}" fill="${C.bad}"/>`;
   }
-  s+=`<text x="${x0}" y="22" class="val">APPROVED ${ap}</text>`;
-  s+=`<text x="${x0+bw}" y="22" text-anchor="end" class="val">REJECTED ${rj}</text>`;
-  s+=`<text x="${x0}" y="76">${noVerdict} baigtų review be užfiksuoto verdikto</text>`;
+  s+=`<text x="${x0}" y="${22*k}" class="val">APPROVED ${ap}</text>`;
+  s+=`<text x="${x0+bw}" y="${22*k}" text-anchor="end" class="val">REJECTED ${rj}</text>`;
+  s+=`<text x="${x0}" y="${76*k}">${noVerdict} baigtų review be užfiksuoto verdikto</text>`;
   s+='</svg>';
-  let note;
-  if(tot<5) note=`<b style="color:${C.warn}">Per mažai verdiktų (${tot}) šiame intervale patikimam vertinimui.</b>`;
-  else if(rj===0&&ap>0) note=`<b style="color:${C.warn}">Nė vieno REJECTED per šį laikotarpį.</b>
+  return s;
+}
+function verdictsNote(deleg){
+  const {ap,rj,tot}=verdictsCounts(deleg);
+  if(tot<5) return `<b style="color:${C.warn}">Per mažai verdiktų (${tot}) šiame intervale patikimam vertinimui.</b>`;
+  if(rj===0&&ap>0) return `<b style="color:${C.warn}">Nė vieno REJECTED per šį laikotarpį.</b>
     Reviewer promptas turi privalomus atmetimo trigerius (nerišlus vartotojui matomas tekstas,
     hardcoded kredencialai, dublikuota logika). Nulis atmetimų reiškia arba kad tie pažeidimai
     tikrai nepasitaikė, arba kad reviewer jų negaudo — be žinomai blogo diff'o testo neatskirsi.`;
-  else if(rj>0) note=`Reviewer realiai atmeta — vadinasi verdiktas ne formalumas.`;
-  else note='Per mažai duomenų.';
-  return s+`<div class="note">${note}</div>`;
+  if(rj>0) return `Reviewer realiai atmeta — vadinasi verdiktas ne formalumas.`;
+  return 'Per mažai duomenų.';
 }
 
-// ---------- panel 5: orchestrator time ----------
-function panelTiming(tm){
+function timingRows(tm){
   const done=tm.filter(r=>r.duration_ms!=null);
-  if(!done.length) return toolittle('nėra orchestratoriaus timing duomenų šiame intervale');
   const byTool={};
   for(const r of done){
     const b=byTool[r.tool] ||= {n:0,dur:0,gap:0,gapN:0};
     b.n++; b.dur+=r.duration_ms||0;
     if(r.gap_before_ms!=null){ b.gap+=r.gap_before_ms; b.gapN++; }
   }
-  const rows=Object.entries(byTool)
+  return Object.entries(byTool)
     .map(([t,b])=>({t,n:b.n,dur:b.dur/b.n/1000,gap:b.gapN?b.gap/b.gapN/1000:0}))
     .sort((a,b)=>(b.dur+b.gap)-(a.dur+a.gap)).slice(0,9);
+}
+function timingChart(tm,k=1){
+  const rows=timingRows(tm);
   const max=Math.max(...rows.map(r=>r.dur+r.gap))||1;
-  const W=460,H=26+rows.length*34,x0=150,bw=W-x0-56;
+  const W=460*k,H=26*k+rows.length*34*k,x0=150*k,bw=W-x0-56*k;
   let s=svgOpen(W,H);
   rows.forEach((r,i)=>{
-    const y=10+i*34, wg=bw*r.gap/max, wd=bw*r.dur/max;
-    s+=`<text x="${x0-8}" y="${y+13}" text-anchor="end" class="val">${esc(r.t)}</text>`;
-    s+=`<rect class="bar" x="${x0}" y="${y}" width="${Math.max(1,wg)}" height="18" rx="2" fill="${C.acc2}"/>`;
-    s+=`<rect class="bar" x="${x0+wg}" y="${y}" width="${Math.max(1,wd)}" height="18" rx="2" fill="${C.acc}"/>`;
-    s+=`<text x="${x0+wg+wd+6}" y="${y+13}">${(r.gap+r.dur).toFixed(1)}s ×${r.n}</text>`;
+    const y=10*k+i*34*k, wg=bw*r.gap/max, wd=bw*r.dur/max;
+    s+=`<text x="${x0-8*k}" y="${y+13*k}" text-anchor="end" class="val">${esc(r.t)}</text>`;
+    s+=`<rect class="bar" x="${x0}" y="${y}" width="${Math.max(1*k,wg)}" height="${18*k}" rx="${2*k}" fill="${C.acc2}"/>`;
+    s+=`<rect class="bar" x="${x0+wg}" y="${y}" width="${Math.max(1*k,wd)}" height="${18*k}" rx="${2*k}" fill="${C.acc}"/>`;
+    s+=`<text x="${x0+wg+wd+6*k}" y="${y+13*k}">${(r.gap+r.dur).toFixed(1)}s ×${r.n}</text>`;
   });
   s+='</svg>';
+  return s;
+}
+function timingNote(tm){
+  const done=tm.filter(r=>r.duration_ms!=null);
   const totGap=done.reduce((a,r)=>a+(r.gap_before_ms||0),0)/1000;
   const totDur=done.reduce((a,r)=>a+(r.duration_ms||0),0)/1000;
-  return `<div class="legend"><span><i style="background:${C.acc2}"></i>galvojimas prieš (gap)</span>
-    <span><i style="background:${C.acc}"></i>įrankio vykdymas</span></div>`+s+
-    `<div class="note">Vidutinė trukmė vienam kvietimui. Iš viso ${totGap.toFixed(0)}s galvojimo prieš
-     ${totDur.toFixed(0)}s realaus vykdymo — jei violetinė dalis dominuoja, laikas dingsta modelyje, ne įrankiuose.</div>`;
+  return `Vidutinė trukmė vienam kvietimui. Iš viso ${totGap.toFixed(0)}s galvojimo prieš
+     ${totDur.toFixed(0)}s realaus vykdymo — jei galvojimo dalis dominuoja, laikas dingsta modelyje, ne įrankiuose.`;
 }
 
-// ---------- panel 6: prompt size ----------
-function panelPrompts(deleg){
+function promptsRows(deleg){
   const p=deleg.filter(d=>d.prompt_chars>0&&d.agent);
-  if(!p.length) return toolittle('nėra prompt dydžio duomenų šiame intervale');
   const byAgent={};
   for(const r of p){ (byAgent[r.agent] ||= []).push(r.prompt_chars); }
-  const rows=Object.entries(byAgent).map(([a,v])=>({
+  return Object.entries(byAgent).map(([a,v])=>({
     a, n:v.length, avg:v.reduce((x,y)=>x+y,0)/v.length, max:Math.max(...v)
   })).sort((x,y)=>y.max-x.max);
+}
+function promptsChart(deleg,k=1){
+  const rows=promptsRows(deleg);
   const max=Math.max(...rows.map(r=>r.max));
-  const W=460,H=26+rows.length*38,x0=110,bw=W-x0-70;
+  const W=460*k,H=26*k+rows.length*38*k,x0=110*k,bw=W-x0-70*k;
   let s=svgOpen(W,H);
   rows.forEach((r,i)=>{
-    const y=10+i*38;
-    s+=`<text x="${x0-8}" y="${y+13}" text-anchor="end" class="val">${esc(r.a)}</text>`;
-    s+=`<rect x="${x0}" y="${y}" width="${bw*r.max/max}" height="18" rx="3" fill="#2c3444"/>`;
-    s+=`<rect class="bar" x="${x0}" y="${y}" width="${Math.max(2,bw*r.avg/max)}" height="18" rx="3" fill="${AGENT_C[r.a]||C.dim}"/>`;
-    s+=`<text x="${x0+bw*r.max/max+6}" y="${y+13}">${fmt(r.max)}</text>`;
-    s+=`<text x="${x0}" y="${y+31}">vid. ${fmt(r.avg)} simb. · ${r.n} kvietimų</text>`;
+    const y=10*k+i*38*k;
+    s+=`<text x="${x0-8*k}" y="${y+13*k}" text-anchor="end" class="val">${esc(r.a)}</text>`;
+    s+=`<rect x="${x0}" y="${y}" width="${bw*r.max/max}" height="${18*k}" rx="${3*k}" fill="#2c3444"/>`;
+    s+=`<rect class="bar" x="${x0}" y="${y}" width="${Math.max(2*k,bw*r.avg/max)}" height="${18*k}" rx="${3*k}" fill="${AGENT_C[r.a]||C.dim}"/>`;
+    s+=`<text x="${x0+bw*r.max/max+6*k}" y="${y+13*k}">${fmt(r.max)}</text>`;
+    s+=`<text x="${x0}" y="${y+31*k}">vid. ${fmt(r.avg)} simb. · ${r.n} kvietimų</text>`;
   });
   s+='</svg>';
-  return s+`<div class="note">Šviesi juosta — vidurkis, tamsi — maksimumas.
-    Didelis skirtumas reiškia, kad kai kurie delegavimai gauna gerokai daugiau nei kiti.</div>`;
+  return s;
+}
+function promptsLegend(deleg){
+  const entries=promptsRows(deleg).map(r=>({color:AGENT_C[r.a]||C.dim,label:r.a}));
+  entries.push({color:'#2c3444',label:'maksimumas (fonas)'});
+  return legendRow(entries);
+}
+
+const PANEL_DEFS = {
+  outcomes: {
+    title:'Ar agentai baigia darbą',
+    empty:d=>!Object.keys(outcomesGroups(d.deleg)).length,
+    emptyMsg:()=>'nėra delegavimų šiame intervale',
+    legend:()=>legendRow([{color:C.ok,label:'baigta'},{color:C.bad,label:'nutraukta'}]),
+    chart:(d,k)=>outcomesChart(d.deleg,k),
+    note:()=>`Nutraukimas reiškia, kad sesija niekada nepasiekė „completed" — kilpa, ESC arba circuit-breaker abortas.
+      „Nebaigta" — yra „started" įrašas, bet nei „completed", nei „interrupted" (arba dar vykdoma, arba stebėjimas prarado pėdsaką);
+      tai NĖRA nulinė trukmė. „Nepatikimos trukmės" — pažymėta atskirai, žr. „Per užduotis" panelį.`
+  },
+  verdicts: {
+    title:'Reviewer verdiktai',
+    empty:d=>!verdictsCounts(d.deleg).hasData,
+    emptyMsg:()=>'nėra reviewer duomenų šiame intervale',
+    legend:()=>legendRow([{color:C.ok,label:'APPROVED'},{color:C.bad,label:'REJECTED'}]),
+    chart:(d,k)=>verdictsChart(d.deleg,k),
+    note:d=>verdictsNote(d.deleg)
+  },
+  duration: {
+    title:'Trukmės kitimas',
+    empty:d=>durationPoints(d.deleg).length<2,
+    emptyMsg:d=>{ const pts=durationPoints(d.deleg); return pts.length===1
+        ? `tik 1 baigtas delegavimas su trukme (${fmtDur(pts[0].duration_sec)}, ${esc(pts[0].agent)}) — negalima piešti tendencijos`
+        : 'nėra baigtų taskų su trukme šiame intervale'; },
+    legend:d=>durationLegend(d.deleg),
+    chart:(d,k)=>durationChart(d.deleg, d.events, k),
+    note:d=>durationNote(d.deleg)
+  },
+  breaker: {
+    title:'Circuit-breaker abortai',
+    empty:d=>!d.cb.length,
+    emptyMsg:()=>'nė vieno aborto šiame intervale',
+    legend:()=>'',
+    chart:(d,k)=>breakerChart(d.cb,k),
+    note:d=>breakerNote(d.cb)
+  },
+  timing: {
+    title:'Kur dingsta orchestratoriaus laikas',
+    empty:d=>!timingRows(d.tm).length,
+    emptyMsg:()=>'nėra orchestratoriaus timing duomenų šiame intervale',
+    legend:()=>legendRow([{color:C.acc2,label:'galvojimas prieš (gap)'},{color:C.acc,label:'įrankio vykdymas'}]),
+    chart:(d,k)=>timingChart(d.tm,k),
+    note:d=>timingNote(d.tm)
+  },
+  prompts: {
+    title:'Promptų dydis pagal agentą',
+    empty:d=>!promptsRows(d.deleg).length,
+    emptyMsg:()=>'nėra prompt dydžio duomenų šiame intervale',
+    legend:d=>promptsLegend(d.deleg),
+    chart:(d,k)=>promptsChart(d.deleg,k),
+    note:()=>`Didelis skirtumas tarp vidurkio ir maksimumo juostų reiškia, kad kai kurie delegavimai gauna gerokai daugiau nei kiti.`
+  }
+};
+function renderPanelBody(id, d, k){
+  const def = PANEL_DEFS[id];
+  if(def.empty(d)) return toolittle(def.emptyMsg(d));
+  return def.chart(d,k) + (def.legend(d)||'') + noteBox(def.note(d));
 }
 
 // ---------- panel 7: per-task view ----------
@@ -674,6 +786,15 @@ function render(){
   const rateC = rate==null?C.dim : rate>=90?C.ok : rate>=70?C.warn : C.bad;
   const days=[...new Set(deleg.map(t=>day(delegTs(t))))].length||1;
 
+  const dataBundle = {deleg, cb, tm, events:DATA.events};
+  const chartPanelHtml = id => {
+    const def = PANEL_DEFS[id];
+    const empty = def.empty(dataBundle);
+    const cls = empty ? 'panel' : 'panel zoomable';
+    const hint = empty ? '' : '<span class="zoomhint">⤢</span>';
+    return `<div class="${cls}" data-panel="${id}" tabindex="${empty?'-1':'0'}">${hint}<h2>${esc(def.title)}</h2>${renderPanelBody(id, dataBundle, 1)}</div>`;
+  };
+
   document.getElementById('app').innerHTML=`
   <div class="kpis">
     <div class="kpi"><div class="v" style="color:${rateC}">${rate==null?'—':rate+'%'}</div><div class="l">baigta sėkmingai</div></div>
@@ -684,15 +805,21 @@ function render(){
     <div class="kpi"><div class="v">${(deleg.length/days).toFixed(0)}</div><div class="l">delegavimų per dieną</div></div>
   </div>
   <div class="grid">
-    <div class="panel"><h2>Ar agentai baigia darbą</h2>${panelOutcomes(deleg)}</div>
-    <div class="panel"><h2>Reviewer verdiktai</h2>${panelVerdicts(deleg)}</div>
-    <div class="panel"><h2>Trukmės kitimas</h2>${panelDuration(deleg, DATA.events, bounds)}</div>
-    <div class="panel"><h2>Circuit-breaker abortai</h2>${panelBreaker(cb)}</div>
-    <div class="panel"><h2>Kur dingsta orchestratoriaus laikas</h2>${panelTiming(tm)}</div>
-    <div class="panel"><h2>Promptų dydis pagal agentą</h2>${panelPrompts(deleg)}</div>
+    ${chartPanelHtml('outcomes')}
+    ${chartPanelHtml('verdicts')}
+    ${chartPanelHtml('duration')}
+    ${chartPanelHtml('breaker')}
+    ${chartPanelHtml('timing')}
+    ${chartPanelHtml('prompts')}
     <div class="panel wide"><h2>Per užduotis (task_id)</h2>${panelPerTask(deleg)}</div>
     <div class="panel wide"><h2>Harness pokyčiai ir jų poveikis</h2>${panelHarnessImpact(DATA.events, DATA.delegations, DATA.cb)}</div>
   </div>`;
+
+  document.querySelectorAll('.panel.zoomable').forEach(el=>{
+    const open = ()=>openZoom(el.dataset.panel, dataBundle);
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  });
 
   const sel = document.getElementById('evtSelect');
   if(sel){
@@ -705,6 +832,26 @@ function render(){
     renderBA();
   }
 }
+
+function openZoom(id, dataBundle){
+  const def = PANEL_DEFS[id];
+  if(!def) return;
+  document.getElementById('zoomTitle').textContent = def.title;
+  document.getElementById('zoomBody').innerHTML = renderPanelBody(id, dataBundle, ZOOM_SCALE);
+  document.getElementById('zoomOverlay').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closeZoom(){
+  document.getElementById('zoomOverlay').hidden = true;
+  document.body.style.overflow = '';
+}
+document.getElementById('zoomOverlay').addEventListener('click', e=>{
+  if(e.target.id==='zoomOverlay') closeZoom();
+});
+document.getElementById('zoomClose').addEventListener('click', closeZoom);
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && !document.getElementById('zoomOverlay').hidden) closeZoom();
+});
 
 document.querySelectorAll('#rangeBar button[data-preset]').forEach(b=>{
   b.onclick=()=>{ RANGE_SPEC={preset:b.dataset.preset}; writeHash(RANGE_SPEC); syncRangeUI(); render(); };
