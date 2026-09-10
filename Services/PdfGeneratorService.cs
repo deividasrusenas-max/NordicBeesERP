@@ -150,6 +150,8 @@ namespace NordicBeesERP.Services
                 Name = invoice.Customer.Name,
                 CompanyCode = invoice.Customer.CompanyCode,
                 Address = invoice.Customer.Address,
+                City = invoice.Customer.City,
+                PostalCode = invoice.Customer.PostalCode,
                 VatCode = invoice.CustomerVatCode ?? invoice.Customer?.VatCode,
                 Phone = invoice.Customer.Phone,
                 Email = invoice.Customer.Email,
@@ -258,7 +260,7 @@ namespace NordicBeesERP.Services
                         col.Item().Text(text =>
                         {
                             text.Span(labels.AddressLabel).FontSize(9);
-                            text.Span(seller?.Address ?? "").FontSize(9);
+                            text.Span(Helpers.AddressFormatter.FormatFull(seller?.Address, seller?.PostalCode, seller?.City, seller?.Country)).FontSize(9);
                         });
                         if (!string.IsNullOrEmpty(seller?.VatCode))
                         {
