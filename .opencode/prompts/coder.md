@@ -84,6 +84,32 @@ to reading the file directly — do NOT retry the same or a different
 Roslyn call hoping for a better result; retrying is exactly what turned
 this into a ~20-round loop in the real incident.
 
+## MCP tool results: no reshape-and-retry
+
+This is a general rule about ANY MCP tool's results, not a per-server
+exception — the Roslyn/`.razor` rule above is one instance of it, not
+the whole rule. If an MCP tool call (any server: `roslyn_*`,
+`mudblazor_*`, or any other) returns an empty, incomplete, or obviously
+wrong result, do not immediately re-query it with a different parameter
+shape — a renamed field, a tweaked generic-type string, an added or
+removed optional flag — hoping a different shape produces a better
+answer. You get ONE retry, and it must be a genuinely different
+approach, not a permutation of the same arguments. If that second
+attempt is ALSO unhelpful, stop querying that tool for this specific
+piece of information — proceed with what you already know, and say
+plainly in your report that the tool gave you nothing useful here. A
+gap covered by fewer tool calls and an honest note is always better than
+one hidden behind another dozen guesses.
+
+(Real incidents this generalizes from: 2026-08-22, three Roslyn path
+formats guessed in a row before reporting; 2026-09-09/10,
+`roslyn_get_type_members` on a `.razor` file re-queried through a
+5-step skill→roslyn→read→read→read cycle, ~20 repetitions; 2026-09-10,
+`mudblazor_get_api_reference`/`mudblazor_get_component_detail`
+alternated on the generic type `MudFormComponent\`1` — one call's args
+toggling an `includeInheritedMembers` flag on and off between
+repeats — for ~30 rounds before the session was manually stopped.)
+
 ## Read-only reconnaissance has a hard budget
 
 Read each file the caller gave you ONCE at the start (twice at most, if
