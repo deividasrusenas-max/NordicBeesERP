@@ -102,7 +102,7 @@ public interface ICompanyLookupService
             return result.Trim();
         }
 
-        private (string? city, string? postalCode, string? streetAddress) ParseJarsAddress(string? address)
+        public static (string? city, string? postalCode, string? streetAddress) ParseJarsAddress(string? address)
     {
         if (string.IsNullOrEmpty(address)) return (null, null, null);
         
@@ -123,7 +123,22 @@ public interface ICompanyLookupService
             // Street: contains abbreviation like g., pr., al., pl., a.
             else if (System.Text.RegularExpressions.Regex.IsMatch(part, @"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)\b"))
             {
-                streetAddress = part;
+                var abbreviationMatch = System.Text.RegularExpressions.Regex.Match(part, @"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)\b");
+                var tail = part.Substring(abbreviationMatch.Index + abbreviationMatch.Length);
+                // Optional adjacent house number at the start of the tail (e.g. " 5", " 5A", " 5-7") — deliberately non-greedy, stops at the first space
+                var houseNumberMatch = System.Text.RegularExpressions.Regex.Match(tail, @"^\s*\d[\w-]*");
+                var streetCore = part.Substring(0, abbreviationMatch.Index + abbreviationMatch.Length + houseNumberMatch.Length);
+                var rest = tail.Substring(houseNumberMatch.Length).Trim();
+                if (rest.Length > 0)
+                {
+                    // Street and city were in one comma-less part: split them apart
+                    streetAddress = streetCore.Trim();
+                    city = rest;
+                }
+                else
+                {
+                    streetAddress = part;
+                }
             }
             // City: short word without street abbreviations
             else if (part.Length > 1 && part.Length < 40 && !part.Contains('.'))
