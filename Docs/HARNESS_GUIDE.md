@@ -50,10 +50,25 @@ apėjimų. Jei taskas reikalauja komandų vykdymo, jis eina fixer'iui.
 
 Temperatūros: coder 0.25, fixer 0.1, reviewer 0.1, verifier 0.1.
 
-**Leidimų numatytoji reikšmė yra `allow`.** Jei laukas neišvardintas agento
-`permission` bloke — jis leidžiamas. Dėl to `reviewer` techniškai turi `write`
-teisę, nors jo promptas sako „read-only auditor", o `glob`/`grep`/`list`
-leidžiami ir jam, ir orchestratoriui. Uždrausti reikia eksplicitiškai.
+**Leidimų numatytoji reikšmė yra `allow`.** Framework'o bazinė taisyklė yra
+`{"*": "allow"}`, ir laimėjęs yra **paskutinis sutampantis** šablonas (`findLast`).
+Vadinasi viskas, ko taisyklė nepagavo, leidžiama — modelis yra default-allow,
+ne default-deny.
+
+⚠️ **MCP serverio vardas kaip raktas NEVEIKIA.** Tikrinamas visada pilnas
+`<serveris>_<įrankis>` vardas. `"playwright": "deny"` niekada nesutaps su
+`playwright_browser_navigate` — jis tyliai nukrenta į `*` → allow. 2026-09-10
+dėl to `coder` pasileido `playwright_browser_navigate` 101 kartą, nors
+Playwright jam buvo „uždraustas". Auditas parodė, kad `fixer` tokiu būdu turėjo
+penkis mirusius draudimus (roslyn, mudblazor, microsoft-docs, playwright,
+mempalace) be jokios kompensacijos.
+
+Taisyklė: rakte visada naudok šabloną su serverio prefiksu — `"playwright_*":
+"deny"`. Wildcard'ai veikia; išvardinti kiekvieną įrankį nereikia.
+
+Dėl to `reviewer` techniškai turi `write` teisę, nors jo promptas sako
+„read-only auditor", o `glob`/`grep`/`list` leidžiami ir jam, ir orchestratoriui.
+Uždrausti reikia eksplicitiškai.
 
 **Orchestratorius neturi `write`** — jo realus mechanizmas yra scoped `edit`.
 Patikrinta: `edit` su tuščiu `oldString` sukuria naują failą, tai jis gali
@@ -332,6 +347,12 @@ Taip pat nužudyta 5 paras kabėjusi OpenCode sesija (pid 85573).
   kaupimo.
 - **`Docs/PROJECT_STATE.md`** — 7 savaičių senumo šablonas su placeholder
   tekstu, o orchestratorius jį skaito kaip būsenos šaltinį.
+- **Circuit-breaker'io aklosios zonės** — (a) nemato daugiažingsnių ciklų, kurių
+  periodas ilgesnis nei vienas call'as (ištaisyta 2026-09-10, `aa8c7f3`);
+  (b) **nemato kvietimų su `status="error"`** — visi detektoriai tikrina tik
+  `completed`, todėl 101 nepavykęs `playwright_browser_navigate` liko
+  nepastebėtas. Tai dažniausias kilpos scenarijus: agentas kartoja tai, kas
+  neveikia. BUGLOG: `circuit-breaker-blind-to-error-status-tool-calls`.
 - **§8 coder+fixer merge** — sąmoningoje pauzėje, laukia baseline statistikos.
 - **`playwright_browser_run_code_unsafe`** — leidžia subagentui vykdyti bet kokį
   JS, įskaitant `fetch()`. `--allowed-origins` šio vektoriaus nedengia (localhost
