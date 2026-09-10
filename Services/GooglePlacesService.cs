@@ -107,7 +107,7 @@ namespace NordicBeesERP.Services
                 var body = await resp.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(body);
 
-                string street = "", city = "", postalCode = "", country = "", countryCode = "";
+                string route = "", streetNumber = "", city = "", postalCode = "", country = "", countryCode = "";
                 if (doc.RootElement.TryGetProperty("addressComponents", out var components))
                 {
                     foreach (var component in components.EnumerateArray())
@@ -121,12 +121,11 @@ namespace NordicBeesERP.Services
                             var t = type.GetString();
                             switch (t)
                             {
-                                case "route" when street.Length == 0:
-                                    street = longText;
+                                case "route" when route.Length == 0:
+                                    route = longText;
                                     break;
-                                case "street_number":
-                                    if (!string.IsNullOrEmpty(street)) street += " ";
-                                    street += longText;
+                                case "street_number" when streetNumber.Length == 0:
+                                    streetNumber = longText;
                                     break;
                                 case "locality" when city.Length == 0:
                                     city = longText;
@@ -149,6 +148,7 @@ namespace NordicBeesERP.Services
                     }
                 }
 
+                var street = string.IsNullOrEmpty(streetNumber) ? route : $"{route} {streetNumber}".Trim();
                 return new PlaceAddressDetails(street, city, postalCode, country, countryCode);
             }
             catch (Exception ex)
