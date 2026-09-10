@@ -1186,3 +1186,20 @@ re-labeling the symptom.
   addresses all three per the replay table above; not yet observed
   surviving a real, un-replayed exposure, same caution this file already
   applies to its other detectors before calling a fix `stable`.
+
+### 2026-09-10 — mempalace_search silently falling back to BM25-only (vector index stale/disabled), 22.5s for zero useful hits
+- **Symptom**: a real orchestrator run's `mempalace_search` call returned
+  a result noting "BM25 only — vector index is stale/disabled", took
+  22.5s, and surfaced no useful hits for a query that should have matched
+  prior session history.
+- **Root cause**: not yet diagnosed. User rebuilt the HNSW index the same
+  day this was observed, which suggests the index was stale/needed a
+  rebuild at the time of the run, but the fix has not been verified
+  against a fresh `mempalace_search` call since the rebuild.
+- **Fix**: NOT YET APPLIED / NOT YET VERIFIED. Re-run a representative
+  `mempalace_search` query and confirm it reports vector search (not
+  BM25-only fallback) and returns in line with expected latency.
+- **Guardrail added**: none yet.
+- **Category**: infra (mempalace / tooling)
+- **Error class**: `mempalace-vector-index-stale` (new tag)
+- **Status**: open — needs a post-reindex verification pass.
