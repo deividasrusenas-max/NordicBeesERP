@@ -2,6 +2,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models.WarehouseModule;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,8 +60,9 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                         row.RelativeItem().Column(c =>
                         {
                             c.Item().Text(companySettings.CompanyName).Bold().FontSize(12);
-                            if (!string.IsNullOrWhiteSpace(companySettings?.Address))
-                                c.Item().Text(companySettings.Address).FontSize(9).FontColor(Colors.Grey.Darken1);
+                            var formattedAddress = Helpers.AddressFormatter.FormatFull(companySettings?.Address, companySettings?.PostalCode, companySettings?.City, companySettings?.Country);
+                            if (!string.IsNullOrWhiteSpace(formattedAddress))
+                                c.Item().Text(formattedAddress).FontSize(9).FontColor(Colors.Grey.Darken1);
                             if (!string.IsNullOrWhiteSpace(companySettings?.CompanyCode))
                                 c.Item().Text($"Įmonės kodas: {companySettings.CompanyCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
                             if (!string.IsNullOrWhiteSpace(companySettings?.VatCode))

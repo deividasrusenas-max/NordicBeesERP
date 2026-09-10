@@ -58,6 +58,10 @@ namespace NordicBeesERP.Services
                     existing.CompanyCode = settings.CompanyCode;
                     existing.VatCode = settings.VatCode;
                     existing.Address = settings.Address;
+                    existing.City = settings.City;
+                    existing.PostalCode = settings.PostalCode;
+                    existing.Country = settings.Country;
+                    existing.CountryCode = settings.CountryCode;
                     existing.BankName = settings.BankName;
                     existing.BankIban = settings.BankIban;
                     existing.BankSwift = settings.BankSwift;

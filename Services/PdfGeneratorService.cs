@@ -165,6 +165,10 @@ namespace NordicBeesERP.Services
                 CompanyName = company.CompanyName,
                 CompanyCode = company.CompanyCode,
                 Address = company.Address,
+                City = company.City,
+                PostalCode = company.PostalCode,
+                Country = company.Country,
+                CountryCode = company.CountryCode,
                 VatCode = company.VatCode,
                 BankName = company.BankName,
                 BankIban = company.BankIban,
@@ -193,7 +197,7 @@ namespace NordicBeesERP.Services
                         col.Item().Text(text =>
                         {
                             text.Span(labels.AddressLabel).FontSize(9);
-                            text.Span(buyer?.Address ?? "").FontSize(9);
+                            text.Span(Helpers.AddressFormatter.FormatFull(buyer?.Address, buyer?.PostalCode, buyer?.City, buyer?.Country)).FontSize(9);
                         });
                         col.Item().Text(text =>
                         {
@@ -659,6 +663,10 @@ namespace NordicBeesERP.Services
                 CompanyName = company.CompanyName,
                 CompanyCode = company.CompanyCode,
                 Address = company.Address,
+                City = company.City,
+                PostalCode = company.PostalCode,
+                Country = company.Country,
+                CountryCode = company.CountryCode,
                 VatCode = company.VatCode,
                 BankName = company.BankName,
                 BankIban = company.BankIban,
@@ -695,7 +703,7 @@ namespace NordicBeesERP.Services
                                 col.Item().Text(text =>
                                 {
                                     text.Span(labels.AddressLabel).FontSize(9);
-                                    text.Span(buyer?.Address ?? "").FontSize(9);
+                                    text.Span(Helpers.AddressFormatter.FormatFull(buyer?.Address, buyer?.PostalCode, buyer?.City, buyer?.Country)).FontSize(9);
                                 });
                                 col.Item().Text(text =>
                                 {

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 
 namespace NordicBeesERP.Services.Pdf;
@@ -41,8 +42,9 @@ public class BrandedReportHeader
                     if (!string.IsNullOrEmpty(company.CompanyCode))
                         col.Item().Text(t => { t.Span("Įmonės kodas: ").FontSize(8); t.Span(company.CompanyCode).FontSize(8); });
 
-                    if (!string.IsNullOrEmpty(company.Address))
-                        col.Item().Text(t => { t.Span("Adresas: ").FontSize(8); t.Span(company.Address).FontSize(8); });
+                    var formattedAddress = Helpers.AddressFormatter.FormatFull(company.Address, company.PostalCode, company.City, company.Country);
+                    if (!string.IsNullOrEmpty(formattedAddress))
+                        col.Item().Text(t => { t.Span("Adresas: ").FontSize(8); t.Span(formattedAddress).FontSize(8); });
 
                     if (!string.IsNullOrEmpty(company.VatCode))
                         col.Item().Text(t => { t.Span("PVM kodas: ").FontSize(8); t.Span(company.VatCode).FontSize(8); });
