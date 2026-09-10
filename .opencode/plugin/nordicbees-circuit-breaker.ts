@@ -134,6 +134,57 @@ function isMalformedToolError(error: string): boolean {
   return MALFORMED_ERROR_PREFIXES.some((p) => error.startsWith(p))
 }
 
+// Identical-error-repeat (BUGLOG: circuit-breaker-blind-to-error-status-tool-
+// calls, escalated 2026-09-10). All three repetition detectors below key off
+// `state.history`, which is only populated for `status === "completed"` tool
+// calls (see the completed-only gate further down) — a tool call that
+// actually executes and returns a real runtime error (not one of the three
+// MALFORMED_ERROR_PREFIXES rejections above, which is a different, already-
+// caught case) is invisible to all of them, no matter how many times it
+// repeats. Confirmed against two independent real incidents the same day,
+// neither of which produced a single circuit-breaker.jsonl entry despite
+// being far past every existing threshold: 101 consecutive
+// `playwright_browser_navigate` calls (same URL, `net::ERR_HTTP_RESPONSE_
+// CODE_FAILURE` every time) and 271 consecutive `mudblazor_get_api_reference`/
+// `mudblazor_get_component_detail` calls on an invalid generic-type name
+// (`MudBaseInput<T>`/`MudFormComponent\`1`, "not found" every time). A third
+// occurrence was found by replay while validating this fix, not observed
+// live: an otherwise-legitimate, successfully-completed 228-call fixer
+// session contains an 82-call `mempalace_*` loop, MCP error "Not connected"
+// on every attempt (see BUGLOG for why that root cause is left open, not
+// fixed here).
+//
+// Tracked in a SEPARATE per-session map (`errorRepeatTrackers`, mirroring
+// `malformedTrackers` below, not merged into `sessions`/`state.history`)
+// keyed by exact `tool + argsHash` and incremented on every `status:"error"`
+// occurrence of that exact call, REGARDLESS of what other calls happen in
+// between — adjacency-based counting (the same shape same-tool-streak/
+// identical-args-streak use) cannot catch this: the mudblazor incident
+// interleaves two distinct failing calls (`A, B1, A, B2, ...`), so no two
+// consecutive events are ever identical, the same structural blindness that
+// motivated `detectCyclicPattern` for completed calls. A key's count resets
+// to 0 the moment that exact call succeeds — this deliberately does NOT
+// require the repeats to be consecutive, only that this precise call has now
+// failed this many times, cumulative, this session.
+//
+// Threshold chosen to match, not undercut, the "one retry, then stop and say
+// so" rule added to coder.md the same day: fail, one retry, and if THAT also
+// fails, count reaches 3 -- aborting at 2 would trip on a model correctly
+// following its own one-retry allowance, punishing compliant behavior instead
+// of the violation. Replayed against the actual real sessions (not a
+// prototype) before shipping: fires at call #7 of the playwright incident and
+// call #60 of the mudblazor incident (both far short of their real 101/271-
+// call length); does NOT fire on a real, clean 518-call legitimate fixer
+// session (max identical-key repeat found: 1); DOES fire on the 228-call
+// mempalace session above, at the point the loop is already clearly dead, not
+// on any of that session's isolated one-off errors.
+const IDENTICAL_ERROR_THRESHOLD = 3
+type ErrorRepeatTracker = { counts: Map<string, number>; seenPartIds: Set<string> }
+const errorRepeatTrackers = new Map<string, ErrorRepeatTracker>()
+function errorRepeatKey(tool: string, input: unknown): string {
+  return tool + " " + JSON.stringify(input ?? {})
+}
+
 // A pure text-only repeat loop (no tool calls at all between turns) is
 // aborted after this many consecutive near-identical completed text
 // parts. Real incident (2026-09-06): a fixer session correctly finished
@@ -227,6 +278,7 @@ function cleanup(sessionID: string) {
   sessions.delete(sessionID)
   subagentSessions.delete(sessionID)
   malformedTrackers.delete(sessionID)
+  errorRepeatTrackers.delete(sessionID)
 }
 
 // Lightweight always-on diagnostic log (BUGLOG: circuit-breaker-blind-to-
@@ -273,6 +325,9 @@ function logAbort(
     totalToolCalls: number
     recentErrors?: string[]
     cyclePeriod?: number
+    tool?: string
+    argsSnippet?: string
+    errorSnippet?: string
   },
 ) {
   try {
@@ -352,6 +407,11 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
       if (part.type === "tool" && part.state?.status === "completed") {
         const tracker = malformedTrackers.get(part.sessionID)
         if (tracker) tracker.streak = 0
+        // This exact call succeeded — its identical-error-repeat count (if
+        // any) no longer reflects reality, regardless of what else happened
+        // in between. See errorRepeatKey's own comment above.
+        const errTracker = errorRepeatTrackers.get(part.sessionID)
+        if (errTracker) errTracker.counts.delete(errorRepeatKey(part.tool, part.state?.input))
       } else if (part.type === "text" && part.time?.end) {
         // Real TextPart completion signal (time.end set) — NOT
         // part.state?.status, which the pre-existing text-repeat-loop
@@ -381,6 +441,44 @@ export const NordicBeesCircuitBreaker: Plugin = async ({ client, directory }) =>
               history: [],
               totalToolCalls: tracker.streak,
               recentErrors: [...tracker.recentErrors],
+            })
+            await client.session.abort({ path: { id: part.sessionID } })
+            cleanup(part.sessionID)
+          }
+        }
+      } else if (part.type === "tool" && part.state?.status === "error") {
+        // A real runtime error (execute() ran and failed) — NOT one of the
+        // three rejection prefixes above, which is why this is a separate
+        // branch rather than an `else` inside the malformed one. See
+        // errorRepeatKey's own comment for why this is unscoped (checked
+        // for every session, same as malformed-tool-call-streak) and keyed
+        // by exact tool+args rather than requiring adjacency.
+        const errorMsg = part.state?.error ?? ""
+        const tracker = errorRepeatTrackers.get(part.sessionID) ?? { counts: new Map(), seenPartIds: new Set() }
+        errorRepeatTrackers.set(part.sessionID, tracker)
+        if (!tracker.seenPartIds.has(part.id)) {
+          tracker.seenPartIds.add(part.id)
+          const key = errorRepeatKey(part.tool, part.state?.input)
+          const count = (tracker.counts.get(key) ?? 0) + 1
+          tracker.counts.set(key, count)
+
+          diagLog(diagPath, reportsDir, {
+            stage: "checked",
+            sessionID: part.sessionID,
+            tool: part.tool,
+            status: "error",
+            errorRepeatCount: count,
+          })
+
+          if (count >= IDENTICAL_ERROR_THRESHOLD) {
+            logAbort(logPath, reportsDir, {
+              sessionID: part.sessionID,
+              reason: "identical-error-repeat",
+              history: [],
+              totalToolCalls: count,
+              tool: part.tool,
+              argsSnippet: JSON.stringify(part.state?.input ?? {}).slice(0, MALFORMED_ERROR_MAX_LEN),
+              errorSnippet: errorMsg.slice(0, MALFORMED_ERROR_MAX_LEN),
             })
             await client.session.abort({ path: { id: part.sessionID } })
             cleanup(part.sessionID)

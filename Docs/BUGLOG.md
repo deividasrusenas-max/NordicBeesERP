@@ -1116,42 +1116,73 @@ re-labeling the symptom.
   detector in this file** — same-tool-streak/identical-args-streak
   require `completed`, malformed-streak requires one of 3 rejection-only
   prefixes.
-- **Fix**: NOT APPLIED this session — per instructions, investigate and
-  report only, and log as its own error class if larger than a one-line
-  oversight. This is larger: naively changing the line-385 gate to also
-  accept `status === "error"` would feed erroring calls into the SAME
-  history array same-tool-streak/identical-args-streak already use, but
-  those two detectors were specifically threshold-tuned (see this file's
-  own `SAME_TOOL_STREAK_MAX_DISTINCT_ARGS` comment) against REAL completed-
-  call sessions, including legitimate multi-step bash workflows that
-  retry with different args after a failure; whether the same thresholds
-  are still correct once error-status calls are mixed in, whether errors
-  should count toward `ABSOLUTE_CEILING`, and whether this should apply
-  to all three detectors uniformly or be its own separate error-focused
-  detector (parallel to malformed-tool-call-streak, not merged into it)
-  all need the same kind of real-incident-vs-real-legitimate-session
-  replay this file's existing detectors were tuned against — not a same-
-  session patch.
-- **Guardrail added**: none — this entry IS the guardrail-gap record.
+- **Third occurrence (found by replay, not observed live)**: while
+  validating the fix below against real data (not just the two live
+  incidents), replayed every real session available in
+  `~/.local/share/opencode/opencode.db` with a nontrivial error count,
+  including the 748-tool-call reference session `detectCyclicPattern`
+  was itself originally tuned against. Its second sub-session
+  (`ses_f93428a8dffe3ydOm0WXQFaXf2`, 228 tool-call parts) reported
+  `status:"completed"` in `task-stats.jsonl` and DID complete real,
+  correct, unrelated work both before and after — but calls 101-191 (82
+  calls) are `mempalace_mempalace_add_drawer`/`mempalace_mempalace_
+  check_duplicate`, byte-identical content each time, MCP error
+  `"Not connected"` on every single attempt. Zero `circuit-breaker.jsonl`
+  entries for this session either. This was not visible from any
+  previously-examined data — it surfaced only because validating the new
+  detector's false-positive rate required replaying a large, "clean"
+  reference session in full, and it turned out not to be entirely clean.
+  This raises the class's real frequency above what the two live
+  incidents suggested: it has been happening inside otherwise-successful
+  sessions without being noticed, not just in sessions that visibly hung
+  until a human intervened.
+- **Open question, deliberately not investigated this session**: the
+  mempalace failure's underlying cause (`"Not connected"` — the MCP
+  connection itself is down) is a DIFFERENT root cause from the
+  playwright/mudblazor cases (a live connection returning a real
+  "invalid input" business error). An abort is the right containment for
+  all three — repeating an identical call that cannot succeed is waste
+  regardless of why it can't succeed — but it is not a fix for a dead
+  connection; whatever keeps `mempalace` connected (or reconnects it) is
+  untouched by this entry and not investigated here.
+- **Fix**: `.opencode/plugin/nordicbees-circuit-breaker.ts` — added a
+  fourth, independent detector, `identical-error-repeat`, parallel to
+  (not merged into) the existing three: a per-session `Map<string,
+  number>` (`errorRepeatTrackers`), keyed by exact `tool + JSON.stringify
+  (args)`, incremented on every `status:"error"` tool call that is NOT
+  one of the three malformed-rejection prefixes, reset to 0 the moment
+  that exact call succeeds. Deliberately NOT adjacency-based like the
+  other three — the mudblazor incident interleaves two distinct failing
+  calls (`A, B1, A, B2, ...`), so no two consecutive events are ever
+  identical; only a per-exact-key cumulative count (regardless of what
+  else happens in between) catches it. `IDENTICAL_ERROR_THRESHOLD = 3`,
+  chosen to match, not undercut, the "one retry, then stop" rule added to
+  `coder.md` the same day — a threshold of 2 would abort a model
+  correctly using its one allowed retry; 3 only trips on a second,
+  policy-violating retry. Unscoped (checked for every session, including
+  the orchestrator's own), mirroring `malformed-tool-call-streak`'s own
+  precedent that a real, repeating runtime error has no legitimate case
+  for any role.
+  **Verified against the real, committed implementation** (extracted
+  verbatim, not a prototype) replayed over all four sessions:
+  | session | total calls | result |
+  |---|---|---|
+  | playwright incident (real) | 104 | fires at call **#7** (true loop ran 101) |
+  | mudblazor incident (real) | 317 | fires at call **#60** (true loop ran 271) |
+  | legit fixer session, 518 calls | 518 | does not fire (max identical-key repeat: 1) |
+  | legit fixer session, 228 calls (mempalace) | 228 | fires at call **#114** |
+- **Guardrail added**: mechanical (`identical-error-repeat`, above) —
+  this entry's own gap is now closed for the shape it describes; whether
+  it needs further tuning is for the next real exposure to show, same
+  caution this file's other detectors already apply to themselves.
 - **Category**: infra (harness)
 - **Error class**: `circuit-breaker-blind-to-error-status-tool-calls`
   (new tag)
-- **Status**: escalated (2026-09-10, same day) — second independent
-  occurrence, different tool, confirmed via the SAME direct method (the
-  real session's `part` table in `~/.local/share/opencode/opencode.db`,
-  not inference): `coder` session `ses_f753a6e0dffe6qFEJj05B7ltzN`
-  (MudBlazor `MudBaseInput<T>`/`MudFormComponent\`1` investigation, see
-  the RECURRENCE entry above this one) made 310 `mudblazor_*` calls, 276
-  `status:"error"`, 34 `status:"completed"` — of the specific 271-call
-  loop, ALL 271 are `status:"error"`, none ever entered `state.history`.
-  Two real incidents, two different MCP servers (`playwright`,
-  `mudblazor`), same exact gate at line 385, same result: zero
-  `circuit-breaker.jsonl` entries despite the tool-call volume alone
-  (101, then 271) being far past any of this file's existing thresholds.
-  This is no longer a single-incident hypothesis — it is confirmed,
-  recurring behavior, and per this log's own recurrence-check rule
-  (`monitoring` → `escalated` on a same-mechanism repeat) a stronger
-  mechanical fix is now warranted rather than continuing to log
-  awareness. Design for a fix (a separate error-only history, keyed by
-  exact tool+args, independent threshold) is being drafted next —
-  tracked as its own follow-up, not yet applied as of this entry.
+- **Status**: escalated (2026-09-10, same day, now with a mechanical
+  fix) — three independent occurrences confirmed the same day, two of
+  them live incidents and one found only by replay while validating the
+  fix, meaning the class's true frequency was higher than what triggered
+  this investigation in the first place. `identical-error-repeat`
+  addresses all three per the replay table above; not yet observed
+  surviving a real, un-replayed exposure, same caution this file already
+  applies to its other detectors before calling a fix `stable`.
