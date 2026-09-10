@@ -41,6 +41,22 @@ namespace NordicBeesERP.Models
         [Column("address")]
         public string Address { get; set; } = string.Empty;
 
+        [MaxLength(100)]
+        [Column("city")]
+        public string? City { get; set; }
+
+        [MaxLength(20)]
+        [Column("postal_code")]
+        public string? PostalCode { get; set; }
+
+        [MaxLength(100)]
+        [Column("country")]
+        public string? Country { get; set; } = "Lietuva";
+
+        [MaxLength(2)]
+        [Column("country_code")]
+        public string? CountryCode { get; set; } = "LT";
+
         [MaxLength(255)]
         [Column("bank_name")]
         public string? BankName { get; set; }
