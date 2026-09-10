@@ -84,7 +84,7 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                         c.Item().Text("Tiekėjas").Bold().FontSize(9).FontColor(Colors.Grey.Darken1);
                         c.Item().Text(supplier?.Name ?? $"ID: {delivery.SupplierId}").FontSize(11).Bold();
                         if (!string.IsNullOrWhiteSpace(supplier?.Address))
-                            c.Item().Text(supplier.Address).FontSize(9).FontColor(Colors.Grey.Darken1);
+                            c.Item().Text(Helpers.AddressFormatter.FormatFull(supplier.Address, supplier.PostalCode, supplier.City, supplier.Country)).FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(supplier?.CompanyCode))
                             c.Item().Text($"Įmonės kodas: {supplier.CompanyCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(supplier?.NationalIdNumber))
