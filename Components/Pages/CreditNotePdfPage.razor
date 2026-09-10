@@ -31,13 +31,33 @@
         try
         {
             var creditNote = await CreditNoteService.GetCreditNoteAsync(Id);
-            var pdfBytes = await CreditNoteService.GeneratePdfAsync(Id);
-            
+
+            byte[] pdfBytes;
+            if (creditNote?.Status == CreditNoteStatus.Draft)
+            {
+                // Draft: generate live, download, then mark printed and freeze the same bytes at issuance
+                pdfBytes = await CreditNoteService.GeneratePdfAsync(Id);
+            }
+            else
+            {
+                // Final credit note: use the cached frozen copy if one exists (regenerates + saves on first final print)
+                pdfBytes = await CreditNoteService.GenerateAndSavePdfAsync(Id);
+            }
+
             if (pdfBytes is not null && pdfBytes.Length > 0)
             {
-                await CreditNoteService.SetPrintedAsync(Id);
                 var fileName = $"{(creditNote?.CreditNoteNumber ?? Id.ToString())}.pdf";
                 await DownloadPdfAsync(pdfBytes, fileName);
+
+                // Update credit note status from Draft to Printed (PDF generation = "sending")
+                if (creditNote?.Status == CreditNoteStatus.Draft)
+                {
+                    await CreditNoteService.SetPrintedAsync(Id);
+
+                    // Freeze the exact bytes that were just downloaded (no-op while still Draft)
+                    await CreditNoteService.SaveFinalizedPdfAsync(Id, pdfBytes);
+                }
+
                 await Task.Delay(3000);
                 Navigation.NavigateTo($"/credit-notes/{Id}");
             }
