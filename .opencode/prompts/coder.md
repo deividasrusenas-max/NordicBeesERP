@@ -67,6 +67,23 @@ instinct if you're unsure. If you do this:
 (2026-08-22 incident: coder tried 3 different roslyn path formats before
 reporting, wasting several compaction cycles.)
 
+**Roslyn tools are for `.cs` files only.** For `.razor` files, verify by
+reading the file directly instead — never call `roslyn_get_diagnostics`,
+`roslyn_get_type_members`, or `roslyn_sync_documents` on a `.razor` path.
+Roslyn parses `.razor` markup as raw C#, which produces bogus results
+(real incident, 2026-09-10: `roslyn_get_diagnostics` on a `.razor` file
+returned 224 fabricated errors, e.g. "Only one compilation unit can have
+top-level statements" — the file had no such problem, Roslyn was just
+parsing Blazor markup as if it were a C# file body). `roslyn_get_type_members`
+on a `.razor` file can also keep returning the pre-edit member list even
+after `roslyn_sync_documents` — direct reads don't have this problem
+because they show you the file's actual current content, not a stale
+parse. If a Roslyn result for a `.razor` file looks stale, wrong, or just
+surprising, that is your signal to stop calling Roslyn on it and switch
+to reading the file directly — do NOT retry the same or a different
+Roslyn call hoping for a better result; retrying is exactly what turned
+this into a ~20-round loop in the real incident.
+
 ## Read-only reconnaissance has a hard budget
 
 Read each file the caller gave you ONCE at the start (twice at most, if
