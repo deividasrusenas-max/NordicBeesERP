@@ -53,6 +53,24 @@ re-labeling the symptom.
 
 ## Entries
 
+### 2026-09-10 — Circuit-breaker blind to repeating multi-step cycles (adjacency-only detection)
+- **Symptom**: `coder` looped ~20 times on `Components/Dialogs/ResolveSupplierDialog.razor` with a repeating 5-step pattern — `skill(mempalace)` → `roslyn_get_type_members` → `read` → `read` → `read`, byte-identical arguments every cycle (confirmed by pulling the real session's tool-call history directly from OpenCode's own session DB, session `ses_f76b145dbffeEjbcT4eEjVviOV`, 111 total tool calls, ~20 repetitions of the cycle). `.opencode/reports/circuit-breaker.jsonl` has ZERO entries for this session — confirmed via `grep roslyn_get_type_members`, returning nothing.
+- **Root cause**: confirmed against the actual code, not assumed — `.opencode/plugin/nordicbees-circuit-breaker.ts`'s two repetition-based detectors both require uniformity across a bounded CONSECUTIVE window: `same-tool-streak` requires all 8 calls in its window to share one tool name; `identical-args-streak` requires the last 3 CONSECUTIVE calls to match tool+args exactly. A period-5 cycle interleaving 3 distinct tools (skill/roslyn/read) can satisfy neither condition, structurally, no matter how many times it repeats — this is not a tuning gap, it is a category the adjacency-based design cannot see at all.
+- **Fix**: commit `aa8c7f3` — added `detectCyclicPattern()`: checks periods 2-8 for 5 exact back-to-back repetitions, additive alongside the existing checks (new `cyclic-pattern-repeat` reason, its own `cyclePeriod` field in the log). Thresholds (max period 8, repeat count 5) were chosen against real data: replaying the actual incident fires the new check at call #45 of 111; replaying a real, legitimate, successful 518-tool-call fixer session (which contains its own real, coincidental 3-4x-repeated 3-step git-check burst) at repeat-thresholds 3 and 4 both false-positive on that real data, 5 is the first threshold clean against it. Extending the per-session history buffer to 40 entries required refactoring `same-tool-streak`'s own window selection (from relying on array length being exactly 8 to explicitly slicing the last 8) — verified via the real compiled plugin that this is exactly behavior-preserving (synthetic same-tool-streak still fires at call #8, identical-args-streak still fires at call #3, unchanged).
+- **Also investigated, found to be a DIFFERENT mechanism, not fixed here**: a separate fixer incident the same evening (2026-09-09) initially looked like the same class of miss. See the new `aborted-subagent-leaves-outer-task-call-unresolved` entry below — that one turned out to be 9 separate short-lived sessions, each already correctly caught by the EXISTING detectors within 0-13 tool calls, not a multi-step-cycle blind spot. Recorded separately so the two are not conflated.
+- **Category**: infra (harness)
+- **Error class**: `circuit-breaker-blind-to-multi-step-cycles` (new tag)
+- **Status**: monitoring — fix targets the exact incident found; not yet observed surviving a real recurrence.
+
+### 2026-09-10 — Aborted subagent leaves its outer Task-call unresolved in task-stats.jsonl (misleading inflated durations)
+- **Symptom**: investigating a reported "fixer loop spread across compaction boundaries" (2026-09-09 evening, ~18:32-18:50), `.opencode/reports/task-stats.jsonl` shows 5 fixer Task-calls marked `"status":"interrupted"` with durations of 1125.9-1312.9 seconds (~19-22 minutes each), model `Qwen3.6-35B-A3B (Fixer, via llama-swap)` (the MoE model since replaced — see the `plan-without-execution-gap` correction below).
+- **Root cause**: cross-referencing `.opencode/reports/circuit-breaker.jsonl` for the exact same window shows 9 separate abort events (4x `identical-args-streak`, 3x `post-terminal-continuation`, 2x `same-tool-streak`), across 9 DIFFERENT `sessionID`s, all bash-only tool sequences (matching fixer's role), each caught within 0-13 tool calls of that specific session starting. Cross-referencing `.opencode/reports/orchestrator-timing.jsonl` confirms these were 9 distinct sub-task delegations (SupplierEditDialog commit x2 attempts, SupplierCreateDialog x2, CustomerCreateDialog x3, final commit attempt, rebuild+restart), not one session retried identically. The circuit-breaker worked correctly and promptly, 9 times, against a model that kept getting stuck on short bash sequences that evening. The actual gap: `nordicbees-quality-monitor.ts`'s own before/after pairing for the orchestrator's OUTER Task-tool call never gets an `"after"` event when the underlying subagent session is aborted by the circuit-breaker — so 5 of these 9 outer calls sat "pending" in quality-monitor's in-memory map until its own unrelated 10-minute stale-sweep eventually flagged them, retroactively, with a duration measuring time-until-detected rather than the true (much shorter, ~1-2 minute) time-to-abort.
+- **Fix**: NOT APPLIED — deliberately logged, not patched, this session. Would require `nordicbees-circuit-breaker.ts` to somehow signal `nordicbees-quality-monitor.ts` (two independent plugins with no shared state today) when it aborts a session whose Task-call is still pending in the other plugin's own tracking, or for quality-monitor to itself listen for `session.idle`/an abort signal rather than relying purely on `tool.execute.after`.
+- **IMPORTANT for anyone reading `task-stats.jsonl` later**: the 1125.9-1312.9 second durations recorded for these 5 specific `call_id`s (evening of 2026-09-09, `task_id":"1788977299763-1sjn6j"`) are WRONG and must not be read as real elapsed time for those fixer delegations — they are an artifact of this exact gap, not genuine 20-minute stuck calls.
+- **Category**: infra (harness)
+- **Error class**: `aborted-subagent-leaves-outer-task-call-unresolved` (new tag)
+- **Status**: monitoring — not fixed, logged for awareness and to prevent the bad duration numbers from being trusted as real baseline data.
+
 ### 2026-09-10 — JARS street parsing silently dead: street-abbreviation regex trailing `\b` could never match (caught by new unit tests)
 - **Symptom**: New unit tests for `CompanyLookupService.ParseJarsAddress` (written to cover a street+city split improvement) failed 3 of 8 out of the gate — street values like `"Vilniaus g. 5 Kaunas"` returned `streetAddress = null` (fell through to the whole-input fallback) and city `null`, instead of splitting street/city. The pre-existing `ParseJarsAddress` had apparently NEVER extracted a street since the street branch was added — every JARS address silently used the `streetAddress = address` fallback, only the postal/city branches actually worked.
 - **Root cause**: the street-abbreviation regex `@"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)\b"` had a TRAILING `\b` immediately after a literal `.`. `\b` is a zero-width word boundary requiring the character AFTER it to be a word character; `.` is a non-word character and is always followed by a space or end-of-string (both non-word), so `\b` after `\.` can never match. The `else if` street branch was structurally unreachable dead code — not an edge case, not an input-data problem: the guard itself could never be true. The bug was invisible because the method's fallback (`streetAddress = address`) silently produced plausible-looking (wrong) output, so no user-visible failure existed to report.
@@ -835,6 +853,19 @@ re-labeling the symptom.
 - **Category**: infra (harness)
 - **Error class**: `plan-without-execution-gap`
 - **Status**: escalated — the prompt-text "report BLOCKED once and STOP" rule and the Tier-1 circuit-breaker both failed to stop this instance, for different reasons (the agent never considered itself blocked; the breaker's adjacency assumption was violated). Recommend fixing the breaker's compaction blindness rather than adding further prompt text.
+  **Corrected 2026-09-10**: fixer's model was switched from the 35B-A3B
+  MoE (`Qwen3.6-35B-A3B (Fixer, via llama-swap)`) to the 27B dense model
+  (`llama-swap/coder`) — after the switch, fixer completed its full
+  13-step sequence cleanly on the first try. Separately, investigating a
+  related incident the same evening found the circuit-breaker's existing
+  detectors DID fire correctly and promptly (9 times) against sibling
+  fixer delegations that same evening — see the new
+  `aborted-subagent-leaves-outer-task-call-unresolved` entry above.
+  Whether THIS specific session (the one that survived ~8 compactions
+  without ever being aborted) reflects a genuine compaction-adjacency gap
+  in the breaker, or is better explained by the same underlying
+  MoE-model unreliability now resolved by the model switch, was not
+  re-investigated further this session — recorded as open.
 
 ### 2026-09-09 — Unconditional skill injection fills a subagent's context on trivial tasks
 - **Symptom**: Two measurements the same day. (1) `reviewer` was delegated a trivial "count the lines in AuthService.cs" task and received a **16,368-character** prompt, taking 56s (`orchestrator-timing.jsonl`, `skills_injected: true`). (2) `fixer` was delegated a single-file commit and compacted repeatedly within seconds of starting, against a 65536-token context limit that a one-file commit should not approach — see the loop entry above.
@@ -844,6 +875,17 @@ re-labeling the symptom.
 - **Category**: infra (harness)
 - **Error class**: `unconditional-skill-injection-context-bloat` (new tag)
 - **Status**: monitoring
+  **Corrected 2026-09-10**: the fixer half of this entry's premise was
+  wrong. Real measured `prompt_chars` for fixer's own Task-calls that
+  evening (`orchestrator-timing.jsonl`) ranged 1375-2150 — under 1% of
+  fixer's 65536-token context limit (~262,000 characters at ~4
+  chars/token). Injected skill-content SIZE was NOT the cause of fixer's
+  compaction; whatever actually drove it was unrelated to prompt size
+  (most likely the old 35B-A3B MoE model's own behavior — see the
+  `plan-without-execution-gap` correction above, resolved by switching to
+  the 27B dense model). The reviewer measurement in this entry (16,368
+  characters) stands — it is real, unrelated to the fixer correction, and
+  not itself tied to a proven compaction incident for reviewer that day.
 
 ### 2026-09-09 — Playwright E2E test project is not part of the solution — regression tests never compile/run in standard gates
 - **Symptom**: `Tests/Playwright/NordicBeesERP.Tests.csproj` is absent from `NordicBeesERP.sln` (grep on the sln: 0 references; the only csproj referenced resolves to `Tests/NordicBeesERP.Tests/...`). As a result, the standard `dotnet build`, `dotnet test`, and `bump-version.sh` gate 1.5 silently ignore the entire Playwright E2E suite — it is never compiled and never executed by any automated gate, so the regression tests exist only as documentation. Concrete evidence today: the save-based address-wipe regression test added in commit `11a4118` compiled only because the fixer was explicitly instructed to run `dotnet build Tests/Playwright/NordicBeesERP.Tests.csproj` directly; the plain solution build reports 0 errors while skipping it entirely. The class-level `[Trait("Category", "E2E")]` exclusion is a deliberate, correct design for the *execution* gate (E2E needs a live server + browser), but the project should still be *compiled* by the standard build.
