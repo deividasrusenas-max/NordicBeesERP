@@ -121,9 +121,9 @@ public interface ICompanyLookupService
                 postalCode = part.Replace("LT-", "");
             }
             // Street: contains abbreviation like g., pr., al., pl., a.
-            else if (System.Text.RegularExpressions.Regex.IsMatch(part, @"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)\b"))
+            else if (System.Text.RegularExpressions.Regex.IsMatch(part, @"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)(?=\s|$)"))
             {
-                var abbreviationMatch = System.Text.RegularExpressions.Regex.Match(part, @"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)\b");
+                var abbreviationMatch = System.Text.RegularExpressions.Regex.Match(part, @"\b(g\.|pr\.|al\.|pl\.|a\.|sk\.|kl\.|per\.|kelias)(?=\s|$)");
                 var tail = part.Substring(abbreviationMatch.Index + abbreviationMatch.Length);
                 // Optional adjacent house number at the start of the tail (e.g. " 5", " 5A", " 5-7") — deliberately non-greedy, stops at the first space
                 var houseNumberMatch = System.Text.RegularExpressions.Regex.Match(tail, @"^\s*\d[\w-]*");
