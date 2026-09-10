@@ -31,7 +31,8 @@ namespace NordicBeesERP.Migrations
                 table: "company_settings",
                 type: "varchar(100)",
                 maxLength: 100,
-                nullable: true)
+                nullable: true,
+                defaultValue: "Lietuva")
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.AddColumn<string>(
@@ -39,7 +40,8 @@ namespace NordicBeesERP.Migrations
                 table: "company_settings",
                 type: "varchar(2)",
                 maxLength: 2,
-                nullable: true)
+                nullable: true,
+                defaultValue: "LT")
                 .Annotation("MySql:CharSet", "utf8mb4");
         }
 
