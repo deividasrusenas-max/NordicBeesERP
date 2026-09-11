@@ -105,7 +105,16 @@
                                    Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged" Margin="Margin.Dense">
                             <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM sąskaita faktūra</MudSelectItem>
                             <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM sąskaita faktūra</MudSelectItem>
+                            <MudSelectItem T="string" Value="@InvoiceTypes.ReverseCharge96">Atvirkštinis PVM (96 str.)</MudSelectItem>
                         </MudSelect>
+                        @if (_invoiceType == InvoiceTypes.ReverseCharge96)
+                        {
+                            <MudAlert Severity="Severity.Info" Class="mt-2">Atvirkštinis apmokestinimas — PVM neskaičiuojamas, jį apskaičiuoja ir sumoka pirkėjas (PVMĮ 96 str.). Pirkėjas privalo būti LR PVM mokėtojas.</MudAlert>
+                            @if (SelectedCustomer is not null && string.IsNullOrWhiteSpace(SelectedCustomer.VatCode))
+                            {
+                                <MudAlert Severity="Severity.Warning" Class="mt-2">Pirkėjas neturi nurodyto PVM kodo — 96 str. netaikomas. Patikrinkite kliento duomenis.</MudAlert>
+                            }
+                        }
                     </MudItem>
                 </MudGrid>
             </MudPaper>
@@ -153,7 +162,8 @@
                     <MudTd DataLabel="PVM %">
                         <MudNumericField T="decimal" @bind-Value="line.VatRate" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined" 
                                          Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
-                                         @key="(line, 3)" />
+                                         Disabled="@(_invoiceType == InvoiceTypes.ReverseCharge96)"
+                                         @key="(line, _selectedCustomerId, _invoiceType)" />
                     </MudTd>
                 <MudTd DataLabel="Suma">
                     <MudTextField T="string" Value="@FormatAmountHelper.FormatAmount(line.LineTotal)" Variant="Variant.Outlined" 
@@ -228,6 +238,7 @@
     
     private bool _isPurchase = false;
     private string _notes = string.Empty;
+    private Customer? SelectedCustomer => _customers.FirstOrDefault(c => c.Id == _selectedCustomerId);
 
     protected override async Task OnInitializedAsync()
     {
