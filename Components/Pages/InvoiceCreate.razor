@@ -123,9 +123,18 @@
                 <MudSelect T="string" Label="Sąskaitos tipas" Value="@_invoiceType" 
                            Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged"
                            Disabled="@_isPurchase" Margin="Margin.Dense">
-                    <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM sąskaita faktūra</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM</MudSelectItem>
+                     <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM sąskaita faktūra</MudSelectItem>
+                     <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM</MudSelectItem>
+                     <MudSelectItem T="string" Value="@InvoiceTypes.ReverseCharge96">Atvirkštinis PVM (96 str.)</MudSelectItem>
                 </MudSelect>
+                @if (_invoiceType == InvoiceTypes.ReverseCharge96)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-2">Atvirkštinis apmokestinimas — PVM neskaičiuojamas, jį apskaičiuoja ir sumoka pirkėjas (PVMĮ 96 str.). Pirkėjas privalo būti LR PVM mokėtojas.</MudAlert>
+                    @if (_selectedCustomer is not null && string.IsNullOrWhiteSpace(_selectedCustomer.VatCode))
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mt-2">Pirkėjas neturi nurodyto PVM kodo — 96 str. netaikomas. Patikrinkite kliento duomenis.</MudAlert>
+                    }
+                }
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -185,8 +194,9 @@
                 </MudTd>
                 <MudTd DataLabel="PVM %">
                     <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
-                                     Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M" Format="G29"
-                                     @key="(line, _selectedCustomerId)"
+                                      Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M" Format="G29"
+                                      Disabled="@(_invoiceType == InvoiceTypes.ReverseCharge96)"
+                                      @key="(line, _selectedCustomerId, _invoiceType)"
                                      ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Suma">
