@@ -140,7 +140,8 @@ namespace NordicBeesERP.Services
         private void ComposeContent(IContainer container, Invoice invoice, CompanySettings company, decimal subtotalExclVat, decimal totalVat, decimal totalInclVat)
         {
             // Gauti lokalizacijos tekstus pagal kalbą
-            bool isReverseCharge6 = invoice.ReverseCharge || (invoice.InvoiceType?.Contains("6%") == true);
+            bool isReverseCharge6 = invoice.InvoiceType?.Contains("6%") == true;
+            bool isRc96 = invoice.ReverseCharge && !isReverseCharge6;
             var labels = GetLocalizationLabels(invoice.Language, isReverseCharge6);
             
             // Tikriname, ar tai yra 6% atvirkštinio apmokestinimo sąskaita
@@ -348,7 +349,12 @@ namespace NordicBeesERP.Services
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalInclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                     }
                 });
-                
+
+                if (isRc96)
+                {
+                    column.Item().PaddingTop(3).Text(labels.ReverseChargeNoteLabel).FontSize(7);
+                }
+
                 // Suma
                 column.Item().PaddingTop(10).AlignRight().Column(col =>
                 {
@@ -438,7 +444,9 @@ namespace NordicBeesERP.Services
             string IssuedByLabel,
             string ReceivedByLabel,
             string ItemsListLabel,
-            string PersonCodeLabel
+            string PersonCodeLabel,
+            string ReverseChargeNoteLabel,
+            string AmountPayableLabel
         );
         
         private LocalizationLabels GetLocalizationLabels(string language, bool isReverseCharge6 = false)
@@ -470,7 +478,9 @@ namespace NordicBeesERP.Services
                     IssuedByLabel: "Issued by",
                     ReceivedByLabel: "Received by",
                     ItemsListLabel: "List of goods",
-                    PersonCodeLabel: "Personal code: "
+                    PersonCodeLabel: "Personal code: ",
+                    ReverseChargeNoteLabel: "Reverse charge — VAT is accounted for by the customer (Art. 96 of the Lithuanian VAT Law).",
+                    AmountPayableLabel: "Amount payable:"
                 );
             }
             
@@ -499,7 +509,9 @@ namespace NordicBeesERP.Services
                     IssuedByLabel: "Sąskaitą išrašė",
                     ReceivedByLabel: "Sąskaitą gavo",
                     ItemsListLabel: isReverseCharge6 ? "Žaliavų sąrašas" : "Prekių sąrašas",
-                    PersonCodeLabel: "Asmens kodas: "
+                    PersonCodeLabel: "Asmens kodas: ",
+                    ReverseChargeNoteLabel: "Taikomas atvirkštinio apmokestinimo PVM mechanizmas, pagal 96 str.",
+                    AmountPayableLabel: "Suma apmokėjimui:"
             );
         }
         
