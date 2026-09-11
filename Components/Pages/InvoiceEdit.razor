@@ -275,6 +275,8 @@
             // Map legacy "sales"/"purchase" values to new format
             if (_invoiceType == "sales") _invoiceType = "PVM SĄSKAITA FAKTŪRA";
             if (_invoiceType == "purchase") _invoiceType = "6% PVM SĄSKAITA FAKTŪRA";
+            if (_invoiceType == InvoiceTypes.ReverseCharge96)
+                _defaultVatRate = 0m;
             
             _status = invoice.Status;
             _notes = invoice.Notes ?? string.Empty;
@@ -388,6 +390,7 @@
 
     private async Task OnInvoiceTypeChanged(string newType)
     {
+        var previousType = _invoiceType;
         _invoiceType = newType;
         
         if (_invoiceType == "6% PVM SĄSKAITA FAKTŪRA")
@@ -402,9 +405,30 @@
                 CalculateLine(line);
             }
         }
+        else if (_invoiceType == InvoiceTypes.ReverseCharge96)
+        {
+            _defaultVatRate = 0m;
+            
+            // Reverse charge (96 str.): VAT is accounted by the buyer — all lines 0%
+            foreach (var line in _lines)
+            {
+                line.VatRate = 0m;
+                CalculateLine(line);
+            }
+        }
         else
         {
             _defaultVatRate = 21m;
+            
+            if (previousType == InvoiceTypes.ReverseCharge96)
+            {
+                // Switching away from 96 str.: restore a usable default rate on existing lines
+                foreach (var line in _lines)
+                {
+                    line.VatRate = _defaultVatRate;
+                    CalculateLine(line);
+                }
+            }
         }
         
         InvokeAsync(StateHasChanged);
@@ -425,7 +449,15 @@
             _selectedClientDisplay = $"{selectedCustomer.Name} ({selectedCustomer.City})";
             _paymentTermDays = selectedCustomer.PaymentTermDays;
             _language = selectedCustomer.DefaultLanguage;
-            _defaultVatRate = selectedCustomer.DefaultVatRate;
+            if (_invoiceType == InvoiceTypes.ReverseCharge96)
+            {
+                // Reverse charge (96 str.): VAT stays 0 regardless of the customer's default rate
+                _defaultVatRate = 0m;
+            }
+            else
+            {
+                _defaultVatRate = selectedCustomer.DefaultVatRate;
+            }
             
             UpdateDueDate(_paymentTermDays);
             
