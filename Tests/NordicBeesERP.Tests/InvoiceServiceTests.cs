@@ -920,6 +920,72 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", partnerId);
     }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_SwitchingFromReverseCharge96ToStandard_ClearsFlagAndRestoresVat()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer("RC96 Reverse Update Test");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        // Start from a reverse-charge 96 str. invoice created through the real service
+        var invoice = NewTestInvoice(partnerId, $"INV-RC96R-{Guid.NewGuid():N}");
+        invoice.InvoiceType = InvoiceTypes.ReverseCharge96;
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "Reverse update line",
+            Quantity = 2m,
+            PriceExclVat = 50m,
+            VatRate = 21m // deliberately set — the service must zero it for a 96 str. invoice
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceAsync should return the new invoice id");
+
+        // Sanity: created as reverse-charge with zeroed VAT (T1 behavior)
+        var created = await service.GetInvoiceWithDetailsAsync(invoiceId);
+        Assert.NotNull(created);
+        Assert.True(created!.ReverseCharge);
+        Assert.Equal(0m, created.TotalVat);
+
+        // Load with lines, switch type back to standard, restore the line VAT rate, and update through the real service
+        var loaded = await service.GetInvoiceWithDetailsAsync(invoiceId);
+        Assert.NotNull(loaded);
+        loaded!.InvoiceType = InvoiceTypes.Standard;
+        loaded.Lines.First().VatRate = 21m;
+        await service.UpdateInvoiceAsync(loaded);
+
+        // Verify against a brand-new context
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var stored = await verifyContext.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored);
+        Assert.False(stored!.ReverseCharge);
+        Assert.Equal(21.00m, stored.TotalVat);
+        Assert.Equal(100m, stored.SubtotalExclVat);
+        Assert.Equal(121m, stored.TotalInclVat);
+
+        var line = await verifyContext.InvoiceLines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
+        Assert.NotNull(line);
+        Assert.Equal(21m, line!.VatRate);
+        Assert.Equal(21.00m, line.VatAmount);
+
+        // Cleanup (defensive)
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
 }
 
 /// <summary>Fake PDF generator producing deterministic marker bytes; also counts calls.</summary>
