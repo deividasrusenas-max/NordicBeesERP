@@ -801,6 +801,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             .FirstOrDefaultAsync(i => i.Id == invoiceId);
         Assert.NotNull(stored);
         Assert.True(stored!.ReverseCharge);
+        Assert.StartsWith("LAK", stored.InvoiceNumber);
         Assert.Equal(66.00m, stored.SubtotalExclVat);
         Assert.Equal(0m, stored.TotalVat);
         // The payable total excludes VAT — the point of this test
@@ -812,6 +813,150 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         Assert.NotNull(line);
         Assert.Equal(21m, line!.VatRate);
         Assert.Equal(0m, line.VatAmount);
+        Assert.Equal(66.00m, line.LineSubtotal);
+        Assert.Equal(66.00m, line.LineTotal);
+
+        // Cleanup (defensive)
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
+
+    [Fact]
+    public async Task CreateInvoiceAsync_ReverseCharge96_MixedRateLines_KeepsPerLineRatesAndZeroesAllVat()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer("RC96 Mixed Rate Test");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        // Empty invoice number so the service generates one itself (LAK prefix for this type)
+        var invoice = NewTestInvoice(partnerId, "");
+        invoice.InvoiceType = InvoiceTypes.ReverseCharge96;
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "Mixed 21%",
+            Quantity = 100m,
+            PriceExclVat = 1.00m,
+            VatRate = 21m
+        });
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "Mixed 9%",
+            Quantity = 50m,
+            PriceExclVat = 2.00m,
+            VatRate = 9m
+        });
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "Mixed 0%",
+            Quantity = 25m,
+            PriceExclVat = 1.00m,
+            VatRate = 0m
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceAsync should return the new invoice id");
+
+        // Verify against a brand-new context (proves the write hit the DB)
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var stored = await verifyContext.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored);
+        Assert.True(stored!.ReverseCharge);
+        Assert.StartsWith("LAK", stored.InvoiceNumber);
+        Assert.Equal(225m, stored.SubtotalExclVat);
+        Assert.Equal(0m, stored.TotalVat);
+        // The payable total excludes VAT — every line's stored line total is its ex-VAT subtotal
+        Assert.Equal(225m, stored.TotalInclVat);
+
+        var lines = await verifyContext.InvoiceLines
+            .AsNoTracking()
+            .Where(l => l.InvoiceId == invoiceId)
+            .ToListAsync();
+
+        var line21 = lines.First(l => l.Description == "Mixed 21%");
+        Assert.Equal(21m, line21.VatRate);
+        Assert.Equal(0m, line21.VatAmount);
+        Assert.Equal(100m, line21.LineSubtotal);
+        Assert.Equal(100m, line21.LineTotal);
+
+        var line9 = lines.First(l => l.Description == "Mixed 9%");
+        Assert.Equal(9m, line9.VatRate);
+        Assert.Equal(0m, line9.VatAmount);
+        Assert.Equal(100m, line9.LineSubtotal);
+        Assert.Equal(100m, line9.LineTotal);
+
+        var line0 = lines.First(l => l.Description == "Mixed 0%");
+        Assert.Equal(0m, line0.VatRate);
+        Assert.Equal(0m, line0.VatAmount);
+        Assert.Equal(25m, line0.LineSubtotal);
+        Assert.Equal(25m, line0.LineTotal);
+
+        // Cleanup (defensive)
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
+
+    [Fact]
+    public async Task CreateInvoiceAsync_ReverseCharge96_ZeroRateLine_CreatesCleanly()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer("RC96 Zero Rate Line Test");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        // Empty invoice number so the service generates one itself (LAK prefix for this type)
+        var invoice = NewTestInvoice(partnerId, "");
+        invoice.InvoiceType = InvoiceTypes.ReverseCharge96;
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "RC96 zero rate line",
+            Quantity = 100m,
+            PriceExclVat = 1.00m,
+            VatRate = 0m
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceAsync should return the new invoice id");
+
+        // Verify against a brand-new context (proves the write hit the DB)
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var stored = await verifyContext.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored);
+        Assert.True(stored!.ReverseCharge);
+        Assert.StartsWith("LAK", stored.InvoiceNumber);
+        Assert.Equal(100m, stored.SubtotalExclVat);
+        Assert.Equal(0m, stored.TotalVat);
+        Assert.Equal(100m, stored.TotalInclVat);
+
+        var line = await verifyContext.InvoiceLines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
+        Assert.NotNull(line);
+        Assert.Equal(0m, line!.VatRate);
+        Assert.Equal(0m, line.VatAmount);
+        Assert.Equal(100m, line.LineTotal);
 
         // Cleanup (defensive)
         await verifyContext.Database.ExecuteSqlRawAsync(
