@@ -227,7 +227,7 @@ namespace NordicBeesERP.Services
             }
 
             bool isRc96 = invoice.InvoiceType == InvoiceTypes.ReverseCharge96;
-            if (isRc96) invoice.ReverseCharge = true;
+            invoice.ReverseCharge = isRc96;
 
             // Calculate line numbers and totals
             int lineNumber = 1;
@@ -289,7 +289,7 @@ namespace NordicBeesERP.Services
             }
 
             bool isRc96 = invoice.InvoiceType == InvoiceTypes.ReverseCharge96;
-            if (isRc96) invoice.ReverseCharge = true;
+            invoice.ReverseCharge = isRc96;
 
             // Recalculate line numbers and totals
             int lineNumber = 1;
