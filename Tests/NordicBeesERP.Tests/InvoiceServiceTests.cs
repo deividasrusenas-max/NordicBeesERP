@@ -711,7 +711,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
-    public async Task CreateInvoiceAsync_ReverseCharge96_ForcesZeroVatAndSetsFlag()
+    public async Task CreateInvoiceAsync_ReverseCharge96_KeepsRateZeroesVatAndSetsFlag()
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
 
@@ -728,7 +728,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             Description = "RC96 line",
             Quantity = 2m,
             PriceExclVat = 50m,
-            VatRate = 21m // deliberately set — the service must zero it for a 96 str. invoice
+            VatRate = 21m // deliberately set — the service must keep it and zero the VAT amount for a 96 str. invoice
         });
 
         var service = new InvoiceService(_fixture.Factory, null!, null!);
@@ -753,7 +753,64 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
         Assert.NotNull(line);
-        Assert.Equal(0m, line!.VatRate);
+        Assert.Equal(21m, line!.VatRate);
+        Assert.Equal(0m, line.VatAmount);
+        Assert.Equal(100m, line.LineSubtotal);
+        Assert.Equal(100m, line.LineTotal);
+
+        // Cleanup (defensive)
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
+
+    [Fact]
+    public async Task CreateInvoiceAsync_ReverseCharge96_PayableTotalExcludesVat()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer("RC96 Payable Total Test");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        // Empty invoice number so the service generates one itself (LAK prefix for this type)
+        var invoice = NewTestInvoice(partnerId, "");
+        invoice.InvoiceType = InvoiceTypes.ReverseCharge96;
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "RC96 payable total line",
+            Quantity = 660m,
+            PriceExclVat = 0.10m,
+            VatRate = 21m // deliberately set — the service must keep it and zero the VAT amount for a 96 str. invoice
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceAsync should return the new invoice id");
+
+        // Verify against a brand-new context (proves the write hit the DB)
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var stored = await verifyContext.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored);
+        Assert.True(stored!.ReverseCharge);
+        Assert.Equal(66.00m, stored.SubtotalExclVat);
+        Assert.Equal(0m, stored.TotalVat);
+        // The payable total excludes VAT — the point of this test
+        Assert.Equal(66.00m, stored.TotalInclVat);
+
+        var line = await verifyContext.InvoiceLines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
+        Assert.NotNull(line);
+        Assert.Equal(21m, line!.VatRate);
         Assert.Equal(0m, line.VatAmount);
 
         // Cleanup (defensive)
@@ -909,7 +966,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
         Assert.NotNull(line);
-        Assert.Equal(0m, line!.VatRate);
+        Assert.Equal(21m, line!.VatRate);
         Assert.Equal(0m, line.VatAmount);
 
         // Cleanup (defensive)
