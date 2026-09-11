@@ -226,12 +226,17 @@ namespace NordicBeesERP.Services
                 invoice.PaymentDueDate = invoice.InvoiceDate.AddDays(invoice.PaymentTermDays);
             }
 
+            bool isRc96 = invoice.InvoiceType == InvoiceTypes.ReverseCharge96;
+            if (isRc96) invoice.ReverseCharge = true;
+
             // Calculate line numbers and totals
             int lineNumber = 1;
             foreach (var line in invoice.Lines)
             {
                 line.LineNumber = lineNumber++;
                 
+                if (isRc96) line.VatRate = 0m;
+
                 // Calculate line totals (SaskaitosApp logic)
                 line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2);
                 line.VatAmount = Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
@@ -283,12 +288,17 @@ namespace NordicBeesERP.Services
                 invoice.PaymentDueDate = invoice.InvoiceDate.AddDays(invoice.PaymentTermDays);
             }
 
+            bool isRc96 = invoice.InvoiceType == InvoiceTypes.ReverseCharge96;
+            if (isRc96) invoice.ReverseCharge = true;
+
             // Recalculate line numbers and totals
             int lineNumber = 1;
             foreach (var line in invoice.Lines)
             {
                 line.LineNumber = lineNumber++;
                 
+                if (isRc96) line.VatRate = 0m;
+
                 // Recalculate line totals (SaskaitosApp logic)
                 line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2);
                 line.VatAmount = Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
