@@ -194,9 +194,8 @@
                 </MudTd>
                 <MudTd DataLabel="PVM %">
                     <MudNumericField T="decimal" Value="@line.VatRate" Variant="Variant.Outlined" 
-                                      Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M" Format="G29"
-                                      Disabled="@(_invoiceType == InvoiceTypes.ReverseCharge96)"
-                                      @key="(line, _selectedCustomerId, _invoiceType)"
+                                       Margin="Margin.Dense" onfocus="this.select()" Min="0" Step="1M" Format="G29"
+                                       @key="(line, _selectedCustomerId, _invoiceType)"
                                      ValueChanged="@((decimal val) => { line.VatRate = val; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Suma">
@@ -393,7 +392,9 @@
     private void CalculateLine(InvoiceLineInput line)
     {
         var subtotal = line.Quantity * line.PriceExclVat;
-        var vatAmount = subtotal * (line.VatRate / 100m);
+        var vatAmount = _invoiceType == InvoiceTypes.ReverseCharge96
+            ? 0m
+            : subtotal * (line.VatRate / 100m);
         line.LineTotal = subtotal + vatAmount;
         
         CalculateTotals();
@@ -407,7 +408,9 @@
         foreach (var line in _lines)
         {
             var subtotal = line.Quantity * line.PriceExclVat;
-            var vat = subtotal * (line.VatRate / 100m);
+            var vat = _invoiceType == InvoiceTypes.ReverseCharge96
+                ? 0m
+                : subtotal * (line.VatRate / 100m);
             
             _totalExclVat += subtotal;
             _totalVat += vat;
@@ -444,7 +447,6 @@
 
     private async Task OnInvoiceTypeChanged(string newType)
     {
-        var previousType = _invoiceType;
         _invoiceType = newType;
         _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? DateTime.Today, _invoiceType);
         
@@ -460,29 +462,15 @@
                 CalculateLine(line);
             }
         }
-        else if (_invoiceType == InvoiceTypes.ReverseCharge96)
-        {
-            _defaultVatRate = 0m;
-            
-            // Reverse charge (96 str.): VAT is accounted by the buyer — all lines 0%
-            foreach (var line in _lines)
-            {
-                line.VatRate = 0m;
-                CalculateLine(line);
-            }
-        }
         else
         {
             _defaultVatRate = 21m;
             
-            if (previousType == InvoiceTypes.ReverseCharge96)
+            // Recalculate so displayed line/invoice totals reflect the new type
+            // (96 str. zeroes the VAT amount while keeping the line's rate) without touching rates.
+            foreach (var line in _lines)
             {
-                // Switching away from 96 str.: restore a usable default rate on existing lines
-                foreach (var line in _lines)
-                {
-                    line.VatRate = _defaultVatRate;
-                    CalculateLine(line);
-                }
+                CalculateLine(line);
             }
         }
     }
@@ -561,10 +549,7 @@
             _paymentTermDays = 7;
             _dueDateManuallyEdited = false;
             _language = "LT";
-            if (_invoiceType == InvoiceTypes.ReverseCharge96)
-                _defaultVatRate = 0m;
-            else
-                _defaultVatRate = 21m;
+            _defaultVatRate = 21m;
             UpdateDueDate();
             StateHasChanged();
             return;
@@ -585,23 +570,15 @@
             _language = lang;
         }
 
-        if (_invoiceType == InvoiceTypes.ReverseCharge96)
-        {
-            // Reverse charge (96 str.): VAT stays 0 regardless of the customer's default rate
-            _defaultVatRate = 0m;
-        }
-        else
-        {
-            _defaultVatRate = customer.DefaultVatRate;
+        _defaultVatRate = customer.DefaultVatRate;
 
-            // Retroactively apply the new default VAT rate to lines already on the invoice —
-            // previously only affected lines added AFTER selection, since AddLine() runs at
-            // page load (before any client is chosen) and this field is never re-read afterward.
-            foreach (var line in _lines)
-            {
-                line.VatRate = _defaultVatRate;
-                CalculateLine(line);
-            }
+        // Retroactively apply the new default VAT rate to lines already on the invoice —
+        // previously only affected lines added AFTER selection, since AddLine() runs at
+        // page load (before any client is chosen) and this field is never re-read afterward.
+        foreach (var line in _lines)
+        {
+            line.VatRate = _defaultVatRate;
+            CalculateLine(line);
         }
 
         UpdateDueDate();
