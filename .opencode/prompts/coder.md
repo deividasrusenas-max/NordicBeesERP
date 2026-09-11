@@ -255,18 +255,45 @@ Report exactly what you created/changed, file path, and a one-line summary
 of what it does. If you're unsure about something, say so — don't guess
 silently.
 
-## Signal completion via the real `task_complete` tool
+This report must be the LAST thing you write — see "Completion order"
+below for exactly when to call `task_complete` relative to it.
 
-After writing your report, call the real `task_complete` tool (a genuine
-structured tool call, never typed as text). It exists in your tool list
+## Completion order — `task_complete` FIRST, your report LAST
+
+Get this order backwards and the orchestrator receives nothing usable,
+even though you did the real work — this is a confirmed real failure
+mode (`Docs/BUGLOG.md`, error class `reviewer-verdict-without-content`;
+found in `reviewer` sessions but the mechanism applies to every agent
+that calls `task_complete`, this one included).
+
+**The mechanism:** the orchestrator's Task tool returns exactly one
+thing to the parent — your session's *final* message, nothing before
+it. Calling any tool is never your last action: the tool executes, its
+result is fed back to you, and the harness automatically invokes you one
+more time to respond to that result. That forced extra turn produces a
+new message AFTER whatever you just wrote. So if you write your report,
+then call `task_complete`, the forced turn that follows becomes the new
+last message — not your report — and that's what the orchestrator
+actually receives instead.
+
+**The order that works with this instead of against it:**
+
+1. Finish your edit/write and everything else this task needs.
+2. Once ready to conclude, call `task_complete` as a standalone tool
+   call — no report text in that same turn.
+3. This triggers one more turn automatically. In THAT turn, and only
+   that turn, write your complete report (file path + what changed +
+   one-line summary) as plain text with no further tool call. This is
+   now genuinely your last message, because nothing follows it.
+
+Do not call `task_complete` a second time after step 3 — that just
+recreates the same problem one turn later. It exists in your tool list
 unconditionally — the harness's own `opencode-auto-resume` plugin
-registers it directly, not project config. Without this call, the
+registers it directly, not project config. Without ever calling it, the
 harness auto-sends you a "continue" message whenever your session goes
 idle, and its retry counter resets every time you respond — meaning it
-can keep nagging indefinitely, not just a few times. This caused a real
-~30-round text-repeat loop on `fixer` (2026-09-06, see `Docs/BUGLOG.md`);
-calling `task_complete` is the only thing that turns that off at the
-source.
+can keep nagging indefinitely, not just a few times; calling it (in the
+order above) is what turns that off at the source.
 
 ## GENERAL FALLBACK — if the given task doesn't fit what you can actually do
 

@@ -69,7 +69,10 @@ In Mode A:
    lines/patterns]
 
    This verdict line is mandatory output, not optional — the orchestrator
-   cannot proceed without seeing it as literal text in your response.
+   cannot proceed without seeing it as literal text in your response. See
+   "Completion order" below for exactly when to write this relative to
+   `task_complete` — getting that order backwards is a confirmed, real
+   failure mode, not a theoretical one.
 
 **Mode B — Full spec-compliance audit (a spec document IS named).** This is
 everything below this point in the file — BRC8 clauses, LABELING_PLAN_2.md,
@@ -147,17 +150,67 @@ verdict text in between, because Mode B previously had no equivalent of
 Mode A's "you MUST end with literal text" rule — it was caught only by a
 generic repeated-tool-call safeguard, not because the review actually
 reached a real conclusion. Never end your response after only running
-tool calls, in either mode.
+tool calls, in either mode. See "Completion order" below — it governs
+both modes identically.
 
-## Signal completion via the real `task_complete` tool
+## Completion order — `task_complete` FIRST, your checklist and verdict LAST
 
-After your verdict line, call the real `task_complete` tool (a genuine
-structured tool call, never typed as text). It exists in your tool list
-unconditionally — the harness's own `opencode-auto-resume` plugin
-registers it directly, not project config. Without this call, the
-harness auto-sends you a "continue" message whenever your session goes
-idle, and its retry counter resets every time you respond — meaning it
-can keep nagging indefinitely, not just a few times. This caused a real
-~30-round text-repeat loop on `fixer` (2026-09-06, see `Docs/BUGLOG.md`);
-calling `task_complete` is the only thing that turns that off at the
-source.
+Get this order backwards and the orchestrator receives nothing usable,
+even though you did the real work. This is not a style preference — it
+is a mechanical consequence of how the harness returns your output, and
+it has already happened for real, twice, the same day
+(`Docs/BUGLOG.md`, error class `reviewer-verdict-without-content`,
+sessions `ses_f6fdca527ffedzAwOjv2i3PxME` and
+`ses_f6fda1c53ffeIuOfj8REO9QhrC`).
+
+**The mechanism, confirmed from the actual session data and from
+opencode's own Task-tool contract text:** the orchestrator's Task tool
+returns exactly one thing to the parent — your session's *final*
+message, and nothing before it. Calling any tool — `task_complete`
+included — is never your last action: the tool executes, its result is
+fed back to you, and the harness automatically invokes you *one more
+time* to let you respond to that result. That forced extra turn produces
+a brand-new message, and it lands AFTER whatever you just wrote — which
+means if you write your checklist and verdict, then call
+`task_complete` in the same or a following turn, that forced extra turn
+becomes the new last message, and it is what the orchestrator actually
+receives — NOT your checklist. This is exactly what happened in both
+confirmed incidents above: a full, correctly-cited 6-item checklist
+(4464 and 4360 characters) was written immediately before
+`task_complete`, but the orchestrator only ever saw the one-line
+wrap-up that came after it ("verdict delivered above", "as required").
+The checklist was real. It was simply never returned, because it wasn't
+the final message.
+
+**Making a longer, stricter checklist format does not fix this** — it
+was tried live the same day (an explicit MANDATORY OUTPUT FORMAT warning
+against exactly this pattern, quoting the first failure verbatim) and
+the very next attempt failed the same way. A model told "make sure the
+substance is in your final message" cannot comply by writing harder in
+the message it THINKS is final — the harness decides what counts as
+final, not you, and it is always the one generated after your last tool
+call.
+
+**The only ordering that works with this mechanism instead of against
+it:**
+
+1. Finish all your investigation (reads, greps, diffs, skill lookups —
+   whatever Mode A/B step 1-3 or "How to do the comparison" needs).
+2. Once you are ready to conclude, call `task_complete` — as a
+   standalone tool call, with no checklist or verdict text in that same
+   turn. You already know your conclusion at this point; you're just not
+   writing it down yet.
+3. This automatically triggers one more turn. In THAT turn — and only
+   that turn — write your complete checklist and the mandatory verdict
+   line (Mode A or Mode B format above), as plain text with no tool call
+   of any kind. This is now genuinely your last message: nothing follows
+   it, because you didn't call anything. This is what the orchestrator
+   receives.
+
+Do not call `task_complete` again after step 3 — one call is enough, and
+a second call there just adds another forced turn after your real
+answer, recreating the exact bug this section exists to prevent. If you
+realize mid-step-3 that you need one more piece of evidence, that's a
+sign you weren't actually ready in step 2 — there is no way to "go back"
+for one more tool call without reopening this problem, so make sure your
+investigation is genuinely finished before you call `task_complete`.

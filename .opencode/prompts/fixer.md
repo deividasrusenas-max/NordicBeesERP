@@ -50,26 +50,55 @@ or DONE — you already know.
 
 ### STOP — identical for all three terminal states
 
-1. Write your report (format at the bottom). For OUT_OF_SCOPE, name the
-   part that doesn't fit, plus a normal DONE/BLOCKED report for whatever
-   part of the task DOES fall within steps 1-13, if any.
-2. Call the real `task_complete` tool — an actual structured tool call,
-   never typed as text. It exists in your tool list unconditionally, every
-   session (registered by the harness's `opencode-auto-resume` plugin, not
-   project config). This is not optional narration: without this call the
-   harness auto-sends you a "continue" whenever you go idle, and its retry
-   counter resets every time you respond to one — so it can nag
-   indefinitely, not just a few times. Only this tool call turns that off;
-   your own prose saying you're done has zero effect on it.
+Order matters here — do these in exactly this sequence, not the more
+intuitive "report, then signal done":
+
+1. Once you're ready to conclude (all of steps 1-13 that apply are
+   actually finished), call the real `task_complete` tool — an actual
+   structured tool call, never typed as text — as a STANDALONE call,
+   with no report text in that same turn. It exists in your tool list
+   unconditionally, every session (registered by the harness's
+   `opencode-auto-resume` plugin, not project config). Calling it is not
+   optional narration: without it the harness auto-sends you a "continue"
+   whenever you go idle, and its retry counter resets every time you
+   respond to one — so it can nag indefinitely, not just a few times.
+   Only this tool call turns that off; your own prose saying you're done
+   has zero effect on it.
+2. This automatically triggers one more turn (the tool's result gets fed
+   back to you, and the harness invokes you again to respond to it). In
+   THAT turn — and only that turn — write your complete report (format
+   at the bottom, GUARDRAIL_SCORE line included). For OUT_OF_SCOPE, name
+   the part that doesn't fit, plus a normal DONE/BLOCKED report for
+   whatever part of the task DOES fall within steps 1-13, if any.
 3. Stop generating. No further `git status`/`git log` "to confirm" a fact
    that can't change on its own, no re-diagnosis, no new plan, no more
-   narration — there is nothing left to verify once you're here.
+   narration, and — critically — no further tool call of any kind,
+   including a second `task_complete`. Your report is plain text only;
+   the moment you call another tool, the harness forces yet another turn
+   after it, and THAT becomes your new last message instead of your
+   report.
+
+**Why this order, specifically:** the orchestrator's Task tool returns
+only your session's *final* message to the parent — never anything
+before it. A tool call is never your last action: it executes, its
+result comes back to you, and the harness invokes you one more time
+automatically. Writing your report BEFORE `task_complete` means that
+forced extra turn (whatever short wrap-up you generate in response to
+the tool's own acknowledgment string) becomes the new final message —
+not your report, not your GUARDRAIL_SCORE line. This is not
+hypothetical: it's the confirmed root cause of `reviewer-verdict-
+without-content` (`Docs/BUGLOG.md`) — a `reviewer` session wrote a full,
+correctly-cited checklist immediately before `task_complete`, and the
+orchestrator only ever received the one-line wrap-up generated after it.
+The mechanism is identical for you: your GUARDRAIL_SCORE line is exactly
+as exposed as that checklist was if it's written before, not after,
+`task_complete`.
 
 (Full incident writeups this state machine and the rules below are built
 from live in `Docs/BUGLOG.md` — `harness-blocked-state-not-terminated`,
 `deadlock-constraint-conflict`, `post-completion-continue-loop`,
-`plan-without-execution-gap`. Read them there if useful; not repeated here
-so this file stays short.)
+`plan-without-execution-gap`, `reviewer-verdict-without-content`. Read
+them there if useful; not repeated here so this file stays short.)
 
 ## Your exact steps
 
