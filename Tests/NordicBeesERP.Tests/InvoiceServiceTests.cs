@@ -1054,6 +1054,65 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         Assert.NotNull(stored);
         Assert.Equal(0m, stored!.TotalVat);
         Assert.False(stored.ReverseCharge);
+        Assert.Equal(100m, stored.SubtotalExclVat);
+        Assert.Equal(100m, stored.TotalInclVat);
+
+        // Cleanup (defensive)
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
+
+    [Fact]
+    public async Task CreateInvoiceAsync_Ulak6_Invoice_IsNotReverseChargeAndStoresRealVat()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer("ULAK6 Test");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        // A 6% (ULAK) invoice is a regular VAT invoice — it must NOT be
+        // classified as reverse-charge and its line VAT must be stored as-is.
+        var invoice = NewTestInvoice(partnerId, "");
+        invoice.InvoiceType = InvoiceTypes.Ulak6;
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "ULAK 6% line",
+            Quantity = 100m,
+            PriceExclVat = 1.00m,
+            VatRate = 6m
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceAsync should return the new invoice id");
+
+        // Verify against a brand-new context
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        var stored = await verifyContext.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored);
+        Assert.False(stored!.ReverseCharge);
+        Assert.StartsWith("ULAK", stored.InvoiceNumber);
+        Assert.Equal(100m, stored.SubtotalExclVat);
+        Assert.Equal(6.00m, stored.TotalVat);
+        Assert.Equal(106m, stored.TotalInclVat);
+
+        var line = await verifyContext.InvoiceLines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
+        Assert.NotNull(line);
+        Assert.Equal(6m, line!.VatRate);
+        Assert.Equal(6.00m, line.VatAmount);
+        Assert.Equal(106.00m, line.LineTotal);
 
         // Cleanup (defensive)
         await verifyContext.Database.ExecuteSqlRawAsync(
@@ -1186,6 +1245,111 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM invoices WHERE id = {0}", invoiceId);
         await verifyContext.Database.ExecuteSqlRawAsync(
+            "DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_RoundTrip_StdToRc96ToStdToRc96_StaysConsistent()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer("RC96 RoundTrip Test");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        // Start from a standard 21% invoice created through the real service
+        var invoice = NewTestInvoice(partnerId, $"INV-RT-{Guid.NewGuid():N}");
+        invoice.InvoiceType = InvoiceTypes.Standard;
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "Round-trip line",
+            Quantity = 2m,
+            PriceExclVat = 50m,
+            VatRate = 21m
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        Assert.True(invoiceId > 0, "CreateInvoiceAsync should return the new invoice id");
+
+        // Step 1: Standard -> ReverseCharge96
+        var loaded = await service.GetInvoiceWithDetailsAsync(invoiceId);
+        Assert.NotNull(loaded);
+        loaded!.InvoiceType = InvoiceTypes.ReverseCharge96;
+        await service.UpdateInvoiceAsync(loaded);
+
+        await using var verify1 = await _fixture.Factory.CreateDbContextAsync();
+        var stored1 = await verify1.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored1);
+        Assert.True(stored1!.ReverseCharge);
+        Assert.Equal(100m, stored1.SubtotalExclVat);
+        Assert.Equal(0m, stored1.TotalVat);
+        Assert.Equal(100m, stored1.TotalInclVat);
+        var line1 = await verify1.InvoiceLines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
+        Assert.NotNull(line1);
+        Assert.Equal(21m, line1!.VatRate);
+        Assert.Equal(0m, line1.VatAmount);
+        Assert.Equal(100m, line1.LineTotal);
+
+        // Step 2: ReverseCharge96 -> Standard (restore the line VAT rate, as the UI does)
+        loaded = await service.GetInvoiceWithDetailsAsync(invoiceId);
+        Assert.NotNull(loaded);
+        loaded!.InvoiceType = InvoiceTypes.Standard;
+        loaded.Lines.First().VatRate = 21m;
+        await service.UpdateInvoiceAsync(loaded);
+
+        await using var verify2 = await _fixture.Factory.CreateDbContextAsync();
+        var stored2 = await verify2.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored2);
+        Assert.False(stored2!.ReverseCharge);
+        Assert.Equal(100m, stored2.SubtotalExclVat);
+        Assert.Equal(21.00m, stored2.TotalVat);
+        Assert.Equal(121m, stored2.TotalInclVat);
+        var line2 = await verify2.InvoiceLines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
+        Assert.NotNull(line2);
+        Assert.Equal(21m, line2!.VatRate);
+        Assert.Equal(21.00m, line2.VatAmount);
+        Assert.Equal(121.00m, line2.LineTotal);
+
+        // Step 3: Standard -> ReverseCharge96 again — the whole cycle must be repeatable
+        loaded = await service.GetInvoiceWithDetailsAsync(invoiceId);
+        Assert.NotNull(loaded);
+        loaded!.InvoiceType = InvoiceTypes.ReverseCharge96;
+        await service.UpdateInvoiceAsync(loaded);
+
+        await using var verify3 = await _fixture.Factory.CreateDbContextAsync();
+        var stored3 = await verify3.Invoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
+        Assert.NotNull(stored3);
+        Assert.True(stored3!.ReverseCharge);
+        Assert.Equal(100m, stored3.SubtotalExclVat);
+        Assert.Equal(0m, stored3.TotalVat);
+        Assert.Equal(100m, stored3.TotalInclVat);
+        var line3 = await verify3.InvoiceLines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.InvoiceId == invoiceId);
+        Assert.NotNull(line3);
+        Assert.Equal(21m, line3!.VatRate);
+        Assert.Equal(0m, line3.VatAmount);
+        Assert.Equal(100m, line3.LineTotal);
+
+        // Cleanup (defensive)
+        await verify3.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await verify3.Database.ExecuteSqlRawAsync(
+            "DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await verify3.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", partnerId);
     }
 }
