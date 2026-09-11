@@ -332,9 +332,13 @@ namespace NordicBeesERP.Services
                     foreach (var line in invoice.Lines)
                     {
                         var totalExclVat = line.LineSubtotal;
-                        var vatAmount = line.VatAmount;
-                        var totalInclVat = line.LineTotal;
-                        
+                        var displayVatAmount = isRc96
+                            ? Math.Round(totalExclVat * (line.VatRate / 100m), 2)
+                            : line.VatAmount;
+                        var displayLineTotal = isRc96
+                            ? Math.Round(totalExclVat + displayVatAmount, 2)
+                            : line.LineTotal;
+
                         // 6% reverse charge - VAT visada 6%
                         var displayVatRate = isReverseCharge6 ? 6m : line.VatRate;
                         
@@ -345,8 +349,8 @@ namespace NordicBeesERP.Services
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"{displayVatRate:N0}%").FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(vatAmount.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
-                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(totalInclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(displayVatAmount.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
+                        table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(displayLineTotal.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                     }
                 });
 
@@ -354,6 +358,10 @@ namespace NordicBeesERP.Services
                 {
                     column.Item().PaddingTop(3).Text(labels.ReverseChargeNoteLabel).FontSize(7);
                 }
+
+                var displayTotalVat = isRc96
+                    ? invoice.Lines.Sum(l => Math.Round(l.LineSubtotal * (l.VatRate / 100m), 2))
+                    : totalVat;
 
                 // Suma
                 column.Item().PaddingTop(10).AlignRight().Column(col =>
@@ -366,11 +374,11 @@ namespace NordicBeesERP.Services
                     col.Item().Row(row =>
                     {
                         row.ConstantItem(150).Text(labels.VatAmountLabel).FontSize(9);
-                        row.ConstantItem(80).AlignRight().Text($"{totalVat:N2} €").FontSize(9);
+                        row.ConstantItem(80).AlignRight().Text($"{displayTotalVat:N2} €").FontSize(9);
                     });
                     col.Item().BorderTop(1).BorderColor(Colors.Grey.Medium).PaddingTop(5).Row(row =>
                     {
-                        row.ConstantItem(150).Text(labels.TotalInclVatLabel).FontSize(10).Bold();
+                        row.ConstantItem(150).Text(isRc96 ? labels.AmountPayableLabel : labels.TotalInclVatLabel).FontSize(10).Bold();
                         row.ConstantItem(80).AlignRight().Text($"{totalInclVat:N2} €").FontSize(10).Bold();
                     });
                     if (invoice.Language?.ToUpper() != "EN")
