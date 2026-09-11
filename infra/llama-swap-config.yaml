@@ -1,0 +1,186 @@
+# llama-swap config — BACKUP COPY
+#
+# Live file: local-llm:/home/asus/AI/llama-swap-config.yaml
+#
+# This copy was reconstructed from the working session on 2026-09-11 because SSH
+# to local-llm was down (port 22 held by something that is not the WSL sshd).
+# It has NOT been diffed against the live file. When SSH works again:
+#
+#   ssh local-llm "cat /home/asus/AI/llama-swap-config.yaml" > /tmp/live.yaml
+#   diff /tmp/live.yaml infra/llama-swap-config.yaml
+#
+# and commit the live version if they differ.
+#
+# GPU layout: coder on 0+1, orchestrator on 2+3. fixer/reviewer instances are
+# commented out — those agents point at `coder` in opencode.json, so their own
+# instances only held GPU 2 and 3 without ever being used.
+
+healthCheckTimeout: 300
+unloadTimeout: 30
+logLevel: debug
+
+groups:
+  nordicbees-agents:
+    swap: false
+    exclusive: true
+    members:
+      - "coder"
+      - "orchestrator"
+  vision:
+    swap: true
+    exclusive: true
+    members:
+      - "vl-ocr"
+  general-purpose:
+    swap: true
+    exclusive: true
+    members:
+      - "general"
+      - "uncensored"
+
+models:
+  # Subagents: coder / fixer / reviewer all point at this one in opencode.json.
+  # Thinking OFF — this instance writes code, it does not plan.
+  # Sampling = Qwen's official non-thinking recommendation.
+  coder:
+    cmd: >
+      /home/asus/AI/llama.cpp/build-latest/bin/llama-server
+      --model /home/asus/AI/models-native/Qwen3.8-27B-MTP/Qwen3.8-27B-UD-Q6_K_XL.gguf
+      --alias qwen38-27b --port ${PORT}
+      --n-gpu-layers 999 --ctx-size 262144
+      --batch-size 4096 --ubatch-size 2048
+      --flash-attn on --cache-type-k q4_0 --cache-type-v q4_0
+      --threads 8 --threads-batch 8
+      --cont-batching --parallel 1
+      --no-mmap --split-mode layer
+      --spec-type draft-mtp --spec-draft-n-max 4
+      --jinja --reasoning off
+      --temp 0.7 --min-p 0.0 --top-p 0.8 --top-k 20 --presence-penalty 1.5
+    env:
+      - "CUDA_VISIBLE_DEVICES=0,1"
+    ttl: 0
+
+  # Same GGUF as coder, second instance on the other GPU pair.
+  # Thinking ON — the orchestrator plans and routes, it does not write code.
+  # Sampling = Qwen's official THINKING recommendation (temp 1.0, top_p 0.95,
+  # presence_penalty 0.0). Do not copy coder's values here: presence_penalty
+  # above 0 degrades long reasoning chains and can cause language mixing.
+  # Context is smaller than coder's on purpose — the orchestrator holds
+  # delegation history, not large files, and thinking tokens consume context.
+  # NOTE: Qwen3.8 defaults to "extra high" reasoning effort. If runs are too
+  # slow, try --chat-template-kwargs '{"reasoning_effort":"medium"}' — untested.
+  orchestrator:
+    cmd: >
+      /home/asus/AI/llama.cpp/build-latest/bin/llama-server
+      --model /home/asus/AI/models-native/Qwen3.8-27B-MTP/Qwen3.8-27B-UD-Q6_K_XL.gguf
+      --alias qwen38-27b-thinking --port ${PORT}
+      --n-gpu-layers 999 --ctx-size 131072
+      --batch-size 4096 --ubatch-size 2048
+      --flash-attn on --cache-type-k q4_0 --cache-type-v q4_0
+      --threads 8 --threads-batch 8
+      --cont-batching --parallel 1
+      --no-mmap --split-mode layer
+      --spec-type draft-mtp --spec-draft-n-max 4
+      --jinja
+      --temp 1.0 --min-p 0.0 --top-p 0.95 --top-k 20 --presence-penalty 0.0
+    env:
+      - "CUDA_VISIBLE_DEVICES=2,3"
+    ttl: 0
+
+  # DISABLED 2026-09-10: the fixer and reviewer agents run on `coder` in
+  # opencode.json, so these instances only held GPU 2 and 3 unused. GPU 2+3 are
+  # now the orchestrator's. Restore only if those agents are pointed back at
+  # their own models — and note reviewer was missing --n-gpu-layers entirely,
+  # which is why it is added below.
+  #
+  # fixer:
+  #   cmd: >
+  #     /home/asus/AI/llama.cpp/build-latest/bin/llama-server
+  #     --model /home/asus/AI/models-native/Qwen3.6-35B-A3B/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+  #     --alias qwen35b-fixer --port ${PORT}
+  #     --n-gpu-layers 999 --ctx-size 65536
+  #     --batch-size 4096 --ubatch-size 2048
+  #     --flash-attn on --cache-type-k q4_0 --cache-type-v q4_0
+  #     --threads 8 --threads-batch 8
+  #     --cont-batching --parallel 1
+  #     --no-mmap
+  #     --jinja --reasoning off
+  #     --temp 0.8 --min-p 0.0 --top-p 1 --top-k 20
+  #   env:
+  #     - "CUDA_VISIBLE_DEVICES=2"
+  #   ttl: 0
+  #
+  # reviewer:
+  #   cmd: >
+  #     /home/asus/AI/llama.cpp/build-latest/bin/llama-server
+  #     --model /home/asus/AI/models-native/Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+  #     --alias qwen35b-reviewer --port ${PORT}
+  #     --n-gpu-layers 999 --ctx-size 61440
+  #     --batch-size 2048 --ubatch-size 1024
+  #     --flash-attn on --cache-type-k q4_0 --cache-type-v q4_0
+  #     --threads 8 --threads-batch 8
+  #     --cont-batching --parallel 1
+  #     --no-mmap
+  #     --spec-type draft-mtp --spec-draft-n-max 3
+  #     --jinja
+  #     --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+  #   env:
+  #     - "CUDA_VISIBLE_DEVICES=3"
+  #   ttl: 0
+
+  # ttl 900: unloads after 15 min idle instead of squatting on GPU0 forever.
+  # Playwright / visual-qa runs are rare and this shares a card with coder.
+  vl-ocr:
+    cmd: >
+      /home/asus/AI/llama.cpp/build-latest/bin/llama-server
+      --model /home/asus/AI/models-native/Qwen2.5-VL-7B-Instruct-GGUF/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf
+      --mmproj /home/asus/AI/models-native/Qwen2.5-VL-7B-Instruct-GGUF/mmproj-Qwen2.5-VL-7B-Instruct-f16.gguf
+      --mmproj-offload --image-min-tokens 1024
+      --port ${PORT}
+      --ctx-size 16384
+      --cache-type-k q8_0 --cache-type-v q8_0
+      --flash-attn on
+      --batch-size 2048 --ubatch-size 1024
+      --parallel 1
+      -ngl 99
+    env:
+      - "CUDA_VISIBLE_DEVICES=0"
+    ttl: 900
+
+  uncensored:
+    cmd: >
+      /home/asus/AI/llama.cpp/build-latest/bin/llama-server
+      --model /home/asus/AI/models-native/Qwen3.8-27B-Uncensored/Qwen3.8-27B-Uncensored-Q4_K_M.gguf
+      --alias qwen38-27b-uncensored --port ${PORT}
+      --n-gpu-layers 999 --ctx-size 131072
+      --batch-size 4096 --ubatch-size 2048
+      --flash-attn on --cache-type-k q4_0 --cache-type-v q4_0
+      --threads 8 --threads-batch 8
+      --cont-batching --parallel 1
+      --no-mmap --split-mode layer
+      --spec-type draft-mtp --spec-draft-n-max 4
+      --jinja --reasoning off
+      --temp 0.7 --min-p 0.0 --top-p 0.8 --top-k 20 --presence-penalty 1.5
+    env:
+      - "CUDA_VISIBLE_DEVICES=0,1"
+    ttl: 0
+
+  # NOTE: uses all four GPUs. Loading this does not evict anything automatically —
+  # coder and orchestrator sit in a different, non-swapping group, so this will
+  # fail or thrash unless they are stopped first.
+  general:
+    cmd: >
+      /home/asus/AI/llama.cpp/build-latest/bin/llama-server
+      --model /home/asus/AI/models-native/Qwen3.5-122B-A10B-MTP-v2/UD-Q4_K_XL/Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf
+      --alias qwen35-122b --port ${PORT}
+      --n-gpu-layers 99 --ctx-size 32768
+      --flash-attn on --cache-type-k q4_0 --cache-type-v q4_0
+      --threads 8 --threads-batch 8
+      --no-mmap --split-mode layer
+      --parallel 1
+      --spec-type draft-mtp --spec-draft-n-max 6
+      --jinja --reasoning off --chat-template-kwargs '{"enable_thinking":false}'
+      --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20 --presence-penalty 1.5
+    env:
+      - "CUDA_VISIBLE_DEVICES=0,1,2,3"
+    ttl: 0
