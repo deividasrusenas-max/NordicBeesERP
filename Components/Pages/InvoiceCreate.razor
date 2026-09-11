@@ -444,6 +444,7 @@
 
     private async Task OnInvoiceTypeChanged(string newType)
     {
+        var previousType = _invoiceType;
         _invoiceType = newType;
         _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? DateTime.Today, _invoiceType);
         
@@ -459,9 +460,30 @@
                 CalculateLine(line);
             }
         }
+        else if (_invoiceType == InvoiceTypes.ReverseCharge96)
+        {
+            _defaultVatRate = 0m;
+            
+            // Reverse charge (96 str.): VAT is accounted by the buyer — all lines 0%
+            foreach (var line in _lines)
+            {
+                line.VatRate = 0m;
+                CalculateLine(line);
+            }
+        }
         else
         {
             _defaultVatRate = 21m;
+            
+            if (previousType == InvoiceTypes.ReverseCharge96)
+            {
+                // Switching away from 96 str.: restore a usable default rate on existing lines
+                foreach (var line in _lines)
+                {
+                    line.VatRate = _defaultVatRate;
+                    CalculateLine(line);
+                }
+            }
         }
     }
 
@@ -539,7 +561,10 @@
             _paymentTermDays = 7;
             _dueDateManuallyEdited = false;
             _language = "LT";
-            _defaultVatRate = 21m;
+            if (_invoiceType == InvoiceTypes.ReverseCharge96)
+                _defaultVatRate = 0m;
+            else
+                _defaultVatRate = 21m;
             UpdateDueDate();
             StateHasChanged();
             return;
@@ -560,15 +585,23 @@
             _language = lang;
         }
 
-        _defaultVatRate = customer.DefaultVatRate;
-
-        // Retroactively apply the new default VAT rate to lines already on the invoice —
-        // previously only affected lines added AFTER selection, since AddLine() runs at
-        // page load (before any client is chosen) and this field is never re-read afterward.
-        foreach (var line in _lines)
+        if (_invoiceType == InvoiceTypes.ReverseCharge96)
         {
-            line.VatRate = _defaultVatRate;
-            CalculateLine(line);
+            // Reverse charge (96 str.): VAT stays 0 regardless of the customer's default rate
+            _defaultVatRate = 0m;
+        }
+        else
+        {
+            _defaultVatRate = customer.DefaultVatRate;
+
+            // Retroactively apply the new default VAT rate to lines already on the invoice —
+            // previously only affected lines added AFTER selection, since AddLine() runs at
+            // page load (before any client is chosen) and this field is never re-read afterward.
+            foreach (var line in _lines)
+            {
+                line.VatRate = _defaultVatRate;
+                CalculateLine(line);
+            }
         }
 
         UpdateDueDate();
