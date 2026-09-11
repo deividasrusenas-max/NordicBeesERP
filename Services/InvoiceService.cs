@@ -235,11 +235,10 @@ namespace NordicBeesERP.Services
             {
                 line.LineNumber = lineNumber++;
                 
-                if (isRc96) line.VatRate = 0m;
 
                 // Calculate line totals (SaskaitosApp logic)
                 line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2);
-                line.VatAmount = Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
+                line.VatAmount = isRc96 ? 0m : Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
                 line.LineTotal = Math.Round(line.LineSubtotal + line.VatAmount, 2);
             }
 
@@ -297,11 +296,10 @@ namespace NordicBeesERP.Services
             {
                 line.LineNumber = lineNumber++;
                 
-                if (isRc96) line.VatRate = 0m;
 
                 // Recalculate line totals (SaskaitosApp logic)
                 line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2);
-                line.VatAmount = Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
+                line.VatAmount = isRc96 ? 0m : Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
                 line.LineTotal = Math.Round(line.LineSubtotal + line.VatAmount, 2);
             }
 
