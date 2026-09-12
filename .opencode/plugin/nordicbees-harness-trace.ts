@@ -1,3 +1,23 @@
+// ============================================================================
+// GENERATED FILE — DO NOT EDIT DIRECTLY.
+//
+// This is a machine-generated copy of the plugin-dev source, with every
+// export except the plugin binding itself stripped — opencode's plugin
+// loader requires the loaded file's ONLY export to be the Plugin function
+// (see that source file's own header for how this was discovered: a real
+// smoke test failed with error="Plugin export is not a function" the first
+// time this file additionally exported its pure-logic helpers).
+//
+// Source of truth: .opencode/plugin-dev/nordicbees-harness-trace.ts
+// Regenerate with: bun .opencode/plugin-dev/build-plugin.ts
+//   (or: npx -y bun .opencode/plugin-dev/build-plugin.ts, if bun is not on PATH)
+//
+// A test in .opencode/plugin-dev/nordicbees-harness-trace.test.ts asserts
+// this file is byte-identical to the generator's current output. Editing
+// this file directly, or editing the dev source without regenerating, will
+// make that test fail until this file is regenerated again.
+// ============================================================================
+
 import type { Plugin } from "@opencode-ai/plugin"
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync } from "fs"
 import { join } from "path"
@@ -81,25 +101,11 @@ import { createHash } from "crypto"
  * This file lives in .opencode/plugin-dev/ during development specifically
  * so it is NOT yet live — once copied into .opencode/plugin/ (Task 7 of the
  * Phase 0 task this file was built for), COMMIT IT MANUALLY.
- *
- * THIS COPY'S EXPORTS ARE DELIBERATELY MINIMAL: only `NordicBeesHarnessTrace`
- * is exported — no helper functions, no `export default`. The first smoke
- * test of this plugin (2026-09-12) failed to load with `error="Plugin export
- * is not a function"` when this file's many pure-logic helpers (needed for
- * unit testing, see .opencode/plugin-dev/nordicbees-harness-trace.test.ts)
- * were also exported alongside the plugin itself and a `default` export —
- * both working reference plugins (nordicbees-reminder.ts,
- * nordicbees-circuit-breaker.ts) export exactly one `Plugin`-typed binding
- * and nothing else, and matching that shape fixed the load error. Edit
- * .opencode/plugin-dev/nordicbees-harness-trace.ts (the full, multi-export,
- * test-covered source of truth) and re-derive this file from it — don't
- * edit this copy by hand, or the two will drift.
  */
 
 // ---------------------------------------------------------------------------
-// Pure logic — no I/O, no opencode runtime dependency. Not exported from
-// THIS file (see the note above) — the plugin-dev copy exports all of these
-// for its test suite.
+// Pure logic — no I/O, no opencode runtime dependency. Exported so the test
+// file (nordicbees-harness-trace.test.ts) can exercise every branch directly.
 // ---------------------------------------------------------------------------
 
 const HASH_PREFIX_LEN = 12

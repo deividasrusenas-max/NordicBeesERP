@@ -1,4 +1,5 @@
 import { describe, test, expect } from "bun:test"
+import { readFileSync } from "fs"
 import {
   sha256Prefix,
   stableStringify,
@@ -17,6 +18,14 @@ import {
   MAX_ROTATE_BYTES,
   HASH_PREFIX_LEN,
 } from "./nordicbees-harness-trace"
+import {
+  stripToSingleExport,
+  buildLiveCopy,
+  PLUGIN_EXPORT_NAME,
+  GENERATED_HEADER,
+  devSourcePath,
+  liveCopyPath,
+} from "./build-plugin"
 
 // Real, verbatim prompt strings from .opencode/vendor/auto-resume-1.1.15-patched.js,
 // as catalogued in .opencode/planning/auto-resume-1.1.15-inventory.md section B.
@@ -594,5 +603,110 @@ describe("end-to-end privacy guarantee: no serialised record from any builder ev
       expect(r).not.toBeNull()
       assertNoSentinel(r, "sweep")
     }
+  })
+})
+
+describe("build-plugin: stripToSingleExport", () => {
+  test("strips 'export ' from a non-designated const, keeps the designated one", () => {
+    const src = `export const A = 1\nexport const Keep = 2\n`
+    const out = stripToSingleExport(src, "Keep")
+    expect(out).toBe(`const A = 1\nexport const Keep = 2\n`)
+  })
+
+  test("strips function/type/interface/class/let/var declarations the same way", () => {
+    const src = [
+      "export function f() {}",
+      "export type T = {}",
+      "export interface I {}",
+      "export class C {}",
+      "export let l = 1",
+      "export var v = 1",
+    ].join("\n")
+    const out = stripToSingleExport(src, "Keep")
+    expect(out).toBe(["function f() {}", "type T = {}", "interface I {}", "class C {}", "let l = 1", "var v = 1"].join("\n"))
+  })
+
+  test("removes an 'export default' line entirely", () => {
+    const src = `export const Keep = 1\nexport default Keep\n`
+    const out = stripToSingleExport(src, "Keep")
+    expect(out).toBe(`export const Keep = 1\n`)
+  })
+
+  test("leaves non-export lines, comments, and multi-line bodies untouched", () => {
+    const src = [
+      "// a comment mentioning export const nothing here",
+      "import type { X } from 'y'",
+      "export function build(input: {",
+      "  a: number",
+      "}): number {",
+      "  return input.a",
+      "}",
+    ].join("\n")
+    const out = stripToSingleExport(src, "Keep")
+    expect(out).toBe(
+      [
+        "// a comment mentioning export const nothing here",
+        "import type { X } from 'y'",
+        "function build(input: {",
+        "  a: number",
+        "}): number {",
+        "  return input.a",
+        "}",
+      ].join("\n"),
+    )
+  })
+
+  test("only matches the designated export by exact identifier, not by prefix", () => {
+    // "KeepExtra" must NOT be treated as the designated export "Keep".
+    const src = `export const KeepExtra = 1\nexport const Keep = 2\n`
+    const out = stripToSingleExport(src, "Keep")
+    expect(out).toBe(`const KeepExtra = 1\nexport const Keep = 2\n`)
+  })
+
+  test("is idempotent: running it again on its own output changes nothing further", () => {
+    const src = `export const A = 1\nexport const Keep = 2\nexport default Keep\n`
+    const once = stripToSingleExport(src, "Keep")
+    const twice = stripToSingleExport(once, "Keep")
+    expect(twice).toBe(once)
+  })
+})
+
+describe("build-plugin: buildLiveCopy determinism", () => {
+  test("is deterministic: the same input always produces byte-identical output", () => {
+    const src = `export const A = 1\nexport const ${PLUGIN_EXPORT_NAME} = 2\nexport default ${PLUGIN_EXPORT_NAME}\n`
+    const a = buildLiveCopy(src, PLUGIN_EXPORT_NAME)
+    const b = buildLiveCopy(src, PLUGIN_EXPORT_NAME)
+    expect(a).toBe(b)
+  })
+
+  test("output starts with the fixed, timestamp-free generated-file header", () => {
+    const src = `export const ${PLUGIN_EXPORT_NAME} = 1\n`
+    const out = buildLiveCopy(src, PLUGIN_EXPORT_NAME)
+    expect(out.startsWith(GENERATED_HEADER)).toBe(true)
+    expect(GENERATED_HEADER).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/) // no embedded ISO timestamp
+  })
+
+  test("keeps only the designated Plugin export in the generated output", () => {
+    const src = `export const Helper = 1\nexport const ${PLUGIN_EXPORT_NAME} = 2\nexport default ${PLUGIN_EXPORT_NAME}\n`
+    const out = buildLiveCopy(src, PLUGIN_EXPORT_NAME)
+    const exportLines = out.split("\n").filter((l) => l.startsWith("export "))
+    expect(exportLines).toEqual([`export const ${PLUGIN_EXPORT_NAME} = 2`])
+  })
+})
+
+describe("drift detection: the live .opencode/plugin/ copy must match the generator's current output", () => {
+  test("regenerating from the current dev source byte-for-byte matches the current live copy", () => {
+    const devSource = readFileSync(devSourcePath(), "utf8")
+    const liveSource = readFileSync(liveCopyPath(), "utf8")
+    const expected = buildLiveCopy(devSource, PLUGIN_EXPORT_NAME)
+    if (expected !== liveSource) {
+      throw new Error(
+        "The live plugin copy (.opencode/plugin/nordicbees-harness-trace.ts) does not match " +
+          "what `bun .opencode/plugin-dev/build-plugin.ts` would produce from the current dev " +
+          "source right now. Either the dev source was edited without regenerating, or the live " +
+          "copy was edited directly. Run: bun .opencode/plugin-dev/build-plugin.ts",
+      )
+    }
+    expect(expected).toBe(liveSource)
   })
 })
