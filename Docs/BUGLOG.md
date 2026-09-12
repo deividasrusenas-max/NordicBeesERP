@@ -1245,3 +1245,85 @@ re-labeling the symptom.
 - **Category**: infra (mempalace / tooling)
 - **Error class**: `mempalace-vector-index-stale` (new tag)
 - **Status**: open — needs a post-reindex verification pass.
+
+### 2026-09-12 — opencode-auto-resume flags a complete, correct final report as a hollow done-claim ("nothing left" false positive)
+- **Symptom**: a fixer session's final report — a multi-paragraph,
+  substantive summary of everything done for T5, ending with the
+  sentence "Nothing left open from T5." — was rejected by the plugin's
+  done-claim detector as if it were a bare, contentless "done" claim
+  with no work description, forcing a full report rewrite. It happened
+  twice in the same session.
+- **Root cause**: `opencode-auto-resume@1.1.15`'s `containsDoneClaimPattern`
+  (`~/.cache/opencode/packages/opencode-auto-resume@1.1.15/node_modules/opencode-auto-resume/dist/index.js`)
+  regex-matches `DONE_CLAIM_PATTERNS` as a bare substring anywhere in the
+  last 5 lines of a message, with no check that the rest of the message
+  lacks real work content. The original 10 patterns (carried over from
+  1.1.3) are all whole-line-anchored (`^...$`), so they only match a line
+  that IS just "done." / "task complete." etc. — safe. 1.1.15 (installed
+  2026-09-10 specifically to fix the unrelated `task_complete`-is-a-
+  subagent-no-op bug, see `opencode-auto-resume-subagent-task-complete-
+  noop` above) also added four new UNANCHORED substring patterns,
+  including `/\bnothing\s+(?:else\s+)?(?:left|remaining|to do)/im`, which
+  matches the phrase "nothing left" wherever it occurs, including at the
+  end of an otherwise-complete report. The version bump that fixed one
+  bug introduced this one — confirmed by diffing 1.1.3 (no loose
+  patterns, bug absent) against 1.1.15 (loose patterns present, bug
+  reproduces). A second, independent latent defect was also identified
+  but NOT patched: `checkForToolCallAsText`'s `messages.slice(-3)` takes
+  the last 3 raw messages (any role) before filtering to assistant-only
+  inside its loop, instead of filtering-then-slicing, so a non-assistant
+  message occupying a window slot can leave an already-flagged report
+  un-evicted across a retry. This is not needed to close the reported
+  bug: once the substring-match fix is in place, a long report can never
+  match the loose patterns regardless of which window re-examines it, so
+  the "twice" in this incident is fully explained by
+  `maxRetries` > 1 retrying the same (now-fixed) broken check, not by
+  the stale window smuggling in different text. Left as a known,
+  unpatched latent issue for a future incident that isn't
+  `containsDoneClaimPattern`-shaped.
+- **Fix**: `.opencode/patches/fix-auto-resume-doneclaim-false-positive.js`
+  (same pattern as the sibling `fix-auto-resume-subagent-task-complete.js`
+  patch: idempotent marker-guarded string replace of the installed
+  package, warns instead of crashing if the package's internals changed
+  shape). `containsDoneClaimPattern` now refuses to test any pattern at
+  all unless the message's total trimmed length is under 400 characters
+  — i.e. unless the message could plausibly BE a bare "done" claim with
+  nothing else in it. Verified by replay: the real flagged-report shape
+  (782 chars, substantive multi-point summary ending "Nothing left open
+  from T5.") matched `true` against the unpatched function and `false`
+  against the patched one; a genuine bare claim ("Task complete. Nothing
+  left to do.", 35 chars) still correctly matches `true` after the patch,
+  so the detector's actual purpose (catching real hollow done-claims) is
+  unaffected. Note: unlike the sibling patch, this one's target lives in
+  the user's *global* opencode package cache
+  (`~/.cache/opencode/packages/opencode-auto-resume@1.1.15/...`), not in
+  `.opencode/node_modules` — opencode.json's own `"plugin"` array pins
+  `opencode-auto-resume@1.1.15` as a versioned spec, which opencode
+  resolves via its own cache, bypassing `.opencode/node_modules` (and the
+  1.1.3 dependency still declared in `.opencode/package.json`) entirely.
+  The sibling patch's target has therefore been silently stale/dead since
+  that version pin took effect: the 2026-09-06 `task_complete` fix has
+  been running against an unused 1.1.3 copy, not the live 1.1.15 plugin
+  actually loaded by opencode (though 1.1.15 happens to have separately,
+  independently fixed that original bug upstream — the `isSubagent` gate
+  there now only blocks a to-do check, not the completion signal itself).
+  This new patch is also wired into `.opencode/package.json`'s
+  `postinstall` alongside the sibling one, but that is weaker than for
+  the sibling patch: it only reapplies if someone runs `npm install`
+  inside `.opencode/`, which does nothing to the global cache copy this
+  patch actually targets. The only real trigger for that cache file being
+  rewritten is opencode itself re-fetching the plugin. If this symptom
+  returns, re-run `node .opencode/patches/fix-auto-resume-doneclaim-false-positive.js`
+  manually first.
+- **Guardrail added**: none beyond the patch itself — this is a pinned
+  third-party plugin bug, not project code.
+- **Category**: infra (third-party harness plugin bug, patched locally)
+- **Error class**: `auto-resume-doneclaim-false-positive-on-real-report`
+  (new tag)
+- **Status**: monitoring — patch applied and verified against the live
+  cache file (both the false-positive case and the true-positive case).
+  This blocks fully unattended operation specifically: under autonomous
+  supervision (no human present to notice and override the forced
+  rewrite), a session correctly reporting completion would loop
+  indefinitely being told its real, finished report is contentless, with
+  no ESC available to break the cycle.
