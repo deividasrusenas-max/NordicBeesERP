@@ -660,7 +660,8 @@ namespace NordicBeesERP.Services
             var totalInclVat = lines.Sum(l => l.LineTotal);
             
             // Get localization labels based on language
-            bool isReverseCharge6 = creditNote.ReverseCharge;
+            bool isReverseCharge6 = creditNote.OriginalInvoice?.InvoiceType?.Contains("6%") == true;
+            bool isRc96 = creditNote.OriginalInvoice?.ReverseCharge == true && !isReverseCharge6;
             var labels = GetLocalizationLabels(creditNote.Language, isReverseCharge6);
             
             // Seller (customer) and buyer (company) setup
@@ -864,8 +865,12 @@ namespace NordicBeesERP.Services
                             foreach (var line in lines)
                             {
                                 var totalExclVat = line.LineSubtotal;
-                                var vatAmount = line.VatAmount;
-                                var totalInclVat = line.LineTotal;
+                                var displayVatAmount = isRc96
+                                    ? Math.Round(totalExclVat * (line.VatRate / 100m), 2)
+                                    : line.VatAmount;
+                                var displayLineTotal = isRc96
+                                    ? Math.Round(totalExclVat + displayVatAmount, 2)
+                                    : line.LineTotal;
                                 
                                 // 6% reverse charge - VAT visada 6%
                                 var displayVatRate = isReverseCharge6 ? 6m : line.VatRate;
@@ -877,11 +882,20 @@ namespace NordicBeesERP.Services
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(line.PriceExclVat.ToString("N2", CultureInfo.InvariantCulture)).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(totalExclVat)).FontSize(8);
                                 table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text($"{displayVatRate:N0}%").FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(vatAmount)).FontSize(8);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(totalInclVat)).FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(displayVatAmount)).FontSize(8);
+                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(5).AlignRight().Text(FormatNegativeAmount(displayLineTotal)).FontSize(8);
                             }
                         });
-                        
+
+                        if (isRc96)
+                        {
+                            column.Item().PaddingTop(3).Text(labels.ReverseChargeNoteLabel).FontSize(7);
+                        }
+
+                        var displayTotalVat = isRc96
+                            ? lines.Sum(l => Math.Round(l.LineSubtotal * (l.VatRate / 100m), 2))
+                            : totalVat;
+
                         // Totals - Bottom right
                         column.Item().PaddingTop(10).AlignRight().Column(col =>
                         {
@@ -893,11 +907,11 @@ namespace NordicBeesERP.Services
                             col.Item().Row(row =>
                             {
                                 row.ConstantItem(150).Text(labels.VatAmountLabel).FontSize(9);
-                                row.ConstantItem(80).AlignRight().Text($"{FormatNegativeAmount(totalVat)} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
+                                row.ConstantItem(80).AlignRight().Text($"{FormatNegativeAmount(displayTotalVat)} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(9);
                             });
                             col.Item().BorderTop(1).BorderColor(Colors.Grey.Medium).PaddingTop(5).Row(row =>
                             {
-                                row.ConstantItem(150).Text(labels.TotalInclVatLabel).FontSize(10).Bold();
+                                row.ConstantItem(150).Text(isRc96 ? labels.AmountPayableLabel : labels.TotalInclVatLabel).FontSize(10).Bold();
                                 row.ConstantItem(80).AlignRight().Text($"{FormatNegativeAmount(totalInclVat)} {currency?.Code ?? PdfLocalization.CurrencyCode}").FontSize(10).Bold();
                             });
                         });

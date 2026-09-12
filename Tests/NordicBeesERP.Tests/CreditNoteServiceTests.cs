@@ -1,8 +1,14 @@
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.FileProviders;
+using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 using NordicBeesERP.Services;
 using NordicBeesERP.Services.Dtos;
+using UglyToad.PdfPig;
 using Xunit;
 
 namespace NordicBeesERP.Tests;
@@ -655,6 +661,416 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
             if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
         }
+    }
+
+    // ---------------------------------------------------------------
+    // PDF rendering tests — real PdfGeneratorService + PdfPig text
+    // extraction (mirrors Tests/PdfGeneratorServiceTests.cs). These seed
+    // the credit note via direct INSERT because production never stores
+    // reverse_charge = 1 on a credit note (hard-coded false at creation,
+    // Services/CreditNoteService.cs:177) and CreateCreditNoteAsync throws
+    // for a full-quantity RC96 credit — the PDF derives RC96 from the
+    // ORIGINAL invoice instead.
+    // ---------------------------------------------------------------
+
+    private const string Rc96PayableLabelFragment = "apmokėjimui";
+    private const string Rc96NoteStableFragment = "mechanizmas";
+    private const string PdfOutputDir = "/tmp/rc96-verification";
+
+    private static string ResolveRepoWebRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "wwwroot", "logo.png")))
+                return Path.Combine(dir.FullName, "wwwroot");
+            dir = dir.Parent;
+        }
+        throw new InvalidOperationException($"Could not locate repo wwwroot from {AppContext.BaseDirectory}");
+    }
+
+    private static string ExtractNormalizedText(byte[] pdf)
+    {
+        using var doc = PdfDocument.Open(pdf);
+        var text = string.Join(" ", doc.GetPages().Select(p => p.Text));
+        return Regex.Replace(text, @"\s+", " ");
+    }
+
+    private static string NoSpaces(string s) => s.Replace(" ", "");
+
+    private async Task<(bool Created, int SettingsId)> EnsureCompanySettingsAsync()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        var existing = await context.CompanySettings.FirstOrDefaultAsync();
+        if (existing != null)
+            return (false, existing.Id);
+
+        var settings = new CompanySettings
+        {
+            CompanyName = "Test Company UAB",
+            CompanyCode = "TC-TEST-001",
+            VatCode = "LT000000001",
+            Address = "Test street 1",
+            City = "Vilnius",
+            PostalCode = "12345",
+            Country = "Lietuva",
+            CountryCode = "LT",
+            BankName = "Test Bank",
+            BankIban = "LT000000000000000001",
+            BankSwift = "TESTLT2X",
+            BankAccount = "123456",
+            Email = "test@example.com",
+            Phone = "+370 123 45678",
+            DefaultVatRate = 21m,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.CompanySettings.Add(settings);
+        await context.SaveChangesAsync();
+        return (true, settings.Id);
+    }
+
+    private async Task<int> SeedPdfCustomerAsync()
+    {
+        var now = DateTime.UtcNow;
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        // The credit note's currency_id is resolved via (SELECT id FROM currencies WHERE code='TST')
+        // in SeedCreditNoteAsync — that subquery returns NULL without a 'TST' row, which then maps to
+        // the non-nullable int CurrencyId and throws InvalidCastException. Insert it here (idempotent:
+        // clear any leftover from a prior run first) so all three PDF tests have a currency to reference.
+        await context.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"CN PDF Test Customer {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            NationalIdNumber = "123456789",
+            BankAccount = "123456789012",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        return partner.Id;
+    }
+
+    private async Task<int> SeedOriginalInvoiceAsync(int customerId, string invoiceNumber, DateTime date,
+        string invoiceType, bool reverseCharge, decimal quantity, decimal price, decimal rate,
+        decimal subtotal, decimal vat, decimal total)
+    {
+        var now = DateTime.UtcNow;
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id, language, invoice_type, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})",
+            invoiceNumber, date, customerId, "LT", invoiceType, reverseCharge ? 1 : 0, subtotal, vat, total);
+
+        var invoiceId = await context.Invoices
+            .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoice_lines (invoice_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
+            invoiceId, 1, "CN PDF verification line", quantity, "vnt", price, rate, subtotal, vat, total, now);
+
+        return invoiceId;
+    }
+
+    private async Task<int> SeedCreditNoteAsync(int customerId, string creditNoteNumber, DateTime date, int originalInvoiceId,
+        decimal subtotal, decimal vat, decimal total)
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        // reverse_charge is hardcoded 0 in the SQL — production always stores 0 here;
+        // the PDF derives RC96 from the ORIGINAL invoice.
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, {2}, {3}, {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, 0, {7}, {8}, {9}, 'printed', 1, {10}, {11})",
+            creditNoteNumber, date, originalInvoiceId, originalInvoiceId, customerId, "TST", "LT", subtotal, vat, total, date, date);
+
+        return await context.CreditNotes
+            .FromSqlRaw("SELECT id FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber)
+            .Select(cn => cn.Id)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task SeedCreditNoteLineAsync(int creditNoteId, decimal subtotal, decimal vat, decimal total, decimal rate)
+    {
+        var now = DateTime.UtcNow;
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_note_lines (credit_note_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
+            creditNoteId, 1, "CN PDF verification line", 1m, "vnt", subtotal, rate, subtotal, vat, total, now);
+    }
+
+    private async Task CleanupPdfSeedAsync(int partnerId, int invoiceId, string creditNoteNumber, bool settingsCreated, int settingsId)
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        if (creditNoteNumber.Length > 0)
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
+        if (creditNoteNumber.Length > 0)
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+        if (invoiceId > 0)
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        if (invoiceId > 0)
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", invoiceId);
+        if (partnerId > 0)
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", partnerId);
+        // Remove the 'TST' currency created in SeedPdfCustomerAsync so no leftover row collides
+        // with other tests in this class that insert/use their own 'TST' currency (a second row would
+        // make the (SELECT id FROM currencies WHERE code='TST') subquery return >1 row).
+        await context.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        if (settingsCreated)
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM company_settings WHERE id = {0}", settingsId);
+    }
+
+    [Fact]
+    public async Task GenerateCreditNotePdf_Rc96_ShowsDerivedVatAndPayableLabel()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNRC96-{now.Ticks}";
+        var creditNoteNumber = $"CN-RC96-{now.Ticks}";
+
+        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        int partnerId = 0;
+        int invoiceId = 0;
+        try
+        {
+            partnerId = await SeedPdfCustomerAsync();
+
+            // Original RC96 invoice: stored line 66.00 / VAT 0.00 / total 66.00 (VAT zeroed)
+            invoiceId = await SeedOriginalInvoiceAsync(partnerId, invoiceNumber, now.Date,
+                InvoiceTypes.ReverseCharge96, true, 660m, 0.10m, 21m, 66m, 0m, 66m);
+
+            // Credit note seeded directly: reverse_charge = 0 (production always stores 0),
+            // line mirrors the STORED values; PDF must derive RC96 from the original invoice.
+            var creditNoteId = await SeedCreditNoteAsync(partnerId, creditNoteNumber, now, invoiceId, 66m, 0m, 66m);
+            await SeedCreditNoteLineAsync(creditNoteId, 66m, 0m, 66m, 21m);
+
+            Directory.CreateDirectory(PdfOutputDir);
+            var env = new StubWebHostEnvironment { WebRootPath = ResolveRepoWebRoot() };
+            var companySettings = new CompanySettingsService(_fixture.Factory);
+            var service = new PdfGeneratorService(_fixture.Factory, companySettings, env);
+
+            await using var genContext = await _fixture.Factory.CreateDbContextAsync();
+            // Match the production load path (CreditNoteService.cs:699-702) which includes
+            // OriginalInvoice — the PDF derives RC96 from it, so it must be populated here too.
+            var creditNote = await genContext.CreditNotes.AsNoTracking()
+                .Include(cn => cn.OriginalInvoice)
+                .FirstOrDefaultAsync(cn => cn.Id == creditNoteId);
+            Assert.NotNull(creditNote);
+            var lines = new List<CreditNoteLineDto>
+            {
+                new CreditNoteLineDto
+                {
+                    Id = 0,
+                    CreditNoteId = creditNoteId,
+                    LineNumber = 1,
+                    Description = "CN PDF verification line",
+                    Quantity = 660m,
+                    Unit = "vnt",
+                    PriceExclVat = 0.10m,
+                    VatRate = 21m,
+                    LineSubtotal = 66m,
+                    VatAmount = 0m,
+                    LineTotal = 66m
+                }
+            };
+            var customer = await genContext.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == partnerId);
+            Assert.NotNull(customer);
+            var currency = await genContext.Currencies.AsNoTracking().FirstOrDefaultAsync(c => c.Code == "TST");
+
+            var pdf = await service.GenerateCreditNotePdfAsync(
+                creditNote!, lines, customer, currency, invoiceNumber, now.Date, invoiceNumber, "");
+
+            var fileName = $"rc-credit-note-rc96-{Guid.NewGuid():N}.pdf";
+            File.WriteAllBytes(Path.Combine(PdfOutputDir, fileName), pdf);
+
+            Assert.True(pdf.Length >= 4, "PDF bytes too short");
+            Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+
+            var text = ExtractNormalizedText(pdf);
+            // Derived line VAT (66.00 * 21%) and derived line total (66.00 + 13.86)
+            Assert.Contains("13.86", text);
+            Assert.Contains("79.86", text);
+            // "Suma apmokėjimui:" label fragment — no 't' glyph, extraction-safe
+            Assert.Contains(NoSpaces(Rc96PayableLabelFragment), NoSpaces(text));
+            // RC96 legal-note fragment (same stable fragment as the invoice test)
+            Assert.Contains(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber, settingsCreated, settingsId);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateCreditNotePdf_Ulak6_KeepsRealVatAndNoRc96Labels()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNULAK-{now.Ticks}";
+        var creditNoteNumber = $"CN-ULAK-{now.Ticks}";
+
+        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        int partnerId = 0;
+        int invoiceId = 0;
+        try
+        {
+            partnerId = await SeedPdfCustomerAsync();
+
+            // Original ULAK 6% invoice: stored line 100.00 / VAT 6.00 / total 106.00
+            invoiceId = await SeedOriginalInvoiceAsync(partnerId, invoiceNumber, now.Date,
+                InvoiceTypes.Ulak6, false, 1m, 100m, 6m, 100m, 6m, 106m);
+
+            var creditNoteId = await SeedCreditNoteAsync(partnerId, creditNoteNumber, now, invoiceId, 100m, 6m, 106m);
+            await SeedCreditNoteLineAsync(creditNoteId, 100m, 6m, 106m, 6m);
+
+            Directory.CreateDirectory(PdfOutputDir);
+            var env = new StubWebHostEnvironment { WebRootPath = ResolveRepoWebRoot() };
+            var companySettings = new CompanySettingsService(_fixture.Factory);
+            var service = new PdfGeneratorService(_fixture.Factory, companySettings, env);
+
+            await using var genContext = await _fixture.Factory.CreateDbContextAsync();
+            // Match the production load path (CreditNoteService.cs:699-702) which includes
+            // OriginalInvoice — the PDF derives RC96 from it, so it must be populated here too.
+            var creditNote = await genContext.CreditNotes.AsNoTracking()
+                .Include(cn => cn.OriginalInvoice)
+                .FirstOrDefaultAsync(cn => cn.Id == creditNoteId);
+            Assert.NotNull(creditNote);
+            var lines = new List<CreditNoteLineDto>
+            {
+                new CreditNoteLineDto
+                {
+                    Id = 0,
+                    CreditNoteId = creditNoteId,
+                    LineNumber = 1,
+                    Description = "CN PDF verification line",
+                    Quantity = 1m,
+                    Unit = "vnt",
+                    PriceExclVat = 100m,
+                    VatRate = 6m,
+                    LineSubtotal = 100m,
+                    VatAmount = 6m,
+                    LineTotal = 106m
+                }
+            };
+            var customer = await genContext.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == partnerId);
+            Assert.NotNull(customer);
+            var currency = await genContext.Currencies.AsNoTracking().FirstOrDefaultAsync(c => c.Code == "TST");
+
+            var pdf = await service.GenerateCreditNotePdfAsync(
+                creditNote!, lines, customer, currency, invoiceNumber, now.Date, invoiceNumber, "");
+
+            var fileName = $"rc-credit-note-ulak6-{Guid.NewGuid():N}.pdf";
+            File.WriteAllBytes(Path.Combine(PdfOutputDir, fileName), pdf);
+
+            Assert.True(pdf.Length >= 4, "PDF bytes too short");
+            Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+
+            var text = ExtractNormalizedText(pdf);
+            Assert.Contains("6.00", text);
+            Assert.Contains("106.00", text);
+            Assert.DoesNotContain(NoSpaces(Rc96PayableLabelFragment), NoSpaces(text));
+            Assert.DoesNotContain(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber, settingsCreated, settingsId);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateCreditNotePdf_Standard_ShowsRealVatAndNoRc96Labels()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNSTD-{now.Ticks}";
+        var creditNoteNumber = $"CN-STD-{now.Ticks}";
+
+        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        int partnerId = 0;
+        int invoiceId = 0;
+        try
+        {
+            partnerId = await SeedPdfCustomerAsync();
+
+            // Original standard 21% invoice: stored line 100.00 / VAT 21.00 / total 121.00
+            invoiceId = await SeedOriginalInvoiceAsync(partnerId, invoiceNumber, now.Date,
+                InvoiceTypes.Standard, false, 2m, 50m, 21m, 100m, 21m, 121m);
+
+            var creditNoteId = await SeedCreditNoteAsync(partnerId, creditNoteNumber, now, invoiceId, 100m, 21m, 121m);
+            await SeedCreditNoteLineAsync(creditNoteId, 100m, 21m, 121m, 21m);
+
+            Directory.CreateDirectory(PdfOutputDir);
+            var env = new StubWebHostEnvironment { WebRootPath = ResolveRepoWebRoot() };
+            var companySettings = new CompanySettingsService(_fixture.Factory);
+            var service = new PdfGeneratorService(_fixture.Factory, companySettings, env);
+
+            await using var genContext = await _fixture.Factory.CreateDbContextAsync();
+            // Match the production load path (CreditNoteService.cs:699-702) which includes
+            // OriginalInvoice — the PDF derives RC96 from it, so it must be populated here too.
+            var creditNote = await genContext.CreditNotes.AsNoTracking()
+                .Include(cn => cn.OriginalInvoice)
+                .FirstOrDefaultAsync(cn => cn.Id == creditNoteId);
+            Assert.NotNull(creditNote);
+            var lines = new List<CreditNoteLineDto>
+            {
+                new CreditNoteLineDto
+                {
+                    Id = 0,
+                    CreditNoteId = creditNoteId,
+                    LineNumber = 1,
+                    Description = "CN PDF verification line",
+                    Quantity = 2m,
+                    Unit = "vnt",
+                    PriceExclVat = 50m,
+                    VatRate = 21m,
+                    LineSubtotal = 100m,
+                    VatAmount = 21m,
+                    LineTotal = 121m
+                }
+            };
+            var customer = await genContext.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == partnerId);
+            Assert.NotNull(customer);
+            var currency = await genContext.Currencies.AsNoTracking().FirstOrDefaultAsync(c => c.Code == "TST");
+
+            var pdf = await service.GenerateCreditNotePdfAsync(
+                creditNote!, lines, customer, currency, invoiceNumber, now.Date, invoiceNumber, "");
+
+            var fileName = $"rc-credit-note-standard-{Guid.NewGuid():N}.pdf";
+            File.WriteAllBytes(Path.Combine(PdfOutputDir, fileName), pdf);
+
+            Assert.True(pdf.Length >= 4, "PDF bytes too short");
+            Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+
+            var text = ExtractNormalizedText(pdf);
+            Assert.Contains("21.00", text);
+            Assert.Contains("121.00", text);
+            Assert.DoesNotContain(NoSpaces(Rc96PayableLabelFragment), NoSpaces(text));
+            Assert.DoesNotContain(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber, settingsCreated, settingsId);
+        }
+    }
+
+    private sealed class StubWebHostEnvironment : IWebHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Development";
+        public string ApplicationName { get; set; } = "tests";
+        public IFileProvider ContentRootFileProvider { get; set; } = null!;
+        public string ContentRootPath { get; set; } = string.Empty;
+        public IFileProvider WebRootFileProvider { get; set; } = null!;
+        public string WebRootPath { get; set; } = string.Empty;
     }
 
     // --- Minimal stub implementations for CreditNoteService constructor dependencies ---
