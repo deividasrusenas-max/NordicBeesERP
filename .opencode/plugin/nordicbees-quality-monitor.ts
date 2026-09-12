@@ -46,8 +46,23 @@ import { join } from "path"
 const STALE_MS = 10 * 60 * 1000 // 10 minutes with no "completed" match = assume interrupted
 
 // Fast in-memory path for the common case (before/after in the same
-// process). Sequential-only workflow (per orchestrator.md) means a
-// simple FIFO queue per subagent type is sufficient here.
+// process). Each entry is keyed by the platform's own `callID` (present
+// on `input.callID` for both hooks per @opencode-ai/plugin's own types —
+// the same field nordicbees-orchestrator-timing.ts already keys its
+// pending map by) and MUST be removed by matching that id, never by
+// queue position. It used to be popped via `.shift()`, on the assumption
+// that "sequential-only workflow" makes start order equal completion
+// order — false the moment any call in the queue is aborted before its
+// own "after" fires: every completion behind it then shifts out one
+// call's entry too early, silently attaching the wrong call_id/startedAt
+// to the wrong completed record (misattributed duration, and for a
+// reviewer, a verdict association that no longer lines up with its real
+// call_id either) until the orphaned entry finally ages past STALE_MS and
+// sweepStale's callId-matched cleanup (below) splices it out. See
+// docs/BUGLOG.md: aborted-subagent-leaves-outer-task-call-unresolved.
+// The array is still per-subagent-type (not one flat map) only because
+// countInFlightToolCall() below needs to increment every currently
+// in-flight call regardless of type.
 //
 // nToolCalls: running count of ALL tool calls (read, edit, grep, task,
 // bash, ...) that fire while this task call is in-flight — i.e. between
@@ -248,7 +263,16 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
         // (possibly killed) process, before recording this new one.
         sweepStale(logPath, reportsDir)
 
-        callId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        // input.callID is the platform's own unique id for THIS call
+        // (present on both hooks — see the comment above pendingStarts).
+        // Fall back to a locally-generated id only if it's ever somehow
+        // absent, so a "started" record still gets written either way;
+        // that fallback can never be matched by call_id in "after" below
+        // (nothing else could generate the same random value), so such a
+        // call would correctly age out via sweepStale instead of being
+        // silently misattributed to some other call.
+        const callID = input?.callID as string | undefined
+        callId = callID ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         const startedAt = Date.now()
         ;(pendingStarts[subagent] ??= []).push({ callId, startedAt, nToolCalls: 0 })
       }
@@ -281,7 +305,19 @@ export const NordicBeesQualityMonitor: Plugin = async ({ directory }) => {
       const subagent = args?.subagent_type as string | undefined
       if (!subagent || !MODEL_NAMES[subagent]) return
 
-      const started = pendingStarts[subagent]?.shift()
+      // Find and remove THIS call's own entry by call_id — never by
+      // queue position (see the pendingStarts comment above for why
+      // `.shift()` here was the actual bug). If no entry matches (e.g.
+      // this call's own "started" entry already aged out and was spliced
+      // by sweepStale), `started` stays undefined and the record below
+      // falls back to its existing null-handling, same as before.
+      const callID = input?.callID as string | undefined
+      const queue = pendingStarts[subagent]
+      let started: { callId: string; startedAt: number; nToolCalls: number } | undefined
+      if (queue) {
+        const idx = callID ? queue.findIndex((e) => e.callId === callID) : -1
+        if (idx !== -1) started = queue.splice(idx, 1)[0]
+      }
       const durationSec = started ? Math.round((Date.now() - started.startedAt) / 100) / 10 : null
       const nToolCalls = started?.nToolCalls ?? 0
 
