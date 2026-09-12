@@ -1,0 +1,3 @@
+# Traces are data, not source — never committed, regardless of what the
+# root .gitignore's blanket .opencode/reports/ rule currently says.
+harness-trace*.jsonl

@@ -680,7 +680,8 @@
         "chunkTimeoutMs": 420000,
         "gracePeriodMs": 15000,
         "maxRetries": 3,
-        "subagentWaitMs": 300000
+        "subagentWaitMs": 300000,
+        "debug": true
       }
     ]
   ],
