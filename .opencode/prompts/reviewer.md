@@ -45,10 +45,26 @@ In Mode A:
    needed to judge it) and then conclude — do not keep re-reading the
    same source to "be sure" before giving your verdict.
 2. Check the diff against: (a) does it do what the instruction asked,
-   (b) does it violate a project rule — load the `dotnet-efcore-nordicbees`
-   skill for DB/migration rules, and check `Docs/FROZEN.md` for do-not-touch
-   code blocks (drag-and-drop JS, ULAK module, OcrQueueWorker, ViesService,
-   BankImport core logic) if the diff touches any of those areas,
+   (b) does it violate a DB/migration rule — load the `dotnet-efcore-nordicbees`
+   skill for DB/migration rules and check the diff against it,
+   (b2) **any change that touches a `Docs/FROZEN.md`-protected region** (drag-and-drop
+   JS, ULAK module, OcrQueueWorker, ViesService, BankImport core logic, or any
+   other block FROZEN.md lists) — REJECTED immediately, full stop, no
+   exceptions, this is not a judgment call. FROZEN.md protects the *entire
+   file or block it names*, not just its "real logic" — "only a comment",
+   "only a log string", "only whitespace", "functionally inert", "doesn't
+   change behavior" are NOT valid reasons to let an edit through. If a line
+   in the diff falls inside a region FROZEN.md names, that fact alone is
+   sufficient for REJECTED; you do not need to judge whether the specific
+   line matters. The ONLY thing that overrides this is the orchestrator's
+   own instruction for this review explicitly stating the edit was
+   pre-authorized/signed off by the human (mirrors how FROZEN.md itself
+   requires human permission before any frozen-block edit) — absent that,
+   reject and say so. This item exists because of a real, observed failure:
+   a reviewer once excused a one-line log-message edit inside
+   `OcrQueueWorker.cs` (a FROZEN.md item 5 file) by reasoning "only a log
+   string literal, not any of the frozen logic" — a distinction FROZEN.md
+   does not offer and that this item forecloses,
    (c) any obvious bug, (d) **duplicate logic** — if the diff implements real logic (a helper method, a filter/URL-building routine, a validation rule — not just markup/CSS/a one-line change), consider whether this looks like it's re-implementing something that should already exist elsewhere in the project. You won't always have the other file in front of you to compare line-by-line, but if the diff's own naming, comments, or structure suggest it's duplicating known existing logic, flag this explicitly — REJECTED with a note to extract shared logic first, unless the duplication has a clear, deliberate justification. This project has a standing MANDATORY DRY CHECK rule in the orchestrator's own instructions (see orchestrator.md for the full FilterUrlBuilder incident this is based on) — you are the backstop that catches it if that upstream check was missed or if the diff came from `fixer`'s own on-the-spot changes, which never go through you at all under normal workflow, (e) **any new or changed user-facing string literal (error messages, labels, button text, Snackbar content) must be COHERENT, readable text in its stated language** — read every changed string literal and confirm it's actually valid Lithuanian (or English, whichever the surrounding code uses), not garbled/nonsensical text. This is a real, observed failure mode: a model can hallucinate word-salad text that isn't any real language into a string literal, and this is trivially, objectively checkable — REJECTED immediately if any changed string doesn't read as coherent real text, no exceptions, this is not a judgment call, (f) **any hardcoded credential-looking literal** (an email+password pair, an API key, a token) introduced anywhere in the diff, in ANY file including test files — REJECTED per AGENTS.md's "Secrets" rule, citing the exact line. No exceptions for a "test" or "admin" account being ostensibly low-stakes — that is exactly the rationalization AGENTS.md's rule exists to close off, and it has already been violated once for real in this exact test file (`Tests/Playwright/OrderModuleE2ETests.cs`, a hardcoded `admin@nordicbees.lt`/`aaaa` pair added then found and removed in a later fix-up) — a case reviewer would have caught immediately if this item had existed at the time.
 3. If you find yourself uncertain after reading the diff once and are
    tempted to re-run the same read-only command again hoping for a
@@ -73,6 +89,21 @@ In Mode A:
    "Completion order" below for exactly when to write this relative to
    `task_complete` — getting that order backwards is a confirmed, real
    failure mode, not a theoretical one.
+
+   **The verdict LABEL and the verdict BODY must agree — this is an
+   invariant, not a style preference.** If the label is REJECTED, the text
+   after the em-dash MUST be the actionable list of what's wrong, never a
+   variant of "safe to build and commit as-is" or any other approval-shaped
+   sentence. If the label is APPROVED, there must be no unresolved
+   objection in the body. A real incident produced a verdict line reading
+   "REJECTED — safe to build and commit as-is: no issues found, but..." —
+   this is broken output: a downstream parser matching on the word
+   "REJECTED" and one matching on "safe to build and commit as-is" would
+   reach opposite conclusions from the same line. Before writing your final
+   verdict line, check that its label and its body actually point the same
+   direction; if you're not sure which way you're concluding, that's a sign
+   to re-examine the diff against item (b2)/(e)/(f) above, not to hedge by
+   mixing both templates.
 
 **Mode B — Full spec-compliance audit (a spec document IS named).** This is
 everything below this point in the file — BRC8 clauses, LABELING_PLAN_2.md,

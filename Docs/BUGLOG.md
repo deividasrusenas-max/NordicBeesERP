@@ -1404,3 +1404,74 @@ re-labeling the symptom.
   available to break the resulting cycle — the same shape of harm as the
   doneclaim bug above, but triggered by session role instead of message
   phrasing.
+
+### 2026-09-12 — `reviewer` treated a FROZEN.md violation as a judgment call instead of a non-negotiable REJECT
+
+- **Symptom**: a deliberate test (throwaway branch, discarded after) fed
+  `reviewer` a one-line log-message edit inside `Services/OcrQueueWorker.cs`
+  (a FROZEN.md item 5 "do not touch: the entire file" file) via the normal
+  Mode A per-file diff review path, no spec doc. The verdict excused the
+  edit: *"this diff only changes a log string literal, not any of the
+  frozen logic"* — a distinction FROZEN.md does not offer; FROZEN.md item 5
+  protects the whole file, not just its "logic". The verdict line was also
+  internally broken: it read `"REJECTED — safe to build and commit as-is:
+  no issues found, but..."` — the REJECTED label paired with APPROVED's own
+  canned body text, so a downstream parser matching on either token could
+  reach opposite conclusions from the same line.
+- **Recurrence check first**: this is the first BUGLOG entry for
+  `reviewer`'s FROZEN handling specifically; sibling entries
+  (`reviewer-verdict-without-content`, referenced from
+  `.opencode/prompts/reviewer.md`'s own "Completion order" section) cover a
+  different failure (verdict text lost to completion-order timing, not a
+  wrong verdict). Three other real-violation triggers in the same test
+  (incoherent user-facing string, hardcoded credential, duplicate-logic
+  reimplementation of `FilterUrlBuilder`) all produced clean, correctly
+  cited REJECTED verdicts — only FROZEN wavered.
+- **Root cause**: prompt framing, not a model capability gap. The model
+  correctly enforced the three triggers `reviewer.md` phrases as
+  non-negotiable ("no exceptions, this is not a judgment call" — items (e)
+  string coherence and (f) credentials) and only wavered on the one trigger
+  phrased softly: the old item (b) said to "check `Docs/FROZEN.md` for
+  do-not-touch code blocks... if the diff touches any of those areas" with
+  no explicit statement that touching one is automatically disqualifying
+  regardless of what the touching edit does. Left as an open judgment call,
+  the model applied a "only inert/non-logic changes are fine" carve-out
+  that the actual FROZEN.md text never grants.
+- **Fix**: `.opencode/prompts/reviewer.md` Mode A step 2 — split the old
+  item (b) into a DB/migration-rules item and a new item (b2) rewritten in
+  the same non-negotiable shape as (e)/(f): touching any FROZEN.md-named
+  region is REJECTED immediately, full stop, no carve-out for "only a
+  comment/log string/whitespace/functionally inert"; the only override is
+  the orchestrator's instruction explicitly stating the edit was
+  pre-authorized/signed off by the human, mirroring how FROZEN.md itself
+  requires human permission for any frozen-block edit. Also added an
+  explicit invariant right after the mandatory verdict-line rule: the
+  verdict LABEL and BODY must agree (REJECTED must carry an actionable
+  list of what's wrong, never an APPROVED-shaped sentence), citing this
+  exact incident's broken verdict line as the counter-example.
+- **Verification**: re-ran the identical OcrQueueWorker.cs log-string diff
+  through the real `reviewer` agent (`opencode run --agent reviewer`,
+  same Mode A instruction, no spec doc) in a second throwaway branch after
+  the prompt fix. New verdict: `"REJECTED — Services/OcrQueueWorker.cs is a
+  FROZEN.md-protected file (item 5... that alone is sufficient for
+  rejection; 'only a comment/log string, functionally inert' is not a valid
+  exception, and the orchestrator did not state this edit was
+  pre-authorized..."` — clean REJECTED, body matches label, explicit
+  FROZEN.md item 5 citation, and it named the new item (b2) by number.
+  Branch discarded, main confirmed untouched (`git status` clean apart from
+  the committed prompt fix, `git log -1` unchanged aside from this entry's
+  own commit).
+- **Guardrail added**: none beyond the prompt rewrite — this is a prompt-
+  framing fix, not a mechanical/code guardrail; FROZEN.md violations still
+  rely on `reviewer` actually reading `Docs/FROZEN.md` when a diff's file
+  path suggests it might be in scope.
+- **Category**: prompt (agent instruction framing, not a model or harness
+  bug)
+- **Error class**: `reviewer-frozen-check-treated-as-judgment-call` (new
+  tag)
+- **Status**: resolved — fix applied and verified by direct re-test
+  against the real reviewer agent, not just read back. Note: the model
+  itself was capable throughout — it enforced all three of the
+  already-non-negotiable triggers correctly on the first pass; the only
+  change needed was making FROZEN.md checks read as non-negotiable too,
+  not a model or model-family swap.
