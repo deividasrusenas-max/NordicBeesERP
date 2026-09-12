@@ -417,7 +417,7 @@
         "-m",
         "mempalace.mcp_server"
       ],
-      "enabled": true,
+      "enabled": false,
       "type": "local"
     },
     "nordicbees-db": {
