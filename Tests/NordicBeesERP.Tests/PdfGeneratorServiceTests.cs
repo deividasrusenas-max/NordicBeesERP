@@ -62,12 +62,16 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
 
     private static string NoSpaces(string s) => s.Replace(" ", "");
 
-    private async Task<(bool Created, int SettingsId)> EnsureCompanySettingsAsync()
+    // company_settings is a PERSISTENT seed row shared by the whole test suite: xUnit runs
+    // different test classes in parallel against the same test DB, so another class's test may
+    // depend on a row this test created. No test cleanup may delete it (2026-09-12
+    // "Company settings not found in database" race).
+    private async Task EnsureCompanySettingsAsync()
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
         var existing = await context.CompanySettings.FirstOrDefaultAsync();
         if (existing != null)
-            return (false, existing.Id);
+            return;
 
         var settings = new CompanySettings
         {
@@ -90,7 +94,6 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
         };
         context.CompanySettings.Add(settings);
         await context.SaveChangesAsync();
-        return (true, settings.Id);
     }
 
     private async Task<int> SeedCustomerAsync()
@@ -124,7 +127,7 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
         return partner.Id;
     }
 
-    private async Task CleanupAsync(int partnerId, int invoiceId, bool settingsCreated, int settingsId)
+    private async Task CleanupAsync(int partnerId, int invoiceId)
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
         if (invoiceId > 0)
@@ -133,8 +136,6 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
             await context.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", invoiceId);
         if (partnerId > 0)
             await context.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", partnerId);
-        if (settingsCreated)
-            await context.Database.ExecuteSqlRawAsync("DELETE FROM company_settings WHERE id = {0}", settingsId);
     }
 
     // ---------------------------------------------------------------
@@ -144,7 +145,7 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
     [Fact]
     public async Task GenerateInvoicePdf_ReverseCharge96_ShowsDisplayVatAndAmountPayable()
     {
-        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        await EnsureCompanySettingsAsync();
         int partnerId = 0;
         int invoiceId = 0;
         try
@@ -208,7 +209,7 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
         }
         finally
         {
-            await CleanupAsync(partnerId, invoiceId, settingsCreated, settingsId);
+            await CleanupAsync(partnerId, invoiceId);
         }
     }
 
@@ -220,7 +221,7 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
     [Fact]
     public async Task GenerateInvoicePdf_Ulak6_KeepsRealVatAndHasNoRc96Labels()
     {
-        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        await EnsureCompanySettingsAsync();
         int partnerId = 0;
         int invoiceId = 0;
         try
@@ -284,7 +285,7 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
         }
         finally
         {
-            await CleanupAsync(partnerId, invoiceId, settingsCreated, settingsId);
+            await CleanupAsync(partnerId, invoiceId);
         }
     }
 
@@ -295,7 +296,7 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
     [Fact]
     public async Task GenerateInvoicePdf_Standard_ShowsRealVatAndHasNoRc96Labels()
     {
-        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        await EnsureCompanySettingsAsync();
         int partnerId = 0;
         int invoiceId = 0;
         try
@@ -359,7 +360,7 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
         }
         finally
         {
-            await CleanupAsync(partnerId, invoiceId, settingsCreated, settingsId);
+            await CleanupAsync(partnerId, invoiceId);
         }
     }
 

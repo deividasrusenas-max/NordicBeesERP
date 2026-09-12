@@ -698,12 +698,16 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 
     private static string NoSpaces(string s) => s.Replace(" ", "");
 
-    private async Task<(bool Created, int SettingsId)> EnsureCompanySettingsAsync()
+    // company_settings is a PERSISTENT seed row shared by the whole test suite: xUnit runs
+    // different test classes in parallel against the same test DB, so another class's test may
+    // depend on a row this test created. No test cleanup may delete it (2026-09-12
+    // "Company settings not found in database" race).
+    private async Task EnsureCompanySettingsAsync()
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
         var existing = await context.CompanySettings.FirstOrDefaultAsync();
         if (existing != null)
-            return (false, existing.Id);
+            return;
 
         var settings = new CompanySettings
         {
@@ -726,7 +730,6 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         };
         context.CompanySettings.Add(settings);
         await context.SaveChangesAsync();
-        return (true, settings.Id);
     }
 
     private async Task<int> SeedPdfCustomerAsync()
@@ -812,7 +815,7 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             creditNoteId, 1, "CN PDF verification line", 1m, "vnt", subtotal, rate, subtotal, vat, total, now);
     }
 
-    private async Task CleanupPdfSeedAsync(int partnerId, int invoiceId, string creditNoteNumber, bool settingsCreated, int settingsId)
+    private async Task CleanupPdfSeedAsync(int partnerId, int invoiceId, string creditNoteNumber)
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
         if (creditNoteNumber.Length > 0)
@@ -829,8 +832,6 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         // with other tests in this class that insert/use their own 'TST' currency (a second row would
         // make the (SELECT id FROM currencies WHERE code='TST') subquery return >1 row).
         await context.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
-        if (settingsCreated)
-            await context.Database.ExecuteSqlRawAsync("DELETE FROM company_settings WHERE id = {0}", settingsId);
     }
 
     [Fact]
@@ -840,7 +841,7 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         var invoiceNumber = $"INV-CNRC96-{now.Ticks}";
         var creditNoteNumber = $"CN-RC96-{now.Ticks}";
 
-        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        await EnsureCompanySettingsAsync();
         int partnerId = 0;
         int invoiceId = 0;
         try
@@ -909,7 +910,7 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         }
         finally
         {
-            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber, settingsCreated, settingsId);
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
         }
     }
 
@@ -920,7 +921,7 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         var invoiceNumber = $"INV-CNULAK-{now.Ticks}";
         var creditNoteNumber = $"CN-ULAK-{now.Ticks}";
 
-        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        await EnsureCompanySettingsAsync();
         int partnerId = 0;
         int invoiceId = 0;
         try
@@ -984,7 +985,7 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         }
         finally
         {
-            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber, settingsCreated, settingsId);
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
         }
     }
 
@@ -995,7 +996,7 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         var invoiceNumber = $"INV-CNSTD-{now.Ticks}";
         var creditNoteNumber = $"CN-STD-{now.Ticks}";
 
-        var (settingsCreated, settingsId) = await EnsureCompanySettingsAsync();
+        await EnsureCompanySettingsAsync();
         int partnerId = 0;
         int invoiceId = 0;
         try
@@ -1059,7 +1060,7 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         }
         finally
         {
-            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber, settingsCreated, settingsId);
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
         }
     }
 
