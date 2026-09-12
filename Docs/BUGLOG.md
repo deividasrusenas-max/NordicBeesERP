@@ -1327,3 +1327,80 @@ re-labeling the symptom.
   rewrite), a session correctly reporting completion would loop
   indefinitely being told its real, finished report is contentless, with
   no ESC available to break the cycle.
+
+### 2026-09-12 — opencode-auto-resume's idle-injection was never scoped to subagents, hit the top-level interactive session
+- **Symptom**: same day as the doneclaim false-positive above, but a
+  distinct mechanism — the user's own top-level interactive opencode
+  session (no subagent involved at all) received the "continue" nudge
+  and the "contained no work description" reminder after going idle
+  following a normal, substantive reply.
+- **Root cause**: `checkForToolCallAsText` (the function containing
+  `containsDoneClaimPattern`, patched above) is scheduled from the
+  `session.status`/`statusType === "idle"` branch of `handleEvent`
+  unconditionally, for every session, with no `isSubagent` check at all.
+  This is the ONE idle-triggered mechanism in the plugin with no
+  subagent/top-level distinction — its sibling recovery block in the
+  same branch (streaming-failure / silent-dead-stream / open-todos
+  reminder) is already gated `if (!w.isSubagent)`, i.e. already
+  restricted to non-subagent sessions only, and was left alone. The
+  periodic-timer orphan-watch / stall-recovery timers (`subagentWaitMs`,
+  `chunkTimeoutMs`, `busyStallStrategy`) were also deliberately left
+  alone — that is what caught the crashed-subagent case in the
+  2026-09-09 incident, and removing protection that works to fix a
+  problem it didn't cause would have been a bad trade.
+- **isSubagent reliability risk, investigated before patching**: gating
+  directly on `w.isSubagent` was considered and rejected. `w.isSubagent`
+  is set reliably from `parentID` at `session.created`, but a separate
+  heuristic elsewhere in the same file (`prevBusyCount > 1 &&
+  currentBusy === 1`, meant to detect "a parent stuck after its subagent
+  finished") can later flip `w.isSubagent` to `true` on a session that
+  was never actually a subagent. That heuristic reads
+  `getLoneBusySession()`/`busyCount()`, both confirmed (by reading them
+  directly) to iterate the plugin's *global* `sessions` Map with no
+  filtering by parentID or session family. A top-level orchestrator
+  session is safe from *self*-contamination (it stays `busy` for the
+  whole duration of its own Task-tool dispatches, confirmed via the
+  `pendingTools`/`hasInflightTools` machinery elsewhere in the file, so
+  it's structurally the last session in its own tree to go idle) — but
+  it is NOT safe from *cross-session* contamination: any other session
+  the same opencode server happens to be tracking as busy (a second
+  tab/window, an unrelated orchestrator run) at the exact moment this
+  session finishes can cause the busy-count arithmetic to mislabel it,
+  silently re-enabling the very nudges meant to be suppressed, with no
+  way to notice short of re-reading the plugin's internal state.
+- **Fix**: `.opencode/patches/fix-auto-resume-idle-injection-topsession.js`
+  (same cache-file mechanism as the doneclaim patch; a three-site,
+  all-or-nothing string replace instead of one, since the safe fix
+  needed a new field, not just a new condition on an existing one).
+  Adds `isSubagentAtCreation`, captured once from `parentID` at
+  `session.created` and never written anywhere else in the file — the
+  busy-count heuristic only ever writes `w.isSubagent`, so this field is
+  immune to it by construction. `checkForToolCallAsText`'s scheduling
+  guard now reads `w.isSubagentAtCreation` instead of `w.isSubagent`.
+  Verified by replay (extracting the literal patched lines from the live
+  file, not a reimplementation): a top-level session evaluates to
+  "would NOT schedule checkForToolCallAsText" both before and — critically
+  — *after* simulating the cross-session heuristic flipping its
+  `isSubagent` to `true`; a real subagent (created with a `parentID`)
+  evaluates to "would schedule" as before. `node --check` confirms the
+  patched file is still valid JS. Confirmed untouched: the `tool: {
+  task_complete: taskCompleteTool }` registration (a separate plugin
+  hook key, never in the event-dispatch path this patch edits), the
+  `if (!w.isSubagent)` recovery block, and `task_complete`'s own
+  open-todos override gate (both still read the plain, unpatched
+  `w.isSubagent`, confirmed by grep after patching).
+- **Guardrail added**: none beyond the patch itself — pinned third-party
+  plugin bug, not project code.
+- **Category**: infra (third-party harness plugin bug, patched locally)
+- **Error class**: `auto-resume-idle-injection-not-scoped-to-subagents`
+  (new tag)
+- **Status**: monitoring — patch applied and verified (syntax check +
+  literal-code replay of both the top-level and subagent cases, plus the
+  cross-contamination edge case). This specifically blocks unattended
+  Hermes-over-opencode operation: a real interactive top-level session
+  running under autonomous supervision would get told to "continue" or
+  that its finished, substantive reply "contained no work description"
+  with no human present to recognize the nudge as spurious and no ESC
+  available to break the resulting cycle — the same shape of harm as the
+  doneclaim bug above, but triggered by session role instead of message
+  phrasing.
