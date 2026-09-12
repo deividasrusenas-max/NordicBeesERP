@@ -9,6 +9,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 using NordicBeesERP.Services.Dtos;
 using System.Collections.Generic;
@@ -661,7 +662,7 @@ namespace NordicBeesERP.Services
             
             // Get localization labels based on language
             bool isReverseCharge6 = creditNote.OriginalInvoice?.InvoiceType?.Contains("6%") == true;
-            bool isRc96 = creditNote.OriginalInvoice?.ReverseCharge == true && !isReverseCharge6;
+            bool isRc96 = creditNote.OriginalInvoice != null && InvoiceTypes.IsReverseCharge96(creditNote.OriginalInvoice.ReverseCharge, creditNote.OriginalInvoice.InvoiceType);
             var labels = GetLocalizationLabels(creditNote.Language, isReverseCharge6);
             
             // Seller (customer) and buyer (company) setup

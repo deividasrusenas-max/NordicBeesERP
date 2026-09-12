@@ -202,8 +202,7 @@ namespace NordicBeesERP.Services
             // while keeping the original VAT rate.
             var originalInvoice = context.Invoices.Find(request.OriginalInvoiceId);
             var originalIsRc96 = originalInvoice != null
-                && originalInvoice.ReverseCharge
-                && !originalInvoice.InvoiceType.Contains("6%");
+                && InvoiceTypes.IsReverseCharge96(originalInvoice.ReverseCharge, originalInvoice.InvoiceType);
 
             foreach (var lineRequest in request.Lines)
             {
@@ -601,8 +600,7 @@ namespace NordicBeesERP.Services
             var rc96Invoice = await context.Invoices.AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == (creditNote.OriginalInvoiceId ?? 0));
             var originalIsRc96 = rc96Invoice != null
-                && rc96Invoice.ReverseCharge
-                && !rc96Invoice.InvoiceType.Contains("6%");
+                && InvoiceTypes.IsReverseCharge96(rc96Invoice.ReverseCharge, rc96Invoice.InvoiceType);
 
             // Remove existing lines
             context.CreditNoteLines.RemoveRange(creditNote.Lines);
