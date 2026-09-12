@@ -396,6 +396,517 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task CreateCreditNoteAsync_Rc96Invoice_FullCredit_StoresNetOnlyLineAndTotals()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-RC96FULL-{now.Ticks}";
+
+        var partnerId = await SeedPdfCustomerAsync();
+        var invoiceId = await SeedOriginalInvoiceAsync(
+            partnerId, invoiceNumber, now.Date,
+            InvoiceTypes.ReverseCharge96, reverseCharge: true,
+            quantity: 660m, price: 0.10m, rate: 21m,
+            subtotal: 66.00m, vat: 0m, total: 66.00m);
+
+        // The seed helper does not set the paid columns — force the invoice to a known
+        // fully-unpaid state so the credit note's status recalculation starts from a clean slate.
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "UPDATE invoices SET paid_amount = {0}, payment_status = {1} WHERE id = {2}",
+            0m, "unpaid", invoiceId);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // Act: no-arg TestPaymentService — the no-op stub (no status recalculation needed here).
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            // PriceExclVat is deliberately left at its default (0) so the service falls back to
+            // the original line's stored 0.10 price.
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 660m } }
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // Assert: read back with a BRAND NEW DbContext (AsNoTracking) — the RC96 line must be
+            // stored NET-only: 21% rate, zero VAT, subtotal == total.
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var line = await verifyContext.CreditNoteLines
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.CreditNoteId == creditNote.Id);
+
+            Assert.NotNull(line);
+            Assert.Equal(21m, line!.VatRate);
+            Assert.Equal(0m, line.VatAmount);
+            Assert.Equal(66.00m, line.LineSubtotal);
+            Assert.Equal(66.00m, line.LineTotal);
+            Assert.Equal(660m, line.Quantity);
+
+            var note = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Id == creditNote.Id);
+
+            Assert.NotNull(note);
+            Assert.Equal(66.00m, note!.SubtotalExclVat);
+            Assert.Equal(0m, note.TotalVat);
+            Assert.Equal(66.00m, note.TotalInclVat);
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
+        }
+    }
+
+    [Fact]
+    public async Task CreateCreditNoteAsync_Rc96Invoice_PartialCredit_StoresNetOnlyLine()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-RC96PART-{now.Ticks}";
+
+        var partnerId = await SeedPdfCustomerAsync();
+        var invoiceId = await SeedOriginalInvoiceAsync(
+            partnerId, invoiceNumber, now.Date,
+            InvoiceTypes.ReverseCharge96, reverseCharge: true,
+            quantity: 660m, price: 0.10m, rate: 21m,
+            subtotal: 66.00m, vat: 0m, total: 66.00m);
+
+        // The seed helper does not set the paid columns — force the invoice to a known
+        // fully-unpaid state so the credit note's status recalculation starts from a clean slate.
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "UPDATE invoices SET paid_amount = {0}, payment_status = {1} WHERE id = {2}",
+            0m, "unpaid", invoiceId);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // Act: no-arg TestPaymentService — the no-op stub (no status recalculation needed here).
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            // PriceExclVat is deliberately left at its default (0) so the service falls back to
+            // the original line's stored 0.10 price. Credit only half the quantity.
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 330m } }
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // Assert: read back with a BRAND NEW DbContext (AsNoTracking) — the RC96 line must be
+            // stored NET-only: 21% rate, zero VAT, subtotal == total for the partial quantity.
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var line = await verifyContext.CreditNoteLines
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.CreditNoteId == creditNote.Id);
+
+            Assert.NotNull(line);
+            Assert.Equal(21m, line!.VatRate);
+            Assert.Equal(0m, line.VatAmount);
+            Assert.Equal(33.00m, line.LineSubtotal);
+            Assert.Equal(33.00m, line.LineTotal);
+            Assert.Equal(330m, line.Quantity);
+
+            var note = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Id == creditNote.Id);
+
+            Assert.NotNull(note);
+            Assert.Equal(33.00m, note!.SubtotalExclVat);
+            Assert.Equal(0m, note.TotalVat);
+            Assert.Equal(33.00m, note.TotalInclVat);
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
+        }
+    }
+
+    [Fact]
+    public async Task CreateCreditNoteAsync_Standard21Invoice_CreditKeepsVat()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-STANDARD21-{now.Ticks}";
+
+        var partnerId = await SeedPdfCustomerAsync();
+        var invoiceId = await SeedOriginalInvoiceAsync(
+            partnerId, invoiceNumber, now.Date,
+            InvoiceTypes.Standard, reverseCharge: false,
+            quantity: 100m, price: 1.00m, rate: 21m,
+            subtotal: 100.00m, vat: 21.00m, total: 121.00m);
+
+        // The seed helper does not set the paid columns — force the invoice to a known
+        // fully-unpaid state so the credit note's status recalculation starts from a clean slate.
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "UPDATE invoices SET paid_amount = {0}, payment_status = {1} WHERE id = {2}",
+            0m, "unpaid", invoiceId);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // Act: no-arg TestPaymentService — the no-op stub (no status recalculation needed here).
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            // PriceExclVat is deliberately left at its default (0) so the service falls back to
+            // the original line's stored 1.00 price. Credit the full quantity.
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 100m } }
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // Assert: read back with a BRAND NEW DbContext (AsNoTracking) — a standard 21%
+            // invoice is NOT RC96, so the credit line must keep its real VAT.
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var line = await verifyContext.CreditNoteLines
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.CreditNoteId == creditNote.Id);
+
+            Assert.NotNull(line);
+            Assert.Equal(21m, line!.VatRate);
+            Assert.Equal(21.00m, line.VatAmount);
+            Assert.Equal(100.00m, line.LineSubtotal);
+            Assert.Equal(121.00m, line.LineTotal);
+            Assert.Equal(100m, line.Quantity);
+
+            var note = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Id == creditNote.Id);
+
+            Assert.NotNull(note);
+            Assert.Equal(100.00m, note!.SubtotalExclVat);
+            Assert.Equal(21.00m, note.TotalVat);
+            Assert.Equal(121.00m, note.TotalInclVat);
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
+        }
+    }
+
+    [Fact]
+    public async Task CreateCreditNoteAsync_Ulak6Invoice_CreditKeepsVat()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-ULAK6-{now.Ticks}";
+
+        var partnerId = await SeedPdfCustomerAsync();
+        var invoiceId = await SeedOriginalInvoiceAsync(
+            partnerId, invoiceNumber, now.Date,
+            InvoiceTypes.Ulak6, reverseCharge: false,
+            quantity: 100m, price: 1.00m, rate: 6m,
+            subtotal: 100.00m, vat: 6.00m, total: 106.00m);
+
+        // The seed helper does not set the paid columns — force the invoice to a known
+        // fully-unpaid state so the credit note's status recalculation starts from a clean slate.
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "UPDATE invoices SET paid_amount = {0}, payment_status = {1} WHERE id = {2}",
+            0m, "unpaid", invoiceId);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // Act: no-arg TestPaymentService — the no-op stub (no status recalculation needed here).
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            // PriceExclVat is deliberately left at its default (0) so the service falls back to
+            // the original line's stored 1.00 price. Credit the full quantity.
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 100m } }
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // Assert: read back with a BRAND NEW DbContext (AsNoTracking) — the ULAK 6% invoice
+            // is NOT RC96 (reverse_charge=0), so the credit line must keep its real VAT.
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var line = await verifyContext.CreditNoteLines
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.CreditNoteId == creditNote.Id);
+
+            Assert.NotNull(line);
+            Assert.Equal(6m, line!.VatRate);
+            Assert.Equal(6.00m, line.VatAmount);
+            Assert.Equal(100.00m, line.LineSubtotal);
+            Assert.Equal(106.00m, line.LineTotal);
+            Assert.Equal(100m, line.Quantity);
+
+            var note = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Id == creditNote.Id);
+
+            Assert.NotNull(note);
+            Assert.Equal(100.00m, note!.SubtotalExclVat);
+            Assert.Equal(6.00m, note.TotalVat);
+            Assert.Equal(106.00m, note.TotalInclVat);
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
+        }
+    }
+
+    [Fact]
+    public async Task CreateCreditNoteAsync_Rc96Invoice_RealPaymentService_MarksInvoicePaid()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-RC96SETTLE-{now.Ticks}";
+
+        var partnerId = await SeedPdfCustomerAsync();
+        var invoiceId = await SeedOriginalInvoiceAsync(
+            partnerId, invoiceNumber, now.Date,
+            InvoiceTypes.ReverseCharge96, reverseCharge: true,
+            quantity: 660m, price: 0.10m, rate: 21m,
+            subtotal: 66.00m, vat: 0m, total: 66.00m);
+
+        // The seed helper does not set the paid columns — force the invoice to a known
+        // fully-unpaid state so the credit note's status recalculation starts from a clean slate.
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "UPDATE invoices SET paid_amount = {0}, payment_status = {1} WHERE id = {2}",
+            0m, "unpaid", invoiceId);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // Act: build the service with a REAL payment backend so the
+            //    RecalculateInvoiceStatusAsync call actually runs against the test DB.
+            var realPaymentService = new PaymentService(_fixture.Factory);
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService(realPaymentService));
+
+            // PriceExclVat is deliberately left at its default (0) so the service falls back to
+            // the original line's stored 0.10 price. Credit the full quantity.
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 660m } }
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // Assert: read the ORIGINAL invoice back with a BRAND NEW DbContext —
+            //    payment_status must be "paid" (fully credited) while paid_amount stays 0
+            //    (real cash only, no allocations).
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var storedInvoice = await verifyContext.Invoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+
+            Assert.NotNull(storedInvoice);
+            Assert.Equal("paid", storedInvoice!.PaymentStatus);
+            Assert.Equal(0m, storedInvoice.PaidAmount);
+
+            // The RC96 credit line must be stored NET-only: 21% rate, zero VAT, subtotal == total.
+            var line = await verifyContext.CreditNoteLines
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.CreditNoteId == creditNote.Id);
+
+            Assert.NotNull(line);
+            Assert.Equal(21m, line!.VatRate);
+            Assert.Equal(0m, line.VatAmount);
+            Assert.Equal(66.00m, line.LineSubtotal);
+            Assert.Equal(66.00m, line.LineTotal);
+
+            var note = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Id == creditNote.Id);
+
+            Assert.NotNull(note);
+            Assert.Equal(66.00m, note!.TotalInclVat);
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
+        }
+    }
+
+    [Fact]
+    public async Task UpdateCreditNoteAsync_Rc96Invoice_Increase330To660_StoresNetOnly()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-RC96UPD-{now.Ticks}";
+
+        var partnerId = await SeedPdfCustomerAsync();
+        var invoiceId = await SeedOriginalInvoiceAsync(
+            partnerId, invoiceNumber, now.Date,
+            InvoiceTypes.ReverseCharge96, reverseCharge: true,
+            quantity: 660m, price: 0.10m, rate: 21m,
+            subtotal: 66.00m, vat: 0m, total: 66.00m);
+
+        // The seed helper does not set the paid columns — force the invoice to a known
+        // fully-unpaid state so the credit note's status recalculation starts from a clean slate.
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "UPDATE invoices SET paid_amount = {0}, payment_status = {1} WHERE id = {2}",
+            0m, "unpaid", invoiceId);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+
+        try
+        {
+            // Act 1: create a partial credit note (330 of 660). This succeeds pre-fix, with the
+            //    (wrong) VAT values — it is only the starting point for the update.
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            // PriceExclVat is deliberately left at its default (0) so the service falls back to
+            // the original line's stored 0.10 price. Credit half the quantity.
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 330m } }
+            }, 1);
+
+            creditNoteNumber = creditNote.CreditNoteNumber;
+
+            Assert.NotNull(creditNote);
+            Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // Act 2: update the created note, increasing the line to the full quantity (660).
+            // CreateCreditNoteAsync returns the raw entity whose Lines collection is not populated,
+            // so fetch the persisted line id via the detail DTO.
+            var detail = await service.GetCreditNoteAsync(creditNote.Id);
+            await service.UpdateCreditNoteAsync(new UpdateCreditNoteRequest
+            {
+                Id = creditNote.Id,
+                CustomerId = partnerId,
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Status = creditNote.Status,
+                ReverseCharge = false,
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { Id = detail.Lines.First().Id, InvoiceLineId = invoiceLineId, Quantity = 660m } }
+            }, 1);
+
+            // Assert: read back with a BRAND NEW DbContext (AsNoTracking) — the RC96 line must be
+            // stored NET-only after the update: 21% rate, zero VAT, subtotal == total.
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+            var line = await verifyContext.CreditNoteLines
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.CreditNoteId == creditNote.Id);
+
+            Assert.NotNull(line);
+            Assert.Equal(21m, line!.VatRate);
+            Assert.Equal(0m, line.VatAmount);
+            Assert.Equal(66.00m, line.LineSubtotal);
+            Assert.Equal(66.00m, line.LineTotal);
+
+            var note = await verifyContext.CreditNotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Id == creditNote.Id);
+
+            Assert.NotNull(note);
+            Assert.Equal(66.00m, note!.SubtotalExclVat);
+            Assert.Equal(0m, note.TotalVat);
+            Assert.Equal(66.00m, note.TotalInclVat);
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
+        }
+    }
+
+    [Fact]
     public async Task GenerateAndSavePdfAsync_PrintedCreditNote_SavesPdfAndWritesPdfPathToRealDatabase()
     {
         var now = DateTime.UtcNow;
@@ -773,9 +1284,13 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         var now = DateTime.UtcNow;
         await using var context = await _fixture.Factory.CreateDbContextAsync();
 
+        // The service resolves a created credit note's currency as invoice.CurrencyId ?? 1.
+        // Without a valid currency_id here the note would reference a nonexistent currency,
+        // and GetCreditNoteAsync's required Currency include (INNER JOIN) would drop the row.
+        // SeedPdfCustomerAsync already inserted the 'TST' currency, so link the invoice to it.
         await context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO invoices (invoice_number, invoice_date, customer_id, language, invoice_type, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})",
-            invoiceNumber, date, customerId, "LT", invoiceType, reverseCharge ? 1 : 0, subtotal, vat, total);
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id, currency_id, language, invoice_type, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat) VALUES ({0}, {1}, {2}, (SELECT id FROM currencies WHERE code = {3}), {4}, {5}, {6}, {7}, {8}, {9})",
+            invoiceNumber, date, customerId, "TST", "LT", invoiceType, reverseCharge ? 1 : 0, subtotal, vat, total);
 
         var invoiceId = await context.Invoices
             .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
@@ -822,6 +1337,13 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             await context.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
         if (creditNoteNumber.Length > 0)
             await context.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+        if (invoiceId > 0)
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE applied_invoice_id = {0})",
+                invoiceId);
+        if (invoiceId > 0)
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM credit_notes WHERE applied_invoice_id = {0}", invoiceId);
         if (invoiceId > 0)
             await context.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
         if (invoiceId > 0)

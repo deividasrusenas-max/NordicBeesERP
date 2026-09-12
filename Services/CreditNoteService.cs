@@ -197,6 +197,14 @@ namespace NordicBeesERP.Services
             // This credit note is brand new, so it has no lines yet — nothing to exclude.
             var creditedAmountsByLine = await GetCreditedAmountsByInvoiceLineAsync(request.OriginalInvoiceId);
 
+            // RC96 (Variant B): original invoice is a 96 str. reverse-charge invoice →
+            // credit-note lines store net-only totals (VatAmount 0, LineTotal = subtotal)
+            // while keeping the original VAT rate.
+            var originalInvoice = context.Invoices.Find(request.OriginalInvoiceId);
+            var originalIsRc96 = originalInvoice != null
+                && originalInvoice.ReverseCharge
+                && !originalInvoice.InvoiceType.Contains("6%");
+
             foreach (var lineRequest in request.Lines)
             {
                 var invoiceLine = await context.InvoiceLines
@@ -212,8 +220,8 @@ namespace NordicBeesERP.Services
 
                 var unitPrice = lineRequest.PriceExclVat > 0m ? lineRequest.PriceExclVat : invoiceLine.PriceExclVat;
                 var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2);
-                var vatAmount = Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
-                var lineTotal = lineSubtotal + vatAmount;
+                var vatAmount = originalIsRc96 ? 0m : Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
+                var lineTotal = originalIsRc96 ? lineSubtotal : lineSubtotal + vatAmount;
 
                 // HARD amount guard: a line can never be credited for more than remains owed on it.
                 var alreadyCredited = creditedAmountsByLine.TryGetValue(invoiceLine.Id, out var creditedSoFar) ? creditedSoFar : 0m;
@@ -587,7 +595,15 @@ namespace NordicBeesERP.Services
                 creditNote.CustomerId = originalInvoice.CustomerId;
                 creditNote.CurrencyId = originalInvoice.CurrencyId ?? 1;
             }
-            
+
+            // RC96 (Variant B): computed from the ORIGINAL invoice — effective id after
+            // the merge above, independent of whether the request re-set it.
+            var rc96Invoice = await context.Invoices.AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == (creditNote.OriginalInvoiceId ?? 0));
+            var originalIsRc96 = rc96Invoice != null
+                && rc96Invoice.ReverseCharge
+                && !rc96Invoice.InvoiceType.Contains("6%");
+
             // Remove existing lines
             context.CreditNoteLines.RemoveRange(creditNote.Lines);
             
@@ -622,8 +638,8 @@ namespace NordicBeesERP.Services
 
                 var unitPrice = lineRequest.PriceExclVat > 0m ? lineRequest.PriceExclVat : invoiceLine.PriceExclVat;
                 var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2);
-                var vatAmount = Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
-                var lineTotal = lineSubtotal + vatAmount;
+                var vatAmount = originalIsRc96 ? 0m : Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
+                var lineTotal = originalIsRc96 ? lineSubtotal : lineSubtotal + vatAmount;
 
                 // HARD amount guard: a line can never be credited for more than remains owed on it.
                 var alreadyCredited = creditedAmountsByLine.TryGetValue(invoiceLine.Id, out var creditedSoFar) ? creditedSoFar : 0m;
