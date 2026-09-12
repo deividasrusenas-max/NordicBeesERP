@@ -292,6 +292,306 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task UpdateCreditNoteAsync_NonExistentInvoiceLineId_ThrowsAndLeavesDatabaseUnchanged()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNMIS-{now.Ticks}";
+        var creditNoteNumber = $"CN-MIS-{now.Ticks}";
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL (delete first for idempotency)
+        await setupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer MissingLine {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL (with currency)
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id, currency_id, language, invoice_type, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat) VALUES ({0}, {1}, {2}, (SELECT id FROM currencies WHERE code = {3}), 'LT', 'PVM SĄSKAITA FAKTŪRA', 0, 110.00, 23.10, 133.10)",
+            invoiceNumber, now.Date, bpId, "TST");
+
+        var invoiceId = await setupContext.Invoices
+            .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+
+        // 4. Insert TWO invoice lines via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoice_lines (invoice_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, 'vnt', {4}, 21.0, {5}, {6}, {7}, {8})",
+            invoiceId, 1, "Test line A", 5m, 10.00m, 50.00m, 10.50m, 60.50m, now);
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoice_lines (invoice_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, 'vnt', {4}, 21.0, {5}, {6}, {7}, {8})",
+            invoiceId, 2, "Test line B", 3m, 20.00m, 60.00m, 12.60m, 72.60m, now);
+
+        var lineAId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0} AND line_number = {1}", invoiceId, 1)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+        var lineBId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0} AND line_number = {1}", invoiceId, 2)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        // 5. Insert a DRAFT credit note linked to that invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, (SELECT id FROM invoices WHERE invoice_number = {2}), (SELECT id FROM invoices WHERE invoice_number = {3}), {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            creditNoteNumber, now, invoiceNumber, invoiceNumber, bpId, "TST", "LT", false, 40.00m, 8.40m, 48.40m, "draft", 1, now, now);
+
+        var creditNoteId = await setupContext.CreditNotes
+            .FromSqlRaw("SELECT id FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber)
+            .Select(cn => cn.Id)
+            .FirstOrDefaultAsync();
+
+        // 6. Insert TWO credit note lines via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_note_lines (credit_note_id, invoice_line_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, 'vnt', {5}, 21.0, {6}, {7}, {8}, {9})",
+            creditNoteId, lineAId, 1, "Test line A", 2m, 10.00m, 20.00m, 4.20m, 24.20m, now);
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_note_lines (credit_note_id, invoice_line_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, 'vnt', {5}, 21.0, {6}, {7}, {8}, {9})",
+            creditNoteId, lineBId, 2, "Test line B", 1m, 20.00m, 20.00m, 4.20m, 24.20m, now);
+
+        var maxLineId = await setupContext.InvoiceLines.Select(l => (int?)l.Id).MaxAsync() ?? 0;
+        var missingId = maxLineId + 1;
+
+        try
+        {
+            // 7. Act: the service must throw on the non-existent invoice line id, BEFORE any SaveChangesAsync
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateCreditNoteAsync(new UpdateCreditNoteRequest
+            {
+                Id = creditNoteId,
+                CustomerId = bpId,
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Status = CreditNoteStatus.Draft,
+                ReverseCharge = false,
+                Lines = { new CreditNoteLineRequest { InvoiceLineId = missingId, Quantity = 1m } }
+            }, 1));
+
+            Assert.Contains($"{missingId}", ex.Message);
+
+            // 8. Verify with a BRAND NEW context: nothing was partially persisted —
+            //    both seeded credit note lines are still there with their seeded amounts
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            var lines = await verifyContext.CreditNoteLines
+                .Where(l => l.CreditNoteId == creditNoteId)
+                .ToListAsync();
+
+            Assert.Equal(2, lines.Count);
+            Assert.Equal(48.40m, lines.Sum(l => l.LineTotal));
+
+            var lineA = lines.Single(l => l.InvoiceLineId == lineAId);
+            Assert.Equal(2m, lineA.Quantity);
+            Assert.Equal(20.00m, lineA.LineSubtotal);
+            Assert.Equal(4.20m, lineA.VatAmount);
+            Assert.Equal(24.20m, lineA.LineTotal);
+
+            var lineB = lines.Single(l => l.InvoiceLineId == lineBId);
+            Assert.Equal(1m, lineB.Quantity);
+            Assert.Equal(20.00m, lineB.LineSubtotal);
+            Assert.Equal(4.20m, lineB.VatAmount);
+            Assert.Equal(24.20m, lineB.LineTotal);
+
+            // Header amounts unchanged too
+            var header = await verifyContext.CreditNotes
+                .FromSqlRaw("SELECT subtotal_excl_vat, total_vat, total_incl_vat FROM credit_notes WHERE id = {0}", creditNoteId)
+                .Select(cn => new { cn.SubtotalExclVat, cn.TotalVat, cn.TotalInclVat })
+                .FirstOrDefaultAsync();
+
+            Assert.NotNull(header);
+            Assert.Equal(40.00m, header!.SubtotalExclVat);
+            Assert.Equal(8.40m, header.TotalVat);
+            Assert.Equal(48.40m, header.TotalInclVat);
+        }
+        finally
+        {
+            // 9. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id = (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        }
+    }
+
+    [Fact]
+    public async Task UpdateCreditNoteAsync_ZeroQuantityLine_DropsLineAndRecomputesTotals()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNZERO-{now.Ticks}";
+        var creditNoteNumber = $"CN-ZERO-{now.Ticks}";
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL (delete first for idempotency)
+        await setupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer ZeroQty {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL (with currency)
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id, currency_id, language, invoice_type, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat) VALUES ({0}, {1}, {2}, (SELECT id FROM currencies WHERE code = {3}), 'LT', 'PVM SĄSKAITA FAKTŪRA', 0, 110.00, 23.10, 133.10)",
+            invoiceNumber, now.Date, bpId, "TST");
+
+        var invoiceId = await setupContext.Invoices
+            .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+
+        // 4. Insert TWO invoice lines via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoice_lines (invoice_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, 'vnt', {4}, 21.0, {5}, {6}, {7}, {8})",
+            invoiceId, 1, "Test line A", 5m, 10.00m, 50.00m, 10.50m, 60.50m, now);
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoice_lines (invoice_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, 'vnt', {4}, 21.0, {5}, {6}, {7}, {8})",
+            invoiceId, 2, "Test line B", 3m, 20.00m, 60.00m, 12.60m, 72.60m, now);
+
+        var lineAId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0} AND line_number = {1}", invoiceId, 1)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+        var lineBId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0} AND line_number = {1}", invoiceId, 2)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        // 5. Insert a DRAFT credit note linked to that invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, (SELECT id FROM invoices WHERE invoice_number = {2}), (SELECT id FROM invoices WHERE invoice_number = {3}), {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            creditNoteNumber, now, invoiceNumber, invoiceNumber, bpId, "TST", "LT", false, 40.00m, 8.40m, 48.40m, "draft", 1, now, now);
+
+        var creditNoteId = await setupContext.CreditNotes
+            .FromSqlRaw("SELECT id FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber)
+            .Select(cn => cn.Id)
+            .FirstOrDefaultAsync();
+
+        // 6. Insert TWO credit note lines via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_note_lines (credit_note_id, invoice_line_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, 'vnt', {5}, 21.0, {6}, {7}, {8}, {9})",
+            creditNoteId, lineAId, 1, "Test line A", 2m, 10.00m, 20.00m, 4.20m, 24.20m, now);
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_note_lines (credit_note_id, invoice_line_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, 'vnt', {5}, 21.0, {6}, {7}, {8}, {9})",
+            creditNoteId, lineBId, 2, "Test line B", 1m, 20.00m, 20.00m, 4.20m, 24.20m, now);
+
+        try
+        {
+            // 7. Act: request line A with zero quantity (legitimate drop) and line B with qty 1;
+            //    no throw expected — the service must recompute lines and header totals
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            await service.UpdateCreditNoteAsync(new UpdateCreditNoteRequest
+            {
+                Id = creditNoteId,
+                CustomerId = bpId,
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Status = CreditNoteStatus.Draft,
+                ReverseCharge = false,
+                Lines =
+                {
+                    new CreditNoteLineRequest { InvoiceLineId = lineAId, Quantity = 0m, PriceExclVat = 0m },
+                    new CreditNoteLineRequest { InvoiceLineId = lineBId, Quantity = 1m, PriceExclVat = 0m }
+                }
+            }, 1);
+
+            // 8. Verify with a BRAND NEW context: exactly one line remains (line B),
+            //    header totals recomputed from it
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            var lines = await verifyContext.CreditNoteLines
+                .Where(l => l.CreditNoteId == creditNoteId)
+                .ToListAsync();
+
+            Assert.Single(lines);
+            var remainingLine = lines[0];
+            Assert.Equal(lineBId, remainingLine.InvoiceLineId);
+            Assert.Equal(1m, remainingLine.Quantity);
+            // Request price was 0 -> service falls back to the invoice line price
+            Assert.Equal(20.00m, remainingLine.PriceExclVat);
+            Assert.Equal(20.00m, remainingLine.LineSubtotal);
+            Assert.Equal(4.20m, remainingLine.VatAmount);
+            Assert.Equal(24.20m, remainingLine.LineTotal);
+
+            // Header totals recomputed: 20.00 / 4.20 / 24.20, status still draft
+            var header = await verifyContext.CreditNotes
+                .FromSqlRaw("SELECT subtotal_excl_vat, total_vat, total_incl_vat, status FROM credit_notes WHERE id = {0}", creditNoteId)
+                .Select(cn => new { cn.SubtotalExclVat, cn.TotalVat, cn.TotalInclVat, cn.Status })
+                .FirstOrDefaultAsync();
+
+            Assert.NotNull(header);
+            Assert.Equal(20.00m, header!.SubtotalExclVat);
+            Assert.Equal(4.20m, header.TotalVat);
+            Assert.Equal(24.20m, header.TotalInclVat);
+            Assert.Equal(CreditNoteStatus.Draft, header.Status);
+        }
+        finally
+        {
+            // 9. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id = (SELECT id FROM credit_notes WHERE credit_note_number = {0})", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        }
+    }
+
+    [Fact]
     public async Task CreateCreditNoteAsync_FullyCreditedInvoice_BecomesPaidWhilePaidAmountStaysCashOnly()
     {
         var now = DateTime.UtcNow;

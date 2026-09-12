@@ -211,7 +211,7 @@ namespace NordicBeesERP.Services
                     .FirstOrDefaultAsync(l => l.Id == lineRequest.InvoiceLineId);
                 
                 if (invoiceLine == null)
-                    continue;
+                    throw new InvalidOperationException($"Kredituojama sąskaitos eilutė (ID {lineRequest.InvoiceLineId}) nerasta.");
                 
                 var lineQuantity = Math.Min(lineRequest.Quantity, invoiceLine.Quantity);
                 
@@ -629,7 +629,7 @@ namespace NordicBeesERP.Services
                     .FirstOrDefaultAsync(l => l.Id == lineRequest.InvoiceLineId);
                 
                 if (invoiceLine == null)
-                    continue;
+                    throw new InvalidOperationException($"Kredituojama sąskaitos eilutė (ID {lineRequest.InvoiceLineId}) nerasta.");
                 
                 var lineQuantity = Math.Min(lineRequest.Quantity, invoiceLine.Quantity);
                 
