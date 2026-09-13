@@ -147,7 +147,8 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         // 1. Warehouse (unique code to avoid duplicate-entry across runs)
         var warehouse = new Warehouse
         {
-            Code = $"WH-{DateTime.UtcNow.Ticks % 10000000:D7}",
+            // unique per creation (Guid) — avoids same-second fixture-code collisions
+            Code = $"WH-{Guid.NewGuid():N}"[..17],
             Name = $"Test Warehouse {DateTime.UtcNow.Ticks}",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -267,7 +268,8 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         // 1. Warehouse
         var warehouse = new Warehouse
         {
-            Code = $"WH-{DateTime.UtcNow.Ticks % 10000000:D7}",
+            // unique per creation (Guid) — avoids same-second fixture-code collisions
+            Code = $"WH-{Guid.NewGuid():N}"[..17],
             Name = $"Test Warehouse {DateTime.UtcNow.Ticks}",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -375,7 +377,8 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         // 1. Warehouse (unique code to avoid duplicate-entry across runs)
         var warehouse = new Warehouse
         {
-            Code = $"WH-{DateTime.UtcNow.Ticks % 10000000:D7}",
+            // unique per creation (Guid) — avoids same-second fixture-code collisions
+            Code = $"WH-{Guid.NewGuid():N}"[..17],
             Name = $"Test Warehouse {DateTime.UtcNow.Ticks}",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,

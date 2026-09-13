@@ -31,7 +31,8 @@ public class SupplierPaymentServiceTests : IClassFixture<DbTestFixture>
         // 1. Create Warehouse (deliveries.warehouse_id FK)
         var warehouse = new Warehouse
         {
-            Code = $"WH-{DateTime.UtcNow.Ticks % 10000000:D7}",
+            // unique per creation (Guid) — avoids same-second fixture-code collisions
+            Code = $"WH-{Guid.NewGuid():N}"[..17],
             Name = $"Test Warehouse {DateTime.UtcNow.Ticks}",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,

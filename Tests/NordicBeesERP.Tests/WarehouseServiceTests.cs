@@ -27,7 +27,8 @@ public class WarehouseServiceTests : IClassFixture<DbTestFixture>
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
 
-        var code = $"WH-{DateTime.UtcNow.Ticks % 10000000:D7}";
+        // unique per creation (Guid) — avoids same-second fixture-code collisions
+        var code = $"WH-{Guid.NewGuid():N}"[..17];
         var warehouse = new Warehouse
         {
             Code = code,
