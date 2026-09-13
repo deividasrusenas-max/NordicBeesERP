@@ -59,7 +59,7 @@ namespace NordicBeesERP.Services
                 // not this generator's own injected context: a DbTransaction is bound to a
                 // single connection and cannot be used on a different one.
                 dbTransaction = transaction.GetDbTransaction();
-                connection = dbTransaction.Connection;
+                connection = dbTransaction.Connection ?? throw new InvalidOperationException("Transakcija neturi aktyvaus duomenų bazės ryšio — kreditinės numeris negali būti sugeneruotas.");
             }
             else
             {

@@ -2130,4 +2130,23 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         public Task<NavBadgeCounts> GetNavBadgeCountsAsync()
             => Task.FromResult(new NavBadgeCounts());
     }
+
+    [Fact]
+    public async Task GenerateNextNumberAsync_CommittedTransaction_ThrowsInvalidOperationException()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        var generator = new CreditNoteNumberGenerator(context);
+
+        var tx = context.Database.BeginTransaction();
+        await tx.CommitAsync();
+
+        // Premise check: a committed ADO.NET transaction has released its connection reference
+        // (Pomelo 8.0.0 / MySqlConnector nulls the transaction's Connection on commit).
+        Assert.Null(tx.GetDbTransaction().Connection);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            generator.GenerateNextNumberAsync(DateTime.UtcNow, tx));
+
+        Assert.Equal("Transakcija neturi aktyvaus duomenų bazės ryšio — kreditinės numeris negali būti sugeneruotas.", ex.Message);
+    }
 }
