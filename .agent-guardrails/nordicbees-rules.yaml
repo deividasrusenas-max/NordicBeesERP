@@ -10,6 +10,9 @@ rules:
     patterns:
       - pattern: $CTX.SaveChangesAsync(...)
       - pattern-not: $CTX.Database.ExecuteSqlRawAsync(...)
+    paths:
+      exclude:
+        - "/Tests/**"
 
   - id: nordicbees-sql-string-interpolation
     languages: [csharp]

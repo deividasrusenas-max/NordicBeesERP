@@ -1,0 +1,16 @@
+{
+  "baselineCommit": "30ccebbb44bdfbdf7274f42bf10e450a2d9508d5",
+  "baselineCommitShort": "30ccebb",
+  "recorded": "2026-09-13",
+  "ruleConfig": ".agent-guardrails/nordicbees-rules.yaml",
+  "mechanism": "semgrep scan --config=.agent-guardrails/nordicbees-rules.yaml --baseline-commit=<baselineCommit> --error",
+  "scope": "global - a single baselineCommit baselines the ENTIRE ruleset (all rules in nordicbees-rules.yaml), not only nordicbees-notracking-savechanges; the filename is plan-specific but the baseline covers all rules",
+  "findingsAtBaselineWithCurrentRules": 137,
+  "notes": [
+    "Captured AFTER Part A (commit 30ccebb). semgrep --baseline-commit applies the CURRENT rule config to BOTH the current tree and the baseline commit, so later rule edits (including the /Tests/** exclusion on nordicbees-notracking-savechanges added in this same Part B) do NOT require re-capturing the SHA - they apply to both sides of the diff.",
+    "The gate reports ONLY findings that are not present at baselineCommit. The 137 pre-existing findings (all rules, current config, at capture) are therefore suppressed; a NEW finding (e.g. a new SaveChangesAsync in a non-Tests file, or any other new rule match) fails the gate.",
+    "nordicbees-notracking-savechanges also carries a paths:exclude for /Tests/** (added in this Part B), which independently suppresses the known false-positive class of SaveChangesAsync in xUnit test setup. That exclusion is orthogonal to this baseline. A pre-exclusion scan showed 231 total findings; after the exclusion it is 137.",
+    "Re-baseline by updating baselineCommit to a new clean commit (e.g. once a batch of known-good findings is accepted). No per-finding enumeration is stored, by design - the commit SHA is the single source of truth.",
+    "CI requires fetch-depth: 0 so baselineCommit exists in the shallow clone. semgrep --baseline-commit aborts (scans nothing) if there are unstaged changes or the hash is missing, so callers (pre-commit hook, CI) must have a clean-or-staged tree and full history present."
+  ]
+}

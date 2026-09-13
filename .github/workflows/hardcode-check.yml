@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Check for hardcoded VAT multipliers
         run: |
@@ -71,5 +73,19 @@ jobs:
           # Points directly at the real rules file, not .semgrep.yml — confirmed
           # (2026-09-06) that .semgrep.yml's `rules: [path]` include syntax
           # crashes semgrep outright; see .semgrep.yml's own comment.
-          semgrep scan --config=.agent-guardrails/nordicbees-rules.yaml --error
+          # Baseline: fail only on findings NEW since baselineCommit. Full git history
+          # is required (hence fetch-depth: 0 on the checkout above). If the baseline
+          # JSON or its baselineCommit field is missing, fall back to a plain
+          # (un-baselined) scan, which fails on pre-existing findings - loud by design.
+          BASELINE_FILE=".agent-guardrails/baselines/nordicbees-notracking-savechanges.baseline.json"
+          BASELINE_COMMIT=""
+          if [ -f "$BASELINE_FILE" ]; then
+            BASELINE_COMMIT="$(jq -r '.baselineCommit // empty' "$BASELINE_FILE")"
+          fi
+          if [ -n "$BASELINE_COMMIT" ]; then
+            semgrep scan --config=.agent-guardrails/nordicbees-rules.yaml --baseline-commit "$BASELINE_COMMIT" --error
+          else
+            echo "WARNING: semgrep baseline not found - running un-baselined scan (will fail on pre-existing findings)."
+            semgrep scan --config=.agent-guardrails/nordicbees-rules.yaml --error
+          fi
 

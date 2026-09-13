@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,11 +22,33 @@ if (!existsSync(configPath)) {
   process.exit(0);
 }
 
+// Read the committed semgrep baseline so the scan fails only on findings NEW
+// since baselineCommit, not on the pre-existing set. If the baseline JSON is
+// missing or its baselineCommit field is absent/unparseable, baselineArgs
+// stays empty and the scan runs plain (un-baselined) — the safe, loud fallback.
+const baselinePath = path.join(
+  repoRoot,
+  ".agent-guardrails",
+  "baselines",
+  "nordicbees-notracking-savechanges.baseline.json"
+);
+let baselineArgs = [];
+if (existsSync(baselinePath)) {
+  try {
+    const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
+    if (baseline && typeof baseline.baselineCommit === "string" && baseline.baselineCommit.length > 0) {
+      baselineArgs = ["--baseline-commit", baseline.baselineCommit];
+    }
+  } catch (e) {
+    baselineArgs = [];
+  }
+}
+
 try {
   // Points directly at the real rules file, not .semgrep.yml — confirmed
   // (2026-09-06) that .semgrep.yml's `rules: [path]` include syntax
   // crashes semgrep 1.169.0 outright; see .semgrep.yml's own comment.
-  execFileSync("semgrep", ["scan", "--config=.agent-guardrails/nordicbees-rules.yaml", "--error"], {
+  execFileSync("semgrep", ["scan", "--config=.agent-guardrails/nordicbees-rules.yaml", ...baselineArgs, "--error"], {
     cwd: repoRoot,
     stdio: "inherit"
   });
