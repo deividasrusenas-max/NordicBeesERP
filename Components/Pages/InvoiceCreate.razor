@@ -464,7 +464,7 @@
         }
         else
         {
-            _defaultVatRate = 21m;
+            _defaultVatRate = _selectedCustomer?.DefaultVatRate ?? 21m;
             
             // Recalculate so displayed line/invoice totals reflect the new type
             // (96 str. zeroes the VAT amount while keeping the line's rate) without touching rates.
@@ -544,6 +544,7 @@
     {
         if (customer is null)
         {
+            _selectedCustomer = null;
             _selectedCustomerId = null;
             _clientSearchText = "";
             _paymentTermDays = 7;

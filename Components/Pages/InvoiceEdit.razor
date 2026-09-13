@@ -392,6 +392,7 @@
     private async Task OnInvoiceTypeChanged(string newType)
     {
         _invoiceType = newType;
+        _isPurchase = _invoiceType?.Contains("6%") == true;
         
         if (_invoiceType == "6% PVM SĄSKAITA FAKTŪRA")
         {
@@ -407,7 +408,7 @@
         }
         else
         {
-            _defaultVatRate = 21m;
+            _defaultVatRate = _customers.FirstOrDefault(c => c.Id == _selectedCustomerId)?.DefaultVatRate ?? 21m;
             
             // Recalculate so displayed line/invoice totals reflect the new type
             // (96 str. zeroes the VAT amount while keeping the line's rate) without touching rates.
