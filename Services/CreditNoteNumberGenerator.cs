@@ -34,7 +34,7 @@ namespace NordicBeesERP.Services
             // Increment sequence by 1
             var newSequence = maxSequence + 1;
 
-            // Format: AKLAK + YY + sequence (zero-padded to 4 digits)
+            // Format: KLAK + YY + sequence (zero-padded to 4 digits)
             return $"{prefix}{yearYY}{newSequence:D4}";
         }
 
@@ -45,7 +45,7 @@ namespace NordicBeesERP.Services
         private async Task<int> GetMaxSequenceAsync(string yearYY, IDbContextTransaction? transaction)
         {
             var sql = $@"
-                SELECT COALESCE(MAX(CAST(SUBSTRING(credit_note_number, 8, 4) AS UNSIGNED)), 0)
+                SELECT COALESCE(MAX(CAST(SUBSTRING(credit_note_number, 7, 4) AS UNSIGNED)), 0)
                 FROM credit_notes
                 WHERE credit_note_number LIKE 'KLAK{yearYY}%'
                 AND credit_note_number REGEXP '^KLAK{yearYY}[0-9]{{4}}$'

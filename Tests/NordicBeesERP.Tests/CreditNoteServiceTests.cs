@@ -2149,4 +2149,67 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 
         Assert.Equal("Transakcija neturi aktyvaus duomenų bazės ryšio — kreditinės numeris negali būti sugeneruotas.", ex.Message);
     }
+
+    [Fact]
+    public async Task GenerateNextNumberAsync_SequenceAt1000_ReturnsKLAK261001()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNSEQ-{now.Ticks}";
+        var creditNoteNumber = "KLAK261000";
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer Seq {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id) VALUES ({0}, {1}, {2})",
+            invoiceNumber, now.Date, bpId);
+
+        // 4. Insert a 2026 credit note whose sequence is exactly 1000 via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id, currency_id, language, reverse_charge, subtotal_excl_vat, total_vat, total_incl_vat, status, created_by, created_at, updated_at) VALUES ({0}, {1}, (SELECT id FROM invoices WHERE invoice_number = {2}), (SELECT id FROM invoices WHERE invoice_number = {3}), {4}, (SELECT id FROM currencies WHERE code = {5}), {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
+            creditNoteNumber, new DateTime(2026, 1, 15), invoiceNumber, invoiceNumber, bpId, "TST", "LT", false, 0m, 0m, 0m, "draft", 1, now, now);
+
+        try
+        {
+            // 5. Act: generate the next 2026 number without a transaction
+            await using var testContext = await _fixture.Factory.CreateDbContextAsync();
+            var generator = new CreditNoteNumberGenerator(testContext);
+            var result = await generator.GenerateNextNumberAsync(new DateTime(2026, 1, 1));
+
+            // 6. Assert: max sequence 1000 must be read back (SUBSTRING start position 7), so next is 1001
+            Assert.Equal("KLAK261001", result);
+        }
+        finally
+        {
+            // 7. Cleanup in reverse FK order
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE credit_note_number = {0}", creditNoteNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        }
+    }
 }
