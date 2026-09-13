@@ -198,6 +198,137 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task CreateCreditNoteAsync_UnknownInvoiceLineId_ThrowsAndRollsBackEntireCreate()
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-CNROLLBACK-{now.Ticks}";
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        // 1. Insert test currency via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO currencies (code, name, symbol, is_active) VALUES ({0}, {1}, {2}, {3})",
+            "TST", "Test Currency", "T", 1);
+
+        // 2. Insert business partner (customer) via EF Core model insert
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer,
+            Name = $"Test Customer Rollback {now.Ticks}",
+            Country = "Lithuania",
+            CountryCode = "LT",
+            DefaultLanguage = "LT",
+            PaymentTermDays = 14,
+            DefaultVatRate = 21m,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        setupContext.BusinessPartners.Add(partner);
+        await setupContext.SaveChangesAsync();
+        var bpId = partner.Id;
+
+        // 3. Insert invoice via raw SQL
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoices (invoice_number, invoice_date, customer_id) VALUES ({0}, {1}, {2})",
+            invoiceNumber, now.Date, bpId);
+
+        var invoiceId = await setupContext.Invoices
+            .FromSqlRaw("SELECT id FROM invoices WHERE invoice_number = {0}", invoiceNumber)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync();
+
+        // 4. Insert one REAL invoice line via raw SQL so the request has a valid
+        //    line to credit (quantity 1, price 10, VAT 21%, line total 12.10)
+        const decimal lineQuantity = 1m;
+        const decimal linePrice = 10m;
+        const decimal lineVatRate = 21m;
+        const decimal lineSubtotal = 10m;
+        const decimal lineVatAmount = 2.10m;
+        const decimal lineTotal = 12.10m;
+
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "INSERT INTO invoice_lines (invoice_id, line_number, product_code, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
+            invoiceId, 1, "TST-PROD", "Test Product", lineQuantity, "vnt", linePrice, lineVatRate, lineSubtotal, lineVatAmount, lineTotal);
+
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        try
+        {
+            // 5. Act: call the REAL service create path with the REAL number
+            //    generator (MAX+1 over credit_notes) — one VALID line followed by
+            //    a BOGUS invoice line id, which must throw mid-loop and roll back
+            //    EVERYTHING including the header row inserted before the loop.
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new CreditNoteNumberGenerator(_fixture.Factory.CreateDbContext()),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService());
+
+            var request = new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest>
+                {
+                    // VALID line: the real fixture line, full quantity and price —
+                    // passes the remaining-amount guard and would insert fine.
+                    new CreditNoteLineRequest
+                    {
+                        InvoiceLineId = invoiceLineId,
+                        Quantity = lineQuantity,
+                        PriceExclVat = linePrice
+                    },
+                    // BOGUS line: unknown invoice line id — must trigger the throw.
+                    new CreditNoteLineRequest
+                    {
+                        InvoiceLineId = 999999999,
+                        Quantity = 1m,
+                        PriceExclVat = 1m
+                    }
+                }
+            };
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateCreditNoteAsync(request, 1));
+            Assert.Contains("nerasta", ex.Message);
+
+            // 6. Assert NOTHING persisted (BRAND NEW context): no header row and no
+            //    line rows for this invoice — the rollback must be total, so the
+            //    MAX+1 number generator's sequence is effectively reclaimed.
+            await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+
+            var creditNoteCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM credit_notes WHERE original_invoice_id = {0}", invoiceId)
+                .SingleAsync();
+            Assert.Equal(0, creditNoteCount);
+
+            var lineCount = await verifyContext.Database
+                .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE original_invoice_id = {0})", invoiceId)
+                .SingleAsync();
+            Assert.Equal(0, lineCount);
+        }
+        finally
+        {
+            // 7. Cleanup in reverse FK order — defensive deletes FIRST (a future
+            //    regression that DOES leave rows behind gets cleaned up and does
+            //    not poison later test runs), then the standard fixture teardown.
+            await using var cleanupContext = await _fixture.Factory.CreateDbContextAsync();
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM credit_note_lines WHERE credit_note_id IN (SELECT id FROM credit_notes WHERE original_invoice_id = {0})", invoiceId);
+            await cleanupContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM credit_notes WHERE original_invoice_id = {0}", invoiceId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE invoice_number = {0}", invoiceNumber);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", bpId);
+            await cleanupContext.Database.ExecuteSqlRawAsync("DELETE FROM currencies WHERE code = {0}", "TST");
+        }
+    }
+
+    [Fact]
     public async Task UpdateCreditNoteAsync_NullOriginalInvoiceId_PreservesExistingInvoiceId()
     {
         var now = DateTime.UtcNow;

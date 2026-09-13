@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using NordicBeesERP.Data;
@@ -50,15 +51,28 @@ namespace NordicBeesERP.Services
                 AND credit_note_number REGEXP '^KLAK{yearYY}[0-9]{{4}}$'
             ";
 
-            var connection = _context.Database.GetDbConnection();
+            DbConnection connection;
+            DbTransaction? dbTransaction = null;
+            if (transaction is not null)
+            {
+                // Run on the CALLER's connection/transaction (the service's factory context),
+                // not this generator's own injected context: a DbTransaction is bound to a
+                // single connection and cannot be used on a different one.
+                dbTransaction = transaction.GetDbTransaction();
+                connection = dbTransaction.Connection;
+            }
+            else
+            {
+                connection = _context.Database.GetDbConnection();
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    await connection.OpenAsync();
+                }
+            }
+
             var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Transaction = transaction?.GetDbTransaction();
-
-            if (connection.State != System.Data.ConnectionState.Open)
-            {
-                await connection.OpenAsync();
-            }
+            command.Transaction = dbTransaction;
 
             var result = await command.ExecuteScalarAsync();
             return result != null && int.TryParse(result.ToString(), out var seq) ? seq : 0;

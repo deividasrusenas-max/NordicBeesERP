@@ -160,8 +160,9 @@ namespace NordicBeesERP.Services
         public async Task<CreditNote> CreateCreditNoteAsync(CreateCreditNoteRequest request, int userId)
         {
             using var context = _contextFactory.CreateDbContext();
+            await using var transaction = await context.Database.BeginTransactionAsync();
             
-            var creditNoteNumber = await _numberGenerator.GenerateNextNumberAsync(request.CreditDate);
+            var creditNoteNumber = await _numberGenerator.GenerateNextNumberAsync(request.CreditDate, transaction);
             
             var creditNote = new CreditNote
             {
@@ -258,6 +259,7 @@ namespace NordicBeesERP.Services
             creditNote.UpdatedAt = DateTime.UtcNow;
             
             await context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             if (creditNote.OriginalInvoiceId != null)
                 await _paymentService.RecalculateInvoiceStatusAsync(creditNote.OriginalInvoiceId.Value);
