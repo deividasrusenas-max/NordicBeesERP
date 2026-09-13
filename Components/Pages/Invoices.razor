@@ -225,14 +225,12 @@
                     @if (InvoiceTypes.IsReverseCharge96(invoice.ReverseCharge, invoice.InvoiceType))
                     {
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
-                                 Style="text-transform:none;margin-left:6px;"
-                                 Title="Atvirkštinis apmokestinimas — PVM apskaičiuoja pirkėjas (PVMĮ 96 str.)">96 str.</MudChip>
+                                 Style="text-transform:none;margin-left:6px;">96 str.</MudChip>
                     }
                     @if (_invoiceIdsWithCreditNote.Contains(invoice.Id))
                     {
                         <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
-                                 Style="text-transform:none;margin-left:6px;"
-                                 Title="Yra kreditinė sąskaita">Kredituota</MudChip>
+                                 Style="text-transform:none;margin-left:6px;">Kredituota</MudChip>
                     }
                 </MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@invoice.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
