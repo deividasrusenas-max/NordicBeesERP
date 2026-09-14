@@ -1164,8 +1164,21 @@ namespace NordicBeesERP.Services
         // OCR
         // =====================================================
 
+        private static void EnsureInvoiceNumberPresent(OcrResultDto ocrResult)
+        {
+            if (string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber))
+            {
+                if (!ocrResult.Flags.Contains(OcrFlag.MissingInvNumber))
+                    ocrResult.Flags.Add(OcrFlag.MissingInvNumber);
+
+                throw new InvalidOperationException("Sąskaitos numeris negali būti tuščias. Įveskite numerį rankiniu būdu.");
+            }
+        }
+
         public async Task<ExpenseInvoice> CreateFromOcrAsync(OcrResultDto ocrResult, string source = "MANUAL")
         {
+            EnsureInvoiceNumberPresent(ocrResult);
+
             // OCR ingestion can run from an interactive upload (real user) or the background
             // OCR queue worker (no HTTP user context). Distinguish the automated case explicitly
             // instead of masking a missing user as a generic "system" fallback.
@@ -1278,6 +1291,8 @@ namespace NordicBeesERP.Services
 
         public async Task<ExpenseInvoice> UpdateFromOcrAsync(int invoiceId, OcrResultDto ocrResult)
         {
+            EnsureInvoiceNumberPresent(ocrResult);
+
             // Same rationale as CreateFromOcrAsync: label unattended re-OCR runs explicitly.
             var currentUser = await _authService.GetAuthenticatedUserAsync();
             var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "OCR_PIPELINE";
