@@ -454,10 +454,6 @@ namespace NordicBeesERP.Services
                 if (result.VatRate == 0 && result.AmountExclVat > 0 && result.VatAmount > 0)
                     result.VatRate = Math.Round(result.VatAmount / result.AmountExclVat * 100, 0);
 
-                // Fallback: incl = excl + vat
-                if (result.AmountInclVat == 0 && result.AmountExclVat > 0)
-                    result.AmountInclVat = result.AmountExclVat + result.VatAmount;
-
                 // Extract line items
                 if (hasItems && actualItems.ValueKind == JsonValueKind.Array)
                 {
@@ -810,6 +806,9 @@ namespace NordicBeesERP.Services
                 if (result.Lines.Count > 0 && diffExcl >= 0.05m && diffIncl >= 0.05m)
                     result.Flags.Add(OcrFlag.AmountMismatch);
 
+                // AMOUNT_ARITHMETIC_MISMATCH / MISSING_MONEY_FIELD: header totals must reconcile
+                AddAmountConsistencyFlags(result);
+
                 // LOW_CONFIDENCE: result.Confidence.Overall > 0 && result.Confidence.Overall < 50
                 if (result.Confidence.Overall > 0 && result.Confidence.Overall < 50)
                     result.Flags.Add(OcrFlag.LowConfidence);
@@ -853,6 +852,19 @@ namespace NordicBeesERP.Services
             if (rate < 0m || rate > 100m) return null;
 
             return rate;
+        }
+
+        public static void AddAmountConsistencyFlags(OcrResultDto result)
+        {
+            if (result.AmountExclVat <= 0m || result.AmountInclVat <= 0m)
+            {
+                result.Flags.Add(OcrFlag.MissingMoneyField);
+                return;
+            }
+
+            var diff = Math.Abs(result.AmountExclVat + result.VatAmount - result.AmountInclVat);
+            if (diff > 0.02m)
+                result.Flags.Add(OcrFlag.AmountArithmeticMismatch);
         }
 
         public async Task<(int? supplierId, int? defaultCategoryId)> FindSupplierIdAsync(string supplierName, string vatCode)

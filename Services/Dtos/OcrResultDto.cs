@@ -126,4 +126,6 @@ public static class OcrFlag
     public const string AzureLimit        = "AZURE_LIMIT";
     public const string OwnCompany        = "OWN_COMPANY";
     public const string InvalidVatRate    = "INVALID_VAT_RATE";
+    public const string AmountArithmeticMismatch = "AMOUNT_ARITHMETIC_MISMATCH";
+    public const string MissingMoneyField        = "MISSING_MONEY_FIELD";
 }
