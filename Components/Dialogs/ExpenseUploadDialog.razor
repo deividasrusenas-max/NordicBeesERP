@@ -841,6 +841,7 @@
             if (ExistingInvoiceId > 0)
             {
                 // Update existing invoice - use ExistingFilePath only if not null or empty
+                SyncOcrResultFromUi(_ocrResult, _invoiceNumber, _invoiceDate, _dueDate, _amountExclVat, _vatRate, _vatAmount, _amountInclVat, _supplierId, _pendingSupplierName, _pendingSupplierVat, _categoryId, _ocrFlags);
                 _ocrResult.OriginalFilePath = !string.IsNullOrEmpty(ExistingFilePath)
                     ? ExistingFilePath
                     : (_ocrResult.OriginalFilePath ?? "");
@@ -853,18 +854,7 @@
             {
                 // Create new invoice
             // Sync UI fields back to ocrResult before saving
-                _ocrResult.InvoiceNumber = _invoiceNumber;
-                _ocrResult.AmountExclVat = _amountExclVat;
-                _ocrResult.VatRate = _vatRate;
-                _ocrResult.VatAmount = _vatAmount;
-                _ocrResult.AmountInclVat = _amountInclVat;
-                _ocrResult.InvoiceDate = _invoiceDate?.ToString("yyyy-MM-dd") ?? "";
-                _ocrResult.DueDate = _dueDate?.ToString("yyyy-MM-dd") ?? "";
-                _ocrResult.SupplierId = _supplierId > 0 ? _supplierId : null;
-                _ocrResult.PendingSupplierName = _pendingSupplierName;
-                _ocrResult.SupplierVatCode = _pendingSupplierVat;
-                _ocrResult.CategoryId = _categoryId;
-                _ocrResult.Flags = _ocrFlags;
+                SyncOcrResultFromUi(_ocrResult, _invoiceNumber, _invoiceDate, _dueDate, _amountExclVat, _vatRate, _vatAmount, _amountInclVat, _supplierId, _pendingSupplierName, _pendingSupplierVat, _categoryId, _ocrFlags);
 
                 var pdfBytes = Convert.FromBase64String(_pdfBase64);
                 var uploadsDir = Path.Combine("wwwroot", "uploads", "invoices",
@@ -893,6 +883,35 @@
         {
             _isSaving = false;
         }
+    }
+
+    private static void SyncOcrResultFromUi(
+        OcrResultDto ocrResult,
+        string invoiceNumber,
+        DateTime? invoiceDate,
+        DateTime? dueDate,
+        decimal amountExclVat,
+        decimal vatRate,
+        decimal vatAmount,
+        decimal amountInclVat,
+        int supplierId,
+        string pendingSupplierName,
+        string pendingSupplierVat,
+        int? categoryId,
+        List<string> ocrFlags)
+    {
+        ocrResult.InvoiceNumber = invoiceNumber;
+        ocrResult.AmountExclVat = amountExclVat;
+        ocrResult.VatRate = vatRate;
+        ocrResult.VatAmount = vatAmount;
+        ocrResult.AmountInclVat = amountInclVat;
+        ocrResult.InvoiceDate = invoiceDate?.ToString("yyyy-MM-dd") ?? "";
+        ocrResult.DueDate = dueDate?.ToString("yyyy-MM-dd") ?? "";
+        ocrResult.SupplierId = supplierId > 0 ? supplierId : null;
+        ocrResult.PendingSupplierName = pendingSupplierName;
+        ocrResult.SupplierVatCode = pendingSupplierVat;
+        ocrResult.CategoryId = categoryId;
+        ocrResult.Flags = ocrFlags;
     }
 
     private void CloseDialog()
