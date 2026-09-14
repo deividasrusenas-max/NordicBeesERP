@@ -125,4 +125,5 @@ public static class OcrFlag
     public const string ViesUnavailable   = "VIES_UNAVAILABLE";
     public const string AzureLimit        = "AZURE_LIMIT";
     public const string OwnCompany        = "OWN_COMPANY";
+    public const string InvalidVatRate    = "INVALID_VAT_RATE";
 }

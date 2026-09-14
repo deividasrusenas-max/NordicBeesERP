@@ -414,6 +414,8 @@ namespace NordicBeesERP.Services
                     }
                 }
                 
+                var hasInvalidVatRate = false;
+
                 // Extract VAT rate from items (first non-zero rate)
                 if (hasItems && actualItems.ValueKind == JsonValueKind.Array)
                 {
@@ -428,22 +430,21 @@ namespace NordicBeesERP.Services
                             if (f.TryGetProperty("TaxRate", out var taxRateField))
                             {
                                 var rateStr = taxRateField.TryGetProperty("valueString", out var vs) ? vs.GetString()?.TrimEnd('%').Trim() ?? "" : taxRateField.TryGetProperty("content", out var cp) ? cp.GetString()?.TrimEnd('%').Trim() ?? "" : "";
-                                if (decimal.TryParse(rateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var rateVal))
+                                var parsedRate = ParseVatRate(rateStr);
+                                if (parsedRate.HasValue)
                                 {
-                                    // Guard: if rate > 100, likely encoded as basis points (e.g. 2300 = 23%)
-                                    var parsedRate = rateVal;
-                                    if (parsedRate > 100)
-                                    {
-                                        parsedRate = parsedRate / 100m;
-                                    }
+                                    _logger.LogInformation("[VAT RATE] raw={Raw} parsed={Parsed}", rateStr, parsedRate.Value);
 
-                                    _logger.LogInformation("[VAT RATE] raw={Raw} parsed={Parsed}", rateStr, parsedRate);
-
-                                    if (parsedRate > 0 && result.VatRate == 0)
+                                    if (parsedRate.Value > 0 && result.VatRate == 0)
                                     {
-                                        result.VatRate = parsedRate;
+                                        result.VatRate = parsedRate.Value;
                                         break;
                                     }
+                                }
+                                else if (!string.IsNullOrWhiteSpace(rateStr))
+                                {
+                                    _logger.LogWarning("[VAT RATE] raw={Raw} is not a valid 0..100 rate", rateStr);
+                                    hasInvalidVatRate = true;
                                 }
                             }
                         }
@@ -526,18 +527,17 @@ namespace NordicBeesERP.Services
                         if (f.TryGetProperty("TaxRate", out var taxRateField))
                         {
                             var rateStr = taxRateField.TryGetProperty("valueString", out var vs) ? vs.GetString()?.TrimEnd('%').Trim() ?? "" : taxRateField.TryGetProperty("content", out var cp) ? cp.GetString()?.TrimEnd('%').Trim() ?? "" : "";
-                            if (decimal.TryParse(rateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var rateVal))
+                            var parsedRate = ParseVatRate(rateStr);
+                            if (parsedRate.HasValue)
                             {
-                                // Guard: if rate > 100, likely encoded as basis points (e.g. 2300 = 23%)
-                                var parsedRate = rateVal;
-                                if (parsedRate > 100)
-                                {
-                                    parsedRate = parsedRate / 100m;
-                                }
+                                _logger.LogInformation("[VAT RATE] line={Desc} raw={Raw} parsed={Parsed}", lineDto.Description, rateStr, parsedRate.Value);
 
-                                _logger.LogInformation("[VAT RATE] line={Desc} raw={Raw} parsed={Parsed}", lineDto.Description, rateStr, parsedRate);
-
-                                lineDto.VatRate = parsedRate;
+                                lineDto.VatRate = parsedRate.Value;
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rateStr))
+                            {
+                                _logger.LogWarning("[VAT RATE] line={Desc} raw={Raw} is not a valid 0..100 rate", lineDto.Description, rateStr);
+                                hasInvalidVatRate = true;
                             }
                         }
 
@@ -786,6 +786,10 @@ namespace NordicBeesERP.Services
                 if (result.VatRate == 0 && result.AmountInclVat > 0)
                     result.Flags.Add(OcrFlag.ZeroVat);
 
+                // INVALID_VAT_RATE: raw OCR VAT-rate text was present but could not be parsed as 0..100
+                if (hasInvalidVatRate)
+                    result.Flags.Add(OcrFlag.InvalidVatRate);
+
                 // LINES_NOT_FOUND: result.Lines.Count == 0
                 if (result.Lines.Count == 0)
                     result.Flags.Add(OcrFlag.LinesNotFound);
@@ -833,6 +837,23 @@ namespace NordicBeesERP.Services
 
         public async Task<OcrResultDto> ExtractInvoiceDataAsync(string base64, string fileName)
             => await ProcessAsync(base64, fileName);
+
+        public static decimal? ParseVatRate(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+
+            var normalized = raw
+                .Trim()
+                .TrimEnd('%')
+                .Replace(",", ".")
+                .Replace(" ", "");
+
+            if (string.IsNullOrEmpty(normalized)) return null;
+            if (!decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture, out var rate)) return null;
+            if (rate < 0m || rate > 100m) return null;
+
+            return rate;
+        }
 
         public async Task<(int? supplierId, int? defaultCategoryId)> FindSupplierIdAsync(string supplierName, string vatCode)
         {
