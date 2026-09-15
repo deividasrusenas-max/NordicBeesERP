@@ -115,6 +115,9 @@ namespace NordicBeesERP.Models.Expenses
         [Column("original_file_path")]
         public string? OriginalFilePath { get; set; }
 
+        [Column("file_id")]
+        public long? FileId { get; set; }
+
         [Column("supplier_vat_verified")]
         public bool SupplierVatVerified { get; set; }
 
