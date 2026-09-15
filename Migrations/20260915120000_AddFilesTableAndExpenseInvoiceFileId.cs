@@ -23,11 +23,35 @@ public partial class AddFilesTableAndExpenseInvoiceFileId : Migration
                 PRIMARY KEY (id)
             ) ENGINE=InnoDB;
 
-            CREATE INDEX IX_files_sha256 ON files (sha256);
-            CREATE INDEX IX_files_module_entity ON files (module, entity_type, entity_id);
+            -- Idempotent + portable on MySQL 8.0 AND MariaDB 11.8:
+            -- MySQL 8.0 has no CREATE INDEX IF NOT EXISTS, so guard via information_schema.
+            SET @ddl = IF(
+                (SELECT COUNT(*) FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'files' AND INDEX_NAME = 'IX_files_sha256') = 0,
+                'CREATE INDEX IX_files_sha256 ON files (sha256)',
+                'SELECT 1');
+            PREPARE stmt FROM @ddl;
+            EXECUTE stmt;
+            DEALLOCATE PREPARE stmt;
 
-            ALTER TABLE expense_invoices
-                ADD COLUMN IF NOT EXISTS file_id BIGINT NULL;
+            SET @ddl = IF(
+                (SELECT COUNT(*) FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'files' AND INDEX_NAME = 'IX_files_module_entity') = 0,
+                'CREATE INDEX IX_files_module_entity ON files (module, entity_type, entity_id)',
+                'SELECT 1');
+            PREPARE stmt FROM @ddl;
+            EXECUTE stmt;
+            DEALLOCATE PREPARE stmt;
+
+            -- MySQL 8.0 has no ADD COLUMN IF NOT EXISTS, so guard via information_schema.
+            SET @ddl = IF(
+                (SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'expense_invoices' AND COLUMN_NAME = 'file_id') = 0,
+                'ALTER TABLE expense_invoices ADD COLUMN file_id BIGINT NULL',
+                'SELECT 1');
+            PREPARE stmt FROM @ddl;
+            EXECUTE stmt;
+            DEALLOCATE PREPARE stmt;
         ");
     }
 
