@@ -10,6 +10,7 @@ using NordicBeesERP.Services.Reports;
 using MudBlazor; // Pridėjome šią eilutę
 using MudBlazor.Services;
 using NordicBeesERP.Services.Artwork;
+using NordicBeesERP.Services.Storage;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -105,6 +106,10 @@ builder.Services.Configure<ArtworkPreviewOptions>(builder.Configuration.GetSecti
 builder.Services.AddScoped<IArtworkStorageService, ArtworkStorageService>();
 builder.Services.AddScoped<IArtworkService, ArtworkService>();
 builder.Services.AddHostedService<ArtworkPreviewWorker>();
+
+// File Storage (unified blob store)
+builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
+builder.Services.AddScoped<IFileStore, FileStore>();
 builder.Services.AddHostedService<DashboardSnapshotWorker>();
 
 // Telegram notifications
@@ -131,6 +136,13 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+// Fail fast at startup if the file-storage mount is missing, mismatched, or not
+// writable (Docs/infra/FILE-STORAGE-STANDARD.md §3): in Staging/Production a missing
+// sentinel must kill the process, not be a logged warning.
+var fileStorageOptions = builder.Configuration.GetSection("FileStorage").Get<FileStorageOptions>()
+    ?? new FileStorageOptions();
+StorageSentinel.EnsureStorageReady(fileStorageOptions.Root, app.Environment.EnvironmentName);
 
 // QuestPDF license — set globally once at startup so every PDF-generating service
 // (current and future) is covered without each one remembering to set it per-method.
