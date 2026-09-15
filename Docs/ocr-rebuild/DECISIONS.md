@@ -5,6 +5,116 @@ naujas su nuoroda į senąjį.
 
 ---
 
+## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
+
+**Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
+bloko ir vėliavėlių pataisymai.
+
+**Sprendimas.** Atmesta tokia forma. A7 nėra „trečias žingsnis ima ne tą lauką" —
+tai pasekmė to, kad kandidatų grandinėje **nėra validacijos**: žingsnis priima bet
+kokią netuščią reikšmę. Pataisius vieną žingsnį, architektūra lieka ta pati ir
+sekantis tiekėjas sukurs tokią pat klaidą kitoje vietoje.
+
+**Kryptis vietoj to (dar nepatvirtinta — žr. D-016):** kandidatas + validatorius +
+kilmė. Kiekvienas tikslinis laukas turi kandidatų sąrašą, kiekvienas kandidatas —
+patikrinimą, ar reikšmė tinka **būtent tam laukui** (LT įmonės kodas 9 skaitmenys,
+PVM kodas LT+9/12, IBAN kontrolinė suma, data ne ateityje, excl+PVM=incl).
+Tada A7 tampa neįmanomas, ne pataisytas.
+
+---
+
+## D-015 — „Etalonas iš vartotojo taisymų" atmestas kaip logiškai ydingas (2026-09-15)
+
+**Kontekstas.** Siūlyta, kad peržiūros forma, fiksuojanti kiekvieno lauko
+„prieš/po", pagamins etaloną be rankinio darbo, ir F3 taps nereikalinga.
+
+**Sprendimas.** Atmesta. Trys priežastys:
+
+1. Kuo geriau veikia modulis, tuo mažiau taisymų — o etalono labiausiai reikia ten,
+   kur modulis klysta **tyliai**, ir būtent tų atvejų vartotojas netaiso, nes nemato.
+2. Kai vartotojas nieko netaiso, tai dviprasmiška: arba reikšmė teisinga, arba jis
+   jos netikrino. Laikant tai patvirtinimu, modulis matuojamas savo paties klaidomis.
+3. Taisymai yra **klaidų žurnalas**, ne etalonas. Vertingi — rodo, kurie laukai ir
+   kurie tiekėjai kelia problemų — bet tikslumo jais matuoti negalima.
+
+**Pasekmė.** Rankinio etalono poreikis lieka plane. Sumažėjęs (validatoriai dalį
+atvejų gaudo be jo), bet nepanaikintas.
+
+**Peržiūros forma išlieka verta savaime** — modulis buvo atmestas dėl darbo kiekio po
+atpažinimo, ne dėl tikslumo. Tik ne kaip etalono gamykla.
+
+---
+
+## D-016 — Architektūros sprendimas atidėtas, kol nepamatytas žalias Azure atsakymas (2026-09-15)
+
+**Kontekstas.** Visa siūloma architektūra rėmėsi prielaida, kad **Azure grąžina
+teisingus duomenis, o kodas juos blogai sudėlioja**. Prielaida sutapo su Deivido
+patirtimi ir skambėjo įtikinamai.
+
+**Bet jos niekas netikrino.** `ocr_raw_json` tuščias visose 247 sąskaitose — nė vieno
+Azure atsakymo nėra matę. Nežinome, ar grąžinamas `VendorTaxId`, ar eilutės ateina
+pilnos, ar per-lauko confidence užpildytas.
+
+**Sprendimas.** Architektūros sprendimas (kanoninis modelis, validatoriai, tiekėjų
+kaskada) **atidėtas**, kol:
+
+1. Saugykla veikia (PDF + žalias JSON išsaugomi).
+2. ~10 sąskaitų praleista per Azure ir žali atsakymai perskaityti.
+
+Jei Azure grąžina prastai, validatoriai ir kanoninis modelis nieko neduos — turėsim
+tvarkingą architektūrą virš blogų duomenų, ir reikės visai kito sprendimo.
+
+---
+
+## D-017 — Alias mokymasis tik iš aiškaus vartotojo veiksmo (2026-09-15)
+
+**Kontekstas.** Siūlyta tiekėjų alias lentelė, pildoma automatiškai, kad
+`VENDOR_NOT_FOUND` konverguotų į nulį.
+
+**Rizika, pastebėta redteam metu.** Konvergavimas į nulį reiškia, kad sistema nustoja
+klausti — įskaitant tuos atvejus, kai priskiria **neteisingai**. Šiandien blogiausias
+atvejis yra garsūs „neradau"; su automatiniu mokymusi jis tampa tyliu „radau, ir tai
+ne tas tiekėjas", kartojamu kas mėnesį.
+
+**Sprendimas.** Alias įrašas gali kilti **tik iš aiškaus vartotojo veiksmo**, niekada
+iš automatinio neaškaus pavadinimo sutapimo. Turi būti matomas ir atšaukiamas.
+
+---
+
+## D-018 — Shadow mode yra regresijos apsauga, ne matavimas (2026-09-15)
+
+**Kontekstas.** Teigta, kad shadow mode (du ekstraktoriai lygiagrečiai) leidžia
+matuoti kokybę be etalono.
+
+**Sprendimas.** Netiesa. Shadow gaudo tik tuos atvejus, kur du keliai **nesutampa**.
+Ten, kur senas ir naujas klysta vienodai — o taip bus dažnai, nes abu ima tuos pačius
+Azure laukus — skirtumo nėra, ir klaida lieka nematoma.
+
+Shadow patvirtina „nieko nesulaužiau". Jis nesako „dabar teisingai".
+
+---
+
+## D-019 — Eilutės: antraštė autoritetinga, eilutės patariamosios (2026-09-15)
+
+**Kontekstas.** Nei validatoriai, nei alias mokymasis eilučių interpretavimo
+nepagerins. Tikėtis, kad Azure eilutes skaitys gerai, nėra pagrindo.
+
+**Sprendimas.** Antraštės sumos laikomos autoritetingomis, eilutės — patariamosiomis.
+Niekada tyliai netrinti (A5). Neatitikimas žymimas vėliavėle. Investuoti į greitą
+eilučių redagavimą formoje, ne į jų ekstrakcijos tobulinimą.
+
+---
+
+## D-020 — Seka (2026-09-15)
+
+1. **Saugykla** — PDF + žalias Azure JSON. Be jos nesikaupia niekas.
+2. **~10 sąskaitų per Azure + žalio JSON analizė** — atsako, kiek problemos yra Azure
+   pusėje, o kiek kode. Iki tol bet koks planas yra spėjimas.
+3. **Architektūros sprendimas** — tik po 2 (D-016).
+4. Autorizacija prieš peržiūros formą (forma bus naujas puslapis, `[Authorize]` neveikia).
+
+---
+
 ## D-001 — Rasti P0 defektai (2026-09-13)
 
 **Kontekstas.** Modulio analizė (`ExpenseOcrService.cs`, `OcrQueueWorker.cs`,
