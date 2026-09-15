@@ -1,47 +1,55 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-14 | Sesija: 03 | Fazė: F0 (vykdoma)
+Atnaujinta: 2026-09-15 | Sesija: 03 (baigta) | Fazė: F0 uždarytas
 
 ## Dabartinė fazė
 
-F0 — gyvo kelio defektų taisymas. Užduotis paruošta `.opencode/tasks/latest.md`,
-keturi commit'ai vienoje užduotyje (D-013).
+F0 baigtas ir vartai uždaryti. Kita — D-014/D-015 sprendimai, tada F1 paruošimas.
 
 ## Padaryta
 
 - Sesija 01: modulio analizė, dokumentacijos karkasas, inventorizacijos užduotis.
 - Sesija 02: dvi nepriklausomos inventorizacijos (OpenCode + Claude Code),
-  palyginimas `analysis/COMPARISON.md`, 16/18 teiginių patvirtinti nepriklausomai,
-  trys nesutarimai išspręsti skaitant kodą.
-- Sesija 03: `PLAN.md` v2 — fazių tvarka perdaryta pagal patikrintus faktus;
-  `DECISIONS.md` D-007…D-013.
+  `analysis/COMPARISON.md`, 16/18 teiginių patvirtinti nepriklausomai.
+- Sesija 03: `PLAN.md` v2, `DECISIONS.md` D-007…D-013, F0 įvykdytas,
+  produkcijos auditas. Detalės — `sessions/2026-09-15-03.md`.
 
-## Vykdoma
+### F0 vartai — uždaryti
 
-F0 build užduotis OpenCode harnese. Keturi commit'ai:
-A4 (dialogas naikina pataisymus) · A9 (PVM tarifas su kableliu) ·
-A11 (aritmetinė patikra, išgalvotos sumos pašalinimas) · N2 (`invoice_number` NULL).
+Commit'ai `2b7f9a3` (A4), `e59ca7f` (A9), `6e864fd` (A11), `63ccdc0` (N2)
+plius version bump. **Pilnas rinkinys 157/157 žali** — jokių regresijų.
 
 ## Kitas žingsnis
 
-Perskaityti `.opencode/reports/f0-live-path-fixes-*.md`, patikrinti keturis
-verifikacijos išvesties punktus, tada F1 paruošimas — atskira read-only
-`[Authorize]` inventorizacija prieš autorizacijos įjungimą.
+1. D-014 (F0.5 triukšmo mažinimas) ir D-015 (peržiūros forma kaip savarankiška
+   fazė) — laukia Deivido patvirtinimo. Keičia fazių tvarką.
+2. Read-only `[Authorize]` inventorizacija — prieš F1 autorizacijos įjungimą.
+3. Saugyklos užduotis: `deploy.yml` volume + kelias kode, vienu commit'u.
+   Atrakina korpuso rinkimą.
 
 ## Blokatoriai
 
-- B8 (prod auditas) neįvykdytas — D-008 laukia sprendimo. Q-001 ir Q-003 atviri.
-- B8.3 (sąskaitų kiekis per mėn.) privalo būti atsakytas **prieš F3**, nes nuo jo
-  priklauso, ar F3–F5 apskritai proporcingi.
+- Korpuso rinkimo nepradėti, kol nėra saugyklos — kitaip failai vėl dings.
+- D-008 (`AGENTS.md` prod prieiga) neišspręstas, bet nebeblokuoja: auditas
+  atliktas rankiniu būdu.
+
+## Žinoma, bet netvarkoma čia
+
+- `bump-version.sh` testų gate praleidžiamas, kai `TEST_DB_CONNECTION` nenustatytas,
+  nors `DbTestFixture` turi veikiančią numatytąją reikšmę. Bump'as atrodo
+  patikrintas, nors testai nepaleisti. → `Docs/infra/SERVER-STATE.md`
+- Infrastruktūros radiniai — `Docs/infra/SERVER-STATE.md`, atskira sesija.
 
 ## Fazių lentelė
 
 | Fazė | Būsena |
 |---|---|
-| F0 Gyvo kelio pataisymai | vykdoma |
+| F0 Gyvo kelio pataisymai | **baigta** (157/157) |
+| F0.5 Triukšmo mažinimas | siūloma (D-014) |
 | F1 Prieiga ir saugykla | laukia (rizikingiausia fazė) |
+| F1.5 Peržiūros forma | siūloma (D-015) |
 | F2 Dokumentų modelis | laukia |
-| F3 Korpusas + etalonas | laukia (kietas vartas, priklauso nuo B8.3) |
+| F3 Korpusas + etalonas | laukia (priklauso nuo saugyklos) |
 | F4 Ekstraktorius v2 + runner | laukia |
 | F5 Agento ciklas | laukia |
 | F6 Admino vaizdas | laukia |
