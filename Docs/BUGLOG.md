@@ -1523,3 +1523,25 @@ re-labeling the symptom.
   already-non-negotiable triggers correctly on the first pass; the only
   change needed was making FROZEN.md checks read as non-negotiable too,
   not a model or model-family swap.
+
+### 2026-09-13 — CreditNoteNumberGenerator dereferenced a nullable `DbTransaction.Connection` without a null check (latent NRE)
+
+- **Symptom**: `Services/CreditNoteNumberGenerator.cs` (`GenerateNextNumberAsync`) did `connection = dbTransaction.Connection;` with no guard, surfacing as compiler nullable warnings CS8600/CS8602 during the T11 build-warning cleanup. The latent NRE is real, not just a warning: the regression test below proves that on Pomelo 8.0.0 / MySqlConnector, after `tx.CommitAsync()`, `tx.GetDbTransaction().Connection` is null — so a caller passing a committed/stale transaction used to get a raw `NullReferenceException` from deep in the query path instead of a domain error.
+- **Recurrence check first**: grepped every `Error class:` tag in this log — none cover "a nullable reference property that can be null is dereferenced without a guard". Closest, `layout-lifecycle-unguarded-db-call` (unguarded DB call in a Blazor lifecycle) and `ef-connection-pool-race-last-insert-id` (connection-scoped state racing across pooled connections), are different mechanisms. New tag.
+- **Root cause**: `dbTransaction` comes from `transaction.GetDbTransaction()`; MySqlConnector releases (nulls) the transaction's `Connection` reference at commit, so `Connection` is nullable in practice even though the surrounding flow "should" always have an active transaction. The code assumed non-null.
+- **Fix**: fail fast with a domain error instead of an NRE: `connection = dbTransaction.Connection ?? throw new InvalidOperationException("Transakcija neturi aktyvaus duomenų bazės ryšio — kreditinės numeris negali būti sugeneruotas.")` (Lithuanian message, per project user-facing-string conventions). Commit `f4212df`.
+- **Guardrail added**: regression test `GenerateNextNumberAsync_CommittedTransaction_ThrowsInvalidOperationException` (`Tests/NordicBeesERP.Tests/CreditNoteServiceTests.cs`) — begins and commits a real transaction, asserts the premise (`tx.GetDbTransaction().Connection` is null), then asserts the generator throws `InvalidOperationException` with the exact message.
+- **Category**: EF-core
+- **Error class**: `unchecked-null-property-access` (new tag — a nullable reference property, `DbTransaction.Connection` here, that can be null on a real path is dereferenced without a guard, surfacing as a latent NRE / CS8600/CS8602)
+- **Status**: monitoring
+
+### 2026-09-13 — Credit note number sequence read one character too far right (`SUBSTRING` offset 8 instead of 7) → duplicate number at sequence 1000
+
+- **Symptom**: `Services/CreditNoteNumberGenerator.cs` (`GetMaxSequenceAsync`) extracted the 4-digit sequence with `SUBSTRING(credit_note_number, 8, 4)`. Credit note numbers are `KLAK` (positions 1–4) + `YY` (5–6) + 4-digit sequence (7–10), so the correct 1-based start is 7. For sequences 1–999 the misaligned window still cast to the right value (e.g. `KLAK260999` → window at 8 yields `999` → 999), so the bug was invisible; at sequence 1000 (`KLAK261000`) the window at position 8 extracts `000` → `MAX = 0` → the generator would have emitted `KLAK260001`, a duplicate of the year's first number.
+- **Recurrence check first**: no existing `Error class:` tag covers a 1-based string-offset off-by-one in raw SQL. `rawsql-reader-type-cast-mismatch` (wrong type when reading a result set) and `ef-linq-untranslatable-stringcomparison` (LINQ-to-SQL translation) are different mechanisms. New tag.
+- **Root cause**: off-by-one in the 1-based character offset of the `SUBSTRING` call. The stale comment on the format line in the same file — `AKLAK + YY + sequence` (a 5-char prefix) — is consistent with the offset having been computed against a 5-char prefix; the real prefix is `KLAK` (4 chars), putting the sequence at position 7. The digit-count-growth mask (identical cast values while the sequence fits in ≤3 digits) is why it never surfaced before.
+- **Fix**: `SUBSTRING(credit_note_number, 8, 4)` → `SUBSTRING(credit_note_number, 7, 4)` and the comment `AKLAK` → `KLAK`. Commit `b66dd38`.
+- **Guardrail added**: regression test `GenerateNextNumberAsync_SequenceAt1000_ReturnsKLAK261001` (`Tests/NordicBeesERP.Tests/CreditNoteServiceTests.cs`) — inserts a real `KLAK261000` row (with the minimal invoice / business-partner / currency chain it FK-requires) via parameterized SQL, calls `GenerateNextNumberAsync`, asserts the result is `KLAK261001` (with the old offset 8 it would be `KLAK260001`), and cleans up in reverse FK order.
+- **Category**: EF-core
+- **Error class**: `sql-string-offset-off-by-one` (new tag — a 1-based character offset into a fixed-format string is off by one, and the misaligned window silently extracts the same value while the field's digit count is small, so the bug only surfaces when the field grows: 999 → 1000)
+- **Status**: monitoring
