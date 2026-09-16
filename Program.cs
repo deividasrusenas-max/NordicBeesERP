@@ -122,6 +122,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IErpUserService, ErpUserService>();
 builder.Services.AddScoped<IImageToPdfService, ImageToPdfService>();
 builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthentication("Cookies")
     .AddCookie("Cookies", options =>
     {

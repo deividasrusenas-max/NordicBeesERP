@@ -1,6 +1,30 @@
-<Router @rendermode="InteractiveServer" AppAssembly="@typeof(App).Assembly">
+<Router @rendermode="new InteractiveServerRenderMode(prerender: false)" AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <Authorizing>
+                <MudContainer Class="d-flex align-center justify-center" Style="min-height: 60vh;">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Secondary" />
+                </MudContainer>
+            </Authorizing>
+            <NotAuthorized>
+                <AuthorizeView>
+                    <Authorized Context="innerAuthorized">
+                        <MudContainer Class="d-flex flex-column align-center justify-center text-center" Style="min-height: 60vh;">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Color="Color.Default" Class="mb-3" />
+                            <MudText Typo="Typo.h5" Class="my-2">Nėra prieigos</MudText>
+                            <MudText Typo="Typo.body1" Class="my-3">Jūsų paskyra neturi prieigos prie šios srities.</MudText>
+                            <MudLink Href="/" Underline="Underline.None">Grįžti į pradžią</MudLink>
+                        </MudContainer>
+                    </Authorized>
+                    <NotAuthorized Context="innerNotAuthorized">
+                        <MudContainer Class="d-flex align-center justify-center" Style="min-height: 60vh;">
+                            <MudProgressCircular Indeterminate="true" Color="Color.Secondary" />
+                        </MudContainer>
+                        <NotAuthorizedRedirect />
+                    </NotAuthorized>
+                </AuthorizeView>
+            </NotAuthorized>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>

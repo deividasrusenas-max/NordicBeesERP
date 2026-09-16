@@ -1,0 +1,20 @@
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+@code {
+    private bool _redirectChecked;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_redirectChecked)
+        {
+            _redirectChecked = true;
+
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (state.User.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login");
+            }
+        }
+    }
+}
