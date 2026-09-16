@@ -1,4 +1,5 @@
 @page "/warehouse/deliveries"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Warehouse")]
 @rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Models.WarehouseModule

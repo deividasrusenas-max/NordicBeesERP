@@ -1,4 +1,5 @@
 @page "/credit-notes/new"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos

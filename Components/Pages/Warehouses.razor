@@ -1,4 +1,5 @@
 @page "/warehouses"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Warehouse")]
 @inject IWarehouseService WarehouseService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar

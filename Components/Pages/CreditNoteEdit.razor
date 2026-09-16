@@ -1,4 +1,5 @@
 @page "/credit-notes/{Id:int}/edit"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using NordicBeesERP.Models

@@ -1,5 +1,6 @@
 @page "/invoices/create"
 @page "/invoices/create-purchase"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web

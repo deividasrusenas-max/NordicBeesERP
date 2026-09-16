@@ -1,4 +1,5 @@
 @page "/bank-import"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @rendermode InteractiveServer
 @inject IPaymentService PaymentService
 @inject IExpenseService ExpenseService

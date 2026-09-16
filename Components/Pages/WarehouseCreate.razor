@@ -1,4 +1,5 @@
 @page "/warehouses/create"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Warehouse")]
 @rendermode RenderMode.InteractiveServer
 @inject IWarehouseService WarehouseService
 @inject NavigationManager Navigation

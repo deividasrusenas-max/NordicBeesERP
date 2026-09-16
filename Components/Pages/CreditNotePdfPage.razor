@@ -1,4 +1,5 @@
 @page "/credit-notes/pdf/{Id:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 
 @* =====================================================
    NORDIC BEES ERP - CREDIT NOTE PDF GENERATOR PAGE

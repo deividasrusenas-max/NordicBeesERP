@@ -1,5 +1,6 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @page "/products/edit/{Id:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Warehouse")]
 @inject IProductService ProductService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar

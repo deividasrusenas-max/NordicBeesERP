@@ -1,4 +1,5 @@
 @page "/suppliers"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Warehouse")]
 @inject ISupplierService SupplierService
 @inject IExpenseService ExpenseService
 @inject IDebtReconciliationService DebtReconciliationService

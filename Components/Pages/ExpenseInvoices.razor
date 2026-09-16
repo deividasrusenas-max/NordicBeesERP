@@ -1,4 +1,5 @@
 @page "/expense-invoices"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Services

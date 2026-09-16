@@ -1,4 +1,5 @@
 @page "/warehouse/deliveries/{Id:int}/sign"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Warehouse")]
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
 @inject IDeliveryService DeliveryService

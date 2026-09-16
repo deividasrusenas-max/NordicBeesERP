@@ -1,6 +1,7 @@
 @page "/invoices"
 @page "/invoices/sales"
 @page "/invoices/purchases"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @rendermode InteractiveServer
 @using NordicBeesERP.Models
 @using NordicBeesERP.Services

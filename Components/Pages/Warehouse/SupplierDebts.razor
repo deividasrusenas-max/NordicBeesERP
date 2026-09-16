@@ -1,4 +1,5 @@
 @page "/warehouse/supplier-debts"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Helpers

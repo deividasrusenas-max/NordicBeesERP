@@ -1,4 +1,5 @@
 @page "/customers"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Warehouse")]
 @inject ICustomerService CustomerService
 @inject IDebtReconciliationService DebtReconciliationService
 @inject NavigationManager Navigation

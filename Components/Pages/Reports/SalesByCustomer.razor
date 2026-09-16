@@ -1,4 +1,5 @@
 @page "/reports/sales-by-customer"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 @rendermode InteractiveServer
 @using System
 @using NordicBeesERP.Models

@@ -1,4 +1,5 @@
 @page "/production/newbatch"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Warehouse")]
 @using NordicBeesERP.Components.Dialogs
 @inject IProductionService ProductionService
 @inject IDialogService DialogService
