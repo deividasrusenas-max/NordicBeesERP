@@ -139,8 +139,16 @@
 
     private async Task HandleLogout()
     {
-        await AppAuthProvider.LogoutAsync();
-        Navigation.NavigateTo("/login", forceLoad: false);
+        try
+        {
+            await AppAuthProvider.LogoutAsync();
+        }
+        catch
+        {
+            // Best-effort: clears legacy localStorage state if present.
+            // Cookie sign-out happens at the endpoint below.
+        }
+        Navigation.NavigateTo("/auth/logout", forceLoad: true);
     }
 
     private void OnSearchInput(ChangeEventArgs e)
