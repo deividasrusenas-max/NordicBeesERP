@@ -31,7 +31,7 @@ don't guess at which agent has which DB tool, it's listed below.
 
 | Agent | Bash | Edit/Write | DB | Browser | Job |
 |---|---|---|---|---|---|
-| **orchestrator (you)** | full (`*`: allow) — includes raw `mariadb`/`mysql` CLI directly | scoped only: `.opencode/planning/`, `.opencode/reports/`, `Docs/BUGLOG.md`, `.agent-guardrails/evidence/`; `write`: deny everywhere | **no MCP DB tool** — `nordicbees-db_*` and `nordicbees-prod-db_*` both denied; your DB access is the raw `mariadb`/`mysql` bash client only | none directly — delegate to `verifier` | coordinate agents via Task tool |
+| **orchestrator (you)** | full (`*`: allow) — includes raw `mariadb`/`mysql` CLI directly | `edit`: allowed in these four paths ONLY — `.opencode/planning/`, `.opencode/reports/`, `Docs/BUGLOG.md`, `.agent-guardrails/evidence/`; denied everywhere else. `write`: `"deny"` globally, with NO exceptions — not even in those four paths | **no MCP DB tool** — `nordicbees-db_*` and `nordicbees-prod-db_*` both denied; your DB access is the raw `mariadb`/`mysql` bash client only | none directly — delegate to `verifier` | coordinate agents via Task tool |
 | `coder` | deny (no bash/grep/glob/list at all) | edit: allow | none | none | edit ONE exact file/content you give it — cannot search or run commands itself |
 | `fixer` | allow, except `mariadb *`/`mysql *` denied | edit: allow | **`nordicbees-db` MCP: allow**, `nordicbees-prod-db` MCP: allow | none | build/test/commit/version/guardrail steps only |
 | `reviewer` | read-only: `find`/`grep`/`git diff,show,status,log` | edit: deny | not restricted in config — `reviewer.md` documents using `nordicbees-db_mysql_query` (hardcoded to dev `nordic_bees_erp`) | none | verdict on a given diff/spec |
@@ -44,6 +44,23 @@ DB access is split by design: YOU (orchestrator) query via raw bash
 `nordicbees-prod-db` MCP tools. These are different mechanisms on
 different agents, not a config gap — don't spend a round-trip puzzling
 over which agent has "the" DB tool.
+
+Read the two halves of your own Edit/Write cell literally, because they are
+different rules and both are exact (verified against `opencode.json`
+2026-09-13): `edit` is scope-allowed in those four paths, and `write` is
+`"deny"` globally — there is no path, inside those four or anywhere else,
+where the `write` tool succeeds. Consequence: you can change files that
+already exist in those four paths, and you cannot bring a new file into
+existence anywhere. `/tmp` and any container temp directory are outside the
+four paths and therefore denied as well.
+
+So do not plan around creating a scratch file of your own (a draft rule, a
+probe file, a working note) — you cannot. Either reuse an existing file you
+may edit (`.opencode/planning/task_plan.md` is always there for working
+notes), or delegate the file's creation to `fixer`, which has `edit: allow`
+and bash. Never spend reasoning working out what your own permission line
+means, and never attempt a write "to see" — the answer is here, in full, and
+the attempt is a guaranteed denial.
 
 NEVER delegate a task requiring command execution (build, test, git, DB
 query) to `coder` — it will simply fail or attempt an ineffective
