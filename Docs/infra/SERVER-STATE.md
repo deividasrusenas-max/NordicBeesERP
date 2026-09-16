@@ -67,6 +67,63 @@ Staging: ta pati forma, `Database=nordic_bees_erp_staging`.
 Aplikacija jungiasi prie **hosto MariaDB 11.8**, ne prie `nordicbees_mysql`
 konteinerio. DB atskirtos teisingai.
 
+### 1.4 Duomenų bazės — DVI ATSKIROS MAŠINOS
+
+Patikrinta 2026-09-15. Ilgą laiką jos buvo painiojamos tarpusavyje.
+
+| | Produkcija | Dev / testai |
+|---|---|---|
+| Mašina | `lakstena-dev` | `local-llm` (`100.110.26.80`) |
+| DBVS | **MariaDB 11.8** | **MySQL 8.0.46** |
+| Bazės | `nordic_bees_erp`, `nordic_bees_erp_staging` | `nordic_bees_erp`, `nordic_bees_erp_test` |
+| Kas naudoja | prod ir staging konteineriai | `appsettings.Local.json`, `DbTestFixture`, `dotnet ef` |
+
+Prod `ConnectionStrings__DefaultConnection`:
+`Server=host.docker.internal;Port=3306;Database=nordic_bees_erp;Uid=erp_user`
+`host.docker.internal` -> `172.17.0.1` -> hosto MariaDB. Patvirtinta
+`docker exec nordicbees_prod getent hosts host.docker.internal`.
+
+`@@hostname` / `@@version` patikra:
+- `sudo mysql` ant lakstena-dev -> `lakstena-dev.self`, `11.8.2-MariaDB`
+- `mysql -h 100.110.26.80` -> `local-llm`, `8.0.46`
+
+**Pasekmės:**
+- 247 sąskaitų auditas darytas prie lakstena-dev MariaDB — **galioja**, tai ta pati
+  bazė, kurią naudoja prod.
+- `dotnet ef migrations list` ir `database update` kalba apie `local-llm`, **ne apie
+  produkciją**. „Already up to date" apie prod nesako nieko.
+- 157 F0 testai sukoši ant MySQL, o produkcija yra MariaDB — jie negali patvirtinti
+  produkcijos elgsenos.
+
+### 1.4b Migracijų būsena (2026-09-15)
+
+| Aplinka | Paskutinė migracija |
+|---|---|
+| prod (lakstena-dev) | `20260910095703_AddCompanySettingsAddressFields` |
+| dev (local-llm) | `20260910095703_AddCompanySettingsAddressFields` |
+| **staging** | `20260828070929_AddDashboardDailySnapshots` |
+
+**Staging atsilikęs šešiomis migracijomis.** Trūksta: `AddContainerCodeUniqueIndex`,
+`AddDeliveryCostDeductions`, `AddPartnerRoleFlags`, `AddPartnerVatVerification`,
+`AddCompensationVatCode`, `AddCompanySettingsAddressFields`. Taip pat niekada
+nepritaikytas rankinis `Migrations/Scripts/20260826_artwork_multifile.sql` — todėl
+`ArtworkPreviewWorker` ten krenta su `Unknown column 'a.artwork_file_id'` nuo
+rugpjūčio. Tai **nėra** šios sesijos darbo pasekmė.
+
+### 1.4c Du lygiagretūs schemos mechanizmai
+
+1. Tvarkingos EF migracijos su `.Designer.cs` — matomos `dotnet ef migrations list`
+2. Rankiniu būdu rašytos migracijų klasės **be** `[Migration]` atributo, plius
+   `Migrations/Scripts/*.sql`, taikomi ranka
+
+Antrosios EF nemato (`20260708120000_DeliverySignatureColumns` nėra sąraše), bet
+įrašai apie jas `__EFMigrationsHistory` **yra** — įdėti ranka.
+`Migrations/Scripts/20260826_artwork_multifile.sql` pats save aprašo:
+„Apply MANUALLY against the dev/staging DB. The agent does NOT run DDL."
+
+Tas pats skriptas turi **klaidingą** komentarą, kad MariaDB nepalaiko
+`ADD COLUMN IF NOT EXISTS`. Atvirkščiai: MariaDB palaiko, **MySQL 8.0 — ne**.
+
 ### 1.5 Konteineriai sukasi kaip root
 
 `docker exec nordicbees_prod id` → `uid=0(root) gid=0(root)`.
@@ -150,6 +207,11 @@ Sprendimai priimami atskiroje sesijoje, po tyrimo.
 | I-6 | Konteineriai sukasi kaip root | Saulius | Per bind mount pasiekia hosto katalogus |
 | I-7 | `/var/lib/nordicbees/` atsarginės kopijos | Saulius | Sąskaitos yra apskaitos dokumentai su saugojimo terminais |
 | I-8 | `deploy.yml` peržiūra apskritai | Saulius / Deividas | Vienintelis realus infrastruktūros šaltinis |
+
+| I-9 | Dev ir test bazės iš `local-llm` MySQL į `lakstena-dev` MariaDB | Deividas | **Atidėta.** Testai sukasi ant MySQL, produkcija ant MariaDB — testai negali patvirtinti prod elgsenos |
+| I-10 | Staging bazė atsilikusi šešiomis migracijomis + rankiniu artwork skriptu | Deividas | Dėl to staging krenta nuo rugpjūčio |
+| I-11 | Du lygiagretūs schemos mechanizmai — suvienodinti | Deividas | Aplinkos išsiskiria tyliai |
+| I-12 | `Migrations/Scripts/20260826_artwork_multifile.sql` komentaras apie MariaDB klaidingas | Deividas | Klaidina kiekvieną, kas skaito |
 
 ---
 
