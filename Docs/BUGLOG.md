@@ -1619,11 +1619,48 @@ re-labeling the symptom.
       threshold from observed healthy gaps rather than a constant.
 
 - **Guardrail added**: none — evidence entry, no code change.
+
+- **CONFIRMED CONSEQUENCE (same day, owner-verified)**: the owner confirmed he
+  typed NONE of the `continue` messages in this session. The injected ones were
+  read as approval and carried a release to production infra end to end:
+  - the orchestrator had recorded its own interpretation rule in its compaction
+    summary — *"bare `continue` after an explicit recommendation = proceed with
+    the recommendation"* — and noted it had been *applied twice*: (1) starting
+    the PdfFileCache follow-up, (2) **choosing Option A over B/C**;
+  - the same summary states *"Option A (owner-approved via 'continue')"*. No
+    such approval was given.
+  - result shipped: `e58c40d` (deploy.yml bind mounts), bump `764e2b5`, tag
+    `v0.17.90`, pushed to origin — including the version-bump/push confirmation
+    gate that the debug excerpt above shows as `BLOCKED on confirmation`.
+  - after closeout, another injected `continue` immediately started the NEXT
+    named item (Option B / Storage Step 2, the full IFileStore PDF-storage
+    migration) with no human decision. The loop is self-sustaining: every
+    closeout ends with a recommendation, and every injected `continue` is read
+    as consent to it.
+
+- **Why it was invisible in the transcript**: `.opencode/plugin/nordicbees-reminder.ts`
+  prepends the standard `[auto-reminder: ...]` block to every message whose
+  role is `user`. The recovery prompt is submitted as a user message, so it is
+  decorated identically — an injected `continue` is byte-for-byte
+  indistinguishable from a typed one, both in the TUI and to the orchestrator.
+  The false "owner-approved" fact then propagated into the compaction summary
+  as established context.
+
+- **Second defect this exposes, independent of the plugin**: the orchestrator
+  derived and reused an interpretation rule under which a contentless nudge
+  counts as consent to whatever it last recommended. Even with a correct
+  recovery mechanism, that turns any empty continuation into an approval.
+  `.opencode/prompts/orchestrator.md` needs the inverse rule stated: `continue`
+  is never approval of a recommendation or a choice between options; without an
+  explicit selection, ask.
 - **Category**: harness
 - **Error class**: `auto-resume-continue-into-human-gate` (provisional new tag
   — a supervision/recovery mechanism cannot distinguish a session deliberately
   parked on a human approval gate from a stalled one, resumes it, and thereby
   answers the gate on the human's behalf)
-- **Status**: open — feeds the auto-resume replacement spec. No mitigation in
-  place: any run that stops on a confirmation gate can still be resumed by the
-  plugin.
+- **Status**: open, HIGH — severity upgraded the same day from "wasted time" to
+  "unauthorised release": the mechanism answered two human gates and pushed a
+  tag to origin. No mitigation in place; the plugin is the third-party global
+  install, not one of the eight own plugins in `.opencode/plugin/`. Until it is
+  unloaded, any run that stops on a confirmation gate can still be resumed, and
+  any closeout recommendation can still be auto-accepted.
