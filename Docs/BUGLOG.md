@@ -1545,3 +1545,85 @@ re-labeling the symptom.
 - **Category**: EF-core
 - **Error class**: `sql-string-offset-off-by-one` (new tag — a 1-based character offset into a fixed-format string is off by one, and the misaligned window silently extracts the same value while the field's digit count is small, so the bug only surfaces when the field grows: 999 → 1000)
 - **Status**: monitoring
+
+### 2026-09-16 — `opencode-auto-resume` injected "continue" into an orchestrator that was deliberately BLOCKED on human confirmation, and logged `session-busy` only AFTER dispatching
+
+- **Symptom**: the orchestrator had stopped on purpose — the TUI showed `BLOCKED on confirmation` for a `bump-version.sh` version bump / explicit push, i.e. a human gate the task prompt itself required. The auto-resume plugin read the stop as a stall and sent a recovery prompt. Captured from the live debug stream (session `...yB15W3BV`):
+
+  ```
+  [debug] State transition on ...yB15W3BV: continuing=true -> false
+  [debug] Pending recovery check on ...yB15W3BV: pendingRecovery=true,
+          userCancelled=false, aborting=false, recoveryAttempts=0,
+          pendingRecoveryAt=1789546623313
+  [debug] Backoff check on ...yB15W3BV: elapsed=2406ms, required=500ms, pass=true
+  [debug] checkForToolCallAsText called for ...97H8isFY, userCancelled=false,
+          toolTextRecovered=false, toolTextAttempts=0
+  [debug] State transition on ...yB15W3BV: recoveryAttempts=0 -> 1
+  [debug] State transition on ...yB15W3BV: continuing=false -> true
+  [debug] Recovery prompt sent to ...yB15W3BV: prompt="continue",
+          agent=orchestrator, model=llama-swap/orchestrator
+  [debug] ...W3BV: reason=session-busy
+  ```
+
+- **Recurrence check first**: PARTIAL — this log is 229 KB and was not grepped
+  end to end by the session that wrote this entry. The six 2026-09-08..12
+  supervision-chain entries were reviewed (`task_complete` ordering /
+  Task-contract last-message, auto-resume wake logic, quality-monitor
+  `.shift()` verdict misattribution, idle-injection targeting the wrong
+  session, done-claim false positive, `text-only-repeat-loop`): all are
+  "harness reads the wrong message / the wrong session"; none covers "recovery
+  fires against a deliberate human gate". Treat the tag below as provisional
+  until a full grep confirms it is new.
+
+- **Three distinct defects visible in the excerpt**:
+  1. **Ordering**: `Recovery prompt sent` precedes `reason=session-busy`. The
+     busy guard is evaluated (or at least logged) after dispatch, so it cannot
+     prevent the send — a race, not a guard.
+  2. **No "awaiting human" state**: the plugin's state vocabulary is
+     `continuing` / `pendingRecovery` / `userCancelled` / `aborting`. A session
+     parked on an explicit confirmation gate is none of these, so it reads as a
+     stall. Consequence: the plugin answers confirmation prompts that exist
+     precisely to stop the run — the worst possible failure direction, since
+     the gated action here was a version bump plus a push.
+  3. **Interleaved sessions**: `checkForToolCallAsText` for `...97H8isFY`
+     appears between two state transitions of `...yB15W3BV` — two sessions
+     supervised concurrently with their state lines interleaved, the same
+     family as the six entries above.
+  Secondary: `required=500ms` means the first recovery attempt lands about half
+  a second after the session goes quiet, far below any defensible "is it
+  actually stuck" threshold.
+
+- **Unproven hypothesis worth testing during the rewrite**: `task-stats.jsonl`
+  shows two cases where a second Task started while the previous one was still
+  pending and was later recorded `interrupted` — 2026-09-15 10:22 vs 10:31
+  (coder, 718.9 s / 48 toolcalls) and 2026-09-16 04:24 vs 04:26 (fixer,
+  919.7 s / 39 toolcalls). A `continue` injected into a busy orchestrator is
+  one mechanism that would produce exactly that. NOT established — no trace
+  links the injection to those two starts; recorded so the rewrite can confirm
+  or kill it.
+
+- **Fix**: none applied, deliberately. The 2026-09-12 decision is to replace
+  this third-party plugin with an own implementation under `.opencode/plugin/`,
+  developed in `.opencode/plugin-dev/` and written from collected trace
+  evidence rather than patched in place — the current copy survives only
+  through three patches to the global opencode package cache that vanish on
+  re-fetch. This entry is part of that evidence.
+
+- **Requirements this incident contributes to the replacement spec**:
+  (a) evaluate the busy/eligibility guard BEFORE dispatch, never after;
+  (b) treat "blocked on user confirmation" as a first-class terminal state that
+      recovery never touches, distinct from "stalled";
+  (c) key all state by session id, with no shared mutable state across
+      concurrently supervised sessions;
+  (d) raise the initial backoff well above 500 ms and derive the stall
+      threshold from observed healthy gaps rather than a constant.
+
+- **Guardrail added**: none — evidence entry, no code change.
+- **Category**: harness
+- **Error class**: `auto-resume-continue-into-human-gate` (provisional new tag
+  — a supervision/recovery mechanism cannot distinguish a session deliberately
+  parked on a human approval gate from a stalled one, resumes it, and thereby
+  answers the gate on the human's behalf)
+- **Status**: open — feeds the auto-resume replacement spec. No mitigation in
+  place: any run that stops on a confirmation gate can still be resumed by the
+  plugin.
