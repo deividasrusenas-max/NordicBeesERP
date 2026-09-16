@@ -19,6 +19,8 @@ namespace NordicBeesERP.Services
         private readonly ICompanySettingsService _companySettingsService;
         private readonly ILogger<ExpenseOcrService> _logger;
 
+        private const string ModelId = "prebuilt-invoice";
+
         public ExpenseOcrService(IDbContextFactory<NordicBeesERPContext> dbFactory, IViesService viesService, ICompanySettingsService companySettingsService, ILogger<ExpenseOcrService> logger)
         {
             _dbFactory = dbFactory;
@@ -69,7 +71,7 @@ namespace NordicBeesERP.Services
 
                 var client = new DocumentIntelligenceClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
 
-                result.OcrPipeline = "AZURE_DI";
+                result.OcrPipeline = ModelId;
                 result.Diagnostics.AzureReachable = true;
 
                 _logger.LogDebug("[AZURE DI] Analysing: {FileName}", fileName);
@@ -80,13 +82,14 @@ namespace NordicBeesERP.Services
 
                 var operation = await client.AnalyzeDocumentAsync(
                     WaitUntil.Completed,
-                    "prebuilt-invoice",
+                    ModelId,
                     requestContent,
                     locale: "lt-LT",
                     pages: "1-2"
                 );
 
                 var json = operation.Value.ToString();
+                result.RawJson = json;
                 var root = JsonDocument.Parse(json).RootElement;
                 
                 // JSON structure: { analyzeResult: { documents: [...] } }

@@ -157,6 +157,19 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Invoice PDFs are served only through IFileStore (DB-backed blobs) — block
+// anonymous static-file access to legacy wwwroot/uploads/invoices paths.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/uploads/invoices"))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
+
 app.UseStaticFiles();
 app.UseAntiforgery();
 
