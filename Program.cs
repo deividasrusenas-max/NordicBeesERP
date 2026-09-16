@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
 using NordicBeesERP.Components;
 using NordicBeesERP.Data;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Services;
 using NordicBeesERP.Services.Pdf;
 using NordicBeesERP.Services.Xlsx;
@@ -243,6 +246,28 @@ app.MapGet("/artwork/preview/full/{versionId:int}", async (int versionId,
     return Results.File(stream, "image/png");
 })
 .AllowAnonymous();
+
+app.MapPost("/auth/login", [ValidateAntiForgeryToken] async (HttpContext ctx, IFormCollection form, IAuthService authService) =>
+{
+    var email = form["email"].ToString();
+    var password = form["password"].ToString();
+    var user = await authService.ValidateUserAsync(email, password);
+    if (user is null)
+        return Results.Redirect("/login?error=Invalid");
+
+    var principal = AuthClaims.CreateClaimsPrincipal(user.Email, user.Role, user.FullName);
+    await ctx.SignInAsync(AuthClaims.CookieScheme, principal, new AuthenticationProperties { IsPersistent = true });
+
+    var returnUrl = form["ReturnUrl"].ToString();
+    var target = (returnUrl.StartsWith("/") && !returnUrl.StartsWith("//")) ? returnUrl : "/";
+    return Results.Redirect(target);
+});
+
+app.MapGet("/auth/logout", async (HttpContext ctx) =>
+{
+    await ctx.SignOutAsync(AuthClaims.CookieScheme);
+    return Results.Redirect("/login");
+});
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
