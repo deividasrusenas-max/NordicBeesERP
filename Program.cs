@@ -123,11 +123,13 @@ builder.Services.AddScoped<IErpUserService, ErpUserService>();
 builder.Services.AddScoped<IImageToPdfService, ImageToPdfService>();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication("Cookies")
     .AddCookie("Cookies", options =>
     {
         options.LoginPath = "/login";
         options.ExpireTimeSpan = TimeSpan.FromDays(30);
+        options.AccessDeniedPath = "/";
     });
 builder.Services.AddAuthorization(options =>
 {
@@ -172,6 +174,8 @@ app.Use(async (context, next) =>
 });
 
 app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 // Artwork File Download Endpoint
