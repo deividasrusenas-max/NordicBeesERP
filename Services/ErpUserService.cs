@@ -17,10 +17,12 @@ public interface IErpUserService
 public class ErpUserService : IErpUserService
 {
     private readonly IDbContextFactory<NordicBeesERPContext> _contextFactory;
+    private readonly IAuthService _authService;
 
-    public ErpUserService(IDbContextFactory<NordicBeesERPContext> contextFactory)
+    public ErpUserService(IDbContextFactory<NordicBeesERPContext> contextFactory, IAuthService authService)
     {
         _contextFactory = contextFactory;
+        _authService = authService;
     }
 
     public async Task<List<ErpUser>> GetUsersAsync()
@@ -50,6 +52,28 @@ public class ErpUserService : IErpUserService
         await using var ctx = await _contextFactory.CreateDbContextAsync();
         var existing = await ctx.ErpUsers.FirstOrDefaultAsync(u => u.Id == user.Id)
             ?? throw new InvalidOperationException("Vartotojas nerastas");
+
+        var activeAdminCount = await ctx.ErpUsers.CountAsync(u => u.Role == "Admin" && u.IsActive);
+        var isLastActiveAdmin = existing.Role == "Admin" && existing.IsActive && activeAdminCount == 1;
+
+        // Guard 1: refuse to deactivate the last active Admin (would lock the system out).
+        if (isLastActiveAdmin && !user.IsActive)
+            throw new InvalidOperationException("Negalite išjungti paskutinio aktyvaus administratoriaus");
+
+        // Guard 2: refuse to change the last active Admin's role away from Admin.
+        if (isLastActiveAdmin && user.Role != "Admin")
+            throw new InvalidOperationException("Negalite pakeisti paskutinio aktyvaus administratoriaus rolės");
+
+        // Guard 3: refuse to let a user deactivate or demote their own account.
+        var actor = await _authService.GetAuthenticatedUserAsync();
+        if (actor != null && actor.Id == existing.Id)
+        {
+            if (existing.IsActive && !user.IsActive)
+                throw new InvalidOperationException("Negalite išjungti savo paskyros");
+            if (existing.Role == "Admin" && user.Role != "Admin")
+                throw new InvalidOperationException("Negalite pakeisti savo paskyros rolės");
+        }
+
         existing.FullName = user.FullName;
         existing.Email = user.Email;
         existing.Role = user.Role;
