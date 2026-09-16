@@ -1221,6 +1221,7 @@ namespace NordicBeesERP.Services
                 Source = source,
                 OriginalFilePath = ocrResult.OriginalFilePath,
                 OriginalFilename = ocrResult.OriginalFilename,
+                FileId = ocrResult.FileId,
                 PendingSupplierName = ocrResult.SupplierId == null ? ocrResult.SupplierName : null,
                 PendingSupplierVat = ocrResult.SupplierId == null ? ocrResult.SupplierVatCode : null,
                 PendingSupplierAddress = ocrResult.SupplierId == null ? ocrResult.SupplierAddress : null,
@@ -1243,6 +1244,7 @@ namespace NordicBeesERP.Services
                 OcrStatus = "COMPLETED",
                 OcrConfidence = ocrResult.Confidence.Overall,
                 OcrPipeline = ocrResult.OcrPipeline,
+                OcrRawJson = ocrResult.RawJson,
                 OcrFlags = ocrResult.Flags.Any() ? System.Text.Json.JsonSerializer.Serialize(ocrResult.Flags) : null,
                 SupplierVatVerified = ocrResult.ViesVerified,
                 SupplierVatVerifiedName = ocrResult.ViesName,
@@ -1285,6 +1287,13 @@ namespace NordicBeesERP.Services
                 PerformedAt = DateTime.Now
             });
             await ctx.SaveChangesAsync();
+
+            if (ocrResult.FileId.HasValue)
+            {
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "UPDATE files SET entity_id = {0} WHERE id = {1}",
+                    invoice.Id, ocrResult.FileId.Value);
+            }
 
             return invoice;
         }
@@ -1364,15 +1373,16 @@ namespace NordicBeesERP.Services
                     ocr_status = {17},
                     ocr_confidence = {18},
                     ocr_pipeline = {19},
-                    ocr_flags = {20},
-                    supplier_vat_verified = {21},
-                    supplier_vat_verified_name = {22},
-                    original_file_path = {23},
-                    original_filename = {24},
-                    status = {25},
-                    rejected_reason = {26},
-                    updated_at = {27}
-                WHERE id = {28}",
+                    ocr_raw_json = {20},
+                    ocr_flags = {21},
+                    supplier_vat_verified = {22},
+                    supplier_vat_verified_name = {23},
+                    original_file_path = {24},
+                    original_filename = {25},
+                    status = {26},
+                    rejected_reason = {27},
+                    updated_at = {28}
+                WHERE id = {29}",
                 ocrResult.SupplierId,
                 ocrResult.SupplierId == null ? ocrResult.SupplierName : null,
                 ocrResult.SupplierId == null ? ocrResult.SupplierVatCode : null,
@@ -1393,6 +1403,7 @@ namespace NordicBeesERP.Services
                 "COMPLETED",
                 ocrResult.Confidence.Overall,
                 ocrResult.OcrPipeline,
+                ocrResult.RawJson,
                 ocrFlagsJson,
                 ocrResult.ViesVerified,
                 ocrResult.ViesName,

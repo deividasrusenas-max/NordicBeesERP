@@ -5,11 +5,13 @@
 @using Microsoft.AspNetCore.Components
 @using MudBlazor
 @using NordicBeesERP.Data
+@using NordicBeesERP.Services.Storage
 @inject IDialogService DialogService
 @inject IJSRuntime JS
 @inject ILogger<ExpenseUploadDialog> Logger
 @inject IImageToPdfService ImageToPdfService
 @inject NordicBeesERP.Data.NordicBeesERPContext Context
+@inject IFileStore FileStore
 @implements IAsyncDisposable
 
 <MudDialog>
@@ -372,6 +374,7 @@
 
     [Parameter] public string? ExistingFilePath { get; set; }
     [Parameter] public int ExistingInvoiceId { get; set; }
+    [Parameter] public long? ExistingFileId { get; set; }
 
     private DotNetObjectReference<ExpenseUploadDialog>? _dotNetRef;
     private string _phase = "upload";
@@ -414,9 +417,18 @@
             .OrderBy(c => c.SortOrder)
             .ToListAsync();
 
-        if (!string.IsNullOrEmpty(ExistingFilePath) && ExistingInvoiceId > 0)
+        if (ExistingInvoiceId > 0)
         {
-            await AnalyzeFromPathAsync(ExistingFilePath);
+            if (ExistingFileId.HasValue)
+            {
+                await AnalyzeFromFileAsync(ExistingFileId.Value);
+            }
+            else
+            {
+                _phase = "error";
+                _errorMessage = "OCR negalima pakartoti – šio dokumento failas nėra saugomas centralizuotoje failų saugykloje.";
+                StateHasChanged();
+            }
         }
     }
 
@@ -506,7 +518,7 @@
         return $"{size / (1024 * 1024):0.00} MB";
     }
 
-    private async Task AnalyzeFromPathAsync(string filePath)
+    private async Task AnalyzeFromFileAsync(long fileId)
     {
         try
         {
@@ -517,13 +529,18 @@
             StateHasChanged();
             await Task.Delay(300);
 
-            // Step 1: Skaitoma - read file from wwwroot as base64
+            // Step 1: Skaitoma - read blob through IFileStore
             _processingStep = 1;
             _statusText = "Failas nuskaitomas...";
             StateHasChanged();
 
-            var full_path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", filePath);
-            byte[] fileBytes = await File.ReadAllBytesAsync(full_path);
+            byte[] fileBytes;
+            using (var blobStream = await FileStore.OpenAsync(fileId, CancellationToken.None))
+            {
+                using var memoryStream = new MemoryStream();
+                await blobStream.CopyToAsync(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
             string base64 = Convert.ToBase64String(fileBytes);
             _pdfBase64 = base64;
 
@@ -532,7 +549,7 @@
             _statusText = "AI analizuoja...";
             StateHasChanged();
 
-            var result = await ExpenseOcrService.ProcessAsync(base64, Path.GetFileName(filePath));
+            var result = await ExpenseOcrService.ProcessAsync(base64, $"invoice_{ExistingInvoiceId}.pdf");
 
             // Step 3: Baigta
             _processingStep = 3;
@@ -563,9 +580,17 @@
 
             await ProcessOcrResultAsync(result);
         }
+        catch (MissingBlobException ex)
+        {
+            Logger?.LogError(ex, "MissingBlobException in AnalyzeFromFileAsync");
+            _statusText = "Klaida";
+            _errorMessage = $"{ex.Message} Bandykite įkelti failą iš naujo.";
+            _phase = "error";
+            StateHasChanged();
+        }
         catch (ObjectDisposedException ex)
         {
-            Logger?.LogError(ex, "ObjectDisposedException in AnalyzeFromPathAsync");
+            Logger?.LogError(ex, "ObjectDisposedException in AnalyzeFromFileAsync");
             _statusText = "Klaida";
             _errorMessage = $"Failas nebegalioja: {ex.Message}. Bandykite įkelti failą iš naujo.";
             _phase = "error";
@@ -573,7 +598,7 @@
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "Error in AnalyzeFromPathAsync");
+            Logger?.LogError(ex, "Error in AnalyzeFromFileAsync");
             _statusText = "Klaida";
             _errorMessage = $"Nepavyko nuskaityti dokumento: {ex.Message}";
             _phase = "error";
@@ -857,14 +882,14 @@
                 SyncOcrResultFromUi(_ocrResult, _invoiceNumber, _invoiceDate, _dueDate, _amountExclVat, _vatRate, _vatAmount, _amountInclVat, _supplierId, _pendingSupplierName, _pendingSupplierVat, _categoryId, _ocrFlags);
 
                 var pdfBytes = Convert.FromBase64String(_pdfBase64);
-                var uploadsDir = Path.Combine("wwwroot", "uploads", "invoices",
-                    DateTime.Now.Year.ToString(), DateTime.Now.Month.ToString("00"));
-                Directory.CreateDirectory(uploadsDir);
                 var safeFileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Path.GetFileNameWithoutExtension(_convertedFileName)}.pdf";
-                var filePath = Path.Combine(uploadsDir, safeFileName);
-                await File.WriteAllBytesAsync(filePath, pdfBytes);
-                
-                _ocrResult.OriginalFilePath = $"uploads/invoices/{DateTime.Now.Year}/{DateTime.Now.Month:00}/{safeFileName}";
+
+                var storedFile = await FileStore.SaveAsync(
+                    new MemoryStream(pdfBytes),
+                    new FileMetadata("expenses", "expense_invoice", null, "application/pdf", safeFileName),
+                    CancellationToken.None);
+
+                _ocrResult.FileId = storedFile.Id;
                 _ocrResult.OriginalFilename = safeFileName;
 
                 Logger.LogDebug("[SAVE] CategoryId={Cat} SupplierId={Sup} InvoiceNumber={Inv}", _ocrResult.CategoryId, _ocrResult.SupplierId, _ocrResult.InvoiceNumber);

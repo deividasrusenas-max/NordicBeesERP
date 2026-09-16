@@ -51,10 +51,14 @@ public class OcrResultDto
     // File info (set after file is saved to disk)
     public string? OriginalFilePath { get; set; }
     public string? OriginalFilename { get; set; }
+    public long? FileId { get; set; }
 
     // Metadata
     public OcrConfidenceDto Confidence { get; set; } = new();
     public string OcrPipeline { get; set; } = "AZURE_DI";
+
+    // Raw Azure DI analyze response (persisted to expense_invoices.ocr_raw_json)
+    public string? RawJson { get; set; }
 
     // Azure DI diagnostics
     public OcrDiagnosticsDto Diagnostics { get; set; } = new();

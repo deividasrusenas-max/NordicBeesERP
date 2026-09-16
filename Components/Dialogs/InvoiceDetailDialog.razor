@@ -4,6 +4,7 @@
 @using ExpenseCategory = NordicBeesERP.Models.Expenses.ExpenseCategory
 @using NordicBeesERP.Helpers
 @using NordicBeesERP.Services.Dtos
+@using NordicBeesERP.Services.Storage
 @using MudBlazor
 @using NordicBeesERP.Components.Dialogs
 @using Microsoft.Extensions.Logging
@@ -399,9 +400,9 @@
                         </MudTabPanel>
 
                         <MudTabPanel Text="PDF dokumentas">
-                            @if (!string.IsNullOrEmpty(_invoice?.OriginalFilePath))
+                            @if (_pdfDataUrl != null)
                             {
-                                <iframe src="/@_invoice.OriginalFilePath" style="width:100%;height:75vh;border:none;border-radius:4px" />
+                                <iframe src="@_pdfDataUrl" style="width:100%;height:75vh;border:none;border-radius:4px" />
                             }
                             else
                             {
@@ -467,6 +468,7 @@
     [Inject] ISnackbar Snackbar { get; set; } = default!;
     [Inject] ILogger<InvoiceDetailDialog> Logger { get; set; } = default!;
     [Inject] ICompanySettingsService CompanySettingsService { get; set; } = default!;
+    [Inject] IFileStore FileStore { get; set; } = default!;
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public int InvoiceId { get; set; }
 
@@ -490,6 +492,7 @@
     private List<ExpensePayment> _payments = new();
     private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
     private int? _editCategoryId;
+    private string? _pdfDataUrl;
 
     // Assign supplier dropdown fields
     private bool _showAssignSupplier = false;
@@ -627,9 +630,11 @@
         _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(InvoiceId);
         if (_invoice == null)
         {
+            _pdfDataUrl = null;
             _isLoading = false;
             return;
         }
+        await LoadPdfPreviewAsync();
         var existingFlags = ExpenseStatusHelper.ParseFlags(_invoice?.OcrFlags);
         _wrongRecipientDismissed = !existingFlags.Contains(OcrFlag.WrongRecipient);
         _lines = await ExpenseService.GetInvoiceLinesAsync(InvoiceId);
@@ -671,6 +676,29 @@
         _payments = await ExpenseService.GetPaymentsAsync(InvoiceId);
 
         _isLoading = false;
+    }
+
+    private async Task LoadPdfPreviewAsync()
+    {
+        if (_invoice == null || _invoice.FileId == null)
+        {
+            _pdfDataUrl = null;
+            return;
+        }
+
+        try
+        {
+            await using var stream = await FileStore.OpenAsync(_invoice.FileId.Value, default);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            _pdfDataUrl = $"data:application/pdf;base64,{base64}";
+        }
+        catch (MissingBlobException)
+        {
+            Logger.LogWarning("PDF blob not found for invoice {InvoiceId}", _invoice.Id);
+            _pdfDataUrl = null;
+        }
     }
 
     private async Task DismissWrongRecipientAsync()
@@ -1017,12 +1045,18 @@
 
     private async Task RerunOcrAsync()
     {
-        if (_invoice == null || string.IsNullOrEmpty(_invoice.OriginalFilePath)) return;
+        if (_invoice == null) return;
+        if (_invoice.FileId == null)
+        {
+            Snackbar.Add("OCR negalima pakartoti – šio dokumento failas nėra saugomas centralizuotoje failų saugykloje.", Severity.Error);
+            return;
+        }
         try
         {
             var parameters = new DialogParameters
             {
                 { nameof(ExpenseUploadDialog.ExistingFilePath), _invoice.OriginalFilePath },
+                { nameof(ExpenseUploadDialog.ExistingFileId), _invoice.FileId.Value },
                 { nameof(ExpenseUploadDialog.ExistingInvoiceId), _invoice.Id }
             };
             var dialog = await DialogService.ShowAsync<ExpenseUploadDialog>(

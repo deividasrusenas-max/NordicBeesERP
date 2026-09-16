@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Services
+@using NordicBeesERP.Services.Storage
 @using NordicBeesERP.Components.Dialogs
 @using NordicBeesERP.Helpers
 @using MudBlazor
@@ -12,7 +13,7 @@
 @inject ISnackbar Snackbar
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject IJSRuntime JS
-@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
+@inject IFileStore FileStore
 @using System.IO.Compression
 
 <PageTitle>Išlaidų sąskaitos</PageTitle>
@@ -668,7 +669,7 @@
         try
         {
             var selected = _invoices.Where(i => _selectedInvoices.Contains(i.Id)
-                && !string.IsNullOrEmpty(i.OriginalFilePath)).ToList();
+                && i.FileId.HasValue).ToList();
 
             if (!selected.Any())
             {
@@ -679,11 +680,15 @@
             if (selected.Count == 1)
             {
                 var invoice = selected[0];
-                var filePath = Path.Combine(WebHostEnvironment.WebRootPath, invoice.OriginalFilePath!);
-                if (!File.Exists(filePath)) { Snackbar.Add("Failas nerastas serveryje", Severity.Error); return; }
-                var bytes = await File.ReadAllBytesAsync(filePath);
+                byte[] bytes;
+                using (var blobStream = await FileStore.OpenAsync(invoice.FileId!.Value, CancellationToken.None))
+                {
+                    using var memoryStream = new MemoryStream();
+                    await blobStream.CopyToAsync(memoryStream);
+                    bytes = memoryStream.ToArray();
+                }
                 var base64 = Convert.ToBase64String(bytes);
-                var fileName = Path.GetFileName(invoice.OriginalFilePath!);
+                var fileName = invoice.OriginalFilename ?? $"invoice_{invoice.Id}.pdf";
                 await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, "application/pdf", base64);
                 Snackbar.Add("Failas atsisiųstas", Severity.Success);
                 return;
@@ -702,7 +707,7 @@
             if (choice == true)
             {
                 // Merge all PDFs into one
-                var mergedBytes = await MergePdfsAsync(selected.Select(i => i.OriginalFilePath!).ToList());
+                var mergedBytes = await MergePdfsAsync(selected.Select(i => i.FileId!.Value).ToList());
                 if (mergedBytes == null) { Snackbar.Add("Nepavyko sujungti PDF failų", Severity.Error); return; }
                 var base64 = Convert.ToBase64String(mergedBytes);
                 var dateStr = DateTime.Now.ToString("yyyyMMdd");
@@ -718,15 +723,22 @@
                     {
                         try
                         {
-                            var filePath = Path.Combine(WebHostEnvironment.WebRootPath, invoice.OriginalFilePath!);
-                            if (!File.Exists(filePath)) continue;
-                            var bytes = await File.ReadAllBytesAsync(filePath);
-                            var entryName = Path.GetFileName(invoice.OriginalFilePath!);
+                            byte[] bytes;
+                            using (var blobStream = await FileStore.OpenAsync(invoice.FileId!.Value, CancellationToken.None))
+                            {
+                                using var memoryStream = new MemoryStream();
+                                await blobStream.CopyToAsync(memoryStream);
+                                bytes = memoryStream.ToArray();
+                            }
+                            var entryName = invoice.OriginalFilename ?? $"invoice_{invoice.Id}.pdf";
                             var entry = zip.CreateEntry(entryName);
                             using var entryStream = entry.Open();
                             await entryStream.WriteAsync(bytes);
                         }
-                        catch { }
+                        catch (MissingBlobException)
+                        {
+                            continue;
+                        }
                     }
                 }
                 var zipBytes = ms.ToArray();
@@ -770,18 +782,29 @@
         }
     }
 
-    private async Task<byte[]?> MergePdfsAsync(List<string> filePaths)
+    private async Task<byte[]?> MergePdfsAsync(List<long> fileIds)
     {
         try
         {
             var allPdfBytes = new List<byte[]>();
 
-            foreach (var relativePath in filePaths)
+            foreach (var fileId in fileIds)
             {
-                var fullPath = Path.Combine(WebHostEnvironment.WebRootPath, relativePath);
-                if (!File.Exists(fullPath)) continue;
-                var pdfBytes = await File.ReadAllBytesAsync(fullPath);
-                allPdfBytes.Add(pdfBytes);
+                try
+                {
+                    byte[] pdfBytes;
+                    using (var blobStream = await FileStore.OpenAsync(fileId, CancellationToken.None))
+                    {
+                        using var memoryStream = new MemoryStream();
+                        await blobStream.CopyToAsync(memoryStream);
+                        pdfBytes = memoryStream.ToArray();
+                    }
+                    allPdfBytes.Add(pdfBytes);
+                }
+                catch (MissingBlobException)
+                {
+                    continue;
+                }
             }
 
             if (allPdfBytes.Count == 1) return allPdfBytes[0];
