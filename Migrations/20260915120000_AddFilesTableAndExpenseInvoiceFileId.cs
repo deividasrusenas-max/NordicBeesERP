@@ -43,7 +43,7 @@ public partial class AddFilesTableAndExpenseInvoiceFileId : Migration
             EXECUTE stmt;
             DEALLOCATE PREPARE stmt;
 
-            -- MySQL 8.0 has no ADD COLUMN IF NOT EXISTS, so guard via information_schema.
+            -- MySQL 8.0 has no idempotent ADD COLUMN, so guard via information_schema.
             SET @ddl = IF(
                 (SELECT COUNT(*) FROM information_schema.COLUMNS
                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'expense_invoices' AND COLUMN_NAME = 'file_id') = 0,
