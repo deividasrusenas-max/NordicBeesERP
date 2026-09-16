@@ -103,7 +103,15 @@
           "visual-qa": "allow",
           "design-review": "allow"
         },
-        "write": "deny",
+        "write": {
+          "*": "deny",
+          ".opencode/planning/*": "allow",
+          ".opencode/planning/**": "allow",
+          ".opencode/reports/*": "allow",
+          ".opencode/reports/**": "allow",
+          ".agent-guardrails/evidence/*": "allow",
+          ".agent-guardrails/evidence/**": "allow"
+        },
         "nordicbees-db_*": "deny",
         "nordicbees-prod-db_*": "deny",
         "roslyn_add_missing_imports": "deny",
