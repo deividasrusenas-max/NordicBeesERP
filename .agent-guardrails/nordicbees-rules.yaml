@@ -353,3 +353,95 @@ rules:
               var $ARR = new $T[] { $ENUM.$V1, $ENUM.$V2, ... };
               ...
               $Q.Where($X => $ARR.Contains($X.$PROP));
+
+  - id: nordicbees-direct-file-bytes-io-outside-storage
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Direct file I/O via File.WriteAllBytes/WriteAllBytesAsync/ReadAllBytes/
+      ReadAllBytesAsync outside Services/Storage/ is forbidden. All file
+      persistence must go through IFileStore (Services/Storage/FileStore.cs),
+      which owns the files table, SHA-256 dedup, and the blob layout. This
+      guardrail exists because 247 expense-invoice OCR uploads were written
+      straight into the container (no volume mount) and lost on every deploy
+      (2026-09-15, storage step 1). Existing exceptions (paths.exclude below;
+      each carries a documented expiry in the storage step-1 report):
+      /Services/Artwork/** (artwork pipeline, pre-dates IFileStore),
+      /Services/DeliveryReceiptPdfService.cs (delivery receipts — planned for
+      a later storage step), /Helpers/PdfFileCache.cs (sales-invoice +
+      credit-note PDF cache — its base dirs /var/lib/nordicbees/invoices and
+      /var/lib/nordicbees/credit-notes have NO volume mount in deploy.yml, so
+      cached PDFs are written inside the container and lost on every deploy;
+      expiry: migrate invoice/credit-note PDF storage to IFileStore in a
+      separate package). Do not add new paths to this allow-list without a
+      named expiry.
+    patterns:
+      - pattern-either:
+          - pattern: File.WriteAllBytes(...)
+          - pattern: File.WriteAllBytesAsync(...)
+          - pattern: File.ReadAllBytes(...)
+          - pattern: File.ReadAllBytesAsync(...)
+    paths:
+      exclude:
+        - "/Services/Storage/**"
+        - "/Tests/**"
+        - "/Services/Artwork/**"
+        - "/Services/DeliveryReceiptPdfService.cs"
+        - "/Helpers/PdfFileCache.cs"
+
+  - id: nordicbees-storage-path-combine-outside-storage
+    languages: [csharp]
+    severity: ERROR
+    message: >
+      Path.Combine whose first argument is a string literal mentioning
+      wwwroot, uploads, or /var/lib/nordicbees — or a local variable
+      initialized to such a literal — outside Services/Storage/ is
+      forbidden: it is the signature of direct file-system access bypassing
+      IFileStore (Services/Storage/FileStore.cs), which is where all blob
+      paths are built. This guardrail exists because 247 expense-invoice OCR
+      uploads were written straight into the container (no volume mount) and
+      lost on every deploy (2026-09-15, storage step 1). Existing exceptions
+      (paths.exclude below; each carries a documented expiry in the storage
+      step-1 report): /Services/Artwork/** (artwork pipeline, pre-dates
+      IFileStore), /Services/DeliveryReceiptPdfService.cs (delivery receipts
+      — planned for a later storage step), /Helpers/PdfFileCache.cs
+      (sales-invoice + credit-note PDF cache — its base dirs
+      /var/lib/nordicbees/invoices and /var/lib/nordicbees/credit-notes have
+      NO volume mount in deploy.yml, so cached PDFs are written inside the
+      container and lost on every deploy; expiry: migrate
+      invoice/credit-note PDF storage to IFileStore in a separate package).
+      Do not add new paths to this allow-list without a named expiry.
+    patterns:
+      - pattern-either:
+          - pattern: Path.Combine($VAL, ...)
+          - pattern: |
+              var $DIR = $VAL;
+              ...
+              Path.Combine($DIR, ...)
+          - pattern: |
+              string $DIR = $VAL;
+              ...
+              Path.Combine($DIR, ...)
+      # Owner-approved 2026-09-16 (option a): the three artwork endpoints in
+      # Program.cs (:185-187, :212-213, :232-233) build paths from the artwork
+      # storage config fallback. Excluded by exact shape (config key + fallback
+      # literal), NOT by file — the rest of Program.cs stays under both rules.
+      # If the config key or fallback literal ever changes, these sites will
+      # start failing the guardrail until this exclusion is updated — loud, by design.
+      - pattern-not: |
+          var $DIR = config["ArtworkStorage:StorageRoot"] ?? "/var/lib/nordicbees/artwork";
+          ...
+          Path.Combine($DIR, ...)
+      # metavariable-regex is FULL-MATCH in semgrep (the regex must span the
+      # entire metavariable text, e.g. the quoted literal
+      # "/var/lib/nordicbees/x") — hence the .* anchors.
+      - metavariable-regex:
+          metavariable: $VAL
+          regex: .*(wwwroot|uploads|/var/lib/nordicbees).*
+    paths:
+      exclude:
+        - "/Services/Storage/**"
+        - "/Tests/**"
+        - "/Services/Artwork/**"
+        - "/Services/DeliveryReceiptPdfService.cs"
+        - "/Helpers/PdfFileCache.cs"
