@@ -109,7 +109,8 @@ public class ExpenseServiceTests : IClassFixture<DbTestFixture>
 
         Assert.NotNull(reloaded);
         Assert.Equal("Updated notes from test", reloaded!.Notes);
-        Assert.Equal("PENDING", reloaded.Status);
+        // Etapas 0c C2: the caller-sent Status is ignored; a DRAFT invoice is not recomputed on edit.
+        Assert.Equal("DRAFT", reloaded.Status);
         Assert.Equal(200m, reloaded.AmountExclVat);
 
         // Cleanup

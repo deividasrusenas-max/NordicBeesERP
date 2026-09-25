@@ -80,6 +80,9 @@ namespace NordicBeesERP.Services
 
         // Duplicate resolution: "this is a different invoice" — removes DUPLICATE, status by the shared rules, audited
         Task ResolveDuplicateAsDifferentAsync(int invoiceId, string performedBy);
+
+        // Wrong-recipient dismissal: removes WRONG_RECIPIENT, clears the „Sąskaita ne …" rejection, status by the shared rules, audited
+        Task DismissWrongRecipientAsync(int invoiceId, string performedBy);
         Task RestoreInvoiceAsync(int invoiceId);
     }
 }

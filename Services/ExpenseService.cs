@@ -252,7 +252,16 @@ namespace NordicBeesERP.Services
         public async Task<ExpenseInvoice> UpdateInvoiceAsync(ExpenseInvoice invoice, List<string>? overriddenFlags = null)
         {
             using var context = _dbFactory.CreateDbContext();
-            
+
+            // The old status, supplier and flags come from the DB — never from the caller's object.
+            // This method derives the new status; explicit transitions go through dedicated methods
+            // (Approve, Reject, ResolveDuplicateAsDifferent, DismissWrongRecipient, Restore).
+            var stored = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoice.Id);
+            if (stored == null)
+                throw new InvalidOperationException($"Sąskaita #{invoice.Id} nerasta");
+
             invoice.UpdatedAt = DateTime.UtcNow;
             await context.Database.ExecuteSqlRawAsync(@"
                 UPDATE expense_invoices SET
@@ -264,9 +273,8 @@ namespace NordicBeesERP.Services
                     vat_amount = {5},
                     amount_incl_vat = {6},
                     notes = {7},
-                    status = {8},
-                    updated_at = {9}
-                WHERE id = {10}",
+                    updated_at = {8}
+                WHERE id = {9}",
                 invoice.InvoiceNumber,
                 invoice.InvoiceDate,
                 invoice.DueDate,
@@ -275,60 +283,162 @@ namespace NordicBeesERP.Services
                 invoice.VatAmount,
                 invoice.AmountInclVat,
                 invoice.Notes,
-                invoice.Status,
                 invoice.UpdatedAt,
                 invoice.Id);
-            
+
             // Recalculate OCR flags after saving invoice changes
             var lines = await context.ExpenseInvoiceLines.Where(l => l.InvoiceId == invoice.Id).ToListAsync();
-            
-            var flags = new List<string>();
-            if (string.IsNullOrEmpty(invoice.InvoiceNumber)) flags.Add(OcrFlag.MissingInvNumber);
-            if (invoice.AmountInclVat == 0) flags.Add(OcrFlag.MissingAmount);
-            if (invoice.VatRate == 0 && invoice.AmountInclVat > 0) flags.Add(OcrFlag.ZeroVat);
-            if (lines.Count == 0) flags.Add(OcrFlag.LinesNotFound);
-            if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountInclVat) - invoice.AmountInclVat) > 0.01m)
-                flags.Add(OcrFlag.AmountMismatch);
-            RecomputeAmountConsistencyFlags(flags, invoice.AmountExclVat, invoice.VatAmount, invoice.AmountInclVat);
-            var uploadedAt = await context.ExpenseInvoices
-                .Where(i => i.Id == invoice.Id)
-                .Select(i => i.CreatedAt)
-                .FirstOrDefaultAsync();
-            RecomputeDateFlags(flags, invoice.InvoiceDate != default ? invoice.InvoiceDate : null,
-                uploadedAt != default ? uploadedAt : VilniusToday());
+            var existing = ExpenseStatusHelper.ParseFlags(stored.OcrFlags);
+            var flags = ComputeManualEditFlags(invoice, stored, lines, existing, overriddenFlags);
 
-            // Keep non-recalculable flags from existing
-            var existing = string.IsNullOrEmpty(invoice.OcrFlags) 
-                ? new List<string>() 
-                : System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags) ?? new();
+            // An approval covers the values that were approved: with no gate-relevant change the
+            // status stands (notes/category edits never re-open review). supplier_id is not written
+            // by this method, so it cannot change here.
+            var changedGateFields = ChangedGateFields(invoice, stored);
+            var approved = !string.IsNullOrEmpty(stored.ApprovedBy);
+            var newStatus = approved && changedGateFields.Count == 0
+                ? stored.Status
+                : StatusAfterManualEdit(stored.Status, flags, stored.SupplierId);
+            var voidApproval = approved && changedGateFields.Count > 0 && newStatus == "NEEDS_REVIEW";
+
+            invoice.OcrFlags = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
+            invoice.Status = newStatus;
+            invoice.SupplierId = stored.SupplierId;
+
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_invoices SET ocr_flags = {0}, status = {1}, updated_at = {2} WHERE id = {3}",
+                invoice.OcrFlags, newStatus, DateTime.UtcNow, invoice.Id);
+
+            if (voidApproval)
+            {
+                var currentUser = await _authService.GetAuthenticatedUserAsync();
+                var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "MANUAL_EDIT";
+                var now = DateTime.Now;
+
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE expense_invoices SET approved_by = NULL, approved_at = NULL WHERE id = {0}",
+                    invoice.Id);
+                await context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO expense_invoice_audit
+                        (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                    VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                    invoice.Id, invoice.InvoiceNumber, "APPROVAL_VOIDED",
+                    $"Pakeisti laukai: {string.Join(", ", changedGateFields)}",
+                    stored.Status, newStatus, performedBy, now);
+                invoice.ApprovedBy = null;
+                invoice.ApprovedAt = null;
+            }
+
+            return invoice;
+        }
+
+        /// <summary>
+        /// Gate-relevant header fields that differ between the edited values and the stored row
+        /// (DB column names). Used to decide whether a prior approval still covers the invoice.
+        /// </summary>
+        private static List<string> ChangedGateFields(ExpenseInvoice edited, ExpenseInvoice stored)
+        {
+            var changed = new List<string>();
+            if ((edited.InvoiceNumber ?? "") != (stored.InvoiceNumber ?? "")) changed.Add("invoice_number");
+            if (edited.InvoiceDate.Date != stored.InvoiceDate.Date) changed.Add("invoice_date");
+            if (edited.DueDate.Date != stored.DueDate.Date) changed.Add("due_date");
+            if (edited.AmountExclVat != stored.AmountExclVat) changed.Add("amount_excl_vat");
+            if (edited.VatRate != stored.VatRate) changed.Add("vat_rate");
+            if (edited.VatAmount != stored.VatAmount) changed.Add("vat_amount");
+            if (edited.AmountInclVat != stored.AmountInclVat) changed.Add("amount_incl_vat");
+            return changed;
+        }
+
+        /// <summary>
+        /// Flags after a manual edit, recomputed from the values being saved (C2 rules).
+        /// </summary>
+        private static List<string> ComputeManualEditFlags(ExpenseInvoice edited, ExpenseInvoice stored,
+            List<ExpenseInvoiceLine> lines, List<string> existing, List<string>? overriddenFlags)
+        {
+            var flags = new List<string>();
+            if (string.IsNullOrEmpty(edited.InvoiceNumber)) flags.Add(OcrFlag.MissingInvNumber);
+            if (edited.AmountInclVat == 0) flags.Add(OcrFlag.MissingAmount);
+            if (edited.VatRate == 0 && edited.AmountInclVat > 0) flags.Add(OcrFlag.ZeroVat);
+            if (lines.Count == 0) flags.Add(OcrFlag.LinesNotFound);
+            if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountInclVat) - edited.AmountInclVat) > 0.01m)
+                flags.Add(OcrFlag.AmountMismatch);
+            RecomputeAmountConsistencyFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat);
+            RecomputeDateFlags(flags, edited.InvoiceDate != default ? edited.InvoiceDate : null,
+                stored.CreatedAt != default ? stored.CreatedAt : VilniusToday());
+
+            // Non-recalculable flags carried over from the stored invoice
             bool wrongRecipientDismissed = overriddenFlags != null && !overriddenFlags.Contains(OcrFlag.WrongRecipient);
             if (!wrongRecipientDismissed && existing.Contains(OcrFlag.WrongRecipient))
                 flags.Add(OcrFlag.WrongRecipient);
             if (existing.Contains(OcrFlag.ViesUnavailable)) flags.Add(OcrFlag.ViesUnavailable);
-            if (existing.Contains(OcrFlag.VendorNotFound) && invoice.SupplierId == null) flags.Add(OcrFlag.VendorNotFound);
+            if (existing.Contains(OcrFlag.VendorNotFound) && stored.SupplierId == null) flags.Add(OcrFlag.VendorNotFound);
             if (existing.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
-            
-            // Update flags
-            invoice.OcrFlags = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
-            
-            // Update status if no more critical flags
-            if (invoice.Status == "NEEDS_REVIEW" && !flags.Any(f => 
-                f == OcrFlag.WrongRecipient || f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch || f == OcrFlag.LowConfidence ||
-                f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField ||
-                f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate))
-            {
-                invoice.Status = invoice.SupplierId == null ? "PENDING_SUPPLIER" : "PENDING";
-                await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE expense_invoices SET status = {0}, updated_at = {1} WHERE id = {2}",
-                    invoice.Status, DateTime.UtcNow, invoice.Id);
-            }
-            
-            // Also persist ocr_flags
-            await context.Database.ExecuteSqlRawAsync(
-                "UPDATE expense_invoices SET ocr_flags = {0}, updated_at = {1} WHERE id = {2}",
-                invoice.OcrFlags, DateTime.UtcNow, invoice.Id);
-            
-            return invoice;
+
+            // D-025: the due date stays marked as assumed until the user actually changes it.
+            if (existing.Contains(OcrFlag.MissingDueDate) && edited.DueDate.Date == stored.DueDate.Date)
+                flags.Add(OcrFlag.MissingDueDate);
+
+            // LOW_CONFIDENCE is deliberately NOT carried over: a human has just reviewed and saved
+            // these values, and an OCR confidence score the user cannot change must not lock the
+            // invoice in NEEDS_REVIEW.
+            return flags;
+        }
+
+        /// <summary>
+        /// Status after a manual edit, by the old (stored) status. Open invoices are recomputed:
+        /// no supplier → PENDING_SUPPLIER; review flag or WRONG_RECIPIENT → NEEDS_REVIEW; else PENDING.
+        /// Paid, quarantined and other statuses are left unchanged.
+        /// </summary>
+        private static string StatusAfterManualEdit(string oldStatus, List<string> flags, int? supplierId)
+        {
+            if (oldStatus is not ("PENDING" or "NEEDS_REVIEW" or "PENDING_SUPPLIER"))
+                return oldStatus;
+            if (supplierId == null) return "PENDING_SUPPLIER";
+            // WRONG_RECIPIENT keeps its previous manual-edit behaviour: it holds the invoice in
+            // review (it never rejects on edit); it is cleared only by DismissWrongRecipientAsync.
+            if (HasReviewFlag(flags) || flags.Contains(OcrFlag.WrongRecipient)) return "NEEDS_REVIEW";
+            return "PENDING";
+        }
+
+        public async Task DismissWrongRecipientAsync(int invoiceId, string performedBy)
+        {
+            using var context = _dbFactory.CreateDbContext();
+
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null)
+                throw new InvalidOperationException($"Sąskaita #{invoiceId} nerasta");
+
+            var flags = ExpenseStatusHelper.ParseFlags(invoice.OcrFlags);
+            flags.RemoveAll(f => f == OcrFlag.WrongRecipient);
+
+            var oldStatus = invoice.Status;
+            var rejectedForRecipient = oldStatus == "REJECTED" && invoice.RejectedReason?.StartsWith("Sąskaita ne ") == true;
+            var rejectedReason = rejectedForRecipient ? null : invoice.RejectedReason;
+            var newStatus = rejectedForRecipient || oldStatus is "PENDING" or "NEEDS_REVIEW" or "PENDING_SUPPLIER"
+                ? DecideOcrStatus(flags, invoice.SupplierId)
+                : oldStatus;
+
+            var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
+            var now = DateTime.Now;
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    ocr_flags = {0},
+                    status = {1},
+                    rejected_reason = {2},
+                    updated_at = {3}
+                WHERE id = {4}",
+                ocrFlagsJson, newStatus, rejectedReason, now, invoiceId);
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO expense_invoice_audit
+                    (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                invoiceId, invoice.InvoiceNumber, "WRONG_RECIPIENT_DISMISSED",
+                "Gavėjas patvirtintas rankiniu būdu",
+                oldStatus, newStatus, performedBy, now);
         }
 
         public async Task<bool> DeleteInvoiceAsync(int id)

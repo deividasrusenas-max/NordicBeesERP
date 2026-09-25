@@ -706,17 +706,8 @@
         if (_invoice == null) return;
         try
         {
-            var flags = ExpenseStatusHelper.ParseFlags(_invoice.OcrFlags);
-            flags.Remove(OcrFlag.WrongRecipient);
-            _invoice.OcrFlags = flags.Any()
-                ? System.Text.Json.JsonSerializer.Serialize(flags)
-                : null;
-            if (_invoice.Status == "REJECTED" && _invoice.RejectedReason?.StartsWith("Sąskaita ne ") == true)
-            {
-                _invoice.Status = "NEEDS_REVIEW";
-                _invoice.RejectedReason = null;
-            }
-            await ExpenseService.UpdateInvoiceAsync(_invoice, flags);
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.DismissWrongRecipientAsync(_invoice.Id, actor);
             Snackbar.Add("Gavėjas patvirtintas", Severity.Success);
             _loadedInvoiceId = 0;
             await OnParametersSetAsync();

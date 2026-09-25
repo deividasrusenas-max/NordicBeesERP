@@ -106,14 +106,19 @@ public static class ExpenseStatusHelper
 
     public static bool NeedsAttention(string? status, string? ocrFlags = null, DateTime? dueDate = null) {
         if (status is "PENDING_SUPPLIER" or "NEEDS_REVIEW" or "DUPLICATE_PENDING") return true;
-        if (status == "PAID" || status == "REJECTED") return false;
+        if (status == "REJECTED") return false;
+        // A paid invoice is still highlighted when it carries a critical flag (e.g. broken header
+        // arithmetic): being paid does not make the data correct.
         if (ocrFlags != null && ParseFlags(ocrFlags).Any(IsCriticalFlag)) return true;
+        if (status == "PAID") return false;
         if (dueDate.HasValue && dueDate.Value < DateTime.Today && status != "PAID") return true;
         return false;
     }
 
     public static bool IsCriticalFlag(string flag) =>
-        flag is "VENDOR_NOT_FOUND" or "WRONG_RECIPIENT" or "AMOUNT_MISMATCH" or "DUPLICATE";
+        flag is "VENDOR_NOT_FOUND" or "WRONG_RECIPIENT" or "AMOUNT_MISMATCH" or "DUPLICATE"
+            or "AMOUNT_ARITHMETIC_MISMATCH" or "MISSING_MONEY_FIELD"
+            or "FUTURE_DATE" or "STALE_DATE" or "MISSING_INV_DATE";
 
     public static string Recalculate(decimal paidAmount, decimal invoiceAmount, DateTime? dueDate, string? currentStatus = null)
     {
