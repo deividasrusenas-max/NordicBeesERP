@@ -52,7 +52,7 @@ public class ExpenseReOcrTests : IClassFixture<DbTestFixture>
         number ??= $"REOCR-{Guid.NewGuid():N}";
         var marker = $"REOCR-MARK-{Guid.NewGuid():N}";
         var date = DateTime.Today;
-        var excl = Math.Round(incl / 1.21m, 2);
+        var excl = Math.Round(incl * 100m / 121m, 2);
 
         await context.Database.ExecuteSqlRawAsync(
             "INSERT INTO expense_invoices " +
@@ -70,9 +70,9 @@ public class ExpenseReOcrTests : IClassFixture<DbTestFixture>
         InvoiceDate = DateTime.Today.ToString("yyyy-MM-dd"),
         DueDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd"),
         Currency = "EUR",
-        AmountExclVat = Math.Round(incl / 1.21m, 2),
+        AmountExclVat = Math.Round(incl * 100m / 121m, 2),
         VatRate = 21m,
-        VatAmount = incl - Math.Round(incl / 1.21m, 2),
+        VatAmount = incl - Math.Round(incl * 100m / 121m, 2),
         AmountInclVat = incl,
         SupplierId = supplierId,
         SupplierName = "ReOcr OCR Supplier",

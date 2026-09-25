@@ -75,7 +75,7 @@ public class ExpenseBudgetActualsTests : IClassFixture<DbTestFixture>, IAsyncLif
         await db.Database.ExecuteSqlRawAsync(
             "INSERT INTO expense_invoices (invoice_number, invoice_date, due_date, amount_excl_vat, vat_rate, vat_amount, amount_incl_vat, status, category_id, currency, source, ocr_status, created_at, updated_at) " +
             "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, NOW(), NOW())",
-            number, date, date.AddDays(30), headerNet, 21m, headerNet * 0.21m, headerNet * 1.21m, status, categoryId, "EUR", "MANUAL", "COMPLETED");
+            number, date, date.AddDays(30), headerNet, 21m, headerNet * 21m / 100m, headerNet * 121m / 100m, status, categoryId, "EUR", "MANUAL", "COMPLETED");
         var id = await db.ExpenseInvoices.Where(i => i.InvoiceNumber == number).Select(i => i.Id).FirstAsync();
         _invoiceIds.Add(id);
         return id;
