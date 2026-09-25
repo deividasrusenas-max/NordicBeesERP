@@ -81,8 +81,8 @@ public class IbanValidatorTests
     [Fact]
     public void HyphenCaughtBeforeLengthCheck_BadCharacters()
     {
-        // Stripped length is 21 (LT needs 20), but the hyphen must be caught first.
-        var result = IbanValidator.Validate("LT87 7189 9000 0691 025-");
+        // Stripped length is 21 (LT needs 20), so WrongLength would also apply — the hyphen must be caught first.
+        var result = IbanValidator.Validate("LT87 7189 9000 0691 0250-");
 
         Assert.False(result.IsValid);
         Assert.Equal(IbanValidationReason.BadCharacters, result.Reason);
@@ -105,5 +105,47 @@ public class IbanValidatorTests
         Assert.True(result.IsValid);
         Assert.Null(result.Reason);
         Assert.Contains(IbanValidationReason.UnknownCountryLength, result.Warnings);
+    }
+
+    [Fact]
+    public void SingleCharacter_WrongLength()
+    {
+        var result = IbanValidator.Validate("A");
+
+        Assert.False(result.IsValid);
+        Assert.Equal(IbanValidationReason.WrongLength, result.Reason);
+    }
+
+    [Fact]
+    public void DigitInCountryPosition_BadCharacters()
+    {
+        var result = IbanValidator.Validate("1T877189900006910250");
+
+        Assert.False(result.IsValid);
+        Assert.Equal(IbanValidationReason.BadCharacters, result.Reason);
+    }
+
+    public static TheoryData<string> MalformedInputs => new()
+    {
+        "",
+        " ",
+        "A",
+        "LT",
+        "LT8",
+        "LT87",
+        "1234",
+        "@@@@@",
+        new string('A', 100),
+        "LT87 7189 9000 0691 025Ž" // non-ASCII letter
+    };
+
+    [Theory]
+    [MemberData(nameof(MalformedInputs))]
+    public void MalformedInput_NeverThrows_Invalid(string input)
+    {
+        var result = IbanValidator.Validate(input);
+
+        Assert.False(result.IsValid);
+        Assert.NotNull(result.Reason);
     }
 }

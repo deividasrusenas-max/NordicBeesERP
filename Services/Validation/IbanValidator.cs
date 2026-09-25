@@ -54,11 +54,13 @@ public static class IbanValidator
     };
 
     /// <summary>
-    /// Validates a raw IBAN string. Null/whitespace input is Empty; whitespace is stripped and
-    /// the result upper-cased; characters outside A-Z0-9 are BadCharacters (checked before
-    /// length); known countries must match their exact registered length, unknown countries
-    /// only need 15..34 (with an UnknownCountryLength warning); finally the ISO 13616 mod-97
-    /// checksum must equal 1.
+    /// Validates a raw IBAN string. Never throws for any string input. Null/whitespace input is
+    /// Empty; whitespace is stripped and the result upper-cased; characters outside A-Z0-9 are
+    /// BadCharacters (checked before length); fewer than 5 characters is WrongLength (no room for
+    /// country + check digits + BBAN); a non-letter in the two country positions is BadCharacters;
+    /// known countries must match their exact registered length, unknown countries only need
+    /// 15..34 (with an UnknownCountryLength warning); finally the ISO 13616 mod-97 checksum must
+    /// equal 1.
     /// </summary>
     public static IbanValidationResult Validate(string? raw)
     {
@@ -69,6 +71,12 @@ public static class IbanValidator
         var countryCode = normalized.Length >= 2 ? normalized[..2] : null;
 
         if (normalized.Any(c => (c < '0' || c > '9') && (c < 'A' || c > 'Z')))
+            return new IbanValidationResult { IsValid = false, NormalizedIban = normalized, CountryCode = countryCode, Reason = IbanValidationReason.BadCharacters };
+
+        if (normalized.Length < 5)
+            return new IbanValidationResult { IsValid = false, NormalizedIban = normalized, CountryCode = countryCode, Reason = IbanValidationReason.WrongLength };
+
+        if (!IsAsciiLetter(normalized[0]) || !IsAsciiLetter(normalized[1]))
             return new IbanValidationResult { IsValid = false, NormalizedIban = normalized, CountryCode = countryCode, Reason = IbanValidationReason.BadCharacters };
 
         var warnings = new List<IbanValidationReason>();
@@ -103,4 +111,6 @@ public static class IbanValidator
 
         return value % 97 == 1;
     }
+
+    private static bool IsAsciiLetter(char c) => c >= 'A' && c <= 'Z';
 }
