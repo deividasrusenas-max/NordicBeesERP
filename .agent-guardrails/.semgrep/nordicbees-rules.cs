@@ -1,6 +1,8 @@
 // Semgrep rule-test fixture for .agent-guardrails/nordicbees-rules.yaml (Etapas 0c C8).
-// Run: semgrep --test --config .agent-guardrails/nordicbees-rules.yaml .agent-guardrails/rule-tests/
-// Not compiled: this folder is outside every .csproj.
+// Run: semgrep --test --config .agent-guardrails/nordicbees-rules.yaml .agent-guardrails/.semgrep/nordicbees-rules.cs
+// Excluded from repo-wide scans (CI / pre-commit) by the explicit entry in /.semgrepignore, so the
+// intentional ruleid: positives never show up there; explicitly passed targets bypass .semgrepignore.
+// Not compiled: the .NET SDK default item excludes skip folders starting with '.' (**/.*/**).
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
