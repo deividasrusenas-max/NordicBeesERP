@@ -728,17 +728,9 @@
             if (_editDueDate.HasValue) _invoice!.DueDate = _editDueDate.Value;
             _invoice!.CategoryId = _editCategoryId;
 
-            await ExpenseService.UpdateInvoiceAsync(_invoice!);
-
-            // Save lines
-            foreach (var line in _lines)
-            {
-                if (line.Id > 0)
-                    await ExpenseService.UpdateInvoiceLineAsync(line);
-                else
-                    await ExpenseService.AddInvoiceLineAsync(line);
-            }
-            await ExpenseService.RecalculateInvoiceTotalsAsync(InvoiceId);
+            // D-035: one save, one transaction; header amounts are never overwritten from lines
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.SaveInvoiceEditAsync(_invoice!, _lines, actor);
 
             Snackbar.Add("Sąskaita atnaujinta sėkmingai", Severity.Success);
             _editMode = false;

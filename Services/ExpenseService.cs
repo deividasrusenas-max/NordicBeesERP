@@ -291,10 +291,149 @@ namespace NordicBeesERP.Services
             var existing = ExpenseStatusHelper.ParseFlags(stored.OcrFlags);
             var flags = ComputeManualEditFlags(invoice, stored, lines, existing, overriddenFlags);
 
-            // An approval covers the values that were approved: with no gate-relevant change the
-            // status stands (notes/category edits never re-open review). supplier_id is not written
-            // by this method, so it cannot change here.
+            // supplier_id is not written by this method, so it cannot change here.
             var changedGateFields = ChangedGateFields(invoice, stored);
+            var currentUser = await _authService.GetAuthenticatedUserAsync();
+            var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "MANUAL_EDIT";
+            await ApplyManualEditStatusAsync(context, invoice, stored, flags, changedGateFields, performedBy);
+
+            return invoice;
+        }
+
+        /// <summary>
+        /// Edit-form save (D-035): header + lines + flags + status + audit in ONE transaction.
+        /// Header amounts are authoritative and are never overwritten from line sums; a lines/header
+        /// mismatch becomes AMOUNT_MISMATCH. Lines are upserted by id so existing lines keep their
+        /// id (and their category allocations — FK ON DELETE CASCADE); only lines removed in the form
+        /// are deleted. Flags and status are evaluated on the final stored values.
+        /// </summary>
+        public async Task<ExpenseInvoice> SaveInvoiceEditAsync(ExpenseInvoice invoice, List<ExpenseInvoiceLine> lines, string performedBy)
+        {
+            await using var context = _dbFactory.CreateDbContext();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            var stored = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoice.Id);
+            if (stored == null)
+                throw new InvalidOperationException($"Sąskaita #{invoice.Id} nerasta");
+            var storedLines = await context.ExpenseInvoiceLines
+                .AsNoTracking()
+                .Where(l => l.InvoiceId == invoice.Id)
+                .ToListAsync();
+
+            invoice.UpdatedAt = DateTime.UtcNow;
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    invoice_number = {0},
+                    invoice_date = {1},
+                    due_date = {2},
+                    amount_excl_vat = {3},
+                    vat_rate = {4},
+                    vat_amount = {5},
+                    amount_incl_vat = {6},
+                    notes = {7},
+                    category_id = {8},
+                    updated_at = {9}
+                WHERE id = {10}",
+                invoice.InvoiceNumber,
+                invoice.InvoiceDate,
+                invoice.DueDate,
+                invoice.AmountExclVat,
+                invoice.VatRate,
+                invoice.VatAmount,
+                invoice.AmountInclVat,
+                invoice.Notes,
+                invoice.CategoryId,
+                invoice.UpdatedAt,
+                invoice.Id);
+
+            // Lines: upsert by id; delete only the lines the user removed in the form
+            var storedIds = storedLines.Select(l => l.Id).ToHashSet();
+            var keptIds = lines.Where(l => l.Id > 0).Select(l => l.Id).ToHashSet();
+            if (!keptIds.IsSubsetOf(storedIds))
+                throw new InvalidOperationException("Eilutė nepriklauso šiai sąskaitai");
+            foreach (var removedId in storedIds.Except(keptIds))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM expense_invoice_lines WHERE id = {0} AND invoice_id = {1}", removedId, invoice.Id);
+            }
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var line = lines[i];
+                line.InvoiceId = invoice.Id;
+                line.SortOrder = i + 1;
+                line.AmountInclVat = Math.Round(line.AmountExclVat * (1 + line.VatRate / 100), 2);
+                if (line.Id > 0)
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        UPDATE expense_invoice_lines SET
+                            description = {0},
+                            quantity = {1},
+                            amount_excl_vat = {2},
+                            vat_rate = {3},
+                            amount_incl_vat = {4},
+                            sort_order = {5}
+                        WHERE id = {6} AND invoice_id = {7}",
+                        line.Description, line.Quantity, line.AmountExclVat, line.VatRate,
+                        line.AmountInclVat, line.SortOrder, line.Id, invoice.Id);
+                }
+                else
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        INSERT INTO expense_invoice_lines
+                            (invoice_id, description, quantity, amount_excl_vat, vat_rate, amount_incl_vat, sort_order)
+                        VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6})",
+                        invoice.Id, line.Description, line.Quantity, line.AmountExclVat, line.VatRate,
+                        line.AmountInclVat, line.SortOrder);
+                }
+            }
+
+            var finalLines = await context.ExpenseInvoiceLines
+                .AsNoTracking()
+                .Where(l => l.InvoiceId == invoice.Id)
+                .ToListAsync();
+            var existing = ExpenseStatusHelper.ParseFlags(stored.OcrFlags);
+            var flags = ComputeManualEditFlags(invoice, stored, finalLines, existing, null);
+
+            var changedGateFields = ChangedGateFields(invoice, stored);
+            if (LinesChanged(storedLines, finalLines)) changedGateFields.Add("lines");
+            var newStatus = await ApplyManualEditStatusAsync(context, invoice, stored, flags, changedGateFields, performedBy);
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO expense_invoice_audit
+                    (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                invoice.Id, invoice.InvoiceNumber, "EDITED",
+                changedGateFields.Count > 0 ? $"Pakeisti laukai: {string.Join(", ", changedGateFields)}" : "Pakeisti tik nekontroliuojami laukai",
+                stored.Status, newStatus, performedBy, DateTime.Now);
+
+            await transaction.CommitAsync();
+            return invoice;
+        }
+
+        /// <summary>True when the set of lines or any line's amounts / VAT rate changed (gate-relevant).</summary>
+        private static bool LinesChanged(List<ExpenseInvoiceLine> before, List<ExpenseInvoiceLine> after)
+        {
+            if (before.Count != after.Count) return true;
+            var byId = before.ToDictionary(l => l.Id);
+            foreach (var line in after)
+            {
+                if (!byId.TryGetValue(line.Id, out var old)) return true;
+                if (old.AmountExclVat != line.AmountExclVat || old.VatRate != line.VatRate || old.AmountInclVat != line.AmountInclVat)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Stores flags and the manual-edit status. An approval covers the values that were approved:
+        /// with no gate-relevant change the status stands (notes/category edits never re-open review);
+        /// otherwise the C2 rules apply and a NEEDS_REVIEW result voids the approval (audited).
+        /// </summary>
+        private static async Task<string> ApplyManualEditStatusAsync(NordicBeesERPContext context, ExpenseInvoice invoice,
+            ExpenseInvoice stored, List<string> flags, List<string> changedGateFields, string performedBy)
+        {
             var approved = !string.IsNullOrEmpty(stored.ApprovedBy);
             var newStatus = approved && changedGateFields.Count == 0
                 ? stored.Status
@@ -311,10 +450,6 @@ namespace NordicBeesERP.Services
 
             if (voidApproval)
             {
-                var currentUser = await _authService.GetAuthenticatedUserAsync();
-                var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "MANUAL_EDIT";
-                var now = DateTime.Now;
-
                 await context.Database.ExecuteSqlRawAsync(
                     "UPDATE expense_invoices SET approved_by = NULL, approved_at = NULL WHERE id = {0}",
                     invoice.Id);
@@ -324,12 +459,12 @@ namespace NordicBeesERP.Services
                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
                     invoice.Id, invoice.InvoiceNumber, "APPROVAL_VOIDED",
                     $"Pakeisti laukai: {string.Join(", ", changedGateFields)}",
-                    stored.Status, newStatus, performedBy, now);
+                    stored.Status, newStatus, performedBy, DateTime.Now);
                 invoice.ApprovedBy = null;
                 invoice.ApprovedAt = null;
             }
 
-            return invoice;
+            return newStatus;
         }
 
         /// <summary>
@@ -360,7 +495,8 @@ namespace NordicBeesERP.Services
             if (edited.AmountInclVat == 0) flags.Add(OcrFlag.MissingAmount);
             if (edited.VatRate == 0 && edited.AmountInclVat > 0) flags.Add(OcrFlag.ZeroVat);
             if (lines.Count == 0) flags.Add(OcrFlag.LinesNotFound);
-            if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountInclVat) - edited.AmountInclVat) > 0.01m)
+            // D-019/D-035: header is authoritative; lines disagreeing with it (net, 0.01) are flagged, never copied over
+            if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountExclVat) - edited.AmountExclVat) > 0.01m)
                 flags.Add(OcrFlag.AmountMismatch);
             RecomputeAmountConsistencyFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat);
             RecomputeDateFlags(flags, edited.InvoiceDate != default ? edited.InvoiceDate : null,

@@ -13,6 +13,8 @@ namespace NordicBeesERP.Services
         Task<ExpenseInvoice?> GetInvoiceAsync(int id);
         Task<InvoiceAddResult> CreateInvoiceAsync(ExpenseInvoice invoice);
         Task<ExpenseInvoice> UpdateInvoiceAsync(ExpenseInvoice invoice, List<string>? overriddenFlags = null);
+        // Edit-form save: header + lines + flags + status + audit in one transaction (D-035)
+        Task<ExpenseInvoice> SaveInvoiceEditAsync(ExpenseInvoice invoice, List<ExpenseInvoiceLine> lines, string performedBy);
         Task<bool> DeleteInvoiceAsync(int id);
         
         // Invoice Lines
