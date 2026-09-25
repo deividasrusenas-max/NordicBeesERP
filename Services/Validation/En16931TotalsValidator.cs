@@ -14,10 +14,10 @@ public sealed record En16931TotalsInput
     /// <summary>BT-106 sum of invoice line net amounts.</summary>
     public decimal? SumOfLineNet { get; init; }
 
-    /// <summary>BT-107 sum of document-level allowances (optional; absent = 0).</summary>
+    /// <summary>BT-107 sum of document-level allowances (optional; presence selects the BR-CO-13 case).</summary>
     public decimal? AllowanceTotal { get; init; }
 
-    /// <summary>BT-108 sum of document-level charges (optional; absent = 0).</summary>
+    /// <summary>BT-108 sum of document-level charges (optional; presence selects the BR-CO-13 case).</summary>
     public decimal? ChargeTotal { get; init; }
 
     /// <summary>BT-109 invoice total amount without VAT.</summary>
@@ -29,10 +29,10 @@ public sealed record En16931TotalsInput
     /// <summary>BT-112 invoice total amount with VAT.</summary>
     public decimal? TotalWithVat { get; init; }
 
-    /// <summary>BT-113 paid amount (optional; absent = 0).</summary>
+    /// <summary>BT-113 paid amount (optional; presence selects the BR-CO-16 case).</summary>
     public decimal? PaidAmount { get; init; }
 
-    /// <summary>BT-114 rounding amount (optional; absent = 0).</summary>
+    /// <summary>BT-114 rounding amount (optional; presence selects the BR-CO-16 case).</summary>
     public decimal? RoundingAmount { get; init; }
 
     /// <summary>BT-115 amount due for payment.</summary>

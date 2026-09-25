@@ -185,7 +185,8 @@ public class En16931TotalsValidatorTests
 
     // --- Schematron-literal rounding: stated side is not rounded (inputs with > 2 decimals) ---
     // Each case below passed under the earlier both-sides-rounded version and fails (or vice versa)
-    // under the literal Schematron text.
+    // under the literal Schematron text — except BrCo13_ZeroAllowancePresent_ComputedSideRounded,
+    // which passes under both and guards the case selection.
 
     [Fact]
     public void BrCo10_StatedSumNotRounded()
