@@ -771,6 +771,20 @@
             if (string.IsNullOrEmpty(_pdfBase64)) { Snackbar.Add("Failas nepasirinktas arba nepavyko nuskaityti", Severity.Warning); return; }
             string base64 = _pdfBase64;
 
+            // Identical bytes are the same document: hash exactly what SaveAsync would store
+            // (the decoded _pdfBase64, i.e. after image→PDF conversion) and stop before Azure.
+            var sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Convert.FromBase64String(base64))).ToLowerInvariant();
+            foreach (var linkedId in await FileStore.FindLinkedEntityIdsAsync(sha256, "expenses", CancellationToken.None))
+            {
+                var existing = await ExpenseService.GetInvoiceAsync((int)linkedId);
+                if (existing == null) continue;
+
+                _phase = "error";
+                _errorMessage = $"Šis failas jau įkeltas: sąskaita Nr. {existing.InvoiceNumber} ({ExpenseStatusHelper.GetLabel(existing.Status)})";
+                StateHasChanged();
+                return;
+            }
+
             // Step 1: Switch to processing phase (base64 already read in OnFileChanged)
             _phase = "processing";
             _processingStep = 0;

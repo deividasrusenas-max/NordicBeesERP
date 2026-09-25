@@ -27,6 +27,12 @@ public interface IFileStore
     /// Marks the `files` row deleted (deleted_at + deleted_reason). Never deletes the blob from disk — these are accounting documents.
     /// </summary>
     Task SoftDeleteAsync(long fileId, string reason, CancellationToken ct);
+
+    /// <summary>
+    /// Entity ids already linked to identical content (same SHA-256) within a module — only rows with
+    /// entity_id set and not soft-deleted. Empty when the content has never been linked.
+    /// </summary>
+    Task<IReadOnlyList<long>> FindLinkedEntityIdsAsync(string sha256, string module, CancellationToken ct);
 }
 
 /// <summary>

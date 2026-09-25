@@ -273,6 +273,59 @@ public class FileStoreTests : IClassFixture<DbTestFixture>, IDisposable
         }
     }
 
+    // ---------- FindLinkedEntityIdsAsync (B5: SHA-256 check before OCR) ----------
+
+    private static string RandomSha256() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+
+    /// <summary>Inserts a files row directly (parameterized); created_by carries the class marker for teardown.</summary>
+    private async Task InsertFileRowAsync(string sha256, string module, long? entityId, bool softDeleted)
+    {
+        await using var db = await _fixture.Factory.CreateDbContextAsync();
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO files (sha256, byte_size, mime_type, original_filename, module, entity_type, entity_id, created_at, created_by, deleted_at) " +
+            "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})",
+            sha256, 128L, "application/pdf", "lookup-test.pdf", module, "expense_invoice", entityId,
+            DateTime.UtcNow, _marker, softDeleted ? DateTime.UtcNow : null);
+    }
+
+    [Fact]
+    public async Task FindLinkedEntityIdsAsync_FindsLinkedRow()
+    {
+        var sha = RandomSha256();
+        await InsertFileRowAsync(sha, "expenses", 424242, softDeleted: false);
+
+        var ids = await NewStore().FindLinkedEntityIdsAsync(sha, "expenses", CancellationToken.None);
+
+        Assert.Equal(new long[] { 424242 }, ids);
+    }
+
+    [Fact]
+    public async Task FindLinkedEntityIdsAsync_IgnoresUnlinkedRow()
+    {
+        var sha = RandomSha256();
+        await InsertFileRowAsync(sha, "expenses", null, softDeleted: false);
+
+        Assert.Empty(await NewStore().FindLinkedEntityIdsAsync(sha, "expenses", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task FindLinkedEntityIdsAsync_IgnoresSoftDeletedRow()
+    {
+        var sha = RandomSha256();
+        await InsertFileRowAsync(sha, "expenses", 424243, softDeleted: true);
+
+        Assert.Empty(await NewStore().FindLinkedEntityIdsAsync(sha, "expenses", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task FindLinkedEntityIdsAsync_IgnoresOtherModules()
+    {
+        var sha = RandomSha256();
+        await InsertFileRowAsync(sha, "artwork", 424244, softDeleted: false);
+
+        Assert.Empty(await NewStore().FindLinkedEntityIdsAsync(sha, "expenses", CancellationToken.None));
+    }
+
     /// <summary>
     /// Returns ~512 real bytes on the FIRST read, then throws IOException. The SUT calls
     /// ReadAsync(byte[], CancellationToken), whose default implementation funnels into the

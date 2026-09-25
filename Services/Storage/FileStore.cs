@@ -130,6 +130,43 @@ public class FileStore : IFileStore
             DateTime.UtcNow, reason, fileId);
     }
 
+    /// <summary>
+    /// Entity ids linked to identical content (same SHA-256) within a module; unlinked and soft-deleted rows are ignored.
+    /// </summary>
+    public async Task<IReadOnlyList<long>> FindLinkedEntityIdsAsync(string sha256, string module, CancellationToken ct)
+    {
+        await using var db = _dbFactory.CreateDbContext();
+        var conn = db.Database.GetDbConnection();
+        var openedByUs = conn.State != ConnectionState.Open;
+        if (openedByUs)
+        {
+            await conn.OpenAsync(ct);
+        }
+
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT DISTINCT entity_id FROM files WHERE sha256 = @p0 AND module = @p1 AND entity_id IS NOT NULL AND deleted_at IS NULL ORDER BY entity_id";
+            cmd.Parameters.Add(CreateParameter(conn, "@p0", sha256));
+            cmd.Parameters.Add(CreateParameter(conn, "@p1", module));
+
+            var ids = new List<long>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                ids.Add(Convert.ToInt64(reader.GetValue(0)));
+            }
+            return ids;
+        }
+        finally
+        {
+            if (openedByUs)
+            {
+                await conn.CloseAsync();
+            }
+        }
+    }
+
     private string BlobPath(string sha256) => Path.Combine(_options.Root, "blobs", sha256[..2], sha256[2..4], sha256);
 
     private async Task<string?> GetSha256Async(long fileId, CancellationToken ct)
