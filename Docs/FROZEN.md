@@ -28,14 +28,19 @@ Working mechanism:
 
 ## 3. DRAG & DROP — `Components/Dialogs/ExpenseUploadDialog.razor` (@code block)
 
-**Status:** ✅ WORKS
+**Status:** implemented 2026-09-26 (D-034). Earlier versions of this section claimed a working
+`OnFileDropped`; git history shows it never existed in this file, so drag & drop in the expense
+dialog never worked before. Browser verification (Chrome + Firefox) pending — see the Etapas 0c report.
 **Do not touch these methods:**
 - `OnAfterRenderAsync` — setupDropZone with retry logic
-- `OnFileDropped` — [JSInvokable], receives metadata + calls getDropFileBase64
-- `DisposeAsync` — cleanupDropZone
-- `DroppedFile` — IBrowserFile wrapper class
+- `OnFileDropped(string fileName, long size, string mimeType)` — [JSInvokable], called by
+  `dropzone.js`; fetches the bytes with `getDropFileBase64("expense-drop-zone")` and hands them to the
+  same PDF-only intake as the file picker (`AcceptPdf`)
+- `DisposeAsync` — disposes the `DotNetObjectReference` (it does NOT call `cleanupDropZone`)
+- `DroppedFile` — IBrowserFile wrapper class used for dropped files
 
-**OK to change:** only the HTML upload phase and other @code methods
+**OK to change:** only the HTML upload phase and other @code methods (D-034 additionally allowed
+the error-phase heading)
 
 ---
 

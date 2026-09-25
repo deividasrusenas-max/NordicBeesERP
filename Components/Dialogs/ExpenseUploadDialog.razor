@@ -466,22 +466,68 @@
                 return;
             }
 
-            using var stream = file.OpenReadStream(10 * 1024 * 1024);
+            using var stream = file.OpenReadStream(MaxUploadBytes);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
-            var bytes = ms.ToArray();
-            if (!PdfIntakeCheck.HasPdfSignature(bytes))
-            {
-                Snackbar.Add(PdfIntakeCheck.Message(PdfIntakeResult.NotPdf)!, Severity.Warning);
-                StateHasChanged();
-                return;
-            }
-
-            _file = file;
-            _pdfBase64 = Convert.ToBase64String(bytes);
-            _convertedFileName = file.Name;
+            AcceptPdf(file, ms.ToArray());
         }
         StateHasChanged();
+    }
+
+    private const long MaxUploadBytes = 10 * 1024 * 1024;
+
+    /// <summary>
+    /// Shared PDF-only intake for the file picker and drag &amp; drop (D-032): the bytes must carry
+    /// the PDF signature; the text-layer check runs later in AnalyzeAsync, before Azure.
+    /// </summary>
+    private void AcceptPdf(IBrowserFile file, byte[] bytes)
+    {
+        if (!PdfIntakeCheck.HasPdfSignature(bytes))
+        {
+            Snackbar.Add(PdfIntakeCheck.Message(PdfIntakeResult.NotPdf)!, Severity.Warning);
+            return;
+        }
+
+        _file = file;
+        _pdfBase64 = Convert.ToBase64String(bytes);
+        _convertedFileName = file.Name;
+    }
+
+    /// <summary>
+    /// Called by wwwroot/js/dropzone.js (setupDropZone → invokeMethodAsync('OnFileDropped', name, size, type)).
+    /// The file content is then fetched with getDropFileBase64("expense-drop-zone") and goes
+    /// through the same PDF-only path as the file picker.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnFileDropped(string fileName, long size, string mimeType)
+    {
+        _file = null;
+        _pdfBase64 = "";
+        _convertedFileName = "";
+
+        if (!PdfIntakeCheck.HasPdfExtension(fileName))
+        {
+            Snackbar.Add(PdfIntakeCheck.Message(PdfIntakeResult.NotPdf)!, Severity.Warning);
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        if (size > MaxUploadBytes)
+        {
+            Snackbar.Add("Failas per didelis (daugiausia 10 MB).", Severity.Warning);
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var base64 = await JS.InvokeAsync<string?>("getDropFileBase64", "expense-drop-zone");
+        if (string.IsNullOrEmpty(base64))
+        {
+            Snackbar.Add("Nepavyko nuskaityti nutempto failo. Bandykite dar kartą.", Severity.Warning);
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        AcceptPdf(new DroppedFile(fileName, size), Convert.FromBase64String(base64));
+        await InvokeAsync(StateHasChanged);
     }
 
     /// <summary>Shows a non-OCR refusal in the error phase with a heading that matches the case.</summary>
