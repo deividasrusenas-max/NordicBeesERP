@@ -245,6 +245,64 @@ galioja tik šiam pakeitimui (Etapas 0c, C3).
 
 ---
 
+## D-034 — FROZEN §3 buvo netikslus; leidžiama naujas `OnFileDropped` ir klaidos antraštė (2026-09-26)
+
+**Kontekstas.** `FROZEN.md` §3 teigė, kad `ExpenseUploadDialog.razor` turi veikiantį
+`[JSInvokable] OnFileDropped`. Git istorija rodo, kad **šiame faile jo niekada nebuvo**
+(nuo pradinio commit'o `9e6f82f`); vienintelė implementacija buvo `ArtworkUpload.razor`
+(`6738014`, vėliau pašalinta). Drag & drop išlaidų dialoge niekada neveikė. Etapo 0c
+užduotis (C9 „atkurti iš istorijos") rėmėsi šiuo netiksliu dokumentu.
+
+**Sprendimas.** Leidžiama:
+
+1. Parašyti **naują** `[JSInvokable] OnFileDropped(string fileName, long size, string mimeType)`
+   pagal `dropzone.js` kontraktą (`getDropFileBase64("expense-drop-zone")`), per tą patį
+   PDF-only kelią kaip `OnFileChanged`, naudojant esamą `DroppedFile` klasę.
+   `dropzone.js`, `App.razor`, `OnAfterRenderAsync`, `DisposeAsync` — neliečiami.
+2. Pakeisti klaidos fazės antraštę („OCR nepavyko" rodoma tik OCR klaidoms).
+3. Pataisyti `FROZEN.md` §3, kad atspindėtų tikrą būseną.
+
+**Pamoka.** FROZEN.md teiginiai apie kodą tikrinami prieš jų pagrindu rašant užduotį.
+
+---
+
+## D-035 — Redagavimo formoje antraštė autoritetinga; vienas išsaugojimas, viena transakcija (2026-09-26)
+
+**Kontekstas.** `InvoiceDetailDialog.SaveAsync` kviečia `UpdateInvoiceAsync` (vartai
+vertina vartotojo įvestas sumas), tada išsaugo eilutes ir `RecalculateInvoiceTotalsAsync`
+**perrašo antraštės sumas eilučių sumomis**. Pasekmės: išsaugotos sumos skiriasi nuo
+tų, kurias tikrino vartai; sąskaita **be eilučių išsaugoma su 0,00** visose trijose
+sumose. Tai prieštarauja D-019 (antraštė autoritetinga, eilutės patariamosios) ir D-010
+(persist — viena transakcija).
+
+**Sprendimas.**
+
+1. Redagavimo išsaugojimas — vienas serviso metodas, viena transakcija: antraštė +
+   eilutės + vėliavėlės + statusas + auditas.
+2. Antraštės sumos niekada neperrašomos iš eilučių. Nesutapimas → `AMOUNT_MISMATCH`
+   vėliavėlė (D-019), ne tylus pakeitimas.
+3. Vartai vertinami ant **galutinių** išsaugomų reikšmių.
+
+**Kiti `RecalculateInvoiceTotalsAsync` kviečiamieji** — inventorizuojami; jei kuris
+nors perrašo antraštę kitame kelyje, pranešama atskirai.
+
+---
+
+## D-036 — Biudžeto faktas: kategorijos šaltinių grandinė, neto (2026-09-26)
+
+**Kontekstas.** `ExpenseBudgetDialog` faktas skaičiuojamas iš `[NotMapped]` eilučių — visada
+0. Galimi kategorijos šaltiniai: paskirstymas (`expense_line_allocations`), eilutės
+`category_id`, sąskaitos `category_id`.
+
+**Sprendimas.** Kiekvienai eilutei: paskirstymas, jei yra → kitaip eilutės kategorija →
+kitaip sąskaitos kategorija. Suma — **be PVM** (MB Lakštena yra PVM mokėtoja, PVM
+atskaitomas, sąnaudos — neto). Karantino sąskaitos (`DUPLICATE_PENDING`, `REJECTED`)
+neįskaičiuojamos. Eilutės be jokios kategorijos — atskira „Nepriskirta" suma, ne
+išmetamos. Sąskaita be eilučių — antraštės neto su sąskaitos kategorija (arba
+„Nepriskirta").
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
