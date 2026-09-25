@@ -727,11 +727,7 @@
                     confidence -= 10;
                     confidenceIssues.Add("Sąskaitos numeris nerastas");
                 }
-                if (string.IsNullOrEmpty(result.DueDate))
-                {
-                    confidence -= 10;
-                    confidenceIssues.Add("Mokėjimo terminas nerastas");
-                }
+                // Missing due date is information, not an error (D-025): no confidence penalty.
                 if (result.Lines.Count == 0)
                 {
                     confidence -= 10;

@@ -51,6 +51,9 @@ public static class ExpenseStatusHelper
         catch { return new(); }
     }
 
+    /// <summary>D-025: the due date was not on the document and was assumed (invoice date + 30 d.).</summary>
+    public static bool IsDueDateAssumed(string? ocrFlags) => ParseFlags(ocrFlags).Contains("MISSING_DUE_DATE");
+
     public static string GetFlagLabel(string flag) => GetFlagLabel(flag, "MB Lakštenai");
 
     public static string GetFlagLabel(string flag, string companyName) => flag switch
@@ -60,7 +63,7 @@ public static class ExpenseStatusHelper
         "OWN_COMPANY"        => "Savos įmonės sąskaita",
         "MISSING_AMOUNT"     => "Trūksta sumos",
         "MISSING_INV_NUMBER" => "Trūksta numerio",
-        "MISSING_DUE_DATE"   => "Trūksta termino",
+        "MISSING_DUE_DATE"   => "Terminas numatytas (+30 d.)",
         "ZERO_VAT"           => "PVM = 0%",
         "INVALID_VAT_RATE"   => "Netinkama PVM norma",
         "AMOUNT_ARITHMETIC_MISMATCH" => "Sumos nesutampa (be PVM + PVM ≠ su PVM)",
