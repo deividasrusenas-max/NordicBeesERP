@@ -1,8 +1,6 @@
 // Semgrep rule-test fixture for .agent-guardrails/nordicbees-rules.yaml (Etapas 0c C8).
-// Run: semgrep --test --config .agent-guardrails/nordicbees-rules.yaml .agent-guardrails/.semgrep/nordicbees-rules.cs
-// Lives under a ".semgrep" folder on purpose: semgrep's default ignore list skips it, so the
-// intentional ruleid: positives never show up in the repo-wide CI / pre-commit scans.
-// Not compiled: the .NET SDK default item excludes skip folders starting with '.' (**/.*/**).
+// Run: semgrep --test --config .agent-guardrails/nordicbees-rules.yaml .agent-guardrails/rule-tests/
+// Not compiled: this folder is outside every .csproj.
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -91,6 +89,92 @@ namespace RuleTests
         }
     }
 
+    // C8 fix-up (reviewer on 07e7be5): nested blocks, list+foreach, compound / nested mutation
+    public class SaveChangesNestedCases
+    {
+        public async Task UpdateInLoop(AppDb context, Thing[] things)
+        {
+            foreach (var t in things) { context.Things.Update(t); }
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task RemoveInIf(AppDb context, Thing thing, bool remove)
+        {
+            if (remove) { context.Things.Remove(thing); }
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task FindMutateInTry(AppDb context, int id)
+        {
+            try
+            {
+                var thing = await context.Things.FindAsync(id);
+                thing!.Name = "changed";
+            }
+            catch (Exception) { throw; }
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task ListForeachMutate(AppDb context)
+        {
+            var things = await context.Things.Where(t => t.Id > 0).ToListAsync();
+            foreach (var t in things) { t.Name = "bulk"; }
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task CompoundAssign(AppDb context, int id)
+        {
+            var thing = await context.Things.FindAsync(id);
+            thing!.Qty += 1;
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task NestedMember(AppDb context, int id)
+        {
+            var thing = await context.Things.SingleAsync(t => t.Id == id);
+            thing.Child.Name = "nested";
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task TypedDeclaration(AppDb context, int id)
+        {
+            Thing? thing = await context.Things.FirstOrDefaultAsync(t => t.Id == id);
+            if (thing == null) return;
+            thing.Name = "typed";
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task EntryInForeach(AppDb context, Thing[] things)
+        {
+            foreach (var t in things) { context.Entry(t).Property(x => x.Name).IsModified = true; }
+            // ruleid: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task InsertInLoop(AppDb context, Thing[] things)
+        {
+            foreach (var t in things) { context.Things.Add(t); }
+            // ok: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+
+        public async Task NonEfAwaitThenAdd(AppDb context, IThingSource source)
+        {
+            var dto = await source.GetAsync();
+            dto.Name = "from service";
+            context.Things.Add(dto);
+            // ok: nordicbees-notracking-savechanges
+            await context.SaveChangesAsync();
+        }
+    }
+
     // =====================================================================
     // nordicbees-stringcomparison-in-linq
     // =====================================================================
@@ -133,6 +217,35 @@ namespace RuleTests
         }
     }
 
+    public class StringComparisonBuiltQueryCases
+    {
+        public async Task VarQueryBuiltStepByStep(AppDb context, string term, bool filter)
+        {
+            var q = context.Things.AsQueryable();
+            if (filter)
+            {
+                // ruleid: nordicbees-stringcomparison-in-linq
+                q = q.Where(t => t.Name.Contains(term, StringComparison.OrdinalIgnoreCase));
+            }
+            var list = await q.ToListAsync();
+        }
+
+        public void TypedQueryBuilt(AppDb _context, string term)
+        {
+            IQueryable<Thing> query = _context.Things;
+            // ruleid: nordicbees-stringcomparison-in-linq
+            query = query.Where(t => t.Name.StartsWith(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public System.Collections.Generic.List<Thing> InMemoryListReassigned(System.Collections.Generic.List<Thing> things, string term)
+        {
+            var list = things;
+            // ok: nordicbees-stringcomparison-in-linq
+            list = list.Where(t => t.Name.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
+            return list;
+        }
+    }
+
     // =====================================================================
     // nordicbees-ef-decimal-precision-annotation-missing
     // =====================================================================
@@ -141,6 +254,8 @@ namespace RuleTests
     {
         public int Id { get; set; }
         public string Name { get; set; } = "";
+        public int Qty { get; set; }
+        public Thing Child { get; set; } = null!;
 
         // ruleid: nordicbees-ef-decimal-precision-annotation-missing
         public decimal Price { get; set; }
@@ -168,6 +283,11 @@ namespace RuleTests
     {
         public int Id { get; set; }
         public int ThingId { get; set; }
+    }
+
+    public interface IThingSource
+    {
+        Task<Thing> GetAsync();
     }
 
     public class AppDb : DbContext
