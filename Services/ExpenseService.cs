@@ -290,6 +290,12 @@ namespace NordicBeesERP.Services
             if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountInclVat) - invoice.AmountInclVat) > 0.01m)
                 flags.Add(OcrFlag.AmountMismatch);
             RecomputeAmountConsistencyFlags(flags, invoice.AmountExclVat, invoice.VatAmount, invoice.AmountInclVat);
+            var uploadedAt = await context.ExpenseInvoices
+                .Where(i => i.Id == invoice.Id)
+                .Select(i => i.CreatedAt)
+                .FirstOrDefaultAsync();
+            RecomputeDateFlags(flags, invoice.InvoiceDate != default ? invoice.InvoiceDate : null,
+                uploadedAt != default ? uploadedAt : VilniusToday());
 
             // Keep non-recalculable flags from existing
             var existing = string.IsNullOrEmpty(invoice.OcrFlags) 
@@ -308,7 +314,8 @@ namespace NordicBeesERP.Services
             // Update status if no more critical flags
             if (invoice.Status == "NEEDS_REVIEW" && !flags.Any(f => 
                 f == OcrFlag.WrongRecipient || f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch || f == OcrFlag.LowConfidence ||
-                f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField))
+                f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField ||
+                f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate))
             {
                 invoice.Status = invoice.SupplierId == null ? "PENDING_SUPPLIER" : "PENDING";
                 await context.Database.ExecuteSqlRawAsync(
@@ -1175,7 +1182,8 @@ namespace NordicBeesERP.Services
             flags.Any(f => f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch ||
                            f == OcrFlag.LowConfidence || f == OcrFlag.ZeroVat ||
                            f == OcrFlag.MissingInvNumber ||
-                           f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField);
+                           f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField ||
+                           f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate);
 
         /// <summary>Status precedence for OCR ingestion: WRONG_RECIPIENT → supplier missing → review flags.</summary>
         private static string DecideOcrStatus(IEnumerable<string> flags, int? supplierId)
@@ -1200,6 +1208,26 @@ namespace NordicBeesERP.Services
             var probe = new OcrResultDto { AmountExclVat = amountExclVat, VatAmount = vatAmount, AmountInclVat = amountInclVat };
             ExpenseOcrService.AddAmountConsistencyFlags(probe);
             flags.AddRange(probe.Flags);
+        }
+
+        private static DateTime VilniusToday() => LithuanianTimeHelper.ToLithuanianTime(DateTime.UtcNow).Date;
+
+        /// <summary>
+        /// Recomputes the invoice-date gates from the final date: MISSING_INV_DATE when the date
+        /// could not be parsed (invoiceDate null), FUTURE_DATE when after today (Europe/Vilnius),
+        /// STALE_DATE when more than 18 months before the upload date.
+        /// </summary>
+        private static void RecomputeDateFlags(List<string> flags, DateTime? invoiceDate, DateTime uploadDate)
+        {
+            flags.RemoveAll(f => f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate);
+            if (invoiceDate == null)
+            {
+                flags.Add(OcrFlag.MissingInvDate);
+                return;
+            }
+            var date = invoiceDate.Value.Date;
+            if (date > VilniusToday()) flags.Add(OcrFlag.FutureDate);
+            if (date < uploadDate.Date.AddMonths(-18)) flags.Add(OcrFlag.StaleDate);
         }
 
         // =====================================================
@@ -1227,7 +1255,13 @@ namespace NordicBeesERP.Services
             var currentUser = await _authService.GetAuthenticatedUserAsync();
             var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "OCR_PIPELINE";
 
+            DateTime.TryParse(ocrResult.InvoiceDate, out var invoiceDate);
+            var hasInvoiceDate = invoiceDate != default;
+            // invoice_date is NOT NULL: keep the placeholder, but flag it (art. 226(1) mandatory field)
+            if (!hasInvoiceDate) invoiceDate = DateTime.Today;
+
             RecomputeAmountConsistencyFlags(ocrResult.Flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat);
+            RecomputeDateFlags(ocrResult.Flags, hasInvoiceDate ? invoiceDate : null, VilniusToday());
             var status = DecideOcrStatus(ocrResult.Flags, ocrResult.SupplierId);
 
             var duplicateId = await CheckDuplicateAsync(ocrResult.SupplierId, ocrResult.SupplierVatCode,
@@ -1238,8 +1272,6 @@ namespace NordicBeesERP.Services
                 status = "DUPLICATE_PENDING";
             }
 
-            DateTime.TryParse(ocrResult.InvoiceDate, out var invoiceDate);
-            if (invoiceDate == default) invoiceDate = DateTime.Today;
             DateTime.TryParse(ocrResult.DueDate, out var dueDate);
             if (dueDate == default) dueDate = invoiceDate.AddDays(30);
 
@@ -1354,7 +1386,8 @@ namespace NordicBeesERP.Services
 
             // Update invoice fields from OCR result
             DateTime.TryParse(ocrResult.InvoiceDate, out var invoiceDate);
-            if (invoiceDate == default) invoiceDate = DateTime.Today;
+            var hasInvoiceDate = invoiceDate != default;
+            if (!hasInvoiceDate) invoiceDate = DateTime.Today;
             DateTime.TryParse(ocrResult.DueDate, out var dueDate);
             if (dueDate == default) dueDate = invoiceDate.AddDays(30);
 
@@ -1368,6 +1401,8 @@ namespace NordicBeesERP.Services
             }
 
             RecomputeAmountConsistencyFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat);
+            RecomputeDateFlags(flags, hasInvoiceDate ? invoiceDate : null,
+                invoice.CreatedAt != default ? invoice.CreatedAt : VilniusToday());
             var newStatus = DecideOcrStatus(flags, ocrResult.SupplierId);
 
             var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;

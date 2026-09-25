@@ -132,4 +132,7 @@ public static class OcrFlag
     public const string InvalidVatRate    = "INVALID_VAT_RATE";
     public const string AmountArithmeticMismatch = "AMOUNT_ARITHMETIC_MISMATCH";
     public const string MissingMoneyField        = "MISSING_MONEY_FIELD";
+    public const string FutureDate               = "FUTURE_DATE";
+    public const string StaleDate                = "STALE_DATE";
+    public const string MissingInvDate           = "MISSING_INV_DATE";
 }
