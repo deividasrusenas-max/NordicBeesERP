@@ -1055,6 +1055,12 @@
     private async Task RerunOcrAsync()
     {
         if (_invoice == null) return;
+        if (_invoice.Status is "PAID" or "PARTIAL" or "OVERDUE")
+        {
+            // Same rule as ExpenseService.UpdateFromOcrAsync — refuse before running Azure
+            Snackbar.Add("Apmokėtos sąskaitos OCR pakartoti negalima", Severity.Warning);
+            return;
+        }
         if (_invoice.FileId == null)
         {
             Snackbar.Add("OCR negalima pakartoti – šio dokumento failas nėra saugomas centralizuotoje failų saugykloje.", Severity.Error);

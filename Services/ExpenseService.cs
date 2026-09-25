@@ -1445,6 +1445,13 @@ namespace NordicBeesERP.Services
             var oldStatus = invoice.Status;
             var invoiceNumber = invoice.InvoiceNumber;
 
+            // A paid invoice is an accounting fact: re-OCR must not overwrite its amounts or status.
+            if (oldStatus is "PAID" or "PARTIAL" or "OVERDUE")
+                throw new InvalidOperationException("Apmokėtos sąskaitos OCR pakartoti negalima");
+
+            // Quarantined invoices (D-027) keep their status on re-OCR — only data and flags change.
+            var keepStatus = oldStatus is "REJECTED" or "DUPLICATE_PENDING";
+
             // Update invoice fields from OCR result
             DateTime.TryParse(ocrResult.InvoiceDate, out var invoiceDate);
             var hasInvoiceDate = invoiceDate != default;
@@ -1455,8 +1462,8 @@ namespace NordicBeesERP.Services
             // Determine flags and status
             var flags = new List<string>(ocrResult.Flags);
             var duplicateId = await CheckDuplicateAsync(ocrResult.SupplierId, ocrResult.SupplierVatCode,
-                ocrResult.InvoiceNumber, ocrResult.AmountInclVat);
-            if (duplicateId.HasValue && duplicateId.Value != invoiceId)
+                ocrResult.InvoiceNumber, ocrResult.AmountInclVat, excludeInvoiceId: invoiceId);
+            if (duplicateId.HasValue)
             {
                 if (!flags.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
             }
@@ -1464,10 +1471,22 @@ namespace NordicBeesERP.Services
             RecomputeAmountConsistencyFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat);
             RecomputeDateFlags(flags, hasInvoiceDate ? invoiceDate : null,
                 invoice.CreatedAt != default ? invoice.CreatedAt : VilniusToday());
-            var newStatus = DecideOcrStatus(flags, ocrResult.SupplierId);
+
+            string newStatus;
+            string? rejectedReason;
+            if (keepStatus)
+            {
+                newStatus = oldStatus;
+                rejectedReason = invoice.RejectedReason;
+            }
+            else
+            {
+                // Same as CreateFromOcrAsync: a duplicate of another invoice goes to quarantine.
+                newStatus = duplicateId.HasValue ? "DUPLICATE_PENDING" : DecideOcrStatus(flags, ocrResult.SupplierId);
+                rejectedReason = newStatus == "REJECTED" ? $"Sąskaita ne {companyNameUpdate}" : null;
+            }
 
             var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
-            var rejectedReason = newStatus == "REJECTED" ? $"Sąskaita ne {companyNameUpdate}" : null;
             var now = DateTime.Now;
 
             // Single UPDATE for all invoice fields
@@ -1571,7 +1590,8 @@ namespace NordicBeesERP.Services
                 InvoiceId = invoice.Id,
                 InvoiceNumber = !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : invoiceNumber,
                 Action = "OCR_RETRIED",
-                ActionDetails = $"Pakartotinis OCR, tikslumas: {ocrResult.Confidence.Overall}%, požymiai: {string.Join(", ", flags)}",
+                ActionDetails = $"Pakartotinis OCR, tikslumas: {ocrResult.Confidence.Overall}%, požymiai: {string.Join(", ", flags)}"
+                    + (keepStatus ? $"; statusas {oldStatus} paliktas (karantinas)" : ""),
                 OldStatus = oldStatus,
                 NewStatus = newStatus,
                 PerformedBy = performedBy,
