@@ -872,44 +872,62 @@ namespace NordicBeesERP.Services
 
         public async Task<(int? supplierId, int? defaultCategoryId)> FindSupplierIdAsync(string supplierName, string vatCode)
         {
-            if (string.IsNullOrEmpty(vatCode) && string.IsNullOrEmpty(supplierName)) return (null, null);
+            // Normalise: trim, drop inner spaces, upper-case. An empty code must never reach the
+            // VAT predicate — `VatCode == ""` would match any partner without a VAT code (D-017).
+            var normalizedVat = (vatCode ?? "").Replace(" ", "").Trim().ToUpperInvariant();
+            var trimmedName = (supplierName ?? "").Trim();
+
+            if (normalizedVat.Length == 0 && trimmedName.Length == 0) return (null, null);
 
             await using var context = _dbFactory.CreateDbContext();
 
-            _logger.LogDebug("[FIND SUPPLIER] name='{Name}' vat='{Vat}'", supplierName, vatCode);
+            _logger.LogDebug("[FIND SUPPLIER] name='{Name}' vat='{Vat}'", trimmedName, normalizedVat);
 
-            // Try by VAT first, then fallback to name — return both Id and DefaultExpenseCategoryId
-            int? supplierId = null;
-            int? defaultCategoryId = null;
-
-            var supplierByVat = await context.BusinessPartners
-                .Where(bp => bp.VatCode == vatCode
-                          || bp.VatCode == "LT" + vatCode
-                          || bp.VatCode == vatCode.TrimStart('L', 'T'))
-                .Select(bp => new { bp.Id, bp.DefaultExpenseCategoryId })
-                .FirstOrDefaultAsync();
-
-            if (supplierByVat != null && supplierByVat.Id > 0)
+            // Try by VAT first, then fallback to name — return both Id and DefaultExpenseCategoryId.
+            // Ambiguous matches (more than one distinct partner) return (null, null): a loud
+            // VENDOR_NOT_FOUND is preferred over a silently wrong supplier (D-017).
+            if (normalizedVat.Length > 0)
             {
-                supplierId = supplierByVat.Id;
-                defaultCategoryId = supplierByVat.DefaultExpenseCategoryId;
-            }
-            else if (!string.IsNullOrEmpty(supplierName))
-            {
-                // Fallback: try by supplier name (contains match)
-                var supplierByName = await context.BusinessPartners
-                    .Where(bp => bp.Name.Contains(supplierName))
+                var withPrefix = "LT" + normalizedVat;
+                var withoutPrefix = normalizedVat.StartsWith("LT") ? normalizedVat.Substring(2) : normalizedVat;
+
+                var byVat = await context.BusinessPartners
+                    .Where(bp => bp.VatCode != null && bp.VatCode != ""
+                              && (bp.VatCode == normalizedVat
+                                  || bp.VatCode == withPrefix
+                                  || bp.VatCode == withoutPrefix))
                     .Select(bp => new { bp.Id, bp.DefaultExpenseCategoryId })
-                    .FirstOrDefaultAsync();
+                    .Take(2)
+                    .ToListAsync();
 
-                if (supplierByName != null && supplierByName.Id > 0)
+                if (byVat.Count > 1)
                 {
-                    supplierId = supplierByName.Id;
-                    defaultCategoryId = supplierByName.DefaultExpenseCategoryId;
+                    _logger.LogDebug("[FIND SUPPLIER] ambiguous VAT match '{Vat}' — not assigning", normalizedVat);
+                    return (null, null);
                 }
+                if (byVat.Count == 1)
+                    return (byVat[0].Id, byVat[0].DefaultExpenseCategoryId);
             }
 
-            return (supplierId, defaultCategoryId);
+            if (trimmedName.Length > 0)
+            {
+                // Exact name match only (DB collation is case-insensitive); partial matches are not accepted.
+                var byName = await context.BusinessPartners
+                    .Where(bp => bp.Name == trimmedName)
+                    .Select(bp => new { bp.Id, bp.DefaultExpenseCategoryId })
+                    .Take(2)
+                    .ToListAsync();
+
+                if (byName.Count > 1)
+                {
+                    _logger.LogDebug("[FIND SUPPLIER] ambiguous name match '{Name}' — not assigning", trimmedName);
+                    return (null, null);
+                }
+                if (byName.Count == 1)
+                    return (byName[0].Id, byName[0].DefaultExpenseCategoryId);
+            }
+
+            return (null, null);
         }
 
         private static int ToConfidencePercent(float? confidence) =>
