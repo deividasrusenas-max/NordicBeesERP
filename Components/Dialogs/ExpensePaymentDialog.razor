@@ -31,7 +31,7 @@
                 </MudItem>
                 <MudItem xs="3">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Terminas</MudText>
-                    <MudText Typo="Typo.body2" Style="@(_isOverdue ? "color:#dc2626;font-weight:600" : "")">@_invoice.DueDate.ToString("yyyy-MM-dd")</MudText>
+                    <MudText Typo="Typo.body2" Style="@(_isOverdue ? "color:#dc2626;font-weight:600" : "")">@_invoice.DueDate.ToString("yyyy-MM-dd")@(ExpenseStatusHelper.IsDueDateAssumed(_invoice.OcrFlags) ? " (numatytas)" : "")</MudText>
                 </MudItem>
             </MudGrid>
         </MudPaper>

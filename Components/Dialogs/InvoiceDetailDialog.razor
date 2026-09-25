@@ -786,49 +786,6 @@
         MudDialog?.Close(DialogResult.Ok(true));
     }
 
-    private async Task ApproveAsDuplicateAsync()
-    {
-        try
-        {
-            var actor = await AuthService.GetRequiredActorNameAsync();
-            await ExpenseService.ApproveAsync(InvoiceId, actor);
-            Snackbar.Add("Sąskaita patvirtinta kaip originali", Severity.Success);
-            MudDialog?.Close(DialogResult.Ok(true));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
-        }
-        catch (InvalidOperationException ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Warning);
-        }
-    }
-
-    private async Task RejectAsDuplicateAsync()
-    {
-        var confirmed = await ConfirmDialog.ShowAsync(
-            DialogService,
-            "Atmesti kaip dublikatą",
-            "Ar tikrai norite atmesti šią sąskaitą kaip dublikatą? Ji bus pažymėta kaip atmesta.",
-            "Atmesti",
-            Color.Error,
-            Icons.Material.Filled.ContentCopy);
-        if (!confirmed) return;
-
-        try
-        {
-            var actor = await AuthService.GetRequiredActorNameAsync();
-            await ExpenseService.RejectAsync(InvoiceId, "Atmesta kaip dublikatas", actor);
-            Snackbar.Add("Dublikatas atmestas", Severity.Info);
-            MudDialog?.Close(DialogResult.Ok(true));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
-        }
-    }
-
     private async Task<IEnumerable<BusinessPartner>> SearchSuppliers(string val, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(val))

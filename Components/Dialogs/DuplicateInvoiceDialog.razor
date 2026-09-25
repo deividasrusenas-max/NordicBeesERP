@@ -186,6 +186,12 @@
             Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
             return;
         }
+        catch (InvalidOperationException ex)
+        {
+            // e.g. the invoice no longer exists (removed meanwhile)
+            Snackbar.Add(ex.Message, Severity.Warning);
+            return;
+        }
 
         // Close dialog and signal caller to refresh
         MudDialog.Close("different");

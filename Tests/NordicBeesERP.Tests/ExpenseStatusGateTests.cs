@@ -215,7 +215,7 @@ public class ExpenseStatusGateTests : IClassFixture<DbTestFixture>
     };
 
     [Fact]
-    public async Task UpdateInvoice_CorrectedAmounts_ClearsGate_LeavesNeedsReview()
+    public async Task UpdateInvoice_CorrectedAmounts_ClearsGate_MovesToPending()
     {
         var supplierId = await InsertSupplierAsync();
         var id = await InsertInvoiceAsync("NEEDS_REVIEW", supplierId, new[] { OcrFlag.MissingMoneyField }, 0m, 0m, 465374.45m);
