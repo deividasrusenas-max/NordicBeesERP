@@ -65,10 +65,13 @@ check on staging for them.
 green. Also open the "Hardcode Check" run (0c-10): its semgrep step (added in C8) is the last step
 of that job, after the company-name step, which exits 1 on hits and has known pre-existing hits
 (0c report §2; `hardcode-check.yml` "Check for hardcoded company name"). So:
-- if the company-name step is red, the semgrep step was **skipped** — record "C8 semgrep gate did
+- if the company-name step — or any other earlier step of that job — is red, the semgrep step was
+  **skipped** — record "C8 semgrep gate did
   not run on this push" for the owner; it does not block the deploy (separate workflow);
 - if it reached the semgrep step, record that step's result.
-I did not run the workflow; which of the two happens is decided by the real run.
+I did not run the workflow; which of the two happens is decided by the real run. (Those grep
+steps use `--exclude-path`, which GNU grep may reject — then the step passes without checking.
+Record what the log shows.)
 Failure: a red "Build and Deploy" → staging still runs the old image; stop here.
 
 1.2 **Container recreated** (on `lakstena-dev`):
@@ -140,8 +143,8 @@ Browser:
   not in any total.
 - Supplier history for 246's `supplier_id`: its totals exclude 246; the table still lists it.
   (Known: the count KPI counts payable invoices, the table lists all rows.)
-- Budget dialog for 246's year (see `invoice_date` below): 246's 23 524,80 € (net
-  `amount_excl_vat` — budget actuals are net, D-036) is not in any actual
+- Budget dialog for 246's year (see `invoice_date` below): 246's **net** `amount_excl_vat` from
+  the query below (budget actuals are net, D-036 — not the 23 524,80 € gross) is not in any actual
   (`ExpenseBudgetDialog.razor:165` excludes quarantined invoices).
 - ExpenseInvoices list: all 28 are still listed.
 
@@ -149,7 +152,8 @@ Browser:
 sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_date, amount_excl_vat, amount_incl_vat, category_id FROM expense_invoices WHERE id = 246;"
 ```
 
-Failure: 23 524,80 € (or any listed id) inside a cash-flow, supplier-history or budget figure, or
+Failure: 246's amount (gross in cash flow / supplier history, net in the budget) or any listed id
+inside such a figure, or
 a listed id missing from the ExpenseInvoices list.
 
 ## 3. Due date shown as assumed (E0-6, 0c-9) — no data change
@@ -459,7 +463,8 @@ missing `files` row, or `file_id` NULL on a new invoice.
 
 ## 19. Re-OCR on a new invoice (0c-1, 0c-6) — no data change today
 
-a) **Not runnable today** (warning 2): no invoice has both `file_id` and `original_file_path`, so
+a) **Not runnable today** (warning 2; confirm with check 4's second query — by the code, no
+   invoice has both `file_id` and `original_file_path`), so
    „PAKARTOTI OCR" is never offered for a stored file. Confirm on a new invoice from 18.x: no
    button. Record as owner finding.
 b) The DUPLICATE_PENDING invoice created in 18.4 (it has a `file_id`): no „PAKARTOTI OCR" button
