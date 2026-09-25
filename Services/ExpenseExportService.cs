@@ -1,7 +1,6 @@
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using NordicBeesERP.Data;
-using NordicBeesERP.Helpers;
 using NordicBeesERP.Models.Expenses;
 
 namespace NordicBeesERP.Services
@@ -28,47 +27,6 @@ namespace NordicBeesERP.Services
                 return await ExportInvoicesToCsvAsync(invoices);
             else
                 return await ExportInvoicesToExcelAsync(invoices);
-        }
-
-        /// <summary>
-        /// Export expense invoices filtered by criteria to specified format
-        /// </summary>
-        public async Task<byte[]> ExportInvoicesByFilterAsync(string? status, DateTime? fromDate, DateTime? toDate, int? supplierId, int? categoryId, string format)
-        {
-            using var context = _dbFactory.CreateDbContext();
-            var query = context.ExpenseInvoices.AsQueryable();
-
-            // An explicit status filter returns exactly that status; otherwise quarantined
-            // invoices (DUPLICATE_PENDING / REJECTED) are left out of the export (D-027).
-            if (!string.IsNullOrEmpty(status))
-                query = query.Where(i => i.Status == status);
-            else
-                query = query.WhereCountsAsPayable();
-
-            if (supplierId.HasValue)
-                query = query.Where(i => i.SupplierId == supplierId.Value);
-
-            if (fromDate.HasValue)
-                query = query.Where(i => i.InvoiceDate >= fromDate.Value);
-
-            if (toDate.HasValue)
-                query = query.Where(i => i.InvoiceDate <= toDate.Value);
-
-            if (categoryId.HasValue)
-            {
-                query = query.Where(i => i.ExpenseInvoiceLines.Any(l => l.ExpenseLineAllocations.Any(a => a.CategoryId == categoryId.Value)));
-            }
-
-            var invoices = await query
-                .Include(i => i.Supplier)
-                .Include(i => i.ExpenseInvoiceLines)
-                    .ThenInclude(l => l.ExpenseLineAllocations)
-                        .ThenInclude(a => a.Category)
-                .Include(i => i.ExpensePayments)
-                .OrderByDescending(i => i.InvoiceDate)
-                .ToListAsync();
-
-            return await ExportInvoicesAsync(invoices, format);
         }
 
         /// <summary>

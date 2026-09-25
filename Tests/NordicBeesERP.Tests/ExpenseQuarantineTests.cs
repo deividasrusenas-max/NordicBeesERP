@@ -74,9 +74,7 @@ public class ExpenseQuarantineTests : IClassFixture<DbTestFixture>
         }
     }
 
-    // ExportInvoicesByFilterAsync itself is not exercised here: it throws before filtering
-    // because its Include chain targets [NotMapped] navigations (pre-existing, owner decision
-    // pending). The predicate it now uses is tested directly against the real database instead.
+    // The quarantine predicate is tested directly against the real database.
 
     [Fact]
     public async Task WhereCountsAsPayable_TranslatesToSql_AndExcludesQuarantined()
