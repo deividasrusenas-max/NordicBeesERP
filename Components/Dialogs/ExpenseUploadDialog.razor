@@ -9,7 +9,6 @@
 @inject IDialogService DialogService
 @inject IJSRuntime JS
 @inject ILogger<ExpenseUploadDialog> Logger
-@inject IImageToPdfService ImageToPdfService
 @inject NordicBeesERP.Data.NordicBeesERPContext Context
 @inject IFileStore FileStore
 @implements IAsyncDisposable
@@ -28,10 +27,10 @@
                         <div id="expense-drop-zone"
                              style="border:2px dashed #bdbdbd; border-radius:12px; cursor:pointer; min-height:160px; background:#fafafa; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px;">
                             <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Primary" Style="font-size:56px; pointer-events:none;" />
-                            <MudText Style="pointer-events:none;" Class="mt-2">Nutempkite PDF arba paveiksliuką čia</MudText>
-                            <MudText Typo="Typo.caption" Style="pointer-events:none;" Class="mt-1">PDF, JPG, PNG, WEBP, TIFF</MudText>
+                            <MudText Style="pointer-events:none;" Class="mt-2">Nutempkite PDF failą čia</MudText>
+                            <MudText Typo="Typo.caption" Style="pointer-events:none;" Class="mt-1">Tik skaitmeninis PDF (su teksto sluoksniu)</MudText>
                             <MudText Typo="Typo.caption" Style="pointer-events:none;" Class="mt-1 mb-3">arba</MudText>
-                            <MudFileUpload T="IBrowserFile" Accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff,.tif" MaximumFileCount="1" FilesChanged="OnFileChanged">
+                            <MudFileUpload T="IBrowserFile" Accept=".pdf" MaximumFileCount="1" FilesChanged="OnFileChanged">
                                 <ActivatorContent>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FolderOpen">
                                         Pasirinkti failą
@@ -67,7 +66,7 @@
             @if (_phase == "error") {
                 <div class="text-center">
                     <MudIcon Icon="@Icons.Material.Filled.Error" Style="font-size:64px;color:#dc2626" Class="mb-3"/>
-                    <MudText Typo="Typo.h6" Color="Color.Error" Class="mb-3">OCR nepavyko</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Error" Class="mb-3">@_errorTitle</MudText>
                     <MudAlert Severity="Severity.Error" Class="mb-4" Style="text-align:left">
                         @if (_errorMessage.Contains('\n'))
                         {
@@ -382,6 +381,8 @@
     private int _processingStep = 0;
     private OcrResultDto? _ocrResult;
     private string _errorMessage = "";
+    // Error-phase heading: OCR failures keep „OCR nepavyko"; intake refusals (D-032, B5) say what happened
+    private string _errorTitle = "OCR nepavyko";
     private string _invoiceType = "STANDARD";
     private int? _categoryId;
     private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
@@ -452,28 +453,43 @@
 
     private async Task OnFileChanged(IBrowserFile? file)
     {
-        _file = file;
+        _file = null;
         _pdfBase64 = "";
         _convertedFileName = "";
         if (file != null)
         {
+            // D-032: PDF only — images are no longer converted, they are refused
+            if (!PdfIntakeCheck.HasPdfExtension(file.Name))
+            {
+                Snackbar.Add(PdfIntakeCheck.Message(PdfIntakeResult.NotPdf)!, Severity.Warning);
+                StateHasChanged();
+                return;
+            }
+
             using var stream = file.OpenReadStream(10 * 1024 * 1024);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
-            _pdfBase64 = Convert.ToBase64String(ms.ToArray());
+            var bytes = ms.ToArray();
+            if (!PdfIntakeCheck.HasPdfSignature(bytes))
+            {
+                Snackbar.Add(PdfIntakeCheck.Message(PdfIntakeResult.NotPdf)!, Severity.Warning);
+                StateHasChanged();
+                return;
+            }
 
-            if (ImageToPdfService.IsImage(file.Name))
-            {
-                var imageBytes = Convert.FromBase64String(_pdfBase64);
-                var pdfBytes = await ImageToPdfService.ConvertToPdfAsync(imageBytes, ImageToPdfService.GetMimeType(file.Name));
-                _pdfBase64 = Convert.ToBase64String(pdfBytes);
-                _convertedFileName = Path.GetFileNameWithoutExtension(file.Name) + ".pdf";
-            }
-            else
-            {
-                _convertedFileName = file.Name;
-            }
+            _file = file;
+            _pdfBase64 = Convert.ToBase64String(bytes);
+            _convertedFileName = file.Name;
         }
+        StateHasChanged();
+    }
+
+    /// <summary>Shows a non-OCR refusal in the error phase with a heading that matches the case.</summary>
+    private void ShowRefusal(string title, string message)
+    {
+        _errorTitle = title;
+        _errorMessage = message;
+        _phase = "error";
         StateHasChanged();
     }
 
@@ -541,6 +557,14 @@
                 await blobStream.CopyToAsync(memoryStream);
                 fileBytes = memoryStream.ToArray();
             }
+            // D-032: re-OCR of a stored scan/unreadable file is refused before Azure, like a new upload
+            var intake = PdfIntakeCheck.Check(fileBytes);
+            if (intake != PdfIntakeResult.Ok)
+            {
+                ShowRefusal("Failas nepriimtas", PdfIntakeCheck.Message(intake)!);
+                return;
+            }
+
             string base64 = Convert.ToBase64String(fileBytes);
             _pdfBase64 = base64;
 
@@ -770,18 +794,26 @@
         {
             if (string.IsNullOrEmpty(_pdfBase64)) { Snackbar.Add("Failas nepasirinktas arba nepavyko nuskaityti", Severity.Warning); return; }
             string base64 = _pdfBase64;
+            var pdfBytes = Convert.FromBase64String(base64);
+
+            // D-032: digital PDFs only — refuse scans / unreadable files before the hash check and Azure
+            var intake = PdfIntakeCheck.Check(pdfBytes);
+            if (intake != PdfIntakeResult.Ok)
+            {
+                ShowRefusal("Failas nepriimtas", PdfIntakeCheck.Message(intake)!);
+                return;
+            }
 
             // Identical bytes are the same document: hash exactly what SaveAsync would store
-            // (the decoded _pdfBase64, i.e. after image→PDF conversion) and stop before Azure.
-            var sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Convert.FromBase64String(base64))).ToLowerInvariant();
+            // (the decoded _pdfBase64) and stop before Azure.
+            var sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(pdfBytes)).ToLowerInvariant();
             foreach (var linkedId in await FileStore.FindLinkedEntityIdsAsync(sha256, "expenses", CancellationToken.None))
             {
                 var existing = await ExpenseService.GetInvoiceAsync((int)linkedId);
                 if (existing == null) continue;
 
-                _phase = "error";
-                _errorMessage = $"Šis failas jau įkeltas: sąskaita Nr. {existing.InvoiceNumber} ({ExpenseStatusHelper.GetLabel(existing.Status)})";
-                StateHasChanged();
+                ShowRefusal("Failas jau įkeltas",
+                    $"Šis failas jau įkeltas: sąskaita Nr. {existing.InvoiceNumber} ({ExpenseStatusHelper.GetLabel(existing.Status)})");
                 return;
             }
 
