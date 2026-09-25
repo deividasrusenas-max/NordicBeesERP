@@ -21,8 +21,10 @@ check on staging for them.
   `Migrations/20260915120000_AddFilesTableAndExpenseInvoiceFileId.cs`. InitialCreate is a
   `CREATE TABLE IF NOT EXISTS` dump and `__EFMigrationsHistory` is not proof of schema (D-029);
   if a query fails with "Unknown column", run `DESCRIBE <table>` and tell Claude — do not guess.
+  Exception: `expense_payments.source` exists in the model (`ExpenseModels.cs:145`) and on prod
+  (`Docs/infra/SERVER-STATE.md` §7.1) but in no migration file.
 - Checks 2–9 do not change data. **Checks 10–19 change staging data** and are listed last.
-- `<INV0>`, `<AUD0>`, `<FILE0>`, `<PAY0>` are the baseline ids from check 1.4. Replace them by
+- `<INV0>`, `<AUD0>`, `<FILE0>`, `<PAY0>` are the baseline ids from check 1.5. Replace them by
   hand.
 
 ## Warnings (read before starting)
@@ -31,15 +33,22 @@ check on staging for them.
    invoice with no lines (fixed by 0c C2b, D-035). **Never save a line-less invoice (e.g. 167,
    flag `LINES_NOT_FOUND`) on code older than this push** — not on production until production
    is deployed, and on staging only after check 1 has proved that the new code is running.
-2. **Old invoices have no stored PDF.** The 247 prod-clone invoices have `file_id` NULL (their
-   PDFs are gone, `Docs/infra/SERVER-STATE.md` §1.3). Re-OCR requires `file_id`
-   (`InvoiceDetailDialog.razor` `RerunOcrAsync`), so on any old invoice „PAKARTOTI OCR" shows
-   *„OCR negalima pakartoti – šio dokumento failas nėra saugomas centralizuotoje failų
-   saugykloje."* and does nothing. E0-3 (re-OCR one of the 336 invoices) and the 0c-6 item
+2. **Re-OCR cannot be exercised on staging at all.** The „PAKARTOTI OCR" button is shown only
+   when `original_file_path` is non-empty and the status is NEEDS_REVIEW / PENDING /
+   PENDING_SUPPLIER (`InvoiceDetailDialog.razor:430`), and `RerunOcrAsync` additionally refuses
+   when `file_id` is NULL (*„OCR negalima pakartoti – šio dokumento failas nėra saugomas
+   centralizuotoje failų saugykloje."*).
+   - The 247 prod-clone invoices have a path but `file_id` NULL (PDFs gone,
+     `Docs/infra/SERVER-STATE.md` §1.3) → refused with that message.
+   - Invoices uploaded since the storage change have a `file_id` but `original_file_path` NULL —
+     a new upload never sets it (`ExpenseService.cs:1694` copies `ocrResult.OriginalFilePath`, which
+     only the re-OCR path sets, `ExpenseUploadDialog.razor:968`) → the button is not shown.
+   So E0-3 (re-OCR one of the 336 invoices), 0c-1's positive re-OCR case and the 0c-6 item
    "re-OCR of an old image-derived invoice → Failas nepriimtas" **cannot be run as the reports
-   describe them**. They are replaced by checks 4 and 18 below.
+   describe them**. They are replaced by checks 4 and 18.1. This is a product finding for the
+   owner (re-OCR unreachable from the UI), not a staging failure.
 3. **Every upload calls Azure DI with the production key** (D-029: staging has prod
-   `app_settings`). Only checks 18–19 upload for analysis; refusal checks (7, 8) stop before
+   `app_settings`). Only check 18 uploads for analysis; refusal checks (7, 8) stop before
    Azure.
 4. **Do not save a bank import on staging** (check 6 stops before saving).
 5. Duplicate re-uploads (check 18.4) need the **original PDF** of invoice 148 (PRD 0015764) from
@@ -52,11 +61,15 @@ check on staging for them.
 
 **Proves:** staging runs the pushed code, started cleanly, and storage is mounted.
 
-1.1 **CI.** In GitHub Actions, the "Build and Deploy" run for the pushed `main` commit is green;
-the "Hardcode Check" run is green or only has the known pre-existing company-name hits
-(0c report §2). The semgrep gate added in C8 runs for the first time on this push — watch it
-(0c-10).
-Failure: a red deploy job → staging still runs the old image; stop here.
+1.1 **CI.** In GitHub Actions, the "Build and Deploy" run for the pushed `main` commit must be
+green. Also open the "Hardcode Check" run (0c-10): its semgrep step (added in C8) is the last step
+of that job, after the company-name step, which exits 1 on hits and has known pre-existing hits
+(0c report §2; `hardcode-check.yml` "Check for hardcoded company name"). So:
+- if the company-name step is red, the semgrep step was **skipped** — record "C8 semgrep gate did
+  not run on this push" for the owner; it does not block the deploy (separate workflow);
+- if it reached the semgrep step, record that step's result.
+I did not run the workflow; which of the two happens is decided by the real run.
+Failure: a red "Build and Deploy" → staging still runs the old image; stop here.
 
 1.2 **Container recreated** (on `lakstena-dev`):
 
@@ -127,10 +140,17 @@ Browser:
   not in any total.
 - Supplier history for 246's `supplier_id`: its totals exclude 246; the table still lists it.
   (Known: the count KPI counts payable invoices, the table lists all rows.)
+- Budget dialog for 246's year (see `invoice_date` below): 246's 23 524,80 € (net
+  `amount_excl_vat` — budget actuals are net, D-036) is not in any actual
+  (`ExpenseBudgetDialog.razor:165` excludes quarantined invoices).
 - ExpenseInvoices list: all 28 are still listed.
 
-Failure: 23 524,80 € (or any listed id) inside a cash-flow or supplier-history total, or a
-listed id missing from the ExpenseInvoices list.
+```bash
+sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_date, amount_excl_vat, amount_incl_vat, category_id FROM expense_invoices WHERE id = 246;"
+```
+
+Failure: 23 524,80 € (or any listed id) inside a cash-flow, supplier-history or budget figure, or
+a listed id missing from the ExpenseInvoices list.
 
 ## 3. Due date shown as assumed (E0-6, 0c-9) — no data change
 
@@ -151,20 +171,22 @@ be done on existing data — note it.
 changed automatically; re-OCR on file-less old invoices is refused before Azure.
 
 ```bash
-sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, supplier_id, status, file_id FROM expense_invoices WHERE id IN (139,140,145,146,172,173,186,190,197,202,206,237,256,296,319,331) ORDER BY id;"
-sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, status, file_id FROM expense_invoices WHERE file_id IS NOT NULL ORDER BY id;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, supplier_id, status, file_id, original_file_path FROM expense_invoices WHERE id IN (139,140,145,146,172,173,186,190,197,202,206,237,256,296,319,331) ORDER BY id;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, status, file_id, original_file_path FROM expense_invoices WHERE file_id IS NOT NULL ORDER BY id;"
 ```
 
 Expected: the 16 rows still have `supplier_id` 336 (cleanup is PROD-DATA-FINDINGS §6.3, not
-automatic) and `file_id` NULL. The second query lists the few invoices that can be re-OCR'd
-(uploaded after the storage change, e.g. 376).
+automatic) and `file_id` NULL. The second query lists invoices uploaded after the storage change
+(e.g. 376); they have `original_file_path` NULL, so no re-OCR button (warning 2) — they are used
+in check 8.
 
 Browser:
 - A PAID invoice: no „PAKARTOTI OCR" button.
 - 149, 246, 361 (DUPLICATE_PENDING): no „PAKARTOTI OCR" button.
-- One of the 16 (e.g. 139, if its status is NEEDS_REVIEW / PENDING / PENDING_SUPPLIER):
-  „PAKARTOTI OCR" → *„OCR negalima pakartoti – šio dokumento failas nėra saugomas
-  centralizuotoje failų saugykloje."* Nothing else happens.
+- One of the 16 whose status is NEEDS_REVIEW / PENDING / PENDING_SUPPLIER and
+  `original_file_path` is non-empty: „PAKARTOTI OCR" → *„OCR negalima pakartoti – šio dokumento
+  failas nėra saugomas centralizuotoje failų saugykloje."* Nothing else happens.
+- An invoice from the second query: no „PAKARTOTI OCR" button (expected today, warning 2).
 
 Failure: the button on a paid or quarantined invoice, or a re-OCR dialog opening for a
 `file_id` NULL invoice. The "not assigned to 336 when the VAT code is missing" part of E0-3 is
@@ -188,8 +210,8 @@ did not re-derive it as a query.
 
 Browser: Bank import → load a statement → **stop at the candidate list; do not save.** The
 expense-invoice candidates must not contain 246, 149, 361 (or any id from check 2) nor 277.
-Unverified: whether parsing alone writes a `bank_imports` row — I did not trace it. If you want
-certainty, run check 1.5's first query before and compare `SELECT MAX(id) FROM bank_imports;`.
+Loading a statement without saving writes nothing: `CreateBankImportAsync` is called only from
+`SaveMatches` (`BankImport.razor:648`, reviewer-verified).
 
 Read-only guard, useful on its own (payments ever attached to a quarantined invoice):
 
@@ -205,8 +227,9 @@ Expected: no row with `p.id > <PAY0>`. Older rows, if any, come from prod data (
 
 Browser (upload dialog):
 - choose a JPG/PNG → refused at selection;
-- choose a scanned PDF (e.g. the local „Ratukų kronšteinų centras" / „Sanitex" type) →
-  „Failas nepriimtas" with the scans message;
+- choose a scanned PDF (e.g. the local „Ratukų kronšteinų centras" / „Sanitex" type) and press
+  „Analizuoti" → „Failas nepriimtas" with the scans message (the check runs on „Analizuoti",
+  still before Azure — `ExpenseUploadDialog.razor:856-860`);
 - a digital PDF → accepted into the dialog (close it before „Analizuoti" for this check).
 
 Afterwards: `SELECT MAX(id) FROM expense_invoices;` and `SELECT MAX(id) FROM files;` still equal
@@ -272,8 +295,10 @@ AMOUNT_ARITHMETIC_MISMATCH, MISSING_MONEY_FIELD, FUTURE_DATE, STALE_DATE, MISSIN
 
 Browser: invoice 277 → duplicate dialog → „Tai skirtinga sąskaita".
 SQL: the state query with `<ID>` = 277, then the audit query.
-Expected: `status` is no longer DUPLICATE_PENDING — per the report NEEDS_REVIEW (MISSING_AMOUNT,
-0,00 €) or PENDING_SUPPLIER if it has no supplier; `ocr_flags` no longer contains `DUPLICATE`;
+Expected: `status` is no longer DUPLICATE_PENDING. It is decided from the **stored** flags minus
+`DUPLICATE` (no recompute, `ExpenseService.cs:1509-1515`): REJECTED if `WRONG_RECIPIENT` is stored,
+PENDING_SUPPLIER if `supplier_id` is NULL, NEEDS_REVIEW if any review flag is stored (the report
+expects MISSING_AMOUNT, 0,00 €), otherwise PENDING — predict it from the "before" row; `ocr_flags` no longer contains `DUPLICATE`;
 one audit row `DUPLICATE_DISMISSED`, details „Pažymėta kaip skirtinga sąskaita (ne dublikatas)",
 old DUPLICATE_PENDING, `performed_by` = your name.
 Failure: status still DUPLICATE_PENDING, the flag still there, or no audit row.
@@ -288,7 +313,7 @@ Expected: the row still exists, `status` REJECTED, `rejected_reason` „Dublikat
 number>", audit row `REJECTED` with the same details, old DUPLICATE_PENDING.
 Failure: the row is gone, or status unchanged.
 
-## 12. „PATVIRTINTI" on an unresolved duplicate (E0-2) — may change data if it fails
+## 12. „PATVIRTINTI" on an unresolved duplicate (E0-2) — CHANGES STAGING DATA (only if it fails)
 
 **Proves:** approval is refused while the duplicate is unresolved.
 
@@ -322,7 +347,8 @@ correct header.
 
 Browser: edit + save 168 (2026-11-02) and 341 (2026-10-06).
 Expected: `FUTURE_DATE` in `ocr_flags` („Data ateityje"), status NEEDS_REVIEW (if they have a
-supplier).
+supplier). The flag needs a date after today: from 2026-10-06 on, 341 no longer qualifies, and
+from 2026-11-02 on, 168 neither.
 167 (2026-09-02) does **not** get the flag — the date is already past; it keeps the arithmetic
 problem (check 13).
 Correct 341's date to a past date → save → `FUTURE_DATE` gone.
@@ -337,11 +363,13 @@ Find candidates:
 
 ```bash
 sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, status, amount_excl_vat, vat_amount, amount_incl_vat, ocr_flags, approved_by FROM expense_invoices WHERE status = 'PENDING' ORDER BY id DESC LIMIT 10;"
-sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, status, ocr_flags, approved_by FROM expense_invoices WHERE JSON_CONTAINS(ocr_flags, JSON_QUOTE('ZERO_VAT')) AND status IN ('PENDING','NEEDS_REVIEW') ORDER BY id DESC LIMIT 10;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, supplier_id, status, ocr_flags, approved_by FROM expense_invoices WHERE JSON_CONTAINS(ocr_flags, JSON_QUOTE('ZERO_VAT')) AND status = 'NEEDS_REVIEW' AND supplier_id IS NOT NULL ORDER BY id DESC LIMIT 10;"
 ```
 
 a) A PENDING invoice: break the amounts (e.g. 803,31 / 168,69 / 1 000,00) → save → NEEDS_REVIEW.
-b) A ZERO_VAT invoice: approve (PATVIRTINTI) → PENDING with `approved_by` set; edit only the
+b) A NEEDS_REVIEW ZERO_VAT invoice with a supplier („PATVIRTINTI" is shown only for NEEDS_REVIEW /
+   DUPLICATE_PENDING / PENDING_SUPPLIER, `InvoiceDetailDialog.razor:439`): approve → PENDING with
+   `approved_by` set; edit only the
    notes → still PENDING, `approved_by` unchanged, no `APPROVAL_VOIDED`.
 c) Same invoice: change an amount → NEEDS_REVIEW, `approved_by` and `approved_at` NULL, audit
    row `APPROVAL_VOIDED` („Pakeisti laukai: …").
@@ -377,10 +405,12 @@ lost category or allocation.
 **Proves:** dismissing a wrong-recipient rejection is audited and restores the rule-based status.
 
 ```bash
-sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, supplier_id, status, rejected_reason, ocr_flags FROM expense_invoices WHERE status = 'REJECTED' AND rejected_reason LIKE 'Sąskaita ne %' ORDER BY id;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT id, invoice_number, supplier_id, status, rejected_reason, ocr_flags FROM expense_invoices WHERE status = 'REJECTED' AND rejected_reason LIKE 'Sąskaita ne %' AND JSON_CONTAINS(ocr_flags, JSON_QUOTE('WRONG_RECIPIENT')) ORDER BY id;"
 ```
 
-Browser: open one → „Gavėjas patvirtintas".
+Browser: open one → the orange banner „Sistema mano kad sąskaita ne …" → button „✓ Lakštenai"
+(shown only when `WRONG_RECIPIENT` is in `ocr_flags`, `InvoiceDetailDialog.razor:65-77`) → snackbar
+„Gavėjas patvirtintas".
 Expected: status by the rules above (not REJECTED), `WRONG_RECIPIENT` removed from `ocr_flags`,
 audit `WRONG_RECIPIENT_DISMISSED` („Gavėjas patvirtintas rankiniu būdu").
 If the query returns no rows, the check cannot be done on existing data — note it.
@@ -409,7 +439,8 @@ Expected: `DUPLICATE_PENDING`, `DUPLICATE` in `ocr_flags`, audit `CREATED` whose
 flags („Šaltinis: …, tikslumas: …%, požymiai: …"). (`DUPLICATE_DETECTED` is written only by the
 older manual-add path, not by OCR create — so its absence here is expected.) A „1" /
 0,00 € document is **not** flagged as a duplicate (if you have one).
-18.5 **Same PDF again after upload (E0-8).** Upload one of the PDFs from 18.1–18.3 again →
+18.5 **Same PDF again after upload (E0-8).** (E0-8's "a re-uploaded image is still analysed" no
+longer applies: images are refused at selection since C5, check 7.) Upload one of the PDFs from 18.1–18.3 again →
 „Failas jau įkeltas"; no new row.
 18.6 **Negative amounts (E0-9).** Only if a supplier credit note is at hand: → NEEDS_REVIEW with
 `MISSING_MONEY_FIELD`, not duplicate-checked. Intended.
@@ -426,10 +457,11 @@ regression.
 Failure (any 18.x): a supplier guessed (336 or another partner without a VAT match), no flag, a
 missing `files` row, or `file_id` NULL on a new invoice.
 
-## 19. Re-OCR on a new invoice (0c-1, 0c-6) — CHANGES STAGING DATA, CALLS AZURE
+## 19. Re-OCR on a new invoice (0c-1, 0c-6) — no data change today
 
-Only invoices with `file_id` (from check 8's list or 18.x) can be re-OCR'd.
-a) A NEEDS_REVIEW / PENDING invoice with `file_id` → „PAKARTOTI OCR" → audit `OCR_RETRIED`.
+a) **Not runnable today** (warning 2): no invoice has both `file_id` and `original_file_path`, so
+   „PAKARTOTI OCR" is never offered for a stored file. Confirm on a new invoice from 18.x: no
+   button. Record as owner finding.
 b) The DUPLICATE_PENDING invoice created in 18.4 (it has a `file_id`): no „PAKARTOTI OCR" button
    (the button is shown only for NEEDS_REVIEW / PENDING / PENDING_SUPPLIER) — 0c-1 "re-OCR is not
    offered in the UI".
@@ -451,7 +483,7 @@ invoices have no stored file (warning 2).
 | E0-7 duplicate detection | 18.4 |
 | E0-8 SHA-256 | 8, 18.5 |
 | E0-9 negative amounts | 18.6 |
-| 0c-1 re-OCR | 4, 19 |
+| 0c-1 re-OCR | 4, 19 ("if the service is reached, the status stays" — not reachable from the UI) |
 | 0c-2 manual edit | 15 |
 | 0c-3 edit save | 16 |
 | 0c-4 wrong recipient | 17 |
@@ -464,7 +496,6 @@ invoices have no stored file (warning 2).
 
 ## Names I could not verify from the code
 
-- Whether bank-statement parsing (before saving) writes a `bank_imports` row (check 6).
 - A log line that proves an Azure DI call happened (check 8) — none found.
 - The exact budget-actuals query (check 5) — deliberately not given.
 - All column names above come from the model and migration files, not from the live staging
@@ -474,11 +505,13 @@ invoices have no stored file (warning 2).
 
 All must be true:
 
-- [ ] 1.1–1.4: CI green, new container, no `Kritinė klaida`, no new pending migration, sentinel
-      `Staging`.
-- [ ] 2: the 28 quarantined invoices are out of every total and still listed.
+- [ ] 1.1–1.5: "Build and Deploy" green (Hardcode Check / semgrep result recorded), new
+      container, no `Kritinė klaida`, no new pending migration, sentinel `Staging`.
+- [ ] 2: the 28 quarantined invoices are out of every total (cash flow, supplier history, budget)
+      and still listed.
 - [ ] 3, 5, 9: due-date marker, budget actuals, drag & drop behave as described.
-- [ ] 4, 19: no re-OCR on paid/quarantined; file-less re-OCR refused cleanly.
+- [ ] 4, 19: no re-OCR on paid/quarantined; file-less re-OCR refused cleanly; the owner has
+      decided about re-OCR being unreachable for stored files (warning 2).
 - [ ] 6: no quarantined invoice among bank candidates; no new payment on a quarantined invoice.
 - [ ] 7, 8, 18.5: refusals happen before Azure, no rows created.
 - [ ] 10–12: duplicate dialog audited; reject keeps the row; approve refused.
