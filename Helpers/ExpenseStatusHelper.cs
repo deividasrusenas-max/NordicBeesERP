@@ -1,9 +1,23 @@
 using MudBlazor;
+using NordicBeesERP.Models.Expenses;
 
 namespace NordicBeesERP.Helpers;
 
 public static class ExpenseStatusHelper
 {
+    // D-027: DUPLICATE_PENDING and REJECTED are quarantined — never a liability, never in totals,
+    // cash flow or export unless a filter asks for that status explicitly.
+
+    /// <summary>
+    /// EF-translatable payable filter. Explicit != comparisons on purpose (FROZEN.md §10).
+    /// </summary>
+    public static IQueryable<ExpenseInvoice> WhereCountsAsPayable(this IQueryable<ExpenseInvoice> query) =>
+        query.Where(i => i.Status != "DUPLICATE_PENDING" && i.Status != "REJECTED");
+
+    /// <summary>In-memory check for materialised lists only — never use inside an EF LINQ expression (use WhereCountsAsPayable).</summary>
+    public static bool CountsAsPayable(string? status) =>
+        status != "DUPLICATE_PENDING" && status != "REJECTED";
+
     public static string GetLabel(string? status) => status switch
     {
         "PENDING"           => "Laukia apmokėjimo",

@@ -174,7 +174,9 @@
         await dialog.Result;
     }
 
-    private decimal _totalSpent => _historyItems.Sum(i => i.AmountInclVat);
-    private int _invoiceCount => _historyItems?.Count ?? 0;
-    private decimal _averageAmount => _invoiceCount > 0 ? _historyItems.Average(i => i.AmountInclVat) : 0m;
+    // Totals exclude quarantined invoices (DUPLICATE_PENDING / REJECTED, D-027); the list still shows them.
+    private IEnumerable<ExpenseInvoice> PayableItems => (_historyItems ?? new()).Where(i => ExpenseStatusHelper.CountsAsPayable(i.Status));
+    private decimal _totalSpent => PayableItems.Sum(i => i.AmountInclVat);
+    private int _invoiceCount => PayableItems.Count();
+    private decimal _averageAmount => _invoiceCount > 0 ? PayableItems.Average(i => i.AmountInclVat) : 0m;
 }

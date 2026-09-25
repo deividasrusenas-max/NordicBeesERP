@@ -150,7 +150,10 @@
             _categories = await ExpenseService.GetCategoriesAsync();
             
             // Load all invoices to calculate actual expenses
-            var invoices = await ExpenseService.GetInvoicesAsync(fromDate: new DateTime(_year, 1, 1), toDate: new DateTime(_year, 12, 31));
+            // Quarantined invoices (DUPLICATE_PENDING / REJECTED, D-027) are not actual expenses
+            var invoices = (await ExpenseService.GetInvoicesAsync(fromDate: new DateTime(_year, 1, 1), toDate: new DateTime(_year, 12, 31)))
+                .Where(i => ExpenseStatusHelper.CountsAsPayable(i.Status))
+                .ToList();
             
             // Create budget items
             _budgetItems = CreateBudgetItems(budgets, invoices);

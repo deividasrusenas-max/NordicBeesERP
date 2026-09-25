@@ -861,6 +861,7 @@ namespace NordicBeesERP.Services
             
             return await context.ExpenseInvoices
                 .Where(i => i.DueDate >= from && i.DueDate <= to && i.Status != "PAID")
+                .WhereCountsAsPayable()
                 .OrderBy(i => i.DueDate)
                 .ToListAsync();
         }
