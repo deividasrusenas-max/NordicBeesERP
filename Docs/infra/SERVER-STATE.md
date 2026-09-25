@@ -222,3 +222,45 @@ Perskaityk Docs/infra/SERVER-STATE.md.
 Pradedam nuo read-only tyrimo: §2 nepatikrinti dalykai.
 Jokių komandų, keičiančių serverio būseną, kol nėra plano.
 ```
+
+---
+
+## 7. Atnaujinimas 2026-09-25 (OCR sesija 05)
+
+### 7.1 §1.4b nebegalioja — staging perklonuotas iš prodo (I-10 uždarytas)
+
+Iki 2026-09-25 `__EFMigrationsHistory` staginge jau rodė visas migracijas iki
+`20260910095703`, bet `information_schema` diff prieš prodą parodė, kad schema
+skiriasi: trūko `deliveries.receiver_name/signed_by_type/inspection_by_user_id`,
+`expense_payments.bank_confirmed/bank_import_id/bank_import_row_id/source`,
+`bank_import_rows.bank_ref`, `company_settings.default_vat_rate`, ~12 artwork indeksų
+(tarp jų unikalių); `invoice_audit` stulpelių tipai skyrėsi. Istorijos eilutės buvo
+įrašytos ranka be DDL — **istorija nėra schemos įrodymas** (I-11 patvirtintas).
+
+Staging perkurtas kaip prodo klonas + sesijos 04 pakeitimai (`files`,
+`expense_invoices.file_id`). Po to diff prieš prodą = tik šie pakeitimai. Procedūra —
+`Docs/ocr-rebuild/DECISIONS.md` D-029.
+
+### 7.2 Azure DI raktai gyvena DB
+
+`app_settings` lentelėje (`azure_di_endpoint`, `azure_di_key`), ne config'e. Raktų
+keitimas = rankinis `UPDATE` prodo DB. Staging klonas turi prodo raktą.
+
+`appsettings.json` image'e: SMTP nėra, `Telegram.BotToken` tuščias. Staging aplinkai
+`appsettings.Staging.json` nėra; `appsettings.Production.json` staginge nekraunamas.
+
+### 7.3 Prodas ir staging naudoja tą patį DB vartotoją
+
+`deploy.yml`: abu konteineriai jungiasi kaip `erp_user` su tuo pačiu
+`secrets.MYSQL_PASSWORD`. Staging kredencialai tikėtinai atidaro ir prodo bazę.
+
+| # | Darbas | Adresatas |
+|---|---|---|
+| I-13 | Atskiras DB vartotojas stagingui, teisės tik `nordic_bees_erp_staging` | Saulius / Deividas |
+| I-14 | Dev DB slaptažodis plaintext'u `AGENTS.md` — pakeisti ir perkelti į kintamąjį | Deividas |
+| I-15 | `~/backup/prod-for-staging-2026-09-25.sql.gz` turi prodo duomenis ir Azure raktą — ištrinti po storage gate | Deividas |
+
+### 7.4 Staging failų saugykla
+
+`/var/lib/nordicbees/staging/` 2026-09-25 turėjo tik `.nordicbees-storage` — per
+`IFileStore` staginge iki tol nebuvo įrašytas nė vienas failas.
