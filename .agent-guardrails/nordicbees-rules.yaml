@@ -7,9 +7,72 @@ rules:
       SaveChangesAsync() after Add/Update/Remove on a tracked entity silently
       persists 0 rows with no error. Use ExecuteSqlRawAsync with positional
       {0},{1} parameters instead. See AGENTS.md "Database writes".
+    # Fires only on the real anti-pattern: SaveChangesAsync after a tracked read that is then
+    # mutated, or after Update / Remove / Attach / Entry(...) on the context. Insert-only
+    # Add / AddAsync / AddRange + SaveChangesAsync is correct under NoTracking and is not flagged.
     patterns:
       - pattern: $CTX.SaveChangesAsync(...)
-      - pattern-not: $CTX.Database.ExecuteSqlRawAsync(...)
+      - pattern-either:
+          - pattern-inside: |
+              $E = await $CTX.$SET.FindAsync(...);
+              ...
+              $E.$P = $V;
+              ...
+          - pattern-inside: |
+              var $E = await $CTX.$SET.FindAsync(...);
+              ...
+              $E.$P = $V;
+              ...
+          - pattern-inside: |
+              $E = await $Q.$READ(...);
+              ...
+              $E.$P = $V;
+              ...
+          - pattern-inside: |
+              var $E = await $Q.$READ(...);
+              ...
+              $E.$P = $V;
+              ...
+          - pattern-inside: |
+              var $E = await $CTX.$SET.FindAsync(...);
+              ...
+              $E!.$P = $V;
+              ...
+          - pattern-inside: |
+              var $E = await $Q.$READ(...);
+              ...
+              $E!.$P = $V;
+              ...
+          - pattern-inside: |
+              $CTX.$SET.Update(...);
+              ...
+          - pattern-inside: |
+              $CTX.Update(...);
+              ...
+          - pattern-inside: |
+              $CTX.$SET.UpdateRange(...);
+              ...
+          - pattern-inside: |
+              $CTX.$SET.Remove(...);
+              ...
+          - pattern-inside: |
+              $CTX.Remove(...);
+              ...
+          - pattern-inside: |
+              $CTX.$SET.RemoveRange(...);
+              ...
+          - pattern-inside: |
+              $CTX.$SET.Attach(...);
+              ...
+          - pattern-inside: |
+              $CTX.Attach(...);
+              ...
+          - pattern-inside: |
+              $CTX.Entry($X).State = $V;
+              ...
+          - pattern-inside: |
+              $CTX.Entry($X).$M(...).$P = $V;
+              ...
     paths:
       exclude:
         - "/Tests/**"
@@ -72,6 +135,21 @@ rules:
           - pattern: $X.Equals($Y, StringComparison.OrdinalIgnoreCase)
           - pattern: $X.StartsWith($Y, System.StringComparison.OrdinalIgnoreCase)
           - pattern: $X.StartsWith($Y, StringComparison.OrdinalIgnoreCase)
+      # Only inside an EF query (semgrep has no type information, so the query is
+      # recognised by shape): a lambda in a query chain that starts at a
+      # DbContext-named variable's DbSet, or that ends in an EF async operator.
+      # In-memory LINQ over lists / materialised results is not flagged.
+      - pattern-either:
+          - patterns:
+              - pattern-inside: $CTX.$SET.$OP(...)
+              - metavariable-regex:
+                  metavariable: $CTX
+                  regex: ^(_?[cC]ontext\w*|_?[cC]tx\w*|_?[dD]b\w*|_?dbContext\w*)$
+          - patterns:
+              - pattern-inside: $Q.$ASYNC(...)
+              - metavariable-regex:
+                  metavariable: $ASYNC
+                  regex: ^(ToListAsync|ToArrayAsync|ToDictionaryAsync|FirstAsync|FirstOrDefaultAsync|SingleAsync|SingleOrDefaultAsync|LastAsync|LastOrDefaultAsync|AnyAsync|AllAsync|CountAsync|LongCountAsync|SumAsync|MinAsync|MaxAsync|AverageAsync|ContainsAsync|ExecuteUpdateAsync|ExecuteDeleteAsync|ForEachAsync|LoadAsync)$
 
   - id: nordicbees-dbnull-explicit-cast
     languages: [csharp]
@@ -287,23 +365,24 @@ rules:
       [Column(TypeName="decimal(p,s)")]. See AGENTS.md "Database writes" and
       Docs/BUGLOG.md entry for error class `ef-decimal-precision-annotation-missing`.
     patterns:
-      # Scope to EF entity classes: a [Table]-attributed class in the Models
-      # namespace. (Deliberately [Table]-only, not "any Models class": the BUGLOG
-      # notes that [Table]-less aliases such as Supplier/Customer are NOT real
-      # tables, and view-models like WeeklyForecastItem live in the same
-      # namespace with bare decimal properties — flagging those would be noise.)
-      - pattern: |
+      # Scope to EF entity classes: a [Table]-attributed class. (Deliberately
+      # [Table]-only, not "any Models class": the BUGLOG notes that [Table]-less
+      # aliases such as Supplier/Customer are NOT real tables, and view-models
+      # like WeeklyForecastItem have bare decimal properties — flagging those
+      # would be noise.)
+      # 2026-09-26 (Etapas 0c C8): the previous pattern did not parse (so this
+      # rule never ran); rewritten as a class-scoped property match.
+      # Semgrep's C# engine does not match auto-property declarations structurally,
+      # so the class scope is structural and the property line is a regex.
+      - pattern-inside: |
           [Table(...)]
-          ...
-          public $MODIFIERS? decimal $TYPE { get; set; } = ...;
-      - metavariable-regex:
-          metavariable: $TYPE
-          regex: ^\w+\??$
-      # Exclude properties that already carry an explicit precision annotation.
-      # Both accepted forms are matched here so a correctly-annotated property
-      # is never flagged (e.g. CompanySettings.DefaultVatRate [Precision(5, 2)]).
-      - pattern-not-regex: '\[Precision\s*\('
-      - pattern-not-regex: 'decimal\s*\(\s*\d+\s*,\s*\d+\s*\)'
+          class $CLASS { ... }
+      - pattern-regex: '(?m)^[ \t]*public[ \t]+decimal\??[ \t]+\w+[ \t]*\{[ \t]*get;[ \t]*set;[ \t]*\}'
+      # Exclude properties that already carry an explicit precision annotation
+      # (either accepted form, possibly stacked with other attributes / comments),
+      # e.g. CompanySettings.DefaultVatRate [Precision(5, 2)].
+      - pattern-not-regex: '\[Precision\s*\([^\]]*\)\]\s*(?:(?:\[[^\n]*\]|//[^\n]*)\s*)*public\s+decimal\??\s+\w+\s*\{\s*get;\s*set;\s*\}'
+      - pattern-not-regex: '\[Column\s*\([^\]]*TypeName\s*=\s*"decimal\s*\(\s*\d+\s*,\s*\d+\s*\)"[^\]]*\)\]\s*(?:(?:\[[^\n]*\]|//[^\n]*)\s*)*public\s+decimal\??\s+\w+\s*\{\s*get;\s*set;\s*\}'
 
   - id: nordicbees-pdf-locale-string-hardcoded-outside-labels
     languages: [csharp]

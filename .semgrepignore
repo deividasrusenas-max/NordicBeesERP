@@ -1,0 +1,9 @@
+# Semgrep rule-test fixture (Etapas 0c C8): contains intentional `ruleid:` positives for
+# .agent-guardrails/nordicbees-rules.yaml. Excluded from repo-wide scans (CI, pre-commit);
+# `semgrep --test --config .agent-guardrails/nordicbees-rules.yaml .agent-guardrails/.semgrep/nordicbees-rules.cs`
+# still scans it because explicitly passed targets bypass .semgrepignore.
+.agent-guardrails/.semgrep/
+
+# Keep semgrep's built-in default that a custom .semgrepignore would otherwise drop (verified by
+# diffing `semgrep --x-ls` target lists with and without this file).
+vendor/
