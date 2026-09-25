@@ -187,6 +187,64 @@ file_id;` — duomenų šis pakeitimas neliečia.
 
 ---
 
+## D-031 — Modulio baigtumo kriterijai: kokybė prieš greitį (2026-09-26)
+
+**Kontekstas.** Savininkas: „darom nuosekliai ir patikimai — modulis baigtas, kai veikia
+idealiai". Siūlytas apimties apkarpymas (Etapai 3–4 atidėti) **atmestas**.
+
+**Principas.** Nė viena klaida nepraeina tyliai: kiekviena sąskaita arba teisinga, arba
+garsiai sustabdyta. „100 % atpažinta" su OCR nepasiekiama; nulis tylių klaidų —
+pasiekiama ir patikrinama.
+
+**Modulis baigtas, kai įvykdyti visi šeši:**
+
+1. Visi kieti vartai veikia (dublikatas, EN 16931 aritmetika, datos, tiekėjas, PVM kodas,
+   IBAN, PVM tarifas) — testai + staging patikra ant prodo klono.
+2. Tiekėjas randamas be spėjimų (kaskada; dviprasmiška → „nerastas").
+3. Ekstrakcija ant realaus korpuso (40 dev + 20 hold-out, ranka patikrinta): pinigų
+   laukai hold-out aibėje — 0 tylių klaidų.
+4. Golden-file regresija ant saugomo žalio JSON.
+5. Prodo auditas: 60 atsitiktinių auto-priimtų sąskaitų prieš PDF — 0 tylių klaidų
+   („< 5 % su 95 % pasikliovimu", tyrimo 7 sk.).
+6. Peržiūros eilė gyva: nė viena sąskaita neišspręsta ilgiau nei **5 darbo dienas**
+   (numatyta reikšmė; savininkas gali pakeisti).
+
+**Tvarka.** Etapai 0 → 1 → 2 → 3 → 4 nuosekliai; kiekvienas uždaromas (užduotis →
+agentas → Claude peržiūra → pilni testai → staging → prodas) prieš kitą. Lygiagrečiai
+leidžiami tik izoliuoti darbai (tik nauji failai, be DB), jų peržiūra ir suliejimas —
+nuosekliai.
+
+---
+
+## D-032 — Įvestis: tik skaitmeniniai PDF (2026-09-26)
+
+**Sprendimas.** Modulis priima tik PDF su teksto sluoksniu. Paveikslėliai (JPG/PNG/…) ir
+skenuoti PDF (be teksto sluoksnio) atmetami prieš Azure su aiškiu pranešimu.
+
+**Pasekmės.**
+
+- SHA-256 dedup (B5) tampa pilnas — paveikslėlių konvertavimo nedeterminizmo problema
+  išnyksta kartu su paveikslėlių keliu.
+- Etapo 3 (D-023) ekstrakcijos dizainas paprastėja: skenuotų dokumentų klasė (tyrimo
+  2 sk. — didžiausias vaizdo/teksto skirtumas) iš apimties iškrenta.
+- Skenuotų sąskaitų palaikymas — atskiras vėlesnis sprendimas, ne šio modulio baigtumo
+  kriterijus.
+
+---
+
+## D-033 — Leidžiama keisti `BankImport.razor` kandidatų filtrą (FROZEN §7) (2026-09-26)
+
+**Kontekstas.** `BankImport.razor:510–512` siūlo `DUPLICATE_PENDING` ir `REJECTED`
+sąskaitas kaip banko mokėjimo atitikmenis — mokėjimas gali būti užskaitytas
+dublikatui, o tikras originalas lieka neapmokėtas. Tai apeina D-027 karantiną.
+
+**Sprendimas.** Savininkas leidžia vieną pakeitimą užšaldytame bloke: kandidatų
+predikatas papildomas `DUPLICATE_PENDING` ir `REJECTED` išimtimis (aiškūs `!=`,
+FROZEN §10). Kitos failo eilutės ir `BankImportService.cs` — neliečiami. Leidimas
+galioja tik šiam pakeitimui (Etapas 0c, C3).
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
