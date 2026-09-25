@@ -4,7 +4,9 @@
 @using MudBlazor
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject IExpenseService ExpenseService
+@inject IAuthService AuthService
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
@@ -71,9 +73,9 @@
             <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="margin-right:4px;" />
             Tai skirtinga sąskaita
         </MudButton>
-        <MudButton OnClick="DeleteThis" Color="Color.Error" Variant="Variant.Outlined">
-            <MudIcon Icon="@Icons.Material.Filled.Delete" Style="margin-right:4px;" />
-            Ištrinti šią
+        <MudButton OnClick="RejectAsDuplicate" Color="Color.Error" Variant="Variant.Outlined">
+            <MudIcon Icon="@Icons.Material.Filled.Block" Style="margin-right:4px;" />
+            Atmesti kaip dublikatą
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -165,53 +167,57 @@
     {
         if (ThisInvoice == null) return;
 
-        // Single confirmation: mark as needs review
         var confirmed = await ConfirmDialog.ShowAsync(
             DialogService,
             "Patvirtinti",
-            "Ši sąskaita bus perkelta į 'Reikia patikrinti' statusą.",
+            "Dublikato žymė bus pašalinta, o būsena nustatyta pagal sąskaitos duomenis.",
             "Patvirtinti",
             Color.Primary);
 
         if (!confirmed) return;
 
-        // Save status NEEDS_REVIEW
-        await using var context = DbFactory.CreateDbContext();
-        var invoice = await context.ExpenseInvoices.FindAsync(ThisInvoice.Id);
-        if (invoice != null)
+        try
         {
-            invoice.Status = "NEEDS_REVIEW";
-            invoice.UpdatedAt = DateTime.UtcNow;
-            context.Entry(invoice).Property(i => i.Status).IsModified = true;
-            context.Entry(invoice).Property(i => i.UpdatedAt).IsModified = true;
-            await context.SaveChangesAsync();
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.ResolveDuplicateAsDifferentAsync(ThisInvoice.Id, actor);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
+            return;
         }
 
         // Close dialog and signal caller to refresh
         MudDialog.Close("different");
     }
 
-    private async Task DeleteThis()
+    private async Task RejectAsDuplicate()
     {
-        var confirmed = await DialogService.ShowMessageBox(
-            "Patvirtinti ištrynimą",
-            "Ar tikrai norite ištrinti šią sąskaitą? Veiksmo atšaukti negalima.",
-            yesText: "Ištrinti",
-            cancelText: "Atšaukti");
-
-        if (confirmed != true) return;
-
         if (ThisInvoice == null) return;
 
-        await using var context = DbFactory.CreateDbContext();
-        var invoice = await context.ExpenseInvoices.FindAsync(ThisInvoice.Id);
-        if (invoice == null) return;
+        // An accounting document is never hard-deleted here (D-027 §3): it is rejected and kept.
+        var confirmed = await ConfirmDialog.ShowAsync(
+            DialogService,
+            "Atmesti kaip dublikatą",
+            "Ši sąskaita bus pažymėta kaip atmesta (dublikatas). Įrašas išliks istorijoje.",
+            "Atmesti",
+            Color.Error);
 
-        context.ExpenseInvoices.Remove(invoice);
-        await context.SaveChangesAsync();
+        if (!confirmed) return;
+
+        try
+        {
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.RejectAsync(ThisInvoice.Id, $"Dublikatas: {OriginalInvoice?.InvoiceNumber}", actor);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
+            return;
+        }
 
         // Close dialog and signal caller to refresh
-        MudDialog.Close("deleted");
+        MudDialog.Close("rejected");
     }
 
 

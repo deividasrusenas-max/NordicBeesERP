@@ -772,6 +772,11 @@
         {
             Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
         }
+        catch (InvalidOperationException ex)
+        {
+            // Domain refusal, e.g. an unresolved duplicate
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
     }
 
     private async Task ShowRejectConfirmAsync()
@@ -810,6 +815,10 @@
         catch (UnauthorizedAccessException)
         {
             Snackbar.Add("Sesija pasibaigusi. Prisijunkite iš naujo.", Severity.Error);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
     }
 
@@ -1012,9 +1021,9 @@
         // Handle different result types from DuplicateInvoiceDialog
         if (result.Data is string strResult)
         {
-            if (strResult == "deleted")
+            if (strResult == "rejected")
             {
-                // Dublikatas pašalintas - uždaryti šią sąskaitos detalę
+                // Dublikatas atmestas - uždaryti šią sąskaitos detalę
                 MudDialog.Close();
             }
             else if (strResult == "different")

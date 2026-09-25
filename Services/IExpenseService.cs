@@ -77,6 +77,9 @@ namespace NordicBeesERP.Services
         // Approval Workflow
         Task ApproveAsync(int invoiceId, string performedBy);
         Task RejectAsync(int invoiceId, string reason, string performedBy);
+
+        // Duplicate resolution: "this is a different invoice" — removes DUPLICATE, status by the shared rules, audited
+        Task ResolveDuplicateAsDifferentAsync(int invoiceId, string performedBy);
         Task RestoreInvoiceAsync(int invoiceId);
     }
 }

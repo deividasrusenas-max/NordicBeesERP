@@ -1109,10 +1109,14 @@ namespace NordicBeesERP.Services
                 .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
             
+            // D-027 §2: a duplicate blocks until it is resolved — never approve it directly
+            if (invoice.Status == "DUPLICATE_PENDING")
+                throw new InvalidOperationException("Dublikatą pirmiausia reikia išspręsti");
+
             var oldStatus = invoice.Status;
             var invoiceNumber = invoice.InvoiceNumber;
             var now = DateTime.Now;
-            
+
             await context.Database.ExecuteSqlRawAsync(@"
                 UPDATE expense_invoices SET
                     status = {0},
@@ -1130,6 +1134,49 @@ namespace NordicBeesERP.Services
                 PerformedBy = performedBy, PerformedAt = now
             });
             await context.SaveChangesAsync();
+        }
+
+        public async Task ResolveDuplicateAsDifferentAsync(int invoiceId, string performedBy)
+        {
+            using var context = _dbFactory.CreateDbContext();
+
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null)
+                throw new InvalidOperationException($"Sąskaita #{invoiceId} nerasta");
+
+            var flags = ExpenseStatusHelper.ParseFlags(invoice.OcrFlags);
+            flags.RemoveAll(f => f == OcrFlag.Duplicate);
+
+            // Only a quarantined invoice gets a new, rule-derived status; an invoice that merely
+            // carried the DUPLICATE flag (e.g. after re-OCR) keeps its current status.
+            var oldStatus = invoice.Status;
+            var newStatus = oldStatus == "DUPLICATE_PENDING" ? DecideOcrStatus(flags, invoice.SupplierId) : oldStatus;
+            var rejectedReason = invoice.RejectedReason;
+            if (newStatus == "REJECTED" && oldStatus != "REJECTED")
+                rejectedReason = $"Sąskaita ne {(await _companySettingsService.GetSettingsAsync()).CompanyName}";
+
+            var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
+            var now = DateTime.Now;
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    ocr_flags = {0},
+                    status = {1},
+                    rejected_reason = {2},
+                    updated_at = {3}
+                WHERE id = {4}",
+                ocrFlagsJson, newStatus, rejectedReason, now, invoiceId);
+
+            // Audit log — parameterized INSERT
+            await context.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO expense_invoice_audit
+                    (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                invoiceId, invoice.InvoiceNumber, "DUPLICATE_DISMISSED",
+                "Pažymėta kaip skirtinga sąskaita (ne dublikatas)",
+                oldStatus, newStatus, performedBy, now);
         }
 
         public async Task RestoreInvoiceAsync(int invoiceId)
