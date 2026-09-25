@@ -518,7 +518,17 @@
             return;
         }
 
-        var base64 = await JS.InvokeAsync<string?>("getDropFileBase64", "expense-drop-zone");
+        string? base64;
+        try
+        {
+            base64 = await JS.InvokeAsync<string?>("getDropFileBase64", "expense-drop-zone");
+        }
+        catch (JSException ex)
+        {
+            // FileReader failed in the browser — never lose a drop silently
+            Logger.LogWarning(ex, "getDropFileBase64 failed for dropped file {FileName}", fileName);
+            base64 = null;
+        }
         if (string.IsNullOrEmpty(base64))
         {
             Snackbar.Add("Nepavyko nuskaityti nutempto failo. Bandykite dar kartą.", Severity.Warning);
