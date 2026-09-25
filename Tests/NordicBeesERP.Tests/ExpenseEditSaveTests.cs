@@ -60,14 +60,14 @@ public class ExpenseEditSaveTests : IClassFixture<DbTestFixture>
         return await context.ExpenseInvoices.Where(i => i.InvoiceNumber == number).Select(i => i.Id).FirstAsync();
     }
 
-    private async Task<int> InsertLineAsync(int invoiceId, decimal excl, decimal rate = 21m, string description = "Eilutė")
+    private async Task<int> InsertLineAsync(int invoiceId, decimal excl, decimal rate = 21m, string description = "Eilutė", decimal? gross = null)
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
         var marker = $"{description} {Guid.NewGuid():N}";
         await context.Database.ExecuteSqlRawAsync(
             "INSERT INTO expense_invoice_lines (invoice_id, description, quantity, amount_excl_vat, vat_rate, amount_incl_vat, sort_order) " +
             "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6})",
-            invoiceId, marker, 1m, excl, rate, Math.Round(excl * (1 + rate / 100), 2), 1);
+            invoiceId, marker, 1m, excl, rate, gross ?? Math.Round(excl * (1 + rate / 100), 2), 1);
         return await context.ExpenseInvoiceLines.Where(l => l.Description == marker).Select(l => l.Id).FirstAsync();
     }
 
@@ -271,6 +271,58 @@ public class ExpenseEditSaveTests : IClassFixture<DbTestFixture>
         finally
         {
             await CleanupAsync(id, supplierId);
+        }
+    }
+
+    [Fact]
+    public async Task ApprovedZeroVat_OcrLineGrossOffByCent_NotesOnlySave_KeepsGrossAndApproval()
+    {
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync(supplierId, zeroVat: true, approvedBy: "Approver");
+        await InsertLineAsync(id, 121m, rate: 0m, gross: 121.01m); // OCR gross one cent off
+        try
+        {
+            var edit = await ReloadAsync(id);
+            edit.Notes = "Tik pastaba";
+            await CreateService().SaveInvoiceEditAsync(edit, await LinesAsync(id), "Test User");
+
+            var after = await ReloadAsync(id);
+            Assert.Equal("PENDING", after.Status);
+            Assert.Equal("Approver", after.ApprovedBy);
+            Assert.Equal(121.01m, (await LinesAsync(id)).Single().AmountInclVat);
+        }
+        finally
+        {
+            await CleanupAsync(id, supplierId);
+        }
+    }
+
+    [Fact]
+    public async Task LineOfAnotherInvoice_Refused_NothingWritten()
+    {
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync(supplierId);
+        var otherId = await InsertInvoiceAsync(supplierId);
+        var foreignLineId = await InsertLineAsync(otherId, 10m);
+        try
+        {
+            var edit = await ReloadAsync(id);
+            edit.Notes = "Neturi išlikti";
+            var foreign = (await LinesAsync(otherId)).Single();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => CreateService().SaveInvoiceEditAsync(edit, new List<ExpenseInvoiceLine> { foreign }, "Test User"));
+            Assert.Equal("Eilutė nepriklauso šiai sąskaitai", ex.Message);
+
+            Assert.Null((await ReloadAsync(id)).Notes);
+            Assert.Equal(otherId, (await LinesAsync(otherId)).Single(l => l.Id == foreignLineId).InvoiceId);
+        }
+        finally
+        {
+            await CleanupAsync(id, supplierId);
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM expense_invoice_lines WHERE invoice_id = {0}", otherId);
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM expense_invoices WHERE id = {0}", otherId);
         }
     }
 

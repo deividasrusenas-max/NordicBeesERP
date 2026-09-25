@@ -358,12 +358,20 @@ namespace NordicBeesERP.Services
                 await context.Database.ExecuteSqlRawAsync(
                     "DELETE FROM expense_invoice_lines WHERE id = {0} AND invoice_id = {1}", removedId, invoice.Id);
             }
+            var storedById = storedLines.ToDictionary(l => l.Id);
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
                 line.InvoiceId = invoice.Id;
                 line.SortOrder = i + 1;
-                line.AmountInclVat = Math.Round(line.AmountExclVat * (1 + line.VatRate / 100), 2);
+                // Gross is derived only when the line is new or its net/VAT rate changed; an untouched
+                // line keeps its stored gross (OCR may differ by a cent), so a notes-only save never
+                // counts as a line change for the approval rule.
+                if (line.Id > 0 && storedById.TryGetValue(line.Id, out var storedLine)
+                    && storedLine.AmountExclVat == line.AmountExclVat && storedLine.VatRate == line.VatRate)
+                    line.AmountInclVat = storedLine.AmountInclVat;
+                else
+                    line.AmountInclVat = Math.Round(line.AmountExclVat * (1 + line.VatRate / 100), 2);
                 if (line.Id > 0)
                 {
                     await context.Database.ExecuteSqlRawAsync(@"
