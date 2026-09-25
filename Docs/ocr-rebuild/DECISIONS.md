@@ -155,6 +155,38 @@ konfigūracija tuščia.
 
 ---
 
+## D-030 — Prodo DB: skaitymas per MCP leidžiamas savininko nurodymu; DDL tik žmogus (2026-09-25)
+
+**Kontekstas.** Savininkas šioje sesijoje aiškiai leido Claude pačiam atlikti prodo
+pasiruošimą `files` / `file_id` schemai. Prodo MCP (`lcl-mysql-prod`, per SSH tunelį
+`127.0.0.1:3307`) **pats blokuoja** `CREATE` ir `ALTER` — įrankis leidžia tik skaitymą.
+
+**Kas padaryta 2026-09-25.**
+
+1. Savininkas: pilnas prodo backup'as `lakstena-dev:~/backup/prod-before-files-ddl-2026-09-25.sql.gz`
+   (dump completed 22:43:56, 64 lentelės).
+2. Claude per MCP (tik `SELECT`): tapatybė (`lakstena-dev.self`, MariaDB 11.8.2,
+   `nordic_bees_erp`, `erp_user@%`), pradinė būsena (nėra `files`, nėra `file_id`).
+3. Savininkas: `reapply-files.sql` + `ALTER TABLE expense_invoices ADD COLUMN file_id
+   bigint(20) DEFAULT NULL` — tas pats DDL, kuris pritaikytas staginge (D-029).
+4. Claude per MCP: schemos diff prodas ↔ staging per `information_schema` — 0 stulpelių,
+   0 indeksų skirtumų, po 65 lenteles; 247 sąskaitos nepakito.
+
+**Sprendimas.**
+
+- Prodo **skaitymas** per MCP agentui leidžiamas tik su aiškiu savininko leidimu tos
+  sesijos metu. `AGENTS.md` taisyklė kodo agentams (OpenCode, Claude Code) **nekeičiama**:
+  jie prodo neliečia jokiomis aplinkybėmis.
+- Prodo **DDL ir rašymas** — visada žmogus. MCP blokavimas yra teisingas ir paliekamas.
+
+**Atsitiktinis įrodymas I-13.** `erp_user` per prodo MCP mato `nordic_bees_erp_staging`
+schemą `information_schema` — t.y. turi teises abiem bazėms.
+
+**Atšaukimas, jei prireiktų:** `DROP TABLE files; ALTER TABLE expense_invoices DROP COLUMN
+file_id;` — duomenų šis pakeitimas neliečia.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
