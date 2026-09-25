@@ -508,7 +508,8 @@
 
             using var ctxExp = DbContextFactory.CreateDbContext();
             _unmatchedExpenseInvoices = await ctxExp.ExpenseInvoices
-                .Where(e => e.Status != "PAID" && e.Status != "APPROVED_PAID" && e.Status != "PENDING_SUPPLIER")
+                .Where(e => e.Status != "PAID" && e.Status != "APPROVED_PAID" && e.Status != "PENDING_SUPPLIER"
+                         && e.Status != "DUPLICATE_PENDING" && e.Status != "REJECTED")
                 .OrderBy(e => e.DueDate)
                 .ToListAsync();
 
