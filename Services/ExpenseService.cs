@@ -289,7 +289,8 @@ namespace NordicBeesERP.Services
             if (lines.Count == 0) flags.Add(OcrFlag.LinesNotFound);
             if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountInclVat) - invoice.AmountInclVat) > 0.01m)
                 flags.Add(OcrFlag.AmountMismatch);
-            
+            RecomputeAmountConsistencyFlags(flags, invoice.AmountExclVat, invoice.VatAmount, invoice.AmountInclVat);
+
             // Keep non-recalculable flags from existing
             var existing = string.IsNullOrEmpty(invoice.OcrFlags) 
                 ? new List<string>() 
@@ -306,7 +307,8 @@ namespace NordicBeesERP.Services
             
             // Update status if no more critical flags
             if (invoice.Status == "NEEDS_REVIEW" && !flags.Any(f => 
-                f == OcrFlag.WrongRecipient || f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch || f == OcrFlag.LowConfidence))
+                f == OcrFlag.WrongRecipient || f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch || f == OcrFlag.LowConfidence ||
+                f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField))
             {
                 invoice.Status = invoice.SupplierId == null ? "PENDING_SUPPLIER" : "PENDING";
                 await context.Database.ExecuteSqlRawAsync(
@@ -975,7 +977,8 @@ namespace NordicBeesERP.Services
             var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
             flags.Remove("VENDOR_NOT_FOUND");
             var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
-            
+            var newStatus = StatusAfterSupplierAssigned(flags);
+
             var now = DateTime.Now;
             await context.Database.ExecuteSqlRawAsync(@"
                 UPDATE expense_invoices SET
@@ -984,14 +987,14 @@ namespace NordicBeesERP.Services
                     updated_at = {2},
                     ocr_flags = {3}
                 WHERE id = {4}",
-                supplierId, "PENDING", now, ocrFlagsJson, invoiceId);
-            
+                supplierId, newStatus, now, ocrFlagsJson, invoiceId);
+
             // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
             context.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
             {
                 InvoiceId = invoiceId, InvoiceNumber = invoiceNumber,
                 Action = "SUPPLIER_ASSIGNED", ActionDetails = $"Tiekėjo ID: {supplierId}",
-                OldStatus = oldStatus, NewStatus = "PENDING",
+                OldStatus = oldStatus, NewStatus = newStatus,
                 PerformedBy = performedBy, PerformedAt = now
             });
             await context.SaveChangesAsync();
@@ -1038,7 +1041,8 @@ namespace NordicBeesERP.Services
                 var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
                 flags.Remove("VENDOR_NOT_FOUND");
                 var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
-                
+                var newStatus = StatusAfterSupplierAssigned(flags);
+
                 // Build category update if needed
                 string? categoryIdSql = null;
                 if (supplier?.DefaultExpenseCategoryId.HasValue == true && invoice.CategoryId == null)
@@ -1056,7 +1060,7 @@ namespace NordicBeesERP.Services
                             ocr_flags = {3},
                             category_id = {4}
                         WHERE id = {5}",
-                        supplierId, "PENDING", now, ocrFlagsJson, categoryIdSql, invoice.Id);
+                        supplierId, newStatus, now, ocrFlagsJson, categoryIdSql, invoice.Id);
                 }
                 else
                 {
@@ -1067,7 +1071,7 @@ namespace NordicBeesERP.Services
                             updated_at = {2},
                             ocr_flags = {3}
                         WHERE id = {4}",
-                        supplierId, "PENDING", now, ocrFlagsJson, invoice.Id);
+                        supplierId, newStatus, now, ocrFlagsJson, invoice.Id);
                 }
                 
                 // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
@@ -1078,7 +1082,7 @@ namespace NordicBeesERP.Services
                     Action = "SUPPLIER_AUTO_ASSIGNED",
                     ActionDetails = $"Auto-assign: VAT={vatCode}, Name={supplierName}",
                     OldStatus = oldStatus,
-                    NewStatus = "PENDING",
+                    NewStatus = newStatus,
                     PerformedBy = "SYSTEM",
                     PerformedAt = now
                 });
@@ -1162,6 +1166,43 @@ namespace NordicBeesERP.Services
         }
 
         // =====================================================
+        // STATUS RULES — single source for CreateFromOcrAsync, UpdateFromOcrAsync,
+        // AssignSupplierAsync and AutoAssignSupplierAsync, so the review list cannot drift.
+        // =====================================================
+
+        /// <summary>Flags that keep an invoice with a known supplier in NEEDS_REVIEW.</summary>
+        private static bool HasReviewFlag(IEnumerable<string> flags) =>
+            flags.Any(f => f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch ||
+                           f == OcrFlag.LowConfidence || f == OcrFlag.ZeroVat ||
+                           f == OcrFlag.MissingInvNumber ||
+                           f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField);
+
+        /// <summary>Status precedence for OCR ingestion: WRONG_RECIPIENT → supplier missing → review flags.</summary>
+        private static string DecideOcrStatus(IEnumerable<string> flags, int? supplierId)
+        {
+            var list = flags as ICollection<string> ?? flags.ToList();
+            if (list.Contains(OcrFlag.WrongRecipient)) return "REJECTED";
+            if (supplierId == null) return "PENDING_SUPPLIER";
+            return HasReviewFlag(list) ? "NEEDS_REVIEW" : "PENDING";
+        }
+
+        /// <summary>Status once a supplier is assigned: the review gate still applies (D-028).</summary>
+        private static string StatusAfterSupplierAssigned(IEnumerable<string> flags) =>
+            HasReviewFlag(flags) ? "NEEDS_REVIEW" : "PENDING";
+
+        /// <summary>
+        /// Drops stale header-arithmetic flags and recomputes them from the final amounts —
+        /// the user may have edited amounts after OCR ran.
+        /// </summary>
+        private static void RecomputeAmountConsistencyFlags(List<string> flags, decimal amountExclVat, decimal vatAmount, decimal amountInclVat)
+        {
+            flags.RemoveAll(f => f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField);
+            var probe = new OcrResultDto { AmountExclVat = amountExclVat, VatAmount = vatAmount, AmountInclVat = amountInclVat };
+            ExpenseOcrService.AddAmountConsistencyFlags(probe);
+            flags.AddRange(probe.Flags);
+        }
+
+        // =====================================================
         // OCR
         // =====================================================
 
@@ -1186,17 +1227,8 @@ namespace NordicBeesERP.Services
             var currentUser = await _authService.GetAuthenticatedUserAsync();
             var performedBy = currentUser?.FullName ?? currentUser?.Email ?? "OCR_PIPELINE";
 
-            string status;
-            if (ocrResult.Flags.Contains(OcrFlag.WrongRecipient))
-                status = "REJECTED";
-            else if (ocrResult.SupplierId == null)
-                status = "PENDING_SUPPLIER";
-            else if (ocrResult.Flags.Any(f => f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch ||
-                                              f == OcrFlag.LowConfidence || f == OcrFlag.ZeroVat ||
-                                              f == OcrFlag.MissingInvNumber))
-                status = "NEEDS_REVIEW";
-            else
-                status = "PENDING";
+            RecomputeAmountConsistencyFlags(ocrResult.Flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat);
+            var status = DecideOcrStatus(ocrResult.Flags, ocrResult.SupplierId);
 
             var duplicateId = await CheckDuplicateAsync(ocrResult.SupplierId, ocrResult.SupplierVatCode,
                 ocrResult.InvoiceNumber, ocrResult.AmountInclVat);
@@ -1335,17 +1367,8 @@ namespace NordicBeesERP.Services
                 if (!flags.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
             }
 
-            string newStatus;
-            if (flags.Contains(OcrFlag.WrongRecipient))
-                newStatus = "REJECTED";
-            else if (ocrResult.SupplierId == null)
-                newStatus = "PENDING_SUPPLIER";
-            else if (flags.Any(f => f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch ||
-                                    f == OcrFlag.LowConfidence || f == OcrFlag.ZeroVat ||
-                                    f == OcrFlag.MissingInvNumber))
-                newStatus = "NEEDS_REVIEW";
-            else
-                newStatus = "PENDING";
+            RecomputeAmountConsistencyFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat);
+            var newStatus = DecideOcrStatus(flags, ocrResult.SupplierId);
 
             var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
             var rejectedReason = newStatus == "REJECTED" ? $"Sąskaita ne {companyNameUpdate}" : null;
