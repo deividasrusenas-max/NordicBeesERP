@@ -183,6 +183,217 @@ public class En16931TotalsValidatorTests
         Assert.DoesNotContain(En16931TotalsValidator.BrCo10, result.PassedRules);
     }
 
+    // --- Schematron-literal rounding: stated side is not rounded (inputs with > 2 decimals) ---
+    // Each case below passed under the earlier both-sides-rounded version and fails (or vice versa)
+    // under the literal Schematron text.
+
+    [Fact]
+    public void BrCo10_StatedSumNotRounded()
+    {
+        // xs:decimal(BT-106) = round(Σ BT-131 * 100) div 100: 15.004 ≠ 15.00 (both-sides version: 15.00 = 15.00)
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            LineNetAmounts = new decimal?[] { 10.00m, 5.00m },
+            SumOfLineNet = 15.004m
+        });
+
+        var violation = Assert.Single(result.Violations);
+        Assert.Equal(En16931TotalsValidator.BrCo10, violation.RuleId);
+        Assert.Equal(15.00m, violation.Expected);
+        Assert.Equal(15.004m, violation.Actual);
+        Assert.Contains("15,004", violation.Message);
+    }
+
+    [Fact]
+    public void BrCo13_AllowanceOnly_StatedTotalNotRounded()
+    {
+        // BT-109 = round((BT-106 - BT-107) * 100) div 100: 90.001 ≠ 90.00
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            SumOfLineNet = 100.00m,
+            AllowanceTotal = 10.00m,
+            TotalWithoutVat = 90.001m
+        });
+
+        var violation = Assert.Single(result.Violations, v => v.RuleId == En16931TotalsValidator.BrCo13);
+        Assert.Equal(90.00m, violation.Expected);
+        Assert.Equal(90.001m, violation.Actual);
+    }
+
+    [Fact]
+    public void BrCo13_NoAllowanceNoCharge_ComparedWithoutRounding()
+    {
+        // BT-109 = BT-106, no round(): 100.00 ≠ 100.004 (both-sides version: 100.00 = 100.00)
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            SumOfLineNet = 100.004m,
+            TotalWithoutVat = 100.00m
+        });
+
+        var violation = Assert.Single(result.Violations, v => v.RuleId == En16931TotalsValidator.BrCo13);
+        Assert.Equal(100.004m, violation.Expected);
+        Assert.Equal(100.00m, violation.Actual);
+    }
+
+    [Fact]
+    public void BrCo13_ZeroAllowancePresent_ComputedSideRounded()
+    {
+        // A present BT-107 = 0 selects the rounded case: round(100.004 * 100) div 100 = 100.00 = BT-109
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            SumOfLineNet = 100.004m,
+            AllowanceTotal = 0.00m,
+            TotalWithoutVat = 100.00m
+        });
+
+        Assert.Contains(En16931TotalsValidator.BrCo13, result.PassedRules);
+    }
+
+    [Fact]
+    public void BrCo15_StatedTotalWithVatNotRounded()
+    {
+        // BT-112 = round((BT-109 + BT-110) * 100) div 100: 1130.404 ≠ 1130.40
+        var input = Asf0021438Header(803.31m, 130.91m) with { TotalWithVat = 1130.404m, AmountDue = null };
+
+        var result = En16931TotalsValidator.Validate(input);
+
+        var violation = Assert.Single(result.Violations);
+        Assert.Equal(En16931TotalsValidator.BrCo15, violation.RuleId);
+        Assert.Equal(1130.40m, violation.Expected);
+        Assert.Equal(1130.404m, violation.Actual);
+        Assert.Equal("BR-CO-15 pažeista: suma su PVM 1 130,404 ≠ suma be PVM 934,22 + PVM 196,18", violation.Message);
+    }
+
+    [Fact]
+    public void BrCo16_PaidOnly_StatedAmountDueNotRounded()
+    {
+        // BT-115 = round((BT-112 - BT-113) * 100) div 100: 60.004 ≠ 60.00
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            TotalWithVat = 100.00m,
+            PaidAmount = 40.00m,
+            AmountDue = 60.004m
+        });
+
+        var violation = Assert.Single(result.Violations, v => v.RuleId == En16931TotalsValidator.BrCo16);
+        Assert.Equal(60.00m, violation.Expected);
+        Assert.Equal(60.004m, violation.Actual);
+    }
+
+    [Fact]
+    public void BrCo16_NoPaidNoRounding_ComparedWithoutRounding()
+    {
+        // BT-115 = BT-112, no round(): 100.00 ≠ 100.004
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            TotalWithVat = 100.004m,
+            AmountDue = 100.00m
+        });
+
+        var violation = Assert.Single(result.Violations, v => v.RuleId == En16931TotalsValidator.BrCo16);
+        Assert.Equal(100.004m, violation.Expected);
+        Assert.Equal(100.00m, violation.Actual);
+    }
+
+    [Fact]
+    public void BrCo16_PaidAndRounding_BothSidesRoundedSeparately()
+    {
+        // round((60.00 - 0.005) * 100) div 100 = 60.00 = round((100.00 - 40.00) * 100) div 100 -> passes.
+        // Both-sides version rounded (100.00 - 40.00 + 0.005) = 60.01 ≠ 60.00 and failed.
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            TotalWithVat = 100.00m,
+            PaidAmount = 40.00m,
+            RoundingAmount = 0.005m,
+            AmountDue = 60.00m
+        });
+
+        Assert.Contains(En16931TotalsValidator.BrCo16, result.PassedRules);
+    }
+
+    [Fact]
+    public void BrCo16_RoundingOnly_TotalWithVatNotRounded()
+    {
+        // round((BT-115 - BT-114) * 100) div 100 = BT-112: 100.00 ≠ 100.004
+        var result = En16931TotalsValidator.Validate(new En16931TotalsInput
+        {
+            TotalWithVat = 100.004m,
+            RoundingAmount = 0.00m,
+            AmountDue = 100.00m
+        });
+
+        var violation = Assert.Single(result.Violations, v => v.RuleId == En16931TotalsValidator.BrCo16);
+        Assert.Equal(100.004m, violation.Expected);
+        Assert.Equal(100.00m, violation.Actual);
+    }
+
+    // --- Overflow: never throws, rule lands in OutOfRange ---
+
+    [Fact]
+    public void OverflowingAmounts_EveryRuleOutOfRange_NoException()
+    {
+        var input = new En16931TotalsInput
+        {
+            LineNetAmounts = new decimal?[] { decimal.MaxValue, decimal.MaxValue }, // Σ overflows
+            SumOfLineNet = decimal.MaxValue,
+            ChargeTotal = decimal.MaxValue,                                           // BT-106 + BT-108 overflows
+            TotalWithoutVat = 1e27m,
+            VatTotal = 0m,                                                             // (1e27 + 0) * 100 overflows
+            TotalWithVat = decimal.MaxValue,
+            PaidAmount = decimal.MinValue,                                             // BT-112 - BT-113 overflows
+            AmountDue = 0m
+        };
+
+        var result = En16931TotalsValidator.Validate(input);
+
+        Assert.Empty(result.PassedRules);
+        Assert.Empty(result.Violations);
+        Assert.Empty(result.NotApplicable);
+        Assert.Equal(
+            new[] { En16931TotalsValidator.BrCo10, En16931TotalsValidator.BrCo13, En16931TotalsValidator.BrCo15, En16931TotalsValidator.BrCo16 },
+            result.OutOfRange.Select(o => o.RuleId));
+        Assert.Equal("BR-CO-15 nepatikrinta: sumos per didelės, skaičiavimas viršija leistiną intervalą",
+            result.OutOfRange.Single(o => o.RuleId == En16931TotalsValidator.BrCo15).Message);
+    }
+
+    [Fact]
+    public void ExtremeInputs_NeverThrow_EveryRuleInExactlyOneList()
+    {
+        decimal?[] pool =
+        {
+            null, 0m, 0.005m, -0.005m, 100.004m, 1e26m, -1e26m, 7.9e26m, 1e27m, -1e27m,
+            decimal.MaxValue, decimal.MinValue, 0.0000000000000000000000000001m
+        };
+        var random = new Random(20260926);
+        decimal? Pick() => pool[random.Next(pool.Length)];
+
+        for (var i = 0; i < 20000; i++)
+        {
+            var input = new En16931TotalsInput
+            {
+                LineNetAmounts = new[] { Pick(), Pick() },
+                SumOfLineNet = Pick(),
+                AllowanceTotal = Pick(),
+                ChargeTotal = Pick(),
+                TotalWithoutVat = Pick(),
+                VatTotal = Pick(),
+                TotalWithVat = Pick(),
+                PaidAmount = Pick(),
+                RoundingAmount = Pick(),
+                AmountDue = Pick()
+            };
+
+            var result = En16931TotalsValidator.Validate(input);
+
+            var ruleIds = result.PassedRules
+                .Concat(result.Violations.Select(v => v.RuleId))
+                .Concat(result.NotApplicable.Select(n => n.RuleId))
+                .Concat(result.OutOfRange.Select(o => o.RuleId))
+                .OrderBy(r => r, StringComparer.Ordinal);
+            Assert.Equal(new[] { "BR-CO-10", "BR-CO-13", "BR-CO-15", "BR-CO-16" }, ruleIds);
+        }
+    }
+
     // --- Project rule (not EN 16931) ---
 
     [Fact]
