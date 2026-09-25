@@ -112,6 +112,11 @@ biudžetą patikrinti.
 viduje, atvirkštinis apmokestinimas, išimtys) ir kalbą (LT/DE/LV/EE/PL/RO/UA).
 Tyrimas LT atitikmens („Atvirkštinis apmokestinimas") praktinio vartojimo nepatvirtino.
 
+**Pirmas realus pavyzdys (2026-09-25, staging testas).** AB Artea bankas, palūkanų
+sąskaita, PVM 0 %: „Finansinių paslaugų teikimas - PVM įstatymo 28 straipsnis, PVM5."
+T.y. LT išimties formuluotė = nuoroda į PVMĮ straipsnį + i.SAF PVM klasifikatoriaus
+kodas (`PVM5`). Kodas `PVMx` gali būti patikimesnis ženklas nei laisvas tekstas.
+
 **Kaip atsakyti.** Surinkti formuluotes iš naujai įkeliamų `ZERO_VAT` sąskaitų (senųjų
 247 prodo PDF nebėra — `Docs/infra/SERVER-STATE.md` §1.3) arba iš popierinių / el. pašto
 originalų, ir patikrinti su buhaltere.
