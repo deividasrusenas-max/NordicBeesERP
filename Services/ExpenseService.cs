@@ -940,15 +940,29 @@ namespace NordicBeesERP.Services
         // VALIDATION
         // =====================================================
 
+        /// <summary>Invoice-number normalisation for duplicate detection: upper-case, no spaces, '-', '/', '.'.</summary>
+        public static string NormalizeInvoiceNumber(string? invoiceNumber) =>
+            (invoiceNumber ?? "").ToUpperInvariant().Replace(" ", "").Replace("-", "").Replace("/", "").Replace(".", "");
+
+        /// <summary>
+        /// Same normalisation as NormalizeInvoiceNumber, applied to the stored column so it runs in SQL
+        /// (UPPER / REPLACE) — never materialise the table to compare in memory.
+        /// </summary>
+        public static IQueryable<ExpenseInvoice> WhereNormalizedNumberEquals(IQueryable<ExpenseInvoice> query, string normalizedNumber) =>
+            query.Where(e => e.InvoiceNumber != null && e.InvoiceNumber != "" &&
+                e.InvoiceNumber.ToUpper().Replace(" ", "").Replace("-", "").Replace("/", "").Replace(".", "") == normalizedNumber);
+
         public async Task<int?> CheckDuplicateAsync(int? supplierId, string? supplierVatCode, string invoiceNumber, decimal amountInclVat, int excludeInvoiceId = 0)
         {
-            if (string.IsNullOrEmpty(invoiceNumber)) return null;
+            // D-027 known gap: a zero amount plus a short number ("1" / 0,00) matched different
+            // suppliers in production (277 ↔ 173) — never search duplicates on a non-positive amount.
+            if (amountInclVat <= 0) return null;
+            var normalizedNumber = NormalizeInvoiceNumber(invoiceNumber);
+            if (normalizedNumber.Length == 0) return null;
             await using var ctx = _dbFactory.CreateDbContext();
 
-            var query = ctx.ExpenseInvoices
+            var query = WhereNormalizedNumberEquals(ctx.ExpenseInvoices, normalizedNumber)
                 .Where(e =>
-                    e.InvoiceNumber == invoiceNumber &&
-                    e.InvoiceNumber != "" &&
                     e.Status != "REJECTED" &&
                     e.Status != "DUPLICATE_PENDING" &&
                     Math.Abs(e.AmountInclVat - amountInclVat) < 0.01m);
