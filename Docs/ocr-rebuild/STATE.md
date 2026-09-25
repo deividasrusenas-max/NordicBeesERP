@@ -1,15 +1,26 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-25 | Sesija: 05 (vyksta) | Fazė: Etapas 0 (Claude Code vykdo 0a + 0b)
+Atnaujinta: 2026-09-26 | Fazė: Etapas 0 + 0c + Etapo 1 validatorių paruošimas — main'e, **nepush'inta**
 
 ## Dabartinė fazė
 
-**Storage gate staginge UŽDARYTAS** (2026-09-25). Etapas 0 (Part A + Part B, 8 commit'ai)
-vykdomas Claude Code pagal `.opencode/tasks/latest.md`, laukia raporto
-`.opencode/reports/ocr-etapas0-*.md`. Prodo DB schema paruošta deploy'ui (D-030).
+Etapas 0, Etapas 0c ir Etapo 1 paruošiamieji validatoriai (IBAN, PVM kodo formatas, EN 16931
+sumos) yra commit'inti į `main`, **ne push'inti** (`origin/main` = `cff2d46`). Prodo DB schema
+paruošta deploy'ui (D-030). Validatoriai dar niekur neprijungti (Etapas 1).
 
 Nauja darbų tvarka — D-022: vartai prieš ekstrakciją. Etapai ir įverčiai —
-`HANDOFF-2026-09-25.md` §5, patikslinta D-027, D-028.
+`HANDOFF-2026-09-25.md` §5, patikslinta D-027, D-028; baigtumo kriterijai — D-031.
+
+**Darbo režimas:** viena juosta, tiesiai `main`, jokių worktree (savininko sprendimas
+2026-09-26).
+
+## Commit'ų intervalai (main, nepush'inta)
+
+| Dalis | Intervalas | Kas |
+|---|---|---|
+| Etapas 0 | `5e44f7c..c93e9af` (8) | tiekėjas be spėjimų, karantinas, aritmetikos ir datų vartai, dublikatų sprendimas/aptikimas, SHA-256 prieš OCR — raportas `.opencode/reports/ocr-etapas0-20260925-2354.md` |
+| Etapas 0c | `4eb3f5d..8d5b95f` | re-OCR, rankinis redagavimas, redagavimo formos išsaugojimas (D-035), banko importas (D-033), tik skaitmeniniai PDF (D-032), biudžetas (D-036), semgrep taisyklės, drag & drop (D-034) — raportas `.opencode/reports/ocr-etapas0c-20260926-0136.md` |
+| Etapo 1 validatoriai | merge `4a04361` .. HEAD | `IbanValidator`, `VatCodeFormatValidator`, `En16931TotalsValidator` (BR-CO-10/13/15/16 pažodžiui pagal oficialų Schematron, niekada nemeta išimties) + projekto eilutės taisyklė — raportai `overnight-20260926-0157.md`, `prepush-20260926-*.md` |
 
 ## Padaryta
 
@@ -22,6 +33,9 @@ Nauja darbų tvarka — D-022: vartai prieš ekstrakciją. Etapai ir įverčiai 
 - Sesija 05: staging perklonuotas iš prodo (D-029); storage gate uždarytas; prodo
   duomenų analizė (`analysis/PROD-DATA-FINDINGS-2026-09-25.md`); D-021…D-029,
   Q-005…Q-010; Etapo 0a užduotis. Detalės — `sessions/2026-09-25-05.md`.
+- 2026-09-25/26 (Claude Code): Etapas 0 (8 commit'ai), Etapas 0c (C1–C9 + fix-up'ai),
+  D-031…D-036, Etapo 1 validatoriai; staging patikrų dokumentas
+  `STAGING-CHECKS-ETAPAS0.md`.
 
 ## Storage gate — įrodymai (2026-09-25, staging)
 
@@ -38,34 +52,53 @@ Nauja darbų tvarka — D-022: vartai prieš ekstrakciją. Etapai ir įverčiai 
 | 247 senos sąskaitos su tuščiu `file_id` | sąrašas ir detalių langas neluža (prodo klonas) |
 | Drag & drop dialoge | **nepatikrinta** (žr. Blokatoriai) |
 
-## Kitas žingsnis
+## Kitas žingsnis (eilės tvarka)
 
-1. **Etapas 0a** — OpenCode: `FindSupplierIdAsync` (tuščias PVM kodas), karantinas
-   (`DUPLICATE_PENDING`/`REJECTED` ne įsipareigojimai), antraštės aritmetikos vartas
-   įskaitant tiekėjo priskyrimo kelią. Po raporto — patikra staginge ant prodo klono.
-2. **Etapas 0b** — ateities datos vartas, `MISSING_DUE_DATE` pateikimas (D-025),
-   `DuplicateInvoiceDialog` (FindAsync + hard delete), SHA-256 prieš OCR.
-3. **Prod deploy** — tik po Etapo 0 (kitaip prodas gauna naują kodą su žinomu 336 defektu).
-   **Prodo DB paruošta 2026-09-25** (D-030): `files` lentelė ir `expense_invoices.file_id`
-   pritaikyti, schema = staging. Backup prieš DDL:
-   `lakstena-dev:~/backup/prod-before-files-ddl-2026-09-25.sql.gz`. Sentinel
-   `/var/lib/nordicbees/prod/.nordicbees-storage` jau paruoštas. Liko: push į
-   `production` šaką ir patikra po deploy'aus.
-4. **Prodo duomenų valymas** — atskiras darbas su buhaltere, po Q-010.
-   Sąrašas — `PROD-DATA-FINDINGS-2026-09-25.md` §6.
+1. **Raportų peržiūra** (savininkas): Etapas 0, 0c, validatorių ir prepush raportai
+   `.opencode/reports/`.
+2. **Bump + push** (`bump-version.sh`, tik savininkas). Po bump'o grąžinti savininko stash'ą
+   `wip analyze-timing`: `git stash pop`.
+3. **Staging patikra** pagal `STAGING-CHECKS-ETAPAS0.md` (prodo klonas, D-029).
+4. **Prodas** — push į `production` šaką ir patikra po deploy'aus. Prodo DB paruošta
+   2026-09-25 (D-030): `files` + `expense_invoices.file_id`, backup
+   `lakstena-dev:~/backup/prod-before-files-ddl-2026-09-25.sql.gz`, sentinel
+   `/var/lib/nordicbees/prod/.nordicbees-storage` paruoštas.
+5. **Etapo 0 uždarymas** (D-031 tvarka).
+6. **Etapas 1** — validatorių prijungimas (IBAN, PVM kodas, EN 16931 sumos) prie OCR ir
+   rankinio redagavimo kelio.
+
+Prodo duomenų valymas — atskiras darbas su buhaltere, po Q-010
+(`PROD-DATA-FINDINGS-2026-09-25.md` §6).
+
+## Laukia savininko sprendimų
+
+- `OcrQueueWorker` `Attempts++` defektas — failas užšaldytas (`FROZEN.md` §5); Etapo 0c
+  raportas §2/§5.
+- Dvi užšaldyto įkėlimo dialogo UI problemos (`FROZEN.md` §3): klaidos fazės eilutė
+  „Patikrinkite ar visi serveriai veikia…" po failo atmetimo; `setupDropZone` kviečiamas tik
+  pirmo render'io metu (drop → ✕ → drop nieko nedaro).
+- 12 decimal-precision radinių (semgrep `nordicbees-ef-decimal-precision-annotation-missing`).
+- Senos šakos (žr. žemiau) — ką daryti, sprendžia savininkas.
+
+## Senos šakos (informacija, niekas netrinta; 2026-09-26)
+
+- `git branch --merged main`: `acoustic-sociology`, `almondine-writing`, `boiled-cost`,
+  `chocolate-tin`, `erratic-dirigible`, `helpful-temperature`, `horn-caravan`,
+  `knowledgeable-blizzard`, `polyester-macrame`, `production`, `quickest-trust`,
+  `radial-arch`, `unexpected-guppy` (`production` čia rodoma kaip „merged", nes ji atsilieka
+  nuo `main` — ji deploy'aus šaka, ne sena).
+- `git branch --no-merged main`: `ef-migrations-reconcile`, `feature/sverimo-modulis`.
 
 ## Blokatoriai
 
-- Prod deploy blokuojamas Etapo 0 (Claude Code vykdo).
+- Prod deploy laukia: raportų peržiūros, push'o ir staging patikros.
 - Q-010 (ar dublikatai pateko į apskaitą) blokuoja prodo duomenų valymą.
-- `FROZEN.md` §3 teigia, kad `ExpenseUploadDialog` turi `[JSInvokable] OnFileDropped`
-  — metodo nebėra, `setupDropZone` vis dar kviečiamas. Drag & drop tikėtinai neveikia.
-  Užšaldytas blokas — taisyti tik su leidimu.
 - Agento auto-resume: „continue" iš mechanizmo virsta leidimu — užduotyse yra
   Authority rule.
-- `BankImport.razor:510–512` (užšaldytas §7) siūlo `DUPLICATE_PENDING` / `REJECTED`
-  sąskaitas kaip banko mokėjimo atitikmenis — mokėjimas gali būti susietas su dublikatu.
-  Taisyti tik su savininko leidimu.
+- `llm-overrides-red-gate` (BUGLOG 2026-09-26) — struktūrinis sprendimas neįdiegtas.
+
+Išspręsta Etape 0c (reikia staging patikros): drag & drop dialoge (D-034, naujas
+`OnFileDropped`), banko importas nebesiūlo karantino sąskaitų (D-033).
 
 ## Fazių lentelė
 
@@ -73,9 +106,9 @@ Nauja darbų tvarka — D-022: vartai prieš ekstrakciją. Etapai ir įverčiai 
 |---|---|
 | F0 Gyvo kelio pataisymai | baigta (157/157) |
 | Saugykla, 1 žingsnis | **baigta, gate uždarytas 2026-09-25** |
-| Etapas 0a (tylios klaidos) | Claude Code vykdo |
-| Etapas 0b (vartai, UI) | Claude Code vykdo (ta pati sesija) |
-| Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai) | laukia |
+| Etapas 0 (tylios klaidos, vartai) | commit'inta main'e, nepush'inta; laukia staging |
+| Etapas 0c (redagavimas, įvestis, biudžetas) | commit'inta main'e, nepush'inta; laukia staging |
+| Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai) | paruošti validatoriai (neprijungti); prijungimas laukia |
 | Etapas 2 (tiekėjo kaskada) | laukia |
 | Etapas 3 (ekstrakcija — D-023 kryptis, D-016 atviras) | laukia; Q-006, Q-007, Q-009 prieš pradedant |
 | Etapas 4 (matavimas) | laukia |
