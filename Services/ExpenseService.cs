@@ -1158,6 +1158,98 @@ namespace NordicBeesERP.Services
                 amountExclVat, vatAmount, amountInclVat, updatedAt, invoiceId);
         }
 
+        public async Task<BudgetActualsResult> GetBudgetActualsAsync(int year)
+        {
+            await using var context = _dbFactory.CreateDbContext();
+            var start = new DateTime(year, 1, 1);
+            var end = start.AddYears(1);
+
+            // Quarantined invoices (DUPLICATE_PENDING / REJECTED) are never actual expenses (D-027)
+            var invoices = context.ExpenseInvoices.AsNoTracking()
+                .WhereCountsAsPayable()
+                .Where(i => i.InvoiceDate >= start && i.InvoiceDate < end);
+
+            // Filtered projections for the year only: lines and their allocations
+            var lines = await (
+                from i in invoices
+                join l in context.ExpenseInvoiceLines on i.Id equals l.InvoiceId
+                select new
+                {
+                    LineId = l.Id,
+                    InvoiceId = i.Id,
+                    i.InvoiceDate.Month,
+                    LineCategoryId = l.CategoryId,
+                    InvoiceCategoryId = i.CategoryId,
+                    Net = l.AmountExclVat,
+                    Gross = (decimal?)l.AmountInclVat ?? 0m
+                }).ToListAsync();
+
+            var allocations = await (
+                from i in invoices
+                join l in context.ExpenseInvoiceLines on i.Id equals l.InvoiceId
+                join a in context.ExpenseLineAllocations on l.Id equals a.InvoiceLineId
+                select new { a.InvoiceLineId, a.CategoryId, Amount = (decimal?)a.AllocatedAmount ?? 0m }).ToListAsync();
+            var allocationsByLine = allocations.ToLookup(a => a.InvoiceLineId);
+
+            // An invoice with no lines contributes its header net under the invoice category — aggregated in SQL
+            var linelessTotals = await invoices
+                .Where(i => !context.ExpenseInvoiceLines.Any(l => l.InvoiceId == i.Id))
+                .GroupBy(i => new { i.CategoryId, i.InvoiceDate.Month })
+                .Select(g => new { g.Key.CategoryId, g.Key.Month, Net = g.Sum(i => i.AmountExclVat) })
+                .ToListAsync();
+
+            var result = new BudgetActualsResult();
+            var totals = new Dictionary<(int? CategoryId, int Month), decimal>();
+            void Add(int? categoryId, int month, decimal net)
+            {
+                if (net == 0m) return;
+                totals[(categoryId, month)] = totals.GetValueOrDefault((categoryId, month)) + net;
+            }
+
+            foreach (var line in lines)
+            {
+                var fallbackCategory = line.LineCategoryId ?? line.InvoiceCategoryId;
+                var lineAllocations = allocationsByLine[line.LineId].ToList();
+                if (lineAllocations.Count == 0)
+                {
+                    Add(fallbackCategory, line.Month, line.Net);
+                    continue;
+                }
+
+                // Allocations are entered against the line's gross; convert to net proportionally.
+                if (line.Gross == 0m)
+                {
+                    // Inconsistent data: never invent an amount — contribute 0 and report the line.
+                    result.ZeroGrossAllocatedLines.Add(new BudgetAllocationAnomaly(line.InvoiceId, line.LineId));
+                    continue;
+                }
+
+                var allocated = lineAllocations.Sum(a => a.Amount);
+                if (allocated > line.Gross)
+                {
+                    // Over-allocation: scale the allocations down so they add up to the line's net.
+                    result.OverAllocatedLines.Add(new BudgetAllocationAnomaly(line.InvoiceId, line.LineId));
+                    foreach (var a in lineAllocations)
+                        Add(a.CategoryId, line.Month, line.Net * a.Amount / allocated);
+                    continue;
+                }
+
+                var ratio = line.Net / line.Gross;
+                foreach (var a in lineAllocations)
+                    Add(a.CategoryId, line.Month, a.Amount * ratio);
+                // The unallocated remainder falls through the D-036 chain, so nothing is lost.
+                Add(fallbackCategory, line.Month, (line.Gross - allocated) * ratio);
+            }
+
+            foreach (var row in linelessTotals)
+                Add(row.CategoryId, row.Month, row.Net);
+
+            foreach (var ((categoryId, month), net) in totals.OrderBy(t => t.Key.Month).ThenBy(t => t.Key.CategoryId))
+                result.Rows.Add(new BudgetActualRow(categoryId, month, Math.Round(net, 2)));
+
+            return result;
+        }
+
         public async Task<List<ExpenseInvoice>> GetSupplierHistoryAsync(int supplierId, int year)
         {
             using var context = _dbFactory.CreateDbContext();

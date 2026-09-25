@@ -2,6 +2,7 @@
 @using ExpenseCategoryModel = NordicBeesERP.Models.Expenses.ExpenseCategory
 @using ExpenseBudgetModel = NordicBeesERP.Models.Expenses.ExpenseBudget
 @using NordicBeesERP.Services
+@using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Helpers
 @using MudBlazor
 @namespace NordicBeesERP.Components.Dialogs
@@ -29,6 +30,13 @@
                 </MudGrid>
             </MudPaper>
 
+            @if (_allocationAnomalies.Count > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+                    Nenuoseklūs eilučių paskirstymai (@_allocationAnomalies.Count): @string.Join("; ", _allocationAnomalies)
+                </MudAlert>
+            }
+
             <!-- Budget Table -->
             @if (_budgetItems?.Count > 0)
             {
@@ -51,7 +59,7 @@
                                 <MudText>@GetMonthName(item.Month)</MudText>
                             </MudTd>
                             <MudTd>
-                                <MudTextField @bind-Value="item.PlannedAmount" Type="number" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="€" AdornmentColor="Color.Primary" Margin="Margin.Dense" Class="w-100" />
+                                <MudTextField @bind-Value="item.PlannedAmount" Type="number" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="€" AdornmentColor="Color.Primary" Margin="Margin.Dense" Class="w-100" Disabled="@item.IsUnassigned" />
                             </MudTd>
                             <MudTd>
                                 <MudText>@FormatAmountHelper.Trim(item.ActualExpenses, 2) €</MudText>
@@ -67,12 +75,15 @@
                                 </MudChip>
                             </MudTd>
                             <MudTd>
-                                <MudButton Color="Color.Primary" Variant="Variant.Text" OnClick="() => EditBudget(item)">
-                                    <MudIcon Icon="@Icons.Material.Filled.Edit" />
-                                </MudButton>
-                                <MudButton Color="Color.Error" Variant="Variant.Text" OnClick="() => DeleteBudget(item.Id)">
-                                    <MudIcon Icon="@Icons.Material.Filled.Delete" />
-                                </MudButton>
+                                @if (!item.IsUnassigned)
+                                {
+                                    <MudButton Color="Color.Primary" Variant="Variant.Text" OnClick="() => EditBudget(item)">
+                                        <MudIcon Icon="@Icons.Material.Filled.Edit" />
+                                    </MudButton>
+                                    <MudButton Color="Color.Error" Variant="Variant.Text" OnClick="() => DeleteBudget(item.Id)">
+                                        <MudIcon Icon="@Icons.Material.Filled.Delete" />
+                                    </MudButton>
+                                }
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
@@ -125,6 +136,7 @@
     private bool _loading = false;
     private List<BudgetItem> _budgetItems = new();
     private List<ExpenseCategoryModel> _categories = new();
+    private List<string> _allocationAnomalies = new();
     private MudDialog? _mudDialog;
     
     private decimal _totalBudgeted = 0m;
@@ -149,14 +161,17 @@
             // Load all categories
             _categories = await ExpenseService.GetCategoriesAsync();
             
-            // Load all invoices to calculate actual expenses
-            // Quarantined invoices (DUPLICATE_PENDING / REJECTED, D-027) are not actual expenses
-            var invoices = (await ExpenseService.GetInvoicesAsync(fromDate: new DateTime(_year, 1, 1), toDate: new DateTime(_year, 12, 31)))
-                .Where(i => ExpenseStatusHelper.CountsAsPayable(i.Status))
+            // Actuals per category and month (D-036: net, allocation → line → invoice category,
+            // quarantined invoices excluded, uncategorised under „Nepriskirta")
+            var actuals = await ExpenseService.GetBudgetActualsAsync(_year);
+            _allocationAnomalies = actuals.ZeroGrossAllocatedLines
+                .Select(a => $"sąskaita #{a.InvoiceId}, eilutė #{a.LineId}: suma su PVM 0")
+                .Concat(actuals.OverAllocatedLines
+                    .Select(a => $"sąskaita #{a.InvoiceId}, eilutė #{a.LineId}: paskirstyta daugiau nei eilutės suma"))
                 .ToList();
-            
+
             // Create budget items
-            _budgetItems = CreateBudgetItems(budgets, invoices);
+            _budgetItems = CreateBudgetItems(budgets, actuals.Rows);
             
             // Calculate totals
             _totalBudgeted = _budgetItems.Sum(b => b.PlannedAmount);
@@ -170,38 +185,22 @@
         }
     }
     
-    private List<BudgetItem> CreateBudgetItems(List<ExpenseBudgetModel> budgets, List<ExpenseInvoice> invoices)
+    private List<BudgetItem> CreateBudgetItems(List<ExpenseBudgetModel> budgets, List<BudgetActualRow> actuals)
     {
         var items = new List<BudgetItem>();
-        
+
         foreach (var category in _categories)
         {
             // Get budgets for this category
             var categoryBudgets = budgets.Where(b => b.CategoryId == category.Id).ToList();
-            
+
             // Create budget items for each month
             for (int month = 1; month <= 12; month++)
             {
                 var budget = categoryBudgets.FirstOrDefault(b => b.Month == month);
                 var plannedAmount = budget?.PlannedAmount ?? 0m;
-                
-                // Calculate monthly actual expenses (pro-rated based on invoice date)
-                var monthlyActual = 0m;
-                foreach (var invoice in invoices)
-                {
-                    if (invoice.InvoiceDate.Month == month)
-                    {
-                        foreach (var line in invoice.ExpenseInvoiceLines)
-                        {
-                            var allocation = line.ExpenseLineAllocations.FirstOrDefault(a => a.CategoryId == category.Id);
-                            if (allocation != null)
-                            {
-                                monthlyActual += allocation.AllocatedAmount;
-                            }
-                        }
-                    }
-                }
-                
+                var monthlyActual = actuals.Where(a => a.CategoryId == category.Id && a.Month == month).Sum(a => a.NetAmount);
+
                 var variance = plannedAmount - monthlyActual;
                 var status = GetBudgetStatus(variance, plannedAmount);
                 
@@ -218,7 +217,28 @@
                 });
             }
         }
-        
+
+        // „Nepriskirta": uncategorised actuals (no budget can be planned for them — category_id is required)
+        if (actuals.Any(a => a.CategoryId == null))
+        {
+            for (int month = 1; month <= 12; month++)
+            {
+                var monthlyActual = actuals.Where(a => a.CategoryId == null && a.Month == month).Sum(a => a.NetAmount);
+                items.Add(new BudgetItem
+                {
+                    Id = 0,
+                    CategoryId = 0,
+                    CategoryName = "Nepriskirta",
+                    Month = month,
+                    PlannedAmount = 0m,
+                    ActualExpenses = monthlyActual,
+                    Variance = -monthlyActual,
+                    Status = BudgetStatus.Ok,
+                    IsUnassigned = true
+                });
+            }
+        }
+
         return items;
     }
     
@@ -338,6 +358,7 @@
         public decimal ActualExpenses { get; set; }
         public decimal Variance { get; set; }
         public BudgetStatus Status { get; set; }
+        public bool IsUnassigned { get; set; }
     }
     
     public enum BudgetStatus
