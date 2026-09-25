@@ -5,6 +5,156 @@ naujas su nuoroda į senąjį.
 
 ---
 
+## D-021 — Žalias Azure JSON saugomas DB stulpelyje `ocr_raw_json` (2026-09-16, įrašyta 2026-09-25)
+
+**Pastaba.** Sprendimas priimtas sesijoje 04 ir ten pažymėtas kaip D-021, bet į šį
+žurnalą neįrašytas. Atkurta iš `sessions/2026-09-16-04.md`; originalus pagrindimas
+neužfiksuotas.
+
+**Sprendimas.** Žalias Azure DI atsakymas rašomas į esamą `expense_invoices.ocr_raw_json`
+stulpelį.
+
+**Keičia D-004** (gzip diske, DB tik kelias). D-004 nurodytos rizikos (backup'ų dydis,
+netyčinis stulpelio paėmimas užklausose) lieka galioti ir turi būti peržiūrėtos, jei
+kiekis augs.
+
+---
+
+## D-022 — Etapų eiliškumas apverstas: vartai prieš ekstrakciją (2026-09-25)
+
+**Kontekstas.** `analysis/RESEARCH-2026-09-25-reliability.md` ir prodo duomenų analizė
+staginge (`analysis/PROD-DATA-FINDINGS-2026-09-25.md`).
+
+**Sprendimas.** Deterministiniai vartai ir triukšmo mažinimas (Etapai 0–2) eina prieš
+ekstrakcijos perrašymą (Etapas 3). **Keičia D-020 seką** 2–3 žingsniuose.
+
+**Pagrindimas (patikslintas pagal prodo duomenis).** Didžiausia žala atsirado ne iš
+atpažinimo:
+
+- Dublikatų aptikimas **veikė** — visi 27 tikri dublikatai gavo `DUPLICATE_PENDING`.
+  Gedimas: `DUPLICATE_PENDING` neturi karantino semantikos — eilutė skaičiuojama cash
+  flow, eksporte ir sąrašuose kaip įsipareigojimas (28 679,74 €).
+- 16 sąskaitų tyliai priskirta neteisingam tiekėjui (`FindSupplierIdAsync`, tuščias PVM
+  kodas) — be jokios vėliavėlės.
+- Sąskaitos su sulūžusia antraštės aritmetika (vienoje 465 374,45 € su neto 0,00)
+  nesustabdomos, nes `AMOUNT_ARITHMETIC_MISMATCH` neįeina į statuso logiką.
+
+Nė vienas iš jų nėra ekstrakcijos kokybės klausimas.
+
+---
+
+## D-023 — Kryptis: `prebuilt-layout` + sava `tables[]` serializacija (2026-09-25)
+
+**Statusas: kryptis, ne galutinis sprendimas.**
+
+**Kontekstas.** ASF0021438: `analyzeResult.tables[2]` turėjo teisingą lentelę su
+`columnHeader`, o `documents[0].fields` paėmė „Suma su PVM" skiltį ir sulaužė skaičių
+formatą.
+
+**Kodėl ne galutinis.** D-016 sąlyga buvo ~10 sąskaitų žalių atsakymų; matyta viena.
+D-016 lieka atviras, kol neperskaityta ~10. Taip pat prieštarauja D-019 („investuoti į
+eilučių redagavimą, ne į ekstrakciją") — D-019 galioja, kol Etapo 3 pradžioje
+nepriimtas galutinis sprendimas.
+
+---
+
+## D-024 — Statistinis pasitikėjimo kalibravimas atmetamas šiame etape (2026-09-25)
+
+**Sprendimas.** Nedaroma: conformal prediction, apmokytas confidence modelis (CatBoost),
+izotoninė regresija.
+
+**Pagrindimas.** ~420 dok./metus per maža imtis; tyrimo 5 skyrius. Papildomai: ExtractConf
+(vieno autoriaus workshop straipsnis, nepriklausomai nepakartotas) rodo AUC 0,896 vien
+OCR požymiais prieš 0,928 su pilnu modeliu.
+
+**Peržiūrėti**, jei tūris viršytų ~5 000 dok./metus.
+
+---
+
+## D-025 — `MISSING_DUE_DATE` — informacija, ne klaida; numatytas terminas žymimas (2026-09-25)
+
+**Kontekstas.** Mokėjimo terminas nėra privalomas pagal Direktyvos 2006/112/EB 226 str.
+Kode vėliavėlė statuso nekeičia, bet trūkstant termino jis **tyliai nustatomas
+`invoice_date + 30`** ir patenka į cash flow kaip tikras.
+
+**Sprendimas.** Vėliavėlė rodoma kaip informacija, ne kaip klaida. UI prie termino
+aiškiai rodo, kad jis numatytas (+30 d.), o ne ištrauktas iš dokumento. Vėliavėlė
+išlieka duomenyse kaip šio fakto žymė.
+
+---
+
+## D-026 — `ZERO_VAT` sprendžiamas formuluotės patikra pagal sandorio tipą (2026-09-25)
+
+**Sprendimas.** Kai PVM 0 %, tikrinama, ar dokumente yra teisinio pagrindo formuluotė.
+Yra — vėliavėlė užsidaro; nėra — tikra atitikties rizika.
+
+**Svarbu — formuluotė priklauso nuo sandorio tipo**, ne viena eilutė:
+
+- prekių tiekimas ES viduje (226 str. 11 p.) — nuoroda į neapmokestinimą
+  (pvz. „steuerfreie innergemeinschaftliche Lieferung", „Art. 138");
+- atvirkštinis apmokestinimas (226 str. 11a p.) — „Reverse charge" / nacionalinis
+  atitikmuo;
+- kitos išimtys — nuoroda į išimties pagrindą.
+
+CJEU C-247/21 konkrečiai liečia trikampę prekybą; jo išvada, kad praleidimo negalima
+ištaisyti atgaline data, netaikoma automatiškai visiems 0 % atvejams.
+
+Formuluočių sąrašas kalboms LT/DE/LV/EE/PL/RO/UA — Q-009. Įgyvendinama Etape 3.
+ULAK sąskaitoms netaikoma (`FROZEN.md` §4).
+
+---
+
+## D-027 — Dublikato vartas = karantinas, ne nauja aptikimo logika (2026-09-25)
+
+**Kontekstas.** `CheckDuplicateAsync` (OCR kelias) ieško pagal numerį + sumą ±0,01,
+nepriklausomai nuo tiekėjo, ir prode pagavo visus 27 tikrus dublikatus. Bet sąskaita vis
+tiek sukuriama ir `DUPLICATE_PENDING` skaičiuojama visur.
+
+**Sprendimas.**
+
+1. `DUPLICATE_PENDING` ir `REJECTED` neįtraukiami į jokias sumas, cash flow ir eksportą,
+   nebent filtras aiškiai prašo to statuso.
+2. `DUPLICATE_PENDING` yra blokuojantis statusas — sąskaita toliau nejuda, kol neišspręsta.
+3. Sprendimas „tai skirtinga sąskaita" ir „ištrinti" fiksuojami audito žurnale;
+   „ištrinti" reiškia `REJECTED`, ne `DELETE` (apskaitos dokumentas).
+
+**Žinoma spraga.** Numeris + suma duoda klaidingą teigiamą, kai numeris trumpas ir
+suma 0,00: `277` (Rotada) sulygintas su `173` (Franko), abu „1" / 0,00 €. Dublikato
+paieška neturi remtis sąskaita su suma 0,00.
+
+---
+
+## D-028 — Antraštės aritmetikos vartas perkeliamas į Etapą 0 (2026-09-25)
+
+**Kontekstas.** `AddAmountConsistencyFlags` jau skaičiuoja `excl + vat = incl` ir deda
+`AMOUNT_ARITHMETIC_MISMATCH` / `MISSING_MONEY_FIELD`, bet šios vėliavėlės neįeina į
+statuso nustatymą. Prode `213` (465 374,45 €, neto 0,00), `167`, `168` praėjo.
+
+**Sprendimas.** Abi vėliavėlės → `NEEDS_REVIEW`. Tai BR-CO-15 poaibis; pilnas EN 16931
+modulis lieka Etape 1.
+
+**Kodėl į Etapą 0.** Kaina — viena sąlyga statuso logikoje; nauda — sustabdo didžiausią
+vieno įrašo klaidą prode.
+
+---
+
+## D-029 — Staging atnaujinamas kaip prodo klonas (2026-09-25)
+
+**Kontekstas.** `__EFMigrationsHistory` staginge rodė visas migracijas, bet schema
+skyrėsi nuo prodo (trūko `deliveries`, `expense_payments` stulpelių, ~12 artwork
+indeksų, tarp jų unikalių; `invoice_audit` tipai skyrėsi). Istorijos eilutės buvo
+įrašytos ranka be DDL. Istorija nėra schemos įrodymas.
+
+**Sprendimas.** Staging atnaujinamas taip: backup → prodo `mariadb-dump` (patikrinus, kad
+nėra `USE`/`CREATE DATABASE`) → į staging bazę → neišleisti pakeitimai ant viršaus →
+schemos diff prieš prodą per `information_schema` (turi likti tik neišleisti pakeitimai).
+
+**Pasekmė.** Staginge yra realūs prodo duomenys ir prodo `app_settings` (įskaitant Azure
+DI raktą). Prieš startą tikrinama: eilės tuščios, išorinių siuntimų (SMTP, Telegram)
+konfigūracija tuščia.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
