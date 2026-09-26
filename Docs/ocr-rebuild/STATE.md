@@ -6,7 +6,7 @@ Atnaujinta: 2026-09-26 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 —
 
 Etapas 0 ir Etapas 0c — **BAIGTI, prode v0.17.91** (2026-09-26; `main` `a1ad12a` →
 `production`). Tame pačiame deploy'uje yra ir Etapo 1 validatoriai (IBAN, PVM kodo formatas,
-EN 16931 sumos) — **neprijungti**, niekur nekviečiami.
+EN 16931 sumos) — **prode (v0.17.91) neprijungti**, niekur nekviečiami; `main` jau jungia (žemiau).
 
 **Etapas 1 — kodas baigtas `main`** (S1–S7, D-038…D-041; `e5cfb95`, versija 0.17.92 `b3e19ca`;
 **853 testai žali**, `dotnet test --filter "Category!=E2E"`). **Nedeploy'intas niekur** — laukia
