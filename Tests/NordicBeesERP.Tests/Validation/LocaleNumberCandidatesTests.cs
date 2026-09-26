@@ -170,4 +170,15 @@ public class LocaleNumberCandidatesTests
             Assert.Equal(result.Candidates.Distinct().OrderBy(c => c), result.Candidates);
         }
     }
+
+    [Theory]
+    [InlineData("1\u06623")]          // Arabic-Indic two between ASCII digits
+    [InlineData("12\u0663,00")]
+    [InlineData("\u0661\u0662\u0663")]
+    [InlineData("1\uFF12,00")]        // full-width two
+    public void NonAsciiDigits_NoStrictReading(string printed)
+    {
+        Assert.Empty(LocaleNumberCandidates.Parse(printed));
+        Assert.Equal(NumberReadOutcome.NotCheckable, LocaleNumberCandidates.Check(printed, 13m).Outcome);
+    }
 }

@@ -47,14 +47,15 @@ public static class LocaleNumberCandidates
     private const string Space = "[    ]";
 
     // (integer part, fraction) per convention and grouping; the fraction group is optional.
+    // [0-9], not \d: .NET's \d also matches non-ASCII digits („1٢3" must not read as 13).
     private static readonly Regex[] Conventions =
     {
-        new(@"^(\d+)(?:,(\d+))?$"),                                  // decimal comma, no grouping
-        new(@"^([1-9]\d{0,2}(?:" + Space + @"\d{3})+)(?:,(\d+))?$"),  // decimal comma, space grouping
-        new(@"^([1-9]\d{0,2}(?:\.\d{3})+)(?:,(\d+))?$"),              // decimal comma, dot grouping
-        new(@"^(\d+)(?:\.(\d+))?$"),                                 // decimal point, no grouping
-        new(@"^([1-9]\d{0,2}(?:" + Space + @"\d{3})+)(?:\.(\d+))?$"), // decimal point, space grouping
-        new(@"^([1-9]\d{0,2}(?:,\d{3})+)(?:\.(\d+))?$"),              // decimal point, comma grouping
+        new(@"^([0-9]+)(?:,([0-9]+))?$"),                                  // decimal comma, no grouping
+        new(@"^([1-9][0-9]{0,2}(?:" + Space + @"[0-9]{3})+)(?:,([0-9]+))?$"),  // decimal comma, space grouping
+        new(@"^([1-9][0-9]{0,2}(?:\.[0-9]{3})+)(?:,([0-9]+))?$"),              // decimal comma, dot grouping
+        new(@"^([0-9]+)(?:\.([0-9]+))?$"),                                 // decimal point, no grouping
+        new(@"^([1-9][0-9]{0,2}(?:" + Space + @"[0-9]{3})+)(?:\.([0-9]+))?$"), // decimal point, space grouping
+        new(@"^([1-9][0-9]{0,2}(?:,[0-9]{3})+)(?:\.([0-9]+))?$"),              // decimal point, comma grouping
     };
 
     /// <summary>
@@ -80,7 +81,7 @@ public static class LocaleNumberCandidates
             var m = convention.Match(text);
             if (!m.Success) continue;
 
-            var digits = new string(m.Groups[1].Value.Where(char.IsAsciiDigit).ToArray());
+            var digits = new string(m.Groups[1].Value.Where(char.IsAsciiDigit).ToArray()); // drops the group separators
             var fraction = m.Groups[2].Success ? "." + m.Groups[2].Value : "";
             if (decimal.TryParse(digits + fraction, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var value))
                 values.Add(negative ? -value : value);
