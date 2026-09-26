@@ -99,11 +99,12 @@ public class ExpenseOcrServiceReconcileTests
     [Fact]
     public void LinesExceedTheHeaderByExactlyFiveCents_IsNotEnough()
     {
-        var result = Result(100m, Line("A", 60m, 5000m), Line("A", 40.05m, 1m));
+        var result = Result(100m, Line("A", 60m, 5000m), Line("A", 40.05m, 1m), Line("Nulinė", 0m));
 
         Reconcile(result);
 
         Assert.Empty(result.Flags);
+        Assert.Equal(3, result.Lines.Count); // exactly 0,05 does not act at all — not even the zero-amount line goes
     }
 
     [Fact]
