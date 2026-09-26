@@ -37,7 +37,7 @@ public static class SupplierCompanyCodeExtractor
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(1);
 
     private const string Labels =
-        @"(?:[ĮI]m(?:onės)?\.?\s*kod(?:as)?" +
+        @"(?<![\p{L}\p{N}])(?:[ĮI]m(?:onės)?\.?\s*kod(?:as)?" +
         @"|[ĮI]\.\s*k\.(?:\s*/\s*Reg\.?\s*no\.?)?" +
         @"|Company\s+(?:registration\s+)?(?:code|number|no\.?)" +
         @"|Registration\s+(?:code|number|no\.?)" +
@@ -47,16 +47,20 @@ public static class SupplierCompanyCodeExtractor
         @"|KRS|REGON|Handelsregisternummer)";
 
     private static readonly Regex Labelled = new(
-        Labels + @"\s*[:\-–]?\s*(?<v>\d{7,14})(?!\d)",
+        Labels + @"\s{0,20}[:\-–]?\s{0,20}(?<v>\d{7,14})(?!\d)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, Timeout);
 
+    // A bare "Kodas" is accepted only where nothing but a line break, the start of the text or a comma / semicolon / colon / bar
+    // stands before it. Any word, hyphen or slash directly before ("VAT kodas", "PVM-kodas", "Prekės kodas", "PVM identifikacinis
+    // kodas", "Pirkėjo kodas") means it is another kind of code — an allowlist, because a denylist of such words always leaks.
     private static readonly Regex BareKodas = new(
-        @"\bkodas\b\s*[:\-–]?\s*(?<v>\d{9})(?!\d)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, Timeout);
+        @"(?<=^|[\r\n,;:|][ \t]{0,3})kodas\b\s{0,20}[:\-–]?\s{0,20}(?<v>\d{9})(?!\d)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Multiline, Timeout);
 
-    private static readonly Regex NotACompanyCodeBefore = new(
-        @"(pvm|mokėtojo|banko|bank|swift|bic|kliento|asmens|sąsk\w*|pašto|poštinis)\s*$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, Timeout);
+    // a date is not a registration number ("Reg. Nr. 2026-09-27", "20260927")
+    private static readonly Regex DateLike = new(
+        @"^(?:(19|20)\d{2}[-. ]?(0[1-9]|1[0-2])[-. ]?(0[1-9]|[12]\d|3[01]))$",
+        RegexOptions.CultureInvariant, Timeout);
 
     private static readonly Regex PlainNumber = new(@"^\s*\d[\d\s.\-]*\d\s*$", RegexOptions.CultureInvariant, Timeout);
 
@@ -66,7 +70,7 @@ public static class SupplierCompanyCodeExtractor
 
         // the field counts only when it is a plain number: "J40/1234/2005" or "LT123456789" are not
         var fromField = businessNumber != null && PlainNumber.IsMatch(businessNumber) ? Digits(businessNumber) : string.Empty;
-        if (IsPlausible(fromField) && !excluded.Contains(fromField))
+        if (IsPlausible(fromField) && !excluded.Contains(fromField) && !DateLike.IsMatch(fromField))
             return new CompanyCodeExtraction(fromField, CompanyCodeSource.BusinessNumberField);
 
         var candidates = new HashSet<string>();
@@ -76,14 +80,10 @@ public static class SupplierCompanyCodeExtractor
                 candidates.Add(m.Groups["v"].Value);
 
             foreach (Match m in BareKodas.Matches(content))
-            {
-                var before = content[Math.Max(0, m.Index - 14)..m.Index];
-                if (!NotACompanyCodeBefore.IsMatch(before))
-                    candidates.Add(m.Groups["v"].Value);
-            }
+                candidates.Add(m.Groups["v"].Value);
         }
 
-        candidates.RemoveWhere(c => excluded.Contains(c));
+        candidates.RemoveWhere(c => excluded.Contains(c) || DateLike.IsMatch(c));
 
         return candidates.Count switch
         {

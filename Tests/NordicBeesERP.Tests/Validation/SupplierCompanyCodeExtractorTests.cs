@@ -94,6 +94,59 @@ public class SupplierCompanyCodeExtractorTests
         Assert.Equal(CompanyCodeSource.None, e.Source);
     }
 
+    // review of S2c: the bare "Kodas" guard is an allowlist (a denylist of other kinds of code leaked)
+    [Theory]
+    [InlineData("VAT kodas 123456789")]
+    [InlineData("PVM-kodas 123456789")]
+    [InlineData("PVM. kodas 123456789")]
+    [InlineData("PVM/kodas 123456789")]
+    [InlineData("PVM identifikacinis kodas 123456789")]
+    [InlineData("Prekės kodas 123456789")]
+    [InlineData("Užsakymo kodas 123456789")]
+    [InlineData("Pirkėjo kodas 555555555")]
+    [InlineData("Pirkim kodas 123456789")]         // "im kodas" inside a word is not the "Įm. kodas" label
+    public void OtherKindsOfCode_AreNotACompanyCode(string text)
+    {
+        Assert.Equal(CompanyCodeSource.None, Extract(text).Source);
+    }
+
+    [Theory]
+    [InlineData("Pardavėjas\nKodas 123456789")]
+    [InlineData("Kodas 123456789")]
+    [InlineData("UAB Foo, kodas 123456789")]
+    [InlineData("UAB Foo; Kodas: 123456789")]
+    [InlineData("Pardavėjas:  Kodas 123456789")]
+    public void BareKodas_AtALineStartOrAfterPunctuation_IsAccepted(string text)
+    {
+        Assert.Equal("123456789", Extract(text).Code);
+    }
+
+    [Theory]
+    [InlineData("Reg. Nr. 20260927")]
+    [InlineData("Reg. Nr. 2026-09-27")]
+    [InlineData("Įmonės kodas 20261231")]
+    public void ADate_IsNotARegistrationNumber(string text)
+    {
+        Assert.Equal(CompanyCodeSource.None, Extract(text).Source);
+    }
+
+    [Theory]
+    [InlineData("2026-09-27")]
+    [InlineData("20260927")]
+    public void BusinessNumberField_ADate_IsIgnored(string field)
+    {
+        Assert.Equal(CompanyCodeSource.None, Extract("nothing", field).Source);
+    }
+
+    [Fact]
+    public void LongWhitespaceRuns_DoNotHangOrThrow()
+    {
+        var text = "Įmonės kodas" + new string(' ', 200_000) + "x";
+        var e = Extract(text);
+        Assert.Equal(CompanyCodeSource.None, e.Source);
+        Assert.Equal(CompanyCodeSource.None, Extract("Kodas" + new string('\n', 100_000) + "x").Source);
+    }
+
     // ---------------------------------------------------------------- the buyer's codes are excluded (an invoice prints both)
 
     [Fact]
@@ -187,6 +240,64 @@ public class SupplierCompanyCodeExtractorTests
         var e = SupplierCompanyCodeExtractor.Extract(null, $"Įmonės kodas 123456789 Įmonės kodas {Own}", new string?[] { "", null });
         Assert.Equal(string.Empty, e.Code);
         Assert.Equal(CompanyCodeSource.Ambiguous, e.Source);
+    }
+
+    // ---------------------------------------------------------------- the wrapper in ExpenseOcrService (review of S2c, mutation vii)
+
+    private static string AzureShaped(string content, string? businessNumber = null) =>
+        JsonSerializer.Serialize(new
+        {
+            analyzeResult = new
+            {
+                content,
+                documents = new[]
+                {
+                    new
+                    {
+                        fields = businessNumber == null
+                            ? new Dictionary<string, object> { ["VendorName"] = new { valueString = "x" } }
+                            : new Dictionary<string, object> { ["VendorBusinessNumber"] = new { valueString = businessNumber } }
+                    }
+                }
+            }
+        });
+
+    [Fact]
+    public void Wrapper_ExcludesTheBuyersVatDigits_PassedAsCustomerVatCode()
+    {
+        using var json = JsonDocument.Parse(AzureShaped("Įmonės kodas 123456789 Įmonės kodas 987654321"));
+        var settings = new CompanySettings { CompanyCode = Own, VatCode = OwnVat };
+
+        Assert.Equal("123456789", ExpenseOcrService.ExtractSupplierCompanyCode(json.RootElement, settings, "LT987654321").Code);
+        // without the buyer's VAT the two labelled numbers are two candidates → nothing is guessed
+        Assert.Equal(CompanyCodeSource.Ambiguous, ExpenseOcrService.ExtractSupplierCompanyCode(json.RootElement, settings, "").Source);
+    }
+
+    [Fact]
+    public void Wrapper_ExcludesOurOwnCompanyCodeAndVat_FromSettings()
+    {
+        using var json = JsonDocument.Parse(AzureShaped($"Įmonės kodas 123456789 Įmonės kodas {Own} Reg. Nr. 100013406816"));
+        var e = ExpenseOcrService.ExtractSupplierCompanyCode(json.RootElement, new CompanySettings { CompanyCode = Own, VatCode = OwnVat }, null);
+        Assert.Equal("123456789", e.Code);
+
+        var noSettings = ExpenseOcrService.ExtractSupplierCompanyCode(json.RootElement, new CompanySettings(), null);
+        Assert.Equal(CompanyCodeSource.Ambiguous, noSettings.Source);
+    }
+
+    [Fact]
+    public void Wrapper_ReadsVendorBusinessNumber_FromTheDocumentFields()
+    {
+        using var json = JsonDocument.Parse(AzureShaped("Įmonės kodas 987654321", businessNumber: "123456789"));
+        var e = ExpenseOcrService.ExtractSupplierCompanyCode(json.RootElement, new CompanySettings(), null);
+        Assert.Equal("123456789", e.Code);
+        Assert.Equal(CompanyCodeSource.BusinessNumberField, e.Source);
+    }
+
+    [Fact]
+    public void Wrapper_ResponseWithoutDocumentsOrContent_GivesNothing_NoThrow()
+    {
+        using var json = JsonDocument.Parse("{\"analyzeResult\":{}}");
+        Assert.Equal(CompanyCodeSource.None, ExpenseOcrService.ExtractSupplierCompanyCode(json.RootElement, new CompanySettings(), null).Source);
     }
 }
 
