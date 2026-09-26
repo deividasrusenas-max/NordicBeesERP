@@ -31,9 +31,9 @@ three, or an invoice can dodge a gate by taking a different path.
 
 | Path | Entry | Flag computation | Status |
 |---|---|---|---|
-| OCR create | `ExpenseUploadDialog.SaveAsync` → `ExpenseService.CreateFromOcrAsync` (`ExpenseService.cs:1655`) | flags from `ExpenseOcrService.ProcessAsync` (`ExpenseOcrService.cs:759-827`), then amount and date flags recomputed from the final values (`ExpenseService.cs:1670-1671`) | `DecideOcrStatus` (`:1596`), duplicate → `DUPLICATE_PENDING` |
+| OCR create | `ExpenseUploadDialog.SaveAsync` → `ExpenseService.CreateFromOcrAsync` (`ExpenseService.cs:1655`) | flags from `ExpenseOcrService.ProcessAsync` (`ExpenseOcrService.cs:759-817`), then amount and date flags recomputed from the final values (`ExpenseService.cs:1670-1671`) | `DecideOcrStatus` (`:1596`), duplicate → `DUPLICATE_PENDING` |
 | Re-OCR | `ExpenseUploadDialog.SaveAsync` (`ExpenseUploadDialog.razor:964-975`) → `UpdateFromOcrAsync` (`ExpenseService.cs:1773`) | same as create (`:1817-1819`) | same, quarantine kept (`:1797-1832`) |
-| Manual edit | `InvoiceDetailDialog.SaveAsync` → `SaveInvoiceEditAsync` (`:310`); `InvoiceEdit.razor` → `UpdateInvoiceAsync` (`:252`) | `ComputeManualEditFlags` (`:498-529`): **rebuilds the list from scratch** and carries over only 5 stored flags | `StatusAfterManualEdit` (`:536`) |
+| Manual edit | `InvoiceDetailDialog.SaveAsync` → `SaveInvoiceEditAsync` (`:310`, one transaction `:313`). `ExpenseService.UpdateInvoiceAsync` (`:252`) uses the same helpers but has **no UI caller** (only tests; `InvoiceEdit.razor` is the sales-invoice page and calls `IInvoiceService`) | `ComputeManualEditFlags` (`:498-529`): **rebuilds the list from scratch** and carries over only 5 stored flags | `StatusAfterManualEdit` (`:536`); approval kept or voided by `ApplyManualEditStatusAsync` (`:442`) using `ChangedGateFields` (`:482`) and `LinesChanged` (`:424`) |
 
 Supplier assignment (`AssignSupplierAsync` `:1331`, `AutoAssignSupplierAsync` `:1370`) uses the
 **stored** flags (`StatusAfterSupplierAssigned` `:1605`).
@@ -58,16 +58,17 @@ service from the final values — the pattern already used for the arithmetic an
    fixed first (§1.4, §5).
 2. **`OcrQueueWorker` bypasses every gate** (`OcrQueueWorker.cs:84-137`): for a row with an
    existing invoice it writes amounts and the supplier straight onto the invoice with no flags
-   and no status decision, and sets `PaidAmount = AmountInclVat` (`:110`). The only producer is
-   the n8n webhook `POST api/expense/webhook` (`Controllers/ExpenseController.cs:24-58`, API key
-   from `app_settings.n8n_api_key`), which always writes `InvoiceId = 0` (`:51`) — so the
-   invoice lookup (`OcrQueueWorker.cs:84-87`) never matches and no invoice is written. By
-   reading (not executed): the worker's status/`Attempts` changes are made on an untracked
-   entity without `Update` (`:73-74`, `:81`, `:148-157`), so they are never saved (0c report §2) — a
-   webhook row would stay `WAITING` and be sent to Azure again on every 30 s cycle (`:39`,
-   `:50`). The dev DB queue is empty (read-only query, 2026-09-26); `n8n_api_key` is set on
-   dev; production is unknown to me. The file is frozen (FROZEN §5). The plan does not touch
-   it; §5 records it as an owner decision.
+   and no status decision, and sets `PaidAmount = AmountInclVat` (`:110`). The only code that
+   enqueues is `ExpenseController`'s n8n webhook (`Controllers/ExpenseController.cs:24-58`,
+   always `InvoiceId = 0`, `:51`) — and it is **not routed**: `Program.cs` has no
+   `AddControllers` / `MapControllers` (grep 2026-09-26; already recorded in D-007). So no queue
+   row can be created today and the path is dead from both ends. If it were revived as it is:
+   the invoice lookup (`OcrQueueWorker.cs:84-87`) would never match `InvoiceId = 0`, and — by
+   reading, not executed — the worker's status/`Attempts` changes are made on an untracked
+   entity without `Update` (`:73-74`, `:81`, `:148-157`; global NoTracking, `Program.cs:55-57`),
+   so a row would stay `WAITING`, be re-sent to Azure every ~30 s (`:39`, `:50`) and, being the
+   oldest, block every later row. The dev DB queue is empty (read-only query, 2026-09-26). The
+   file is frozen (FROZEN §5). The plan does not touch it; §5 records it as an owner decision.
 
 ---
 
@@ -103,7 +104,7 @@ call `RecomputeAmountConsistencyFlags`: `CreateFromOcrAsync` (`:1670`), `UpdateF
 ### 1.3 New flags, review vs information, Lithuanian labels
 
 Labels and colours go into `ExpenseStatusHelper.GetFlagLabel` / `GetFlagColor`
-(`Helpers/ExpenseStatusHelper.cs:58-100`); both dialogs render chips through them
+(`Helpers/ExpenseStatusHelper.cs:59-105`); both dialogs render chips through them
 (`InvoiceDetailDialog.razor:46-51`, `ExpenseUploadDialog.razor:181-184`), so no frozen markup
 changes. Review flags are added to `HasReviewFlag` (`ExpenseService.cs:1588`) and to
 `IsCriticalFlag` (`ExpenseStatusHelper.cs:118-121`).
@@ -111,7 +112,7 @@ changes. Review flags are added to `HasReviewFlag` (`ExpenseService.cs:1588`) an
 | Flag | When | Kind | Label (proposal) |
 |---|---|---|---|
 | existing `AMOUNT_ARITHMETIC_MISMATCH` | BR-CO-15 violation (replaces the flat 0.02 check in `AddAmountConsistencyFlags`, `ExpenseOcrService.cs:860-871`) | review (already) | keep „Sumos nesutampa (be PVM + PVM ≠ su PVM)" |
-| existing `AMOUNT_MISMATCH` | BR-CO-10 violation (replaces the ad-hoc 0.05 check at `ExpenseOcrService.cs:796-810` and the 0.01 check at `ExpenseService.cs:506-507`) | review (already) | keep „Sumos nesutampa" |
+| existing `AMOUNT_MISMATCH` | BR-CO-10 violation (replaces the ad-hoc 0.05 check at `ExpenseOcrService.cs:796-810` and the 0.01 check at `ExpenseService.cs:507-508`) | review (already) | keep „Sumos nesutampa" |
 | existing `MISSING_MONEY_FIELD` | unchanged meaning | review (already) | keep |
 | new `TOTALS_OUT_OF_RANGE` | any rule in `OutOfRange` (amounts beyond decimal range — nonsense input) | review | „Sumos neįtikėtinai didelės" |
 | new `LINE_AMOUNT_IMPLAUSIBLE` | line rule violation | **information** in Etapas 1 (see Q3) | „Eilutė: kiekis × kaina ≠ suma" |
@@ -149,10 +150,16 @@ invoice and lines at display time — no schema change. The `CREATED` / `EDITED`
   owner is not told "four rules are live" when two are.
 - **Derived line nets.** When Azure gives no line amount, `ProcessAsync` computes it as
   `UnitPrice × Quantity` (`ExpenseOcrService.cs:564-566`). BR-CO-10 on such lines checks a
-  number the code made up. Proposal: mark such lines as derived in the DTO and exclude them
-  from the line rule (it would pass trivially).
+  number the code made up — it still compares their sum with the header, which is useful, but
+  the line rule on such a line compares the number with itself and passes trivially.
+  Proposal: mark such lines as derived in the DTO; keep them in BR-CO-10, exclude them from
+  the line rule.
+- **Edit path has no reliable unit price.** The edit save never writes `unit_price`
+  (`ExpenseService.cs:377-396`), so on the edit path new lines have a NULL price (line rule
+  NotApplicable) and an edited quantity is checked against a stale price. The line rule on the
+  edit path is only as good as that; fixing the save is a small addition to S2.
 - **Overflow.** `En16931TotalsValidator` already maps overflow to `OutOfRange`. The line rule
-  does not (`LineAmountPlausibilityRule.cs:48`). Fix it **inside the rule** (same pattern,
+  does not (`LineAmountPlausibilityRule.cs:48` multiplication, `:51` subtraction). Fix it **inside the rule** (same pattern,
   tested), not with a try/catch at the call site.
 
 ### 1.5 Behaviour change the owner must accept
@@ -162,7 +169,7 @@ Replacing the flat tolerances with the Schematron comparison changes who is flag
 - header: today `|net + VAT − gross| > 0.02` (`ExpenseOcrService.cs:869`); BR-CO-15 flags any
   difference after rounding, i.e. **0.01 now flags**;
 - lines: today 0.05 on both net and gross on the OCR path (`:809`), 0.01 on net on the edit
-  path (`ExpenseService.cs:506`); BR-CO-10 flags any difference after rounding the line sum.
+  path (`ExpenseService.cs:507-508`); BR-CO-10 flags any difference after rounding the line sum.
 
 How many invoices this moves is unknown. It can be measured on staging before wiring (read-only
 query, owner runs it — §7).
@@ -254,10 +261,11 @@ ASF0021438, `prebuilt-invoice` API 2024-11-30) shows the failure is Azure's:
 | line 1 `Quantity` | „3 888,000" | **3** | 3888 |
 | line 2 `Quantity` | „9,000" | **9000** | 9 |
 | line 1 `Amount` | „972,00" | 972.00 | 803,31 (972,00 is the „Suma su PVM" column — D-023) |
+| line 2 `Amount` | „158,40" | 158.40 | 130,91 (also the „Suma su PVM" column; document text: `9,000 / 14,5456 / 17,6000 / 130,91 / 158,40`) |
 | `SubTotal` / `TotalTax` / `InvoiceTotal` | „934,22" / „196,18" / „1 130,40" | same | correct |
 
-So both directions of the ambiguity occur on one invoice, **and** the line amount is from the
-wrong column. The printed `content` string is in scope where each value is read (the field
+So both directions of the ambiguity occur on one invoice, **and** both line amounts are from
+the wrong (gross) column. The printed `content` string is in scope where each value is read (the field
 element is at hand), and the full response is stored in `ocr_raw_json`
 (`ExpenseService.cs:1719`, `:1891`).
 
@@ -281,20 +289,28 @@ A pure helper (new file, e.g. `Services/Validation/LocaleNumberCandidates.cs`):
    the value is wrong. If there are several candidates, the value is ambiguous.
 3. **Disambiguation by arithmetic.** Choose the candidate for which `quantity × unit price`
    matches the line net within the line rule's tolerance, widened by the unit price's printed
-   precision (0,2066 has 4 decimals → ± quantity × 0,00005). If no line-level choice works
-   (ASF0021438: the line net is itself wrong), try the combination of candidates whose
-   `Σ quantity × unit price` matches the header net (BR-CO-10 shape); on ASF0021438 that gives
-   3888 × 0,2066 + 9 × 14,5456 = 934,17 vs 934,22 — within tolerance, but only barely, and it
-   still leaves line 1's net at 972,00.
-4. **Never silent.** If a value is replaced, a flag records it. Proposal: new
-   `NUMBER_REINTERPRETED` (review in Etapas 1) „Skaičius perskaitytas iš dokumento teksto";
-   unresolved ambiguity → `NUMBER_AMBIGUOUS` (review) „Dviprasmiškas skaičius".
+   precision (0,2066 has 4 decimals → ± quantity × 0,00005). On ASF0021438 this **fails**: line
+   2's candidates give 9 × 14,5456 = 130,91 and 130 910, and neither is near the (wrong-column)
+   158,40. Only the header-level combination — candidates whose `Σ quantity × unit price`
+   matches the header net — resolves it: 3888 × 0,2066 + 9 × 14,5456 = 934,17 vs 934,22, within
+   tolerance but only barely, and both line nets stay wrong (972,00, 158,40).
+4. **Never silent.** Proposal for Etapas 1: `NUMBER_MISREAD` (review) „Skaičius nesutampa su
+   dokumento tekstu" when Azure's value is not a strict candidate; `NUMBER_AMBIGUOUS` (review)
+   „Dviprasmiškas skaičius" when several candidates exist. The value is not replaced; the
+   detail view shows the candidate(s). If automatic replacement is approved later (Q6), it
+   gets its own flag (`NUMBER_REINTERPRETED`) so a replaced value is never silent.
 
-**Honest scope.** Detection (step 2) is well-defined and would have caught both quantities on
-ASF0021438. Disambiguation (step 3) fixes the quantity but not the wrong-column line net, so
-that invoice would still end in NEEDS_REVIEW via BR-CO-10. The line-net column problem is
-D-023 / Etapas 3. Recommendation: Etapas 1 ships **detection for all numeric fields +
-line-level disambiguation**; the header-level combination search waits for more data (Q6).
+**Honest scope.** On the only real sample: detection (step 2) catches both quantities — line 1
+as wrong (3 ∉ {3888}, the single candidate is the answer without arithmetic), line 2 as
+ambiguous ({9, 9000}). Line-level disambiguation resolves **neither** ambiguous case there,
+because the line nets are from the gross column; only the header-level search does, and even
+then the invoice stays in NEEDS_REVIEW via BR-CO-10 because the line nets are wrong. The
+line-net column problem is D-023 / Etapas 3 (`tables[]`).
+Recommendation: Etapas 1 ships **detection for all numeric fields** — a wrong or ambiguous
+value becomes a review flag, and a value whose only strict candidate differs from Azure's is
+**shown** as the candidate, not silently written. Automatic replacement (line- or
+header-level) waits for Etapas 3, where the correct columns are available, and for the corpus
+(Q6).
 
 ### 3.3 Corpus
 
@@ -318,8 +334,8 @@ Local PDFs: 13 expense invoices in `wwwroot/uploads/invoices/2026/07/` and 1 in
 3. From now on every staging upload stores its JSON; the staging checks for Etapas 1 add ~10
    uploads of real supplier PDFs.
 4. Unit tests use hand-built JSON fragments with the real ASF0021438 strings; they do not need
-   the corpus. The corpus is for judging the false-positive rate before switching
-   `NUMBER_REINTERPRETED` from review to information.
+   the corpus. The corpus is for judging how often `NUMBER_AMBIGUOUS` fires on correct values
+   (e.g. every „1,000" quantity) before deciding on automatic replacement.
 
 ### 3.4 Files, frozen, tests, staging, estimate
 
@@ -330,8 +346,11 @@ Local PDFs: 13 expense invoices in `wwwroot/uploads/invoices/2026/07/` and 1 in
   amounts, the reconcile interaction.
 - Staging: upload ASF0021438 (owner has the PDF?) and 2–3 invoices with thousands in
   quantities.
-- Estimate: ~8–12 h for detection + line-level disambiguation (RESEARCH: 6–10 h); +4–6 h for
-  the header-level search if chosen.
+- Estimate: ~5–7 h for detection (RESEARCH gave 6–10 h for detection + disambiguation);
+  automatic replacement, if chosen (Q6), +6–10 h and better placed in Etapas 3.
+- Risk: `NUMBER_AMBIGUOUS` may fire often on correct values („1,000" = 1 or 1000); if the
+  corpus shows that, ambiguity where the line arithmetic already agrees with Azure's choice
+  should be information, not review — decided on data, not now.
 
 ---
 
@@ -366,6 +385,8 @@ by the code no invoice gets both: one with a stored file has no button, one with
    decision (Q8).
 4. `UpdateFromOcrAsync` is not one transaction (several `SaveChangesAsync` / raw SQL calls,
    `:1839-1946`), unlike `SaveInvoiceEditAsync` (`:313`) — D-010. Wrap it, same pattern.
+   (`CreateFromOcrAsync` has the same gap — several saves, no transaction, `:1729-1770`; worth
+   the same fix in the same commit.)
 
 ### 4.3 Files, frozen, tests, staging, estimate
 
@@ -387,7 +408,7 @@ by the code no invoice gets both: one with a stored file has no button, one with
 | Drag & drop does not work | **No** (separate task, before Etapas 1 or alongside) | Not a gate. Code is FROZEN §3 (`OnAfterRenderAsync`, `dropzone.js`, `App.razor`); needs diagnosis in a real browser first and the owner's permission. It does block staging check 18.3 for Etapas 1 only if drops are part of the check — they need not be. |
 | Budget / cash-flow / supplier-history dialogs unreachable | **No** | Not a gate. Needs a product decision: wire them (where, for whom) or delete them. Until then Etapas 0 checks 2 and 5 cannot be done. |
 | „Patikrinkite ar visi serveriai veikia…" | **No** | FROZEN §3 markup; one-line change; bundle it with the drag & drop task under the same permission. |
-| `OcrQueueWorker` `Attempts++` + gate bypass + webhook | **No** (owner decision, but soon) | FROZEN §5. The n8n webhook (`ExpenseController.cs`) can enqueue; each such row would be re-sent to Azure every cycle and never create an invoice (§0). D-007 said the queue path is to be revived — if it is, it must call `CreateFromOcrAsync` / `UpdateFromOcrAsync` so the gates apply. Recommend deciding "retire, or route through the service" and checking whether n8n posts to production at all. |
+| `OcrQueueWorker` `Attempts++` + gate bypass | **No** (owner decision) | FROZEN §5. Dead from both ends today (the webhook is unrouted, §0), so no live risk. D-007 said the path is to be revived; if it is, it must call `CreateFromOcrAsync` / `UpdateFromOcrAsync` so the gates apply, and fix the unsaved status first. (FROZEN §5 also says the worker calls `ExtractInvoiceDataAsync`; it calls `ProcessAsync`, `OcrQueueWorker.cs:77` — doc drift.) |
 | decimal-precision findings | **No** | None is in `Models/Expenses/` (0c report appendix: 57 hits of the rule, not 12 — the count needs reconciling); model/migration hygiene, own task. |
 | Data Protection keys, 3.8 GB RAM | **No** | Infrastructure, outside OCR. (With no production deploy until Etapas 4, the logout-on-deploy pain is staging-only for now.) |
 | Production data cleanup, „248" counter | **No** | Separate work with the accountant (Q-010). The new gates act on new, re-OCR'd and edited invoices only; they do not rewrite old rows. |
@@ -404,15 +425,15 @@ no-DB items (D-031).
 | # | Session | Commits | Depends on | Est. |
 |---|---|---|---|---|
 | S1 | **Pure prep** (new files / validator files only, no DB) | (a) `LineAmountPlausibilityRule` never throws; (b) `VatCodeFormatValidator` four notes; (c) `VatRateTable` + tests (after Q2); (d) `LocaleNumberCandidates` + tests | owner rate confirmation for (c) | 6–9 h |
-| S2 | **Flag plumbing** | (a) `ComputeManualEditFlags` carry-over redesign + `OWN_COMPANY` / `INVALID_VAT_RATE` regression tests; (b) new flag constants, labels, colours, `HasReviewFlag`, `IsCriticalFlag` (no producer yet) | S1 not needed | 2–3 h |
+| S2 | **Flag plumbing** | (a) `ComputeManualEditFlags` carry-over redesign + `OWN_COMPANY` / `INVALID_VAT_RATE` regression tests; (b) new flag constants, labels, colours, `HasReviewFlag`, `IsCriticalFlag` (no producer yet); (c) edit save writes `unit_price` (§1.4) | S1 not needed | 2–3 h |
 | S3 | **Re-OCR by `file_id`** | (a) button condition; (b) filename kept; (c) transaction; (d) allocation rule (Q8) | S2 (so re-OCR does not meet the old carry-over) | 3–5 h |
 | S4 | **EN 16931 gate** | (a) the §1.2 helper with BR-CO-15 replacing `AddAmountConsistencyFlags`'s tolerance; (b) BR-CO-10 replacing both `AMOUNT_MISMATCH` checks; (c) line rule as information; (d) rule messages in the detail dialog | S1a, S2; Q1 | 8–10 h |
 | S5 | **IBAN + VAT format gates** | (a) VAT format before VIES / supplier match in `ProcessAsync`; (b) both in the helper, carry-over on the edit path | S1b, S2, S4a | 3–4 h |
 | S6 | **VAT-rate whitelist gate** | wiring only | S1c, S4a | 2–3 h |
-| S7 | **Locale detection + line-level disambiguation** | (a) read `content` next to typed values; (b) detection flags; (c) line-level choice; (d) reconcile step decision (Q7) | S1d, S4 (uses the line rule tolerance) | 8–12 h |
+| S7 | **Locale detection** | (a) read `content` next to typed values; (b) detection flags, candidates shown in the detail view; (c) reconcile step decision (Q7) | S1d, S2 | 5–7 h |
 | S8 | **Staging checks document** `STAGING-CHECKS-ETAPAS1.md`, then the owner's run | — | all | 2–3 h + owner |
 
-**Total ≈ 34–49 h** of agent work plus reviews and the owner's staging time — above
+**Total ≈ 31–44 h** of agent work plus reviews and the owner's staging time — above
 RESEARCH's ~25 h because the validators' wiring touches three write paths and the tests of
 five existing classes, and because §4 and the carry-over fix were not in RESEARCH's list.
 
@@ -459,13 +480,23 @@ pass, on create, re-OCR and edit) are written in S8 against the final code, like
 - **Supplier assignment uses stored flags** (`:1605`). New review flags stored at OCR time are
   honoured there; flags that depend on the supplier (VAT rate by the partner's country) are
   not recomputed on assignment unless S6 adds it. Proposal: recompute the rate gate on
-  assignment too.
+  assignment too. Two more status decisions use stored flags: `DismissWrongRecipientAsync`
+  (`DecideOcrStatus` at `ExpenseService.cs:564`) and `ResolveDuplicateAsDifferentAsync`
+  (`:1515`) — same rule: stored review flags are honoured, supplier-dependent ones are not
+  recomputed.
+- **Approval retention.** An approved invoice keeps its approval on edit unless a gate field
+  changed (`ApplyManualEditStatusAsync` `:442`, `ChangedGateFields` `:482`, `LinesChanged`
+  `:424`, which ignores quantity). A new gate therefore does not reopen an approved invoice
+  whose gate fields were not edited — intended, but it must be stated in each gate's tests.
+- **ULAK.** The upload dialog offers a ULAK type, but `CreateFromOcrAsync` always stores
+  `InvoiceType = "STANDARD"` (`:1692`), so ULAK's 6 % (FROZEN §4) cannot reach the rate
+  whitelist through OCR today; if that changes, the whitelist must exempt ULAK.
 - **D-016 tension.** D-016 deferred "validators" until ~10 raw responses had been read; one
   has been. D-022 later put gates first. The deterministic gates (§1, §2) do not depend on how
   good Azure is — they stop whatever arrives. §3 does depend on it, which is why it is last
   and scoped to detection. The owner should confirm D-022 supersedes D-016 for §1–§2 (Q9).
-- **Queue path.** A webhook row loops through Azure without creating an invoice; if the worker
-  is ever pointed at real invoices, it writes them past every gate (§0).
+- **Queue path.** Dead today; if revived as it is, it writes invoices past every gate and loops
+  on its rows (§0).
 - **Tests depend on Tailscale** to the dev test DB.
 
 ---
@@ -486,9 +517,10 @@ pass, on create, re-OCR and edit) are written in S8 against the final code, like
   should an invalid IBAN be refused when `SupplierCreateDialog` is prefilled from it
   (`SupplierCreateDialog.razor:296`, via `InvoiceDetailDialog.razor:813`) — that is where it
   would enter master data.
-- **Q6 — Disambiguation depth.** Detection + line-level only in Etapas 1 (proposed), or also the
-  header-level combination search? And may the code **replace** Azure's number when arithmetic
-  decides (with `NUMBER_REINTERPRETED`), or only flag?
+- **Q6 — Disambiguation depth.** Detection only in Etapas 1, value never replaced (proposed —
+  on ASF0021438 line-level arithmetic resolves neither ambiguous quantity, §3.2)? Or also
+  automatic replacement (line- and header-level, with `NUMBER_REINTERPRETED`) now rather than
+  in Etapas 3?
 - **Q7 — Reconcile heuristics.** The "remove lines with quantity > 1000" step
   (`ExpenseOcrService.cs:629-640`) and the "remove duplicate descriptions" step silently delete
   lines. Keep, flag, or remove?
@@ -496,8 +528,8 @@ pass, on create, re-OCR and edit) are written in S8 against the final code, like
 - **Q9 — D-016.** Confirm that D-022 supersedes D-016's "validators wait for ~10 raw responses"
   for the deterministic gates; and approve the ~11-call Azure run on the local PDFs (§3.3) to
   start the corpus.
-- **Q10 — Queue worker and n8n webhook.** Does n8n post to `api/expense/webhook` in production?
-  Retire the worker (and the webhook), or route it through `CreateFromOcrAsync` (FROZEN §5
-  permission either way)?
+- **Q10 — Queue worker.** The path is dead (unrouted webhook, §0). Keep D-007 (revive later,
+  through `CreateFromOcrAsync`), or retire the worker and `ExpenseController` (FROZEN §5
+  permission either way)? Not needed for Etapas 1.
 - **Q11 — Orphan dialogs.** Wire the budget / cash-flow / supplier-history dialogs into the UI
   (where?) or delete them? Not Etapas 1, but Etapas 0 checks 2 and 5 wait on it.
