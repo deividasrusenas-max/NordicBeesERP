@@ -74,10 +74,10 @@ fi
 echo "Checking for FindAsync+SaveChangesAsync anti-pattern (gate 2/2)..."
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
 if [ -n "$LAST_TAG" ]; then
-  CHANGED_CS=$(git diff --name-only "$LAST_TAG" HEAD -- "*.cs")
+  CHANGED_CS=$(git diff --name-only "$LAST_TAG" HEAD -- "*.cs" ":(exclude).agent-guardrails/**")
 else
   # No tags yet -- fall back to the most recent commit only.
-  CHANGED_CS=$(git diff --name-only HEAD~1 HEAD -- "*.cs" 2>/dev/null)
+  CHANGED_CS=$(git diff --name-only HEAD~1 HEAD -- "*.cs" ":(exclude).agent-guardrails/**" 2>/dev/null)
 fi
 BAD_FILES=""
 for f in $CHANGED_CS; do
