@@ -86,6 +86,7 @@ public static class ExpenseStatusHelper
         "LINE_AMOUNT_IMPLAUSIBLE" => "Eilutė: kiekis × kaina ≠ suma",
         "VAT_FORMAT_UNCHECKED"    => "PVM kodo formatas netikrintas",
         "VAT_RATE_UNCHECKED"      => "PVM tarifas netikrintas",
+        "VAT_COUNTRY_MISMATCH"    => "PVM kodo šalis nesutampa su tiekėjo šalimi",
         "LINE_SUM_ROUNDING"       => "Eilučių suma skiriasi keliais centais",
         _                    => flag
     };
@@ -120,6 +121,7 @@ public static class ExpenseStatusHelper
         "LINE_AMOUNT_IMPLAUSIBLE" => Color.Default,
         "VAT_FORMAT_UNCHECKED"    => Color.Default,
         "VAT_RATE_UNCHECKED"      => Color.Default,
+        "VAT_COUNTRY_MISMATCH"    => Color.Default,
         "LINE_SUM_ROUNDING"       => Color.Default,
         _                    => Color.Default
     };

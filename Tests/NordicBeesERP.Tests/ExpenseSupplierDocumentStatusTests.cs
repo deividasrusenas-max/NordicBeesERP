@@ -81,6 +81,9 @@ public class ExpenseSupplierDocumentStatusTests : IClassFixture<DbTestFixture>
         SupplierName = "DocStatus OCR Supplier",
         Confidence = new OcrConfidenceDto { Amounts = 90, InvoiceNumber = 90, SupplierName = 90, InvoiceDate = 90 },
         Flags = flags.ToList(),
+        // OCR paths recompute the document flags from the codes (S5b), so the flag must come from a real bad code
+        SupplierBankAccount = flags.Contains(OcrFlag.InvalidIban) ? "LT131000011101001000" : "",
+        SupplierVatCode = flags.Contains(OcrFlag.InvalidVatFormat) ? "LT12345" : "",
         Lines = { new OcrLineDto { Description = "Eilutė", Quantity = 1m, AmountExclVat = 100m, VatRate = 21m, AmountInclVat = 121m } }
     };
 

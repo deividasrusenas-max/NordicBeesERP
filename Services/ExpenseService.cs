@@ -526,7 +526,12 @@ namespace NordicBeesERP.Services
             if (edited.VatRate == 0 && edited.AmountInclVat > 0) flags.Add(OcrFlag.ZeroVat);
             if (lines.Count == 0) flags.Add(OcrFlag.LinesNotFound);
             // D-019/D-035: lines disagreeing with the header → AMOUNT_MISMATCH / LINE_SUM_ROUNDING (BR-CO-10, D-040)
-            RecomputeValidationFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat, ToValidationLines(lines));
+            // Document codes: with no supplier they are the invoice's pending_* values; with a supplier they are not
+            // stored anywhere else, so the stored IBAN / VAT-format flags are carried over (null input).
+            SupplierDocumentInput? document = stored.SupplierId == null
+                ? new SupplierDocumentInput(stored.PendingSupplierVat, stored.PendingSupplierCountryCode, stored.PendingSupplierBankAccount)
+                : null;
+            RecomputeValidationFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat, ToValidationLines(lines), document);
             RecomputeDateFlags(flags, edited.InvoiceDate != default ? edited.InvoiceDate : null,
                 stored.CreatedAt != default ? stored.CreatedAt : VilniusToday());
 
@@ -546,7 +551,8 @@ namespace NordicBeesERP.Services
 
             // Everything the edit path does not own is carried over as stored (order kept, no duplicates)
             foreach (var flag in existing)
-                if (!ManualEditOwnedFlags.Contains(flag) && !flags.Contains(flag))
+                if (!ManualEditOwnedFlags.Contains(flag) && !flags.Contains(flag)
+                    && !(document != null && SupplierDocumentOwnedFlags.Contains(flag)))
                     flags.Add(flag);
 
             return flags;
@@ -1661,6 +1667,45 @@ namespace NordicBeesERP.Services
             OcrFlag.AmountMismatch, OcrFlag.LineSumRounding, OcrFlag.LineAmountImplausible
         };
 
+        /// <summary>
+        /// The supplier's document codes as the format gates see them (S5): VAT code, the country that hints
+        /// an unprefixed code and is compared with a prefixed one, and the IBAN. <c>null</c> to
+        /// <see cref="RecomputeValidationFlags"/> = the inputs are not available on this path and the stored
+        /// flags are carried over (manual edit of an invoice that already has a supplier — the document's codes
+        /// are stored nowhere else than <c>ocr_raw_json</c>).
+        /// </summary>
+        public sealed record SupplierDocumentInput(string? VatCode, string? CountryHint, string? BankAccount);
+
+        /// <summary>Flags owned by <see cref="RecomputeSupplierDocumentFlags"/> (recomputed only when the document inputs exist).</summary>
+        public static readonly IReadOnlyList<string> SupplierDocumentOwnedFlags = new[]
+        {
+            OcrFlag.InvalidIban, OcrFlag.InvalidVatFormat, OcrFlag.VatFormatUnchecked, OcrFlag.VatCountryMismatch
+        };
+
+        /// <summary>
+        /// IBAN and VAT-code format gates from the final values (PLAN-ETAPAS1 §1.2–§1.3, S5b):
+        /// IBAN WrongLength / BadCharacters / ChecksumFailed → INVALID_IBAN (UnknownCountryLength and Empty → no flag);
+        /// VAT code WrongFormat → INVALID_VAT_FORMAT, UnknownCountry → VAT_FORMAT_UNCHECKED (information),
+        /// CountryMismatch → VAT_COUNTRY_MISMATCH (information), Empty → no flag. The caller branches on
+        /// <c>Reason</c>, never on <c>IsValid</c> (CountryMismatch is not valid but is not a format error).
+        /// </summary>
+        public static void RecomputeSupplierDocumentFlags(List<string> flags, SupplierDocumentInput document)
+        {
+            flags.RemoveAll(f => SupplierDocumentOwnedFlags.Contains(f));
+
+            var iban = NordicBeesERP.Services.Validation.IbanValidator.Validate(document.BankAccount);
+            if (iban.Reason is IbanValidationReason.WrongLength or IbanValidationReason.BadCharacters or IbanValidationReason.ChecksumFailed)
+                flags.Add(OcrFlag.InvalidIban);
+
+            var vat = VatCodeFormatValidator.Validate(document.VatCode, document.CountryHint);
+            switch (vat.Reason)
+            {
+                case VatCodeValidationReason.WrongFormat: flags.Add(OcrFlag.InvalidVatFormat); break;
+                case VatCodeValidationReason.UnknownCountry: flags.Add(OcrFlag.VatFormatUnchecked); break;
+                case VatCodeValidationReason.CountryMismatch: flags.Add(OcrFlag.VatCountryMismatch); break;
+            }
+        }
+
         /// <summary>D-040: a BR-CO-10 difference up to this many euro is information (LINE_SUM_ROUNDING), above it review.</summary>
         public const decimal LineSumRoundingBand = 0.05m;
 
@@ -1766,9 +1811,10 @@ namespace NordicBeesERP.Services
         /// (create, re-OCR, manual edit) and by the OCR step itself, so the same input gives the same flags.
         /// </summary>
         public static void RecomputeValidationFlags(List<string> flags, decimal amountExclVat, decimal vatAmount,
-            decimal amountInclVat, IReadOnlyList<ValidationLine> lines)
+            decimal amountInclVat, IReadOnlyList<ValidationLine> lines, SupplierDocumentInput? document = null)
         {
             flags.RemoveAll(f => ValidationOwnedFlags.Contains(f));
+            if (document != null) RecomputeSupplierDocumentFlags(flags, document);
             var outcome = EvaluateValidation(amountExclVat, vatAmount, amountInclVat, lines);
 
             if (amountExclVat <= 0m || amountInclVat <= 0m) flags.Add(OcrFlag.MissingMoneyField);
@@ -1787,6 +1833,10 @@ namespace NordicBeesERP.Services
             if (outcome.LineRule.Violations.Count > 0 || outcome.LineRule.OutOfRangeLines.Count > 0)
                 flags.Add(OcrFlag.LineAmountImplausible);
         }
+
+        /// <summary>The document codes of an OCR result (the upload dialog may have edited the VAT code before saving).</summary>
+        public static SupplierDocumentInput ToDocumentInput(OcrResultDto result) =>
+            new(result.SupplierVatCode, result.SupplierCountryCode, result.SupplierBankAccount);
 
         public static List<ValidationLine> ToValidationLines(IEnumerable<OcrLineDto> lines) =>
             lines.Select(l => new ValidationLine(l.AmountExclVat, l.Quantity, l.UnitPrice, l.NetDerived)).ToList();
@@ -1847,7 +1897,7 @@ namespace NordicBeesERP.Services
             if (!hasInvoiceDate) invoiceDate = DateTime.Today;
 
             RecomputeValidationFlags(ocrResult.Flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
-                ToValidationLines(ocrResult.Lines));
+                ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult));
             RecomputeDateFlags(ocrResult.Flags, hasInvoiceDate ? invoiceDate : null, VilniusToday());
             var status = DecideOcrStatus(ocrResult.Flags, ocrResult.SupplierId);
 
@@ -2014,7 +2064,7 @@ namespace NordicBeesERP.Services
             }
 
             RecomputeValidationFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
-                ToValidationLines(ocrResult.Lines));
+                ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult));
             RecomputeDateFlags(flags, hasInvoiceDate ? invoiceDate : null,
                 invoice.CreatedAt != default ? invoice.CreatedAt : VilniusToday());
 

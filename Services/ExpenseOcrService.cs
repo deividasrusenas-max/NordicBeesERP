@@ -743,7 +743,7 @@ namespace NordicBeesERP.Services
                 // AMOUNT_MISMATCH / LINE_SUM_ROUNDING by BR-CO-10, D-040): the same helper the save paths
                 // use, so the preview shows what will be stored
                 ExpenseService.RecomputeValidationFlags(result.Flags, result.AmountExclVat, result.VatAmount,
-                    result.AmountInclVat, ExpenseService.ToValidationLines(result.Lines));
+                    result.AmountInclVat, ExpenseService.ToValidationLines(result.Lines), ExpenseService.ToDocumentInput(result));
 
                 // LOW_CONFIDENCE: result.Confidence.Overall > 0 && result.Confidence.Overall < 50
                 if (result.Confidence.Overall > 0 && result.Confidence.Overall < 50)

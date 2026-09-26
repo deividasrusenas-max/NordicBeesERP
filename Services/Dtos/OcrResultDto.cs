@@ -152,5 +152,6 @@ public static class OcrFlag
     public const string LineAmountImplausible    = "LINE_AMOUNT_IMPLAUSIBLE";
     public const string VatFormatUnchecked       = "VAT_FORMAT_UNCHECKED";
     public const string VatRateUnchecked         = "VAT_RATE_UNCHECKED";
+    public const string VatCountryMismatch       = "VAT_COUNTRY_MISMATCH"; // well-formed VAT code whose prefix differs from the supplier's country (S5)
     public const string LineSumRounding          = "LINE_SUM_ROUNDING";    // BR-CO-10 difference > 0 and ≤ 0.05 € (D-040)
 }
