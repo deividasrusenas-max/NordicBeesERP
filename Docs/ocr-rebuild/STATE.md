@@ -56,7 +56,8 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 - **Drag & drop neveikia** (patikra 9). Kodas — užšaldytas `FROZEN.md` §3; priežastis dar
   nediagnozuota naršyklėje. Hipotezė iš 0c raporto §5: `setupDropZone` kviečiamas tik pirmo
   render'io metu, o jo pakartojimo ciklas `OnAfterRenderAsync` niekada nesikartoja (funkcija
-  tyliai grįžta, kai elemento nėra). Taisymui reikės savininko leidimo.
+  tyliai grįžta, kai elemento nėra) — po „✕" (`RemoveFile`) naujai nupieštas drop-zone
+  elementas lieka be klausytojų. Taisymui reikės savininko leidimo.
 - **Biudžeto, cash flow ir tiekėjo istorijos dialogai UI nepasiekiami** (nustatyta iš kodo
   2026-09-26). `ExpenseBudgetDialog`, `ExpenseCashFlow`, `ExpenseSupplierHistory`
   (`Components/Dialogs/`) — nė vienas failas projekte jų neatidaro (nėra `ShowAsync<…>`,
@@ -77,11 +78,13 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
   rodomas ir po ne-OCR atmetimų (`ExpenseUploadDialog.razor:83-85`, FROZEN §3) — reikia
   leidimo.
 - **`OcrQueueWorker` `Attempts++` niekada neišsaugomas** (FROZEN §5; 0c raportas §2).
-  Papildomai: vienintelis eilės įrašų kūrėjas — n8n webhook'as `POST api/expense/webhook`
-  (`Controllers/ExpenseController.cs:24-58`), visada su `InvoiceId = 0`, todėl darbuotojas
-  sąskaitos nerašo; kadangi eilės įrašo būsena neišsaugoma, toks įrašas (iš kodo skaitymo,
-  nevykdyta) būtų siunčiamas į Azure kas 30 s be galo. Jei darbuotojas kada rašytų į sąskaitą,
-  jis apeitų visus vartus (`PLAN-ETAPAS1.md` §0, §5). Ar n8n siunčia į prodą — nežinoma.
+  Papildomai: vienintelis eilės įrašų kūrėjas — n8n webhook'as
+  (`Controllers/ExpenseController.cs:24-58`, visada `InvoiceId = 0`) — **nemaršrutizuojamas**
+  (`Program.cs` neturi `AddControllers`/`MapControllers`; tai jau užrašyta D-007). Kelias
+  šiandien negyvas iš abiejų galų. Jei būtų atgaivintas toks, koks yra: eilės įrašo būsena
+  neišsaugoma, todėl įrašas (iš kodo skaitymo, nevykdyta) būtų siunčiamas į Azure kas ~30 s be
+  galo ir blokuotų vėlesnius; o rašydamas į sąskaitą darbuotojas apeitų visus vartus
+  (`PLAN-ETAPAS1.md` §0, §5).
 - **decimal-precision radiniai** (`nordicbees-ef-decimal-precision-annotation-missing`).
   Ankstesnėje būsenoje — 12; 0c raporto priede po C8 — 57 šios taisyklės radiniai, nė vieno
   `Models/Expenses/`. Skaičių reikia suderinti.
