@@ -1721,6 +1721,9 @@ namespace NordicBeesERP.Services
 
             var companyName = (await _companySettingsService.GetSettingsAsync()).CompanyName;
 
+            // D-010: invoice, lines, audit and the files link are one transaction
+            await using var transaction = await ctx.Database.BeginTransactionAsync();
+
             var invoice = new ExpenseInvoice
             {
                 SupplierId = ocrResult.SupplierId,
@@ -1802,10 +1805,11 @@ namespace NordicBeesERP.Services
                     invoice.Id, ocrResult.FileId.Value);
             }
 
+            await transaction.CommitAsync();
             return invoice;
         }
 
-        public async Task<ExpenseInvoice> UpdateFromOcrAsync(int invoiceId, OcrResultDto ocrResult)
+        public async Task<ExpenseInvoice> UpdateFromOcrAsync(int invoiceId, OcrResultDto ocrResult, bool allocationRemovalConfirmed = false)
         {
             EnsureInvoiceNumberPresent(ocrResult);
 
@@ -1816,6 +1820,9 @@ namespace NordicBeesERP.Services
             await using var ctx = _dbFactory.CreateDbContext();
 
             var companyNameUpdate = (await _companySettingsService.GetSettingsAsync()).CompanyName;
+
+            // D-010: the invoice UPDATE, the line replacement and the audit row are one transaction
+            await using var transaction = await ctx.Database.BeginTransactionAsync();
 
             var invoice = await ctx.ExpenseInvoices
                 .AsNoTracking()
@@ -1829,6 +1836,18 @@ namespace NordicBeesERP.Services
             // A paid invoice is an accounting fact: re-OCR must not overwrite its amounts or status.
             if (oldStatus is "PAID" or "PARTIAL" or "OVERDUE")
                 throw new InvalidOperationException("Apmokėtos sąskaitos OCR pakartoti negalima");
+
+            // D-038 Q8: re-OCR replaces the lines, and the FK cascade deletes their allocations.
+            // That must be an explicit, confirmed choice, and the removed allocations are audited.
+            var removedAllocations = await (
+                from a in ctx.ExpenseLineAllocations
+                join l in ctx.ExpenseInvoiceLines on a.InvoiceLineId equals l.Id
+                where l.InvoiceId == invoiceId
+                orderby a.Id
+                select new { a.Id, a.InvoiceLineId }).ToListAsync();
+            if (removedAllocations.Count > 0 && !allocationRemovalConfirmed)
+                throw new InvalidOperationException(
+                    $"Sąskaitos eilutės turi paskirstymų ({removedAllocations.Count}). Pakartotinis OCR juos ištrintų – veiksmą reikia patvirtinti.");
 
             // Quarantined invoices (D-027) keep their status on re-OCR — only data and flags change.
             var keepStatus = oldStatus is "REJECTED" or "DUPLICATE_PENDING";
@@ -1928,7 +1947,8 @@ namespace NordicBeesERP.Services
                 ocrResult.ViesVerified,
                 ocrResult.ViesName,
                 !string.IsNullOrEmpty(ocrResult.OriginalFilePath) ? ocrResult.OriginalFilePath : invoice.OriginalFilePath,
-                ocrResult.OriginalFilename,
+                // a re-OCR from the file store carries no filename; keep the stored one
+                !string.IsNullOrEmpty(ocrResult.OriginalFilename) ? ocrResult.OriginalFilename : invoice.OriginalFilename,
                 newStatus,
                 rejectedReason,
                 now,
@@ -1972,7 +1992,10 @@ namespace NordicBeesERP.Services
                 InvoiceNumber = !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : invoiceNumber,
                 Action = "OCR_RETRIED",
                 ActionDetails = $"Pakartotinis OCR, tikslumas: {ocrResult.Confidence.Overall}%, požymiai: {string.Join(", ", flags)}"
-                    + (keepStatus ? $"; statusas {oldStatus} paliktas (karantinas)" : ""),
+                    + (keepStatus ? $"; statusas {oldStatus} paliktas (karantinas)" : "")
+                    + (removedAllocations.Count > 0
+                        ? $"; pašalinta paskirstymų: {removedAllocations.Count} (eilutės: {string.Join(", ", removedAllocations.Select(a => a.InvoiceLineId).Distinct())})"
+                        : ""),
                 OldStatus = oldStatus,
                 NewStatus = newStatus,
                 PerformedBy = performedBy,
@@ -1980,6 +2003,7 @@ namespace NordicBeesERP.Services
             });
             await ctx.SaveChangesAsync();
 
+            await transaction.CommitAsync();
             return invoice;
         }
     }

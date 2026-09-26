@@ -374,6 +374,8 @@
     [Parameter] public string? ExistingFilePath { get; set; }
     [Parameter] public int ExistingInvoiceId { get; set; }
     [Parameter] public long? ExistingFileId { get; set; }
+    /// <summary>Re-OCR only: the user confirmed that the lines' allocations will be deleted (D-038 Q8).</summary>
+    [Parameter] public bool AllocationRemovalConfirmed { get; set; }
 
     private DotNetObjectReference<ExpenseUploadDialog>? _dotNetRef;
     private string _phase = "upload";
@@ -969,7 +971,7 @@
                     ? ExistingFilePath
                     : (_ocrResult.OriginalFilePath ?? "");
                 _ocrResult.OriginalFilename = _ocrResult.OriginalFilename ?? "";
-                await ExpenseService.UpdateFromOcrAsync(ExistingInvoiceId, _ocrResult);
+                await ExpenseService.UpdateFromOcrAsync(ExistingInvoiceId, _ocrResult, AllocationRemovalConfirmed);
                 Snackbar.Add("Sąskaita atnaujinta sėkmingai", Severity.Success);
                 MudDialog?.Close(DialogResult.Ok(ExistingInvoiceId));
             }

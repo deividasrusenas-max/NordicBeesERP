@@ -67,7 +67,12 @@ namespace NordicBeesERP.Services
         
         // OCR
         Task<ExpenseInvoice> CreateFromOcrAsync(OcrResultDto ocrResult, string source = "MANUAL");
-        Task<ExpenseInvoice> UpdateFromOcrAsync(int invoiceId, OcrResultDto ocrResult);
+        /// <summary>
+        /// Re-OCR: replaces the invoice data and lines in one transaction. When the lines have
+        /// allocations they are deleted with the lines, which is refused unless
+        /// <paramref name="allocationRemovalConfirmed"/> (D-038 Q8); removed allocations are audited.
+        /// </summary>
+        Task<ExpenseInvoice> UpdateFromOcrAsync(int invoiceId, OcrResultDto ocrResult, bool allocationRemovalConfirmed = false);
         
         // Validation
         Task<int?> CheckDuplicateAsync(int? supplierId, string? supplierVatCode, string invoiceNumber, decimal amountInclVat, int excludeInvoiceId = 0);

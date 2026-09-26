@@ -427,7 +427,7 @@
             @* Left side: Text/Outlined buttons *@
             <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelAsync">UŽDARYTI</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" OnClick="EnterEditMode">REDAGUOTI</MudButton>
-            @if (!string.IsNullOrEmpty(_invoice?.OriginalFilePath) && new[] { "NEEDS_REVIEW", "PENDING", "PENDING_SUPPLIER" }.Contains(_invoice.Status))
+            @if (_invoice?.FileId != null && new[] { "NEEDS_REVIEW", "PENDING", "PENDING_SUPPLIER" }.Contains(_invoice.Status))
             {
                 <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
                            StartIcon="@Icons.Material.Filled.Refresh"
@@ -1008,11 +1008,26 @@
         }
         try
         {
+            // D-038 Q8: re-OCR replaces the lines, which deletes their allocations — ask first
+            var allocationCount = 0;
+            foreach (var line in _lines.Where(l => l.Id > 0))
+                allocationCount += (await ExpenseService.GetAllocationsAsync(line.Id)).Count;
+            if (allocationCount > 0)
+            {
+                var confirmed = await DialogService.ShowMessageBox(
+                    "Pakartotinis OCR ištrins paskirstymus",
+                    $"Šios sąskaitos eilutės turi paskirstymų: {allocationCount}. Pakartotinis OCR pakeis eilutes, o visi jų paskirstymai bus ištrinti (tai bus įrašyta audite). Tęsti?",
+                    yesText: "Tęsti ir ištrinti",
+                    cancelText: "Atšaukti");
+                if (confirmed != true) return;
+            }
+
             var parameters = new DialogParameters
             {
                 { nameof(ExpenseUploadDialog.ExistingFilePath), _invoice.OriginalFilePath },
                 { nameof(ExpenseUploadDialog.ExistingFileId), _invoice.FileId.Value },
-                { nameof(ExpenseUploadDialog.ExistingInvoiceId), _invoice.Id }
+                { nameof(ExpenseUploadDialog.ExistingInvoiceId), _invoice.Id },
+                { nameof(ExpenseUploadDialog.AllocationRemovalConfirmed), allocationCount > 0 }
             };
             var dialog = await DialogService.ShowAsync<ExpenseUploadDialog>(
                 "Pakartotinis OCR nuskaitymas",
