@@ -358,6 +358,31 @@ atitinka plano klausimus.
 
 ---
 
+## D-039 — unit_price tikslumas, Q5 po redagavimo, PVM tarifų galiojimo pradžia (2026-09-26)
+
+**Kontekstas.** Etapo 1 S1–S2 raportas (`.opencode/reports/etapas1-s1-s2-20260926-1427.md`):
+`expense_invoice_lines.unit_price` yra `decimal(12,2)` (0,2066 → 0,21); D-038 Q5 veikė tik
+priskiriant tiekėją; `VatRateTable` pradžios datos nebuvo žinomos.
+
+**Sprendimai.**
+
+1. **`expense_invoice_lines.unit_price` → `decimal(18,6)`** (kuro kainos turi 3 skaitmenis po
+   kablelio, medžiagų — 4). Agentas parašo modelio pakeitimą ir EF migraciją; DDL dev ir
+   staging aplinkose vykdo savininkas; prode — per galutinį Etapų 1–4 deploy'ų (D-037). S4
+   laukia šio pakeitimo.
+2. **Q5 išplėstas:** kai sąskaita turi tiekėją (nesvarbu, kaip priskirtą), dokumento
+   `INVALID_IBAN` / `INVALID_VAT_FORMAT` yra informacija **visuose** keliuose (sukūrimas,
+   re-OCR, redagavimas, priskyrimas). Schemos keitimo nėra. Pagrindimas: OCR tiekėją priskiria
+   tik tiksliai sutapus PVM kodui arba tiksliam pavadinimui.
+3. **`VatRateTable` galiojimas prasideda 2025-01-01** visoms šalims; ankstesnės sąskaitų datos →
+   `VAT_RATE_UNCHECKED` (informacija). Šalys: LT, LV, EE, DE, PL, RO, CZ, ES (staging duomenys:
+   su tiekėju susietos sąskaitos — LT 83, LI 11, RO 3, CZ 2, PL 2, ES 1; pasitaikę tarifai —
+   21, 0, 12, 23, 24, 8, 22). 11 „LI" partnerių — įtariamos pagrindinių duomenų klaidos;
+   atviras klausimas, LI į lentelę neįtraukiama. Tarifai lieka NEPATVIRTINTI, kol buhalterė
+   nepatikrina pagal EK TEDB.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
