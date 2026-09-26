@@ -1,8 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
-using NordicBeesERP.Data;
-using NordicBeesERP.Models;
-using NordicBeesERP.Services;
 using Xunit;
 
 namespace NordicBeesERP.Tests;
@@ -21,34 +16,8 @@ public class ExpenseOcrServiceNumberReadTests : IClassFixture<DbTestFixture>
         _fixture = fixture;
     }
 
-    private sealed class NullSettings : ICompanySettingsService
-    {
-        public Task<CompanySettings> GetSettingsAsync() => Task.FromResult(new CompanySettings());
-        public Task UpdateSettingsAsync(CompanySettings settings) => Task.CompletedTask;
-    }
-
-    private sealed class NoVies : IViesService
-    {
-        public Task<ViesResult> LookupAsync(string vatCode) =>
-            Task.FromResult(new ViesResult { ServiceAvailable = true, IsValid = false });
-    }
-
-    private sealed class RecordedAzureService : ExpenseOcrService
-    {
-        private readonly string _json;
-
-        public RecordedAzureService(string json, IDbContextFactory<NordicBeesERPContext> factory)
-            : base(factory, new NoVies(), new NullSettings(), NullLogger<ExpenseOcrService>.Instance)
-        {
-            _json = json;
-        }
-
-        protected override Task<string?> AnalyzeInvoiceAsync(string base64, string fileName, OcrResultDto result) =>
-            Task.FromResult<string?>(_json);
-    }
-
     private Task<OcrResultDto> ProcessAsync(string json) =>
-        new RecordedAzureService(json, _fixture.Factory).ProcessAsync("", "fixture.pdf");
+        new RecordedAzureOcrService(json, _fixture.Factory).ProcessAsync("", "fixture.pdf");
 
     [Fact]
     public async Task ProcessAsync_KeepsTheRawJson_AndReadsHeaderTotalsWithTheirPrintedText()
@@ -81,29 +50,55 @@ public class ExpenseOcrServiceNumberReadTests : IClassFixture<DbTestFixture>
         Assert.Equal("972,00", line.AmountRead!.Printed);
     }
 
+    // ---------- S7(b): detection through ProcessAsync ----------
+
+    [Fact]
+    public async Task ProcessAsync_Asf0021438_PreviewFlags_MisreadAndAmbiguous_ValuesUntouched()
+    {
+        var result = await ProcessAsync(OcrFixtures.Asf0021438());
+
+        Assert.Contains(OcrFlag.NumberMisread, result.Flags);
+        Assert.Contains(OcrFlag.NumberAmbiguous, result.Flags);
+        var line = Assert.Single(result.Lines, l => l.Description == "Kuras A");
+        Assert.Equal(3m, line.Quantity); // Azure's value, never replaced (D-038 Q6)
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CleanDocument_NoNumberFlags()
+    {
+        var json = OcrFixtures.Response(OcrFixtures.Cur("100,00", 100), OcrFixtures.Cur("21,00", 21), OcrFixtures.Cur("121,00", 121),
+            OcrFixtures.Line("Prekė", OcrFixtures.Num("2,00", 2), OcrFixtures.Cur("50,00", 50), OcrFixtures.Cur("100,00", 100)));
+
+        var result = await ProcessAsync(json);
+
+        Assert.DoesNotContain(OcrFlag.NumberMisread, result.Flags);
+        Assert.DoesNotContain(OcrFlag.NumberAmbiguous, result.Flags);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DetectionRunsBeforeReconcile_ALineTheReconcileRemovesStillFlags()
+    {
+        // header 100,00; line A alone is 150,00 → lines exceed the header, so the reconcile step's first pass removes
+        // every zero-amount line — here line Z, whose quantity Azure misread („3 888,000" → 3)
+        var json = OcrFixtures.Response(OcrFixtures.Cur("100,00", 100), OcrFixtures.Cur("21,00", 21), OcrFixtures.Cur("121,00", 121),
+            OcrFixtures.Line("Prekė A", OcrFixtures.Num("1,00", 1), OcrFixtures.Cur("150,00", 150), OcrFixtures.Cur("150,00", 150)),
+            OcrFixtures.Line("Prekė Z", OcrFixtures.Num("3 888,000", 3), null, OcrFixtures.Cur("0,00", 0)));
+
+        var result = await ProcessAsync(json);
+
+        Assert.DoesNotContain(result.Lines, l => l.Description == "Prekė Z"); // removed by the reconcile step
+        Assert.Contains(OcrFlag.NumberMisread, result.Flags);                   // …but detection had already seen it
+    }
+
     [Fact]
     public async Task ProcessAsync_NotConfigured_ReturnsWithoutParsing()
     {
-        var service = new NotConfiguredService(_fixture.Factory);
+        var service = new RecordedAzureOcrService(null, _fixture.Factory);
 
         var result = await service.ProcessAsync("", "fixture.pdf");
 
         Assert.False(result.Success);
         Assert.Null(result.RawJson);
         Assert.Empty(result.Lines);
-    }
-
-    private sealed class NotConfiguredService : ExpenseOcrService
-    {
-        public NotConfiguredService(IDbContextFactory<NordicBeesERPContext> factory)
-            : base(factory, new NoVies(), new NullSettings(), NullLogger<ExpenseOcrService>.Instance)
-        {
-        }
-
-        protected override Task<string?> AnalyzeInvoiceAsync(string base64, string fileName, OcrResultDto result)
-        {
-            result.Diagnostics.AzureError = "Azure DI kredencialai nesukonfigūruoti";
-            return Task.FromResult<string?>(null);
-        }
     }
 }

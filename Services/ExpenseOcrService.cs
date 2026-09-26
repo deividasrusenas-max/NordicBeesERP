@@ -556,6 +556,10 @@ namespace NordicBeesERP.Services
                     }
                 }
 
+                // Locale-number detection (D-041) reads the lines as Azure returned them, so it runs BEFORE the
+                // reconcile step below can drop anything (PLAN-ETAPAS1 §3.1). Detection only: no value is replaced.
+                ExpenseService.RecomputeNumberReadFlags(result.Flags, result);
+
                 // =====================================================
                 // POST-PROCESSING: Reconcile lines against header totals
                 // =====================================================

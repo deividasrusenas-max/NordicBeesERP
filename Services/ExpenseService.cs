@@ -520,6 +520,9 @@ namespace NordicBeesERP.Services
             OcrFlag.VatRateNotAllowed, OcrFlag.VatRateUnchecked,
             // explicit keep/drop rules
             OcrFlag.WrongRecipient, OcrFlag.VendorNotFound, OcrFlag.MissingDueDate, OcrFlag.LowConfidence
+            // NUMBER_MISREAD / NUMBER_AMBIGUOUS (D-041) are deliberately NOT here: the edit form has no printed text to
+            // compare with, so they are carried over as stored. They are cleared by PATVIRTINTI (ApproveAsync — the flag
+            // stays as a record) or by re-OCR / the upload dialog, where the corrected value recomputes them.
         };
 
         /// <summary>
@@ -1917,7 +1920,43 @@ namespace NordicBeesERP.Services
         /// <summary>The rule list for a stored invoice and its stored lines (detail dialog, display time).</summary>
         public static IReadOnlyList<ValidationMessage> DescribeValidation(ExpenseInvoice invoice, IEnumerable<ExpenseInvoiceLine> lines) =>
             DescribeValidation(EvaluateValidation(invoice.AmountExclVat, invoice.VatAmount, invoice.AmountInclVat,
-                ToValidationLines(lines.OrderBy(l => l.SortOrder))));
+                ToValidationLines(lines.OrderBy(l => l.SortOrder))))
+                .Concat(DescribeNumberReads(invoice)).ToList();
+
+        private static readonly System.Globalization.CultureInfo Lithuanian = new("lt-LT");
+
+        private static string FieldPhrase(NumberReadFinding f) => (f.Field, f.DocumentLine) switch
+        {
+            ("SubTotal", _) => "suma be PVM",
+            ("TotalTax", _) => "PVM suma",
+            ("InvoiceTotal", _) => "suma su PVM",
+            ("Quantity", { } n) => $"dokumento {n} eilutė, kiekis",
+            ("UnitPrice", { } n) => $"dokumento {n} eilutė, vieneto kaina",
+            ("Amount", { } n) => $"dokumento {n} eilutė, suma",
+            _ => f.Field
+        };
+
+        /// <summary>
+        /// D-041: for each flagged numeric field of a stored invoice — Azure's value and the strict reading(s) of the
+        /// printed text. Recomputed from <c>ocr_raw_json</c> at display time (no schema change), and shown only while the
+        /// invoice carries NUMBER_MISREAD / NUMBER_AMBIGUOUS. Nothing is replaced; both kinds are review.
+        /// </summary>
+        public static IReadOnlyList<ValidationMessage> DescribeNumberReads(ExpenseInvoice invoice)
+        {
+            var flags = ExpenseStatusHelper.ParseFlags(invoice.OcrFlags);
+            if (!flags.Contains(OcrFlag.NumberMisread) && !flags.Contains(OcrFlag.NumberAmbiguous))
+                return Array.Empty<ValidationMessage>();
+
+            string Format(decimal value) => value.ToString("0.######", Lithuanian);
+            return OcrNumberReads.Findings(invoice.OcrRawJson).Select(f =>
+            {
+                var candidates = string.Join(" arba ", f.Candidates.Select(Format));
+                var text = f.Outcome == NumberReadOutcome.Misread
+                    ? $"Skaičius nesutampa su dokumento tekstu — {FieldPhrase(f)}: Azure perskaitė {Format(f.Read.Typed)}, dokumente atspausdinta „{f.Read.Printed}“ (galimas skaitymas: {candidates})"
+                    : $"Dviprasmiškas skaičius — {FieldPhrase(f)}: Azure perskaitė {Format(f.Read.Typed)}, dokumente atspausdinta „{f.Read.Printed}“ (galimi skaitymai: {candidates})";
+                return new ValidationMessage(text, ValidationMessageKind.Review);
+            }).ToList();
+        }
 
         /// <summary>
         /// Drops the flags in <see cref="ValidationOwnedFlags"/> and recomputes them from the final values —
@@ -1948,6 +1987,43 @@ namespace NordicBeesERP.Services
             // nonsense input of the same kind and is reported with it.
             if (outcome.LineRule.Violations.Count > 0 || outcome.LineRule.OutOfRangeLines.Count > 0)
                 flags.Add(OcrFlag.LineAmountImplausible);
+        }
+
+        /// <summary>Flags owned by <see cref="RecomputeNumberReadFlags"/> (OCR paths only — the edit path carries them over).</summary>
+        public static readonly IReadOnlyList<string> NumberReadOwnedFlags = new[] { OcrFlag.NumberMisread, OcrFlag.NumberAmbiguous };
+
+        /// <summary>
+        /// D-041, D-038 Q6: locale-number detection from the final DTO values (create and re-OCR; the OCR step calls it
+        /// too, before the reconcile step). A value Azure returned that is not a strict reading of the printed text is
+        /// NUMBER_MISREAD; a printed text with several strict readings is NUMBER_AMBIGUOUS — both review, no value is
+        /// ever replaced. A field a human changed after OCR (DTO value ≠ what OCR stored) is resolved and adds no flag.
+        /// A field without a read (no printed text, a removed line) adds none.
+        /// </summary>
+        public static void RecomputeNumberReadFlags(List<string> flags, OcrResultDto result)
+        {
+            flags.RemoveAll(f => NumberReadOwnedFlags.Contains(f));
+
+            var outcomes = new List<NumberReadOutcome>
+            {
+                Judge(result.SubTotalRead, result.AmountExclVat),
+                Judge(result.TotalTaxRead, result.VatAmount),
+                Judge(result.InvoiceTotalRead, result.AmountInclVat)
+            };
+            foreach (var line in result.Lines)
+            {
+                outcomes.Add(Judge(line.QuantityRead, line.Quantity));
+                outcomes.Add(Judge(line.UnitPriceRead, line.UnitPrice));
+                outcomes.Add(Judge(line.AmountRead, line.AmountExclVat));
+            }
+
+            if (outcomes.Contains(NumberReadOutcome.Misread)) flags.Add(OcrFlag.NumberMisread);
+            if (outcomes.Contains(NumberReadOutcome.Ambiguous)) flags.Add(OcrFlag.NumberAmbiguous);
+        }
+
+        private static NumberReadOutcome Judge(OcrNumberRead? read, decimal? current)
+        {
+            if (read == null || current != read.Stored) return NumberReadOutcome.NotCheckable; // no read, or a human changed it
+            return LocaleNumberCandidates.Check(read.Printed, read.Typed).Outcome;
         }
 
         /// <summary>The document codes of an OCR result (the upload dialog may have edited the VAT code before saving).</summary>
@@ -2018,6 +2094,7 @@ namespace NordicBeesERP.Services
             RecomputeValidationFlags(ocrResult.Flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
                 ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult),
                 ToRateInput(ocrResult, partnerCountry, hasInvoiceDate ? invoiceDate : null, "STANDARD"), _vatRateRows);
+            RecomputeNumberReadFlags(ocrResult.Flags, ocrResult);
             RecomputeDateFlags(ocrResult.Flags, hasInvoiceDate ? invoiceDate : null, VilniusToday());
             var status = DecideOcrStatus(ocrResult.Flags, ocrResult.SupplierId);
 
@@ -2187,6 +2264,7 @@ namespace NordicBeesERP.Services
             RecomputeValidationFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
                 ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult),
                 ToRateInput(ocrResult, partnerCountry, hasInvoiceDate ? invoiceDate : null, invoice.InvoiceType), _vatRateRows);
+            RecomputeNumberReadFlags(flags, ocrResult);
             RecomputeDateFlags(flags, hasInvoiceDate ? invoiceDate : null,
                 invoice.CreatedAt != default ? invoice.CreatedAt : VilniusToday());
 

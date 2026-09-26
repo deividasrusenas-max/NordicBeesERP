@@ -1,10 +1,16 @@
 using System.Text.Json;
+using NordicBeesERP.Services.Validation;
 
 namespace NordicBeesERP.Services;
 
+/// <summary>A flagged numeric field found in a stored Azure response, for the invoice detail view (D-041).</summary>
+/// <param name="Field">Azure field name: SubTotal, TotalTax, InvoiceTotal, or Quantity / UnitPrice / Amount of a line.</param>
+/// <param name="DocumentLine">1-based position of the line among the document's Items (Azure order); null for a header total.</param>
+public sealed record NumberReadFinding(string Field, int? DocumentLine, OcrNumberRead Read, NumberReadOutcome Outcome, IReadOnlyList<decimal> Candidates);
+
 /// <summary>
 /// Reads Azure DI's typed numeric values together with the printed text next to them (<c>content</c>) so
-/// <c>LocaleNumberCandidates</c> can compare them (OCR Etapas 1 S7, D-038 Q6, D-041: detection only, values are never
+/// <see cref="LocaleNumberCandidates"/> can compare them (OCR Etapas 1 S7, D-038 Q6, D-041: detection only, values are never
 /// replaced). The typed values are read exactly as <see cref="ExpenseOcrService.ProcessAsync"/> always read them
 /// (<c>(decimal)double</c>; header totals rounded to cents) — the reads only add the text.
 /// </summary>
@@ -73,6 +79,67 @@ public static class OcrNumberReads
     /// <summary>The printed text and typed value of a <c>valueNumber</c> field; null without a typed value.</summary>
     public static OcrNumberRead? FromNumber(JsonElement field) =>
         Number(field) is { } typed ? Build(field, typed, null) : null;
+
+    /// <summary>
+    /// Every header total and line number in a stored Azure response whose value is not (or not only) a strict
+    /// reading of the printed text — Misread and Ambiguous only, header first, then lines in document order.
+    /// Same extraction as <see cref="ExpenseOcrService.ProcessAsync"/>; never throws (unreadable JSON → empty).
+    /// </summary>
+    public static IReadOnlyList<NumberReadFinding> Findings(string? rawJson)
+    {
+        var findings = new List<NumberReadFinding>();
+        if (string.IsNullOrWhiteSpace(rawJson)) return findings;
+
+        try
+        {
+            using var document = JsonDocument.Parse(rawJson);
+            var root = document.RootElement;
+            var analyze = Prop(root, "analyzeResult") ?? root;
+            if (Prop(analyze, "documents") is not { ValueKind: JsonValueKind.Array } documents || documents.GetArrayLength() == 0)
+                return findings;
+            var docRoot = documents[0];
+            var invoice = Prop(docRoot, "fields") ?? docRoot;
+
+            var header = new OcrResultDto();
+            ReadHeaderTotals(invoice, header);
+            Add(findings, "SubTotal", null, header.SubTotalRead);
+            Add(findings, "TotalTax", null, header.TotalTaxRead);
+            Add(findings, "InvoiceTotal", null, header.InvoiceTotalRead);
+
+            var items = Prop(invoice, "Items");
+            var array = items is { ValueKind: JsonValueKind.Object } wrapper
+                ? (Prop(wrapper, "valueArray") ?? Prop(wrapper, "values"))
+                : items;
+            if (array is not { ValueKind: JsonValueKind.Array } lineArray) return findings;
+
+            var number = 0;
+            foreach (var item in lineArray.EnumerateArray())
+            {
+                var valueObject = Prop(item, "valueObject");
+                if (valueObject is not { ValueKind: JsonValueKind.Object } fields) continue;
+                number++;
+                var line = new OcrLineDto();
+                ReadLineNumbers(fields, line);
+                Add(findings, "Quantity", number, line.QuantityRead);
+                Add(findings, "UnitPrice", number, line.UnitPriceRead);
+                Add(findings, "Amount", number, line.AmountRead);
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            // an unreadable stored response has nothing to show
+        }
+
+        return findings;
+    }
+
+    private static void Add(List<NumberReadFinding> findings, string field, int? line, OcrNumberRead? read)
+    {
+        if (read is null) return;
+        var check = LocaleNumberCandidates.Check(read.Printed, read.Typed);
+        if (check.Outcome is NumberReadOutcome.Misread or NumberReadOutcome.Ambiguous)
+            findings.Add(new NumberReadFinding(field, line, read, check.Outcome, check.Candidates));
+    }
 
     private static OcrNumberRead Build(JsonElement field, decimal typed, int? decimals) =>
         new(Str(field, "content") ?? "", typed, decimals is { } d ? Math.Round(typed, d) : typed);
