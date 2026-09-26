@@ -34,6 +34,11 @@ public class OcrResultDto
     public decimal VatAmount { get; set; }
     public decimal AmountInclVat { get; set; }
 
+    // The printed text next to Azure's typed header totals — kept for locale-number detection only (D-041), never persisted.
+    public OcrNumberRead? SubTotalRead { get; set; }
+    public OcrNumberRead? TotalTaxRead { get; set; }
+    public OcrNumberRead? InvoiceTotalRead { get; set; }
+
     // Customer (buyer) validation
     public string CustomerName { get; set; } = "";
     public string CustomerVatCode { get; set; } = "";
@@ -79,7 +84,20 @@ public class OcrLineDto
     // The document gave no line amount: AmountExclVat was computed as UnitPrice × Quantity. Such a line is
     // left out of the line rule (it would only compare the number with itself) but stays in BR-CO-10.
     public bool NetDerived { get; set; }
+
+    // The printed text next to Azure's typed quantity / unit price / line amount — locale-number detection only
+    // (D-041), never persisted. A derived net (NetDerived) has no AmountRead.
+    public OcrNumberRead? QuantityRead { get; set; }
+    public OcrNumberRead? UnitPriceRead { get; set; }
+    public OcrNumberRead? AmountRead { get; set; }
 }
+
+/// <summary>
+/// One numeric field as Azure returned it: <see cref="Printed"/> is the document text (<c>content</c>),
+/// <see cref="Typed"/> Azure's typed value, <see cref="Stored"/> what was put into the DTO (header totals are rounded
+/// to cents). A DTO value that differs from <see cref="Stored"/> was edited by a human — that is the resolution of a flag.
+/// </summary>
+public sealed record OcrNumberRead(string Printed, decimal Typed, decimal Stored);
 
 public class OcrConfidenceDto
 {

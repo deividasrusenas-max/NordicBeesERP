@@ -57,39 +57,50 @@ namespace NordicBeesERP.Services
             }
         }
 
+        /// <summary>
+        /// The Azure DI call: the raw analyze-response JSON, or null when Azure is not configured
+        /// (<c>Diagnostics.AzureError</c> is set). Virtual only so tests can feed a recorded response
+        /// through <see cref="ProcessAsync"/>; nothing else overrides it.
+        /// </summary>
+        protected virtual async Task<string?> AnalyzeInvoiceAsync(string base64, string fileName, OcrResultDto result)
+        {
+            var (endpoint, apiKey) = await GetAzureCredentialsAsync();
+            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(apiKey))
+            {
+                result.Diagnostics.AzureError = "Azure DI kredencialai nesukonfigūruoti";
+                return null;
+            }
+
+            var client = new DocumentIntelligenceClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+
+            result.OcrPipeline = ModelId;
+            result.Diagnostics.AzureReachable = true;
+
+            _logger.LogDebug("[AZURE DI] Analysing: {FileName}", fileName);
+
+            using var requestContent = RequestContent.Create(
+                new { base64Source = base64 }
+            );
+
+            var operation = await client.AnalyzeDocumentAsync(
+                WaitUntil.Completed,
+                ModelId,
+                requestContent,
+                locale: "lt-LT",
+                pages: "1-2"
+            );
+
+            return operation.Value.ToString();
+        }
+
         public async Task<OcrResultDto> ProcessAsync(string base64, string fileName)
         {
             var result = new OcrResultDto();
             
             try
             {
-                var (endpoint, apiKey) = await GetAzureCredentialsAsync();
-                if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(apiKey))
-                {
-                    result.Diagnostics.AzureError = "Azure DI kredencialai nesukonfigūruoti";
-                    return result;
-                }
-
-                var client = new DocumentIntelligenceClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
-
-                result.OcrPipeline = ModelId;
-                result.Diagnostics.AzureReachable = true;
-
-                _logger.LogDebug("[AZURE DI] Analysing: {FileName}", fileName);
-
-                using var requestContent = RequestContent.Create(
-                    new { base64Source = base64 }
-                );
-
-                var operation = await client.AnalyzeDocumentAsync(
-                    WaitUntil.Completed,
-                    ModelId,
-                    requestContent,
-                    locale: "lt-LT",
-                    pages: "1-2"
-                );
-
-                var json = operation.Value.ToString();
+                var json = await AnalyzeInvoiceAsync(base64, fileName, result);
+                if (json == null) return result;
                 result.RawJson = json;
                 var root = JsonDocument.Parse(json).RootElement;
                 
@@ -371,39 +382,8 @@ namespace NordicBeesERP.Services
                                               customerTaxIdField.TryGetProperty("content", out var ctc) ? ctc.GetString() ?? "" : "");
                 }
 
-                // Get SubTotal
-                if (TryGetField("SubTotal", out var subTotalField))
-                {
-                    if (subTotalField.TryGetProperty("valueCurrency", out var valueCurrency) || subTotalField.TryGetProperty("ValueCurrency", out valueCurrency))
-                    {
-                        if (valueCurrency.TryGetProperty("amount", out var amount) || valueCurrency.TryGetProperty("Amount", out amount))
-                            result.AmountExclVat = Math.Round((decimal)amount.GetDouble(), 2);
-                    }
-                }
-
-                // Get TotalTax
-                if (TryGetField("TotalTax", out var totalTaxField))
-                {
-                    if (totalTaxField.TryGetProperty("valueCurrency", out var valueCurrency) || totalTaxField.TryGetProperty("ValueCurrency", out valueCurrency))
-                    {
-                        if (valueCurrency.TryGetProperty("amount", out var amount) || valueCurrency.TryGetProperty("Amount", out amount))
-                            result.VatAmount = Math.Round((decimal)amount.GetDouble(), 2);
-                    }
-                }
-
-                // Get InvoiceTotal
-                if (TryGetField("InvoiceTotal", out var invoiceTotalField))
-                {
-                    if (invoiceTotalField.TryGetProperty("valueCurrency", out var valueCurrency) || invoiceTotalField.TryGetProperty("ValueCurrency", out valueCurrency))
-                    {
-                            if (valueCurrency.TryGetProperty("amount", out var amount) || valueCurrency.TryGetProperty("Amount", out amount))
-                            {
-                                result.AmountInclVat = Math.Round((decimal)amount.GetDouble(), 2);
-                            if (invoiceTotalField.TryGetProperty("confidence", out var confidence))
-                                result.Confidence.Amounts = ToConfidencePercent((float)confidence.GetDouble());
-                        }
-                    }
-                }
+                // Header totals (SubTotal, TotalTax, InvoiceTotal) with the printed text next to each (D-041)
+                OcrNumberReads.ReadHeaderTotals(invoice, result);
 
                 // Get TaxDetails from Items to find first non-zero VAT rate
                 bool hasItems = invoice.TryGetProperty("Items", out var itemsField) || 
@@ -488,36 +468,13 @@ namespace NordicBeesERP.Services
                                                   prodDescField.TryGetProperty("content", out var cp3d) ? cp3d.GetString() ?? "" : "";
                         }
 
-                        // Get Quantity
-                        if (f.TryGetProperty("Quantity", out var qtyField) && (qtyField.TryGetProperty("valueNumber", out var valueNumber) || qtyField.TryGetProperty("ValueNumber", out valueNumber)))
-                            lineDto.Quantity = (decimal)valueNumber.GetDouble();
+                        // Quantity, UnitPrice and Amount (Net as its fallback) with the printed text next to each (D-041)
+                        OcrNumberReads.ReadLineNumbers(f, lineDto);
 
                         // Get UnitOfMeasure
                         if (f.TryGetProperty("Unit", out var unitField))
                             lineDto.UnitOfMeasure = unitField.TryGetProperty("valueString", out var vs3) ? vs3.GetString() ?? "" :
                                                     unitField.TryGetProperty("content", out var cp3) ? cp3.GetString() ?? "" : "";
-
-                        // Get UnitPrice
-                        if (f.TryGetProperty("UnitPrice", out var unitPriceField) && (unitPriceField.TryGetProperty("valueCurrency", out var valueCurrency) || unitPriceField.TryGetProperty("ValueCurrency", out valueCurrency)))
-                        {
-                            if (valueCurrency.TryGetProperty("amount", out var amount) || valueCurrency.TryGetProperty("Amount", out amount))
-                                lineDto.UnitPrice = (decimal)amount.GetDouble();
-                        }
-
-                        // Get Amount (excl VAT line total)
-                        if (f.TryGetProperty("Amount", out var amountField) && (amountField.TryGetProperty("valueCurrency", out var amountCurrency) || amountField.TryGetProperty("ValueCurrency", out amountCurrency)))
-                        {
-                            if (amountCurrency.TryGetProperty("amount", out var amountProp) || amountCurrency.TryGetProperty("Amount", out amountProp))
-                                lineDto.AmountExclVat = (decimal)amountProp.GetDouble();
-                        }
-
-                        // Try Net field as fallback for Amount
-                        if (lineDto.AmountExclVat == 0 && f.TryGetProperty("Net", out var netField) &&
-                            (netField.TryGetProperty("valueCurrency", out var netCurrency) || netField.TryGetProperty("ValueCurrency", out netCurrency)))
-                        {
-                            if (netCurrency.TryGetProperty("amount", out var netAmt) || netCurrency.TryGetProperty("Amount", out netAmt))
-                                lineDto.AmountExclVat = (decimal)netAmt.GetDouble();
-                        }
 
                         // Get line confidence from Azure DI
                         if (item.TryGetProperty("confidence", out var lineConfEl))
@@ -543,7 +500,7 @@ namespace NordicBeesERP.Services
 
                         // Get TaxAmount for VAT rate calculation if not set
                         if (lineDto.VatRate == 0 && f.TryGetProperty("TaxAmount", out var taxAmountField) &&
-                            ( taxAmountField.TryGetProperty("valueCurrency", out valueCurrency) || taxAmountField.TryGetProperty("ValueCurrency", out valueCurrency)) && lineDto.AmountExclVat > 0)
+                            ( taxAmountField.TryGetProperty("valueCurrency", out var valueCurrency) || taxAmountField.TryGetProperty("ValueCurrency", out valueCurrency)) && lineDto.AmountExclVat > 0)
                         {
                             if (valueCurrency.TryGetProperty("amount", out var amount) || valueCurrency.TryGetProperty("Amount", out amount))
                             {
@@ -939,7 +896,7 @@ namespace NordicBeesERP.Services
             return (null, null);
         }
 
-        private static int ToConfidencePercent(float? confidence) =>
+        internal static int ToConfidencePercent(float? confidence) =>
             confidence.HasValue ? (int)Math.Round(confidence.Value * 100) : 0;
 
         private static string CleanVatCode(string raw)
