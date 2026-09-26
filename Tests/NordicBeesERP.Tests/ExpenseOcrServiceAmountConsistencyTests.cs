@@ -268,6 +268,22 @@ public class ExpenseOcrServiceAmountConsistencyTests
     }
 
     [Fact]
+    public void LineRule_OcrLineDtoNetDerived_ReachesTheRule()
+    {
+        // the DTO marker set by ProcessAsync must survive the mapping the save paths use
+        var dtoLines = new List<OcrLineDto>
+        {
+            new() { Quantity = 10m, UnitPrice = 2.5m, AmountExclVat = 25m },
+            new() { Quantity = 3m, UnitPrice = 0.3333m, AmountExclVat = 1m, NetDerived = true }
+        };
+
+        var outcome = ExpenseService.EvaluateValidation(26m, 5.46m, 31.46m, ExpenseService.ToValidationLines(dtoLines));
+
+        Assert.Equal(new[] { 2 }, outcome.DerivedLines);
+        Assert.Equal(new[] { 1 }, outcome.LineRule.PassedLines);
+    }
+
+    [Fact]
     public void LineRule_Overflow_LineAmountImplausible()
     {
         var flags = Flags(100m, 21m, 121m, new[] { new ExpenseService.ValidationLine(100m, 1e20m, 1e10m) });

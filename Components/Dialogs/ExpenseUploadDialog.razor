@@ -1067,11 +1067,15 @@
     private void UpdateLineFromString(int idx)
     {
         if (idx >= _ocrLines.Count) return;
+        // a typed amount or quantity means the net is no longer quantity × price as derived by OCR,
+        // so the line rule checks the line again (same as the edit path, which stores no marker)
         if (decimal.TryParse(_lineQuantities[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var qty))
+        {
+            if (qty != _ocrLines[idx].Quantity) _ocrLines[idx].NetDerived = false;
             _ocrLines[idx].Quantity = qty;
+        }
         if (decimal.TryParse(_lineAmounts[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amt))
         {
-            // a typed amount is no longer derived from quantity × price, so the line rule checks it
             if (amt != _ocrLines[idx].AmountExclVat) _ocrLines[idx].NetDerived = false;
             _ocrLines[idx].AmountExclVat = amt;
         }

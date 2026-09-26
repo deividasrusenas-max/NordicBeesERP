@@ -1731,7 +1731,7 @@ namespace NordicBeesERP.Services
                 flags.Add(OcrFlag.LineAmountImplausible);
         }
 
-        internal static List<ValidationLine> ToValidationLines(IEnumerable<OcrLineDto> lines) =>
+        public static List<ValidationLine> ToValidationLines(IEnumerable<OcrLineDto> lines) =>
             lines.Select(l => new ValidationLine(l.AmountExclVat, l.Quantity, l.UnitPrice, l.NetDerived)).ToList();
 
         // Stored lines carry no "derived" marker; the line rule uses the stored unit_price (decimal(18,6), D-039),
