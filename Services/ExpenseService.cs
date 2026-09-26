@@ -1421,6 +1421,86 @@ namespace NordicBeesERP.Services
             await context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Change an assigned supplier (D-045) — the UI could not correct a wrong supplier before. Allowed for NEEDS_REVIEW and
+        /// PENDING invoices with no payments; refused (Lithuanian message) for PARTIAL, PAID, OVERDUE, REJECTED,
+        /// DUPLICATE_PENDING and for an invoice without a supplier (that is AssignSupplierAsync). The supplier is a gate field:
+        /// an approval is voided (APPROVAL_VOIDED) and the status comes from the shared rules; rate flags are recomputed for the
+        /// new partner's country; SUPPLIER_CHANGED records old → new. An explicit human choice (S5 alias confirmation).
+        /// </summary>
+        public async Task ChangeSupplierAsync(int invoiceId, int partnerId, string performedBy)
+        {
+            using var context = _dbFactory.CreateDbContext();
+
+            var invoice = await context.ExpenseInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoiceId)
+                ?? throw new InvalidOperationException($"Sąskaita #{invoiceId} nerasta");
+
+            switch (invoice.Status)
+            {
+                case "NEEDS_REVIEW":
+                case "PENDING":
+                    break;
+                case "PENDING_SUPPLIER":
+                    throw new InvalidOperationException("Sąskaitai dar nepriskirtas tiekėjas — naudokite „Priskirti esamam“");
+                case "REJECTED":
+                case "DUPLICATE_PENDING":
+                    throw new InvalidOperationException("Tiekėjo keisti negalima: sąskaita atmesta arba laukia dublikato sprendimo");
+                default:
+                    throw new InvalidOperationException("Tiekėjo keisti negalima: sąskaita jau turi mokėjimų arba yra apmokėta");
+            }
+            if (invoice.SupplierId == null)
+                throw new InvalidOperationException("Sąskaitai dar nepriskirtas tiekėjas — naudokite „Priskirti esamam“");
+            if (invoice.SupplierId == partnerId)
+                throw new InvalidOperationException("Šis tiekėjas jau priskirtas");
+            if (await context.ExpensePayments.AnyAsync(p => p.InvoiceId == invoiceId))
+                throw new InvalidOperationException("Tiekėjo keisti negalima: sąskaita jau turi mokėjimų");
+            if (!await context.BusinessPartners.AnyAsync(b => b.Id == partnerId))
+                throw new InvalidOperationException("Pasirinktas tiekėjas nerastas");
+
+            var oldSupplierId = invoice.SupplierId.Value;
+            var oldStatus = invoice.Status;
+            var flags = ExpenseStatusHelper.ParseFlags(invoice.OcrFlags);
+            flags.RemoveAll(f => f == OcrFlag.VendorNotFound || f == OcrFlag.VendorSuggested || f == OcrFlag.VendorAmbiguous);
+            await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, partnerId);
+            var newStatus = StatusAfterSupplierAssigned(flags);
+            var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
+            var approved = !string.IsNullOrEmpty(invoice.ApprovedBy);
+            var now = DateTime.Now;
+
+            // D-010: supplier, approval, flags, status and both audit rows are one transaction
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    supplier_id = {0},
+                    status = {1},
+                    ocr_flags = {2},
+                    updated_at = {3}
+                WHERE id = {4}",
+                partnerId, newStatus, ocrFlagsJson, now, invoiceId);
+
+            if (approved)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE expense_invoices SET approved_by = NULL, approved_at = NULL WHERE id = {0}", invoiceId);
+                await context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO expense_invoice_audit
+                        (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                    VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                    invoiceId, invoice.InvoiceNumber, "APPROVAL_VOIDED", "Pakeisti laukai: supplier_id",
+                    oldStatus, newStatus, performedBy, now);
+            }
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO expense_invoice_audit
+                    (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                invoiceId, invoice.InvoiceNumber, "SUPPLIER_CHANGED", $"Tiekėjo ID: {oldSupplierId} → {partnerId}",
+                oldStatus, newStatus, performedBy, now);
+
+            await transaction.CommitAsync();
+        }
+
         private static async Task<string?> GetPartnerCountryAsync(NordicBeesERPContext context, int? supplierId) =>
             supplierId.HasValue
                 ? await context.BusinessPartners.Where(b => b.Id == supplierId.Value).Select(b => b.CountryCode).FirstOrDefaultAsync()

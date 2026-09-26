@@ -182,6 +182,29 @@
                                                     else
                                                     {
                                                         <MudText Typo="Typo.body2" Style="font-weight:600">@(_supplierName ?? "---")</MudText>
+                                                        @if (CanChangeSupplier)
+                                                        {
+                                                            @if (!_showChangeSupplier)
+                                                            {
+                                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary" Margin="Margin.Dense" Class="mt-1"
+                                                                           OnClick="ToggleChangeSupplier">Pakeisti tiekėją</MudButton>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="d-flex gap-1 flex-wrap align-center mt-1">
+                                                                    <MudSelect T="BusinessPartner?" @bind-Value="_selectedSupplier" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                                               Clearable="true" Style="min-width:240px;" Label="Naujas tiekėjas">
+                                                                        @foreach (var sp in _suppliers.Where(x => x.Id != _invoice!.SupplierId))
+                                                                        {
+                                                                            <MudSelectItem T="BusinessPartner?" Value="sp">@sp.Name (@sp.VatCode)</MudSelectItem>
+                                                                        }
+                                                                    </MudSelect>
+                                                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Margin="Margin.Dense"
+                                                                               Disabled="_selectedSupplier == null" OnClick="ChangeSupplierAsync">Pakeisti</MudButton>
+                                                                    <MudButton Size="Size.Small" Variant="Variant.Text" Margin="Margin.Dense" OnClick="ToggleChangeSupplier">Atšaukti</MudButton>
+                                                                </div>
+                                                            }
+                                                        }
                                                         @if (!string.IsNullOrEmpty(_suggestedSupplierName))
                                                         {
                                                             <MudText Typo="Typo.caption" Style="color:#0369a1">Pakartotinis OCR siūlo kitą tiekėją: @_suggestedSupplierName (priskirtas tiekėjas paliktas)</MudText>
@@ -526,6 +549,10 @@
     // Etapas 2 S3d: matcher candidates of a PENDING_SUPPLIER invoice, computed at load from the stored pending identifiers
     private List<SupplierCandidateView> _candidates = new();
     private BusinessPartner? _selectedSupplier;
+    // D-045: „Pakeisti tiekėją" — an unpaid invoice (NEEDS_REVIEW / PENDING, no payments) with a supplier
+    private bool _showChangeSupplier = false;
+    private bool CanChangeSupplier =>
+        _invoice?.SupplierId != null && _invoice.Status is "NEEDS_REVIEW" or "PENDING" && _payments.Count == 0;
     private bool _isLoading = true;
     private bool _editMode = false;
     private string _rejectReason = "";
@@ -691,7 +718,7 @@
         _candidates = _invoice?.Status == "PENDING_SUPPLIER"
             ? await ExpenseService.GetSupplierCandidatesAsync(InvoiceId)
             : new();
-        if (_invoice?.Status == "PENDING_SUPPLIER")
+        if (_invoice?.Status is "PENDING_SUPPLIER" or "NEEDS_REVIEW" or "PENDING")
         {
             await using var dbContext = DbFactory.CreateDbContext();
             _suppliers = await dbContext.BusinessPartners
@@ -924,6 +951,36 @@
         catch (Exception ex)
         {
             Snackbar.Add("Klaida priskiriant tiekėją: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private void ToggleChangeSupplier()
+    {
+        _showChangeSupplier = !_showChangeSupplier;
+        _selectedSupplier = null;
+    }
+
+    private async Task ChangeSupplierAsync()
+    {
+        if (_selectedSupplier == null) return;
+        try
+        {
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.ChangeSupplierAsync(_loadedInvoiceId, _selectedSupplier.Id, actor);
+            _showChangeSupplier = false;
+            _selectedSupplier = null;
+            _loadedInvoiceId = 0;
+            await OnParametersSetAsync();
+            Snackbar.Add("Tiekėjas pakeistas", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // domain refusal (status, payments, same supplier) — shown as is
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida keičiant tiekėją: " + ex.Message, Severity.Error);
         }
     }
 

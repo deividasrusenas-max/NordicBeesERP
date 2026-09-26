@@ -79,6 +79,9 @@ namespace NordicBeesERP.Services
         
         // Supplier Assignment
         Task AssignSupplierAsync(int invoiceId, int supplierId, string performedBy);
+
+        // D-045: change the supplier of an unpaid invoice (NEEDS_REVIEW / PENDING, no payments); voids an approval, audited SUPPLIER_CHANGED
+        Task ChangeSupplierAsync(int invoiceId, int partnerId, string performedBy);
         
         // Auto-assign supplier to all PENDING_SUPPLIER invoices matching by vatCode OR supplierName
         Task<int> AutoAssignSupplierAsync(string? vatCode, string? supplierName, int supplierId);
