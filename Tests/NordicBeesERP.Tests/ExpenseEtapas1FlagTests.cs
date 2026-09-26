@@ -39,10 +39,11 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
     // covered by ExpenseValidationGateTests.
     public static readonly TheoryData<string> CarriedReviewFlags = new()
     {
-        OcrFlag.InvalidIban, OcrFlag.InvalidVatFormat,
         OcrFlag.VatRateNotAllowed, OcrFlag.NumberMisread, OcrFlag.NumberAmbiguous
     };
 
+    // S5(c), D-039 item 2: INVALID_IBAN / INVALID_VAT_FORMAT left this list — with a supplier they are information on
+    // every path (ExpenseSupplierDocumentStatusTests). They are still carried over (stored) on edit.
     // Same for information flags: LINE_AMOUNT_IMPLAUSIBLE left this list in S4(c) — recomputed on every path.
     public static readonly TheoryData<string> CarriedInformationFlags = new()
     {

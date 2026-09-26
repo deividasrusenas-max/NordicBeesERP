@@ -564,7 +564,7 @@ namespace NordicBeesERP.Services
             if (supplierId == null) return "PENDING_SUPPLIER";
             // WRONG_RECIPIENT keeps its previous manual-edit behaviour: it holds the invoice in
             // review (it never rejects on edit); it is cleared only by DismissWrongRecipientAsync.
-            if (HasReviewFlag(flags) || flags.Contains(OcrFlag.WrongRecipient)) return "NEEDS_REVIEW";
+            if (HasReviewFlag(flags, hasSupplier: true) || flags.Contains(OcrFlag.WrongRecipient)) return "NEEDS_REVIEW";
             return "PENDING";
         }
 
@@ -1609,19 +1609,24 @@ namespace NordicBeesERP.Services
         // =====================================================
 
         /// <summary>
-        /// Flags that keep an invoice with a known supplier in NEEDS_REVIEW. The OCR Etapas 1 flags are
-        /// classified per D-038: TOTALS_OUT_OF_RANGE, INVALID_IBAN, INVALID_VAT_FORMAT,
-        /// VAT_RATE_NOT_ALLOWED, NUMBER_MISREAD and NUMBER_AMBIGUOUS are review;
-        /// LINE_AMOUNT_IMPLAUSIBLE, VAT_FORMAT_UNCHECKED and VAT_RATE_UNCHECKED are information only, and so is
-        /// LINE_SUM_ROUNDING (BR-CO-10 difference ≤ 0.05 €, D-040).
+        /// Flags that keep an invoice in NEEDS_REVIEW. The OCR Etapas 1 flags are classified per D-038:
+        /// TOTALS_OUT_OF_RANGE, INVALID_IBAN, INVALID_VAT_FORMAT, VAT_RATE_NOT_ALLOWED, NUMBER_MISREAD and
+        /// NUMBER_AMBIGUOUS are review; LINE_AMOUNT_IMPLAUSIBLE, VAT_FORMAT_UNCHECKED, VAT_COUNTRY_MISMATCH and
+        /// VAT_RATE_UNCHECKED are information only, and so is LINE_SUM_ROUNDING (BR-CO-10 difference ≤ 0.05 €, D-040).
+        /// <para>
+        /// D-039 item 2 — the ONE place for it: once the invoice has a supplier (however assigned: OCR match,
+        /// upload dialog, assignment, supplier created from the invoice), the document's INVALID_IBAN and
+        /// INVALID_VAT_FORMAT are information, not review, on every path. The flags stay stored.
+        /// </para>
         /// </summary>
-        private static bool HasReviewFlag(IEnumerable<string> flags) =>
+        private static bool HasReviewFlag(IEnumerable<string> flags, bool hasSupplier) =>
             flags.Any(f => f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch ||
                            f == OcrFlag.LowConfidence || f == OcrFlag.ZeroVat ||
                            f == OcrFlag.MissingInvNumber ||
                            f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField ||
                            f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate ||
-                           f == OcrFlag.TotalsOutOfRange || f == OcrFlag.InvalidIban || f == OcrFlag.InvalidVatFormat ||
+                           f == OcrFlag.TotalsOutOfRange ||
+                           (!hasSupplier && (f == OcrFlag.InvalidIban || f == OcrFlag.InvalidVatFormat)) ||
                            f == OcrFlag.VatRateNotAllowed || f == OcrFlag.NumberMisread || f == OcrFlag.NumberAmbiguous);
 
         /// <summary>Status precedence for OCR ingestion: WRONG_RECIPIENT → supplier missing → review flags.</summary>
@@ -1630,17 +1635,12 @@ namespace NordicBeesERP.Services
             var list = flags as ICollection<string> ?? flags.ToList();
             if (list.Contains(OcrFlag.WrongRecipient)) return "REJECTED";
             if (supplierId == null) return "PENDING_SUPPLIER";
-            return HasReviewFlag(list) ? "NEEDS_REVIEW" : "PENDING";
+            return HasReviewFlag(list, hasSupplier: true) ? "NEEDS_REVIEW" : "PENDING";
         }
 
-        /// <summary>
-        /// Status once a supplier is assigned: the review gate still applies (D-028), except that the
-        /// document's INVALID_IBAN / INVALID_VAT_FORMAT become information — a human has just
-        /// established the supplier's identity (D-038 Q5). The flags stay stored.
-        /// </summary>
+        /// <summary>Status once a supplier is assigned: the review gate still applies (D-028), see <see cref="HasReviewFlag"/>.</summary>
         private static string StatusAfterSupplierAssigned(IEnumerable<string> flags) =>
-            HasReviewFlag(flags.Where(f => f != OcrFlag.InvalidIban && f != OcrFlag.InvalidVatFormat))
-                ? "NEEDS_REVIEW" : "PENDING";
+            HasReviewFlag(flags, hasSupplier: true) ? "NEEDS_REVIEW" : "PENDING";
 
         /// <summary>
         /// One invoice line as the validation gates see it. <paramref name="NetDerived"/>: the line net was
