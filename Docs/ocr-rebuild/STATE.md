@@ -1,6 +1,6 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-26 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **kodas baigtas `main` (v0.17.92), laukia staging patikrų**
+Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — planas rengiamas (`PLAN-ETAPAS2.md`)
 
 ## Dabartinė fazė
 
@@ -8,10 +8,11 @@ Etapas 0 ir Etapas 0c — **BAIGTI, prode v0.17.91** (2026-09-26; `main` `a1ad12
 `production`). Tame pačiame deploy'uje yra ir Etapo 1 validatoriai (IBAN, PVM kodo formatas,
 EN 16931 sumos) — **prode (v0.17.91) neprijungti**, niekur nekviečiami; `main` jau jungia (žemiau).
 
-**Etapas 1 — kodas baigtas `main`** (S1–S7, D-038…D-041; `e5cfb95`, versija 0.17.92 `b3e19ca`;
-**853 testai žali**, `dotnet test --filter "Category!=E2E"`). **Nedeploy'intas niekur** — laukia
-staging patikrų pagal `STAGING-CHECKS-ETAPAS1.md` (savininkas). Etapas 1 uždaromas **staginge**;
-prodo deploy'o nėra, kol Etapai 1–4 nebaigti (D-037, žr. žemiau). Staging DDL (`unit_price
+**Etapas 1 — UŽDARYTAS STAGINGE 2026-09-26/27** (D-043). Kodas: S1–S7, D-038…D-041 (`e5cfb95`,
+0.17.92 `b3e19ca`) ir šalies kodo taisymas D-042 (`073c299`); `main` dabar v0.17.94 (`cd37a80`);
+paskutinis pilnas `dotnet test --filter "Category!=E2E"` (šalies kodo taisymo raportas): **972 testai
+žali**. Staging patikrų rezultatai — žemiau, „Etapas 1 — staging patikrų rezultatai". Prodo
+deploy'o nėra, kol Etapai 1–4 nebaigti (D-037, žr. žemiau). Staging DDL (`unit_price
 decimal(18,6)`) savininko pritaikytas.
 
 **Deploy politika — D-037:** kitas prodo deploy'us tik tada, kai Etapai 1–4 visiškai baigti ir
@@ -51,6 +52,7 @@ tik planavimo pokalbis.
 | S6 | `6c817c6` .. `51b20b6`, `7857ad0` | PVM tarifų vartai (visos eilutės NEPATVIRTINTOS → tik `VAT_RATE_UNCHECKED`), UI nuoseklumas | tas pats |
 | Korpusas + S7 | `1a81092`, `28dc8e1` (D-041), `6cb4c9f`, `279a3a6`, `6bb9158`, `e5cfb95` | Azure korpusas (už git ribų), lokalės skaičių aptikimas (`NUMBER_MISREAD` / `NUMBER_AMBIGUOUS`, peržiūra), suderinimas nebetrina eilučių (`LINE_LARGE_QUANTITY`, `LINE_DUPLICATE_DESCRIPTION`) | `etapas1-corpus-s7-20260926-2025.md` |
 | S8 | `216dd5d` | `STAGING-CHECKS-ETAPAS1.md` | `etapas1-s8-*.md` |
+| Šalies kodas (D-042) | `dc403c0` (docs), `073c299` (fix) | tiekėjo šalis — tik ISO alpha-2 per `CountryCodeResolver`, niekada neapkarpytas pavadinimas | `etapas1-country-fix-20260926-2306.md` |
 
 ## Staging patikrų rezultatai (savininkas, 2026-09-26)
 
@@ -69,6 +71,56 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 | 6 — banko importas | **NEPATIKRINTA** |
 | 7 — JPG / skenuoto PDF atmetimas | **NEPATIKRINTA** |
 | 10–19 (išskyrus 370 redagavimą) | **NEPATIKRINTA** |
+
+## Etapas 1 — staging patikrų rezultatai (savininkas, 2026-09-26/27)
+
+Numeriai ir tikėtinos vėliavėlės — `STAGING-CHECKS-ETAPAS1.md`. **Etapas 1 uždarytas staginge (D-043).**
+
+**PASSED:**
+
+| Patikra | Rezultatas |
+|---|---|
+| Deploy'us, schema, bazinė būsena | INV0 376, AUD0 456 |
+| U1 DOLABELS 004321 | NUMBER_MISREAD, NUMBER_AMBIGUOUS, LINE_AMOUNT_IMPLAUSIBLE, VAT_RATE_UNCHECKED; vieneto kainos 115 / 118 / 6 / 11990 **nepakeistos**; 4 eilutės |
+| U2 Rabenas | AMOUNT_MISMATCH, LINE_DUPLICATE_DESCRIPTION; 8 eilutės išsaugotos; 2385,61 |
+| U3 EGO transport ir UTA PL | AMOUNT_MISMATCH, LINE_AMOUNT_IMPLAUSIBLE, VAT_RATE_UNCHECKED |
+| U4 LD | MISSING_MONEY_FIELD, ZERO_VAT; aritmetinės vėliavėlės nėra |
+| U5 Invoice (1231) | STALE_DATE, VAT_FORMAT_UNCHECKED, ZERO_VAT, WRONG_RECIPIENT → REJECTED; šalis NL |
+| U6 Taurobilis („turi praeiti") | švari sąskaita — tik DUPLICATE ir VAT_RATE_UNCHECKED |
+| Re-OCR 376 | mygtukas, failo vardas išliko, OCR_RETRIED, nauja sąskaita nesukurta; FUTURE_DATE pagauta (2026-09-30) |
+| Redagavimo perkėlimas, 175 | OWN_COMPANY išliko |
+| BR-CO-10 juostos, 381 | 0 → nieko; +0,03 → tik LINE_SUM_ROUNDING; +0,06 → AMOUNT_MISMATCH; grąžinus → nieko |
+| IBAN / PVM formatas, 374 | INVALID_IBAN + INVALID_VAT_FORMAT su sugadintu kodu; abi išvalytos grąžinus |
+
+**Pastebėta vykdant:**
+
+- Visi korpuso PDF jau buvo prode (liepos mėn.), todėl **kiekvienas įkėlimas tapo DUPLICATE_PENDING** —
+  patikros lygino vėliavėles, ne statusą.
+- U3 UTA PL grįžo su **rastu tiekėju** (nėra laukiančio PVM kodo, todėl nėra VAT_FORMAT_UNCHECKED) —
+  tikėtina, kai tiekėjas sutapo.
+
+**SKIPPED:**
+
+- Paskirstymai (staginge jų nėra) — automatiniai testai.
+- TOTALS_OUT_OF_RANGE — automatiniai testai.
+- VAT_RATE_NOT_ALLOWED — nėra CONFIRMED eilučių.
+- Tiekėjo sukūrimo užpildymas (14b) — automatiniai testai.
+- Etapo 0 likučiai: dialogai nepasiekiami, drag & drop neveikia.
+
+**Rasta vykdant ir SUTAISYTA:** tiekėjo šalis buvo išvedama apkarpant pavadinimą (Lietuva → LI,
+Ireland → IR) — D-042, `073c299`, deploy'inta į staging.
+
+**Prieš Etapų 1–4 deploy'ą į prodą liko (atviri):**
+
+- Buhalterė patvirtina PVM tarifus (EK TEDB); EE keitimo data.
+- Tiekėjų šalies valymo sąrašas (duomenys, D-042): RABEN LIETUVA LI→LT, Xirgo Global LI→LT,
+  OÜ Nordic Hotels ES→EE, partneris 386 (PL PVM saugomas kaip LT, be pavadinimo), 8 partneriai be
+  šalies. **KONICK RETAIL HUB — teisingai CZ** (čekų įmonė su LT PVM registracija) — **NEKEISTI**.
+- Prodo duomenų valymas su buhaltere (`PROD-DATA-FINDINGS-2026-09-25.md` §6, Q-010).
+- Drag & drop; našlaičiai dialogai (Q11); flaky `CreditNoteServiceTests` testas.
+- Klientų / įmonės nustatymų šalies keliai (`CustomerCreateDialog.razor`, `CompanySettingsPage.razor`
+  dar priskiria žalią šalies kodą — šalies kodo taisymo raporto peržiūrėtojo pastaba).
+- Data Protection raktai; `lakstena-dev` RAM.
 
 ## Atviri klausimai ir tęsiniai (savininko sprendimai / follow-up)
 
@@ -91,8 +143,8 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
   išsaugojimas vėliavėles perkuria iš naujo ir `OWN_COMPANY` į perkeliamų sąrašą neįtraukia
   (`ExpenseService.ComputeManualEditFlags`, `ExpenseService.cs:498-529`). T. y. redagavimas
   **numeta** `OWN_COMPANY` — tas pats nutinka `INVALID_VAT_RATE`. Nėra požymių, kad tai
-  sąmoningas sprendimas (`LOW_CONFIDENCE` numetamas su komentaru, šie du — be jokio). Sutaisyta kode Etape 1 (S2a, `c7bd26b`: redagavimas perkelia viską, ko neperskaičiuoja); laukia staging
-  patikros (`STAGING-CHECKS-ETAPAS1.md` 12). `INVALID_VAT_RATE` vis dar perkeliamas be perskaičiavimo.
+  sąmoningas sprendimas (`LOW_CONFIDENCE` numetamas su komentaru, šie du — be jokio). Sutaisyta kode Etape 1 (S2a, `c7bd26b`: redagavimas perkelia viską, ko neperskaičiuoja); **patikrinta
+  staginge 2026-09-27 (175: OWN_COMPANY išliko)**. `INVALID_VAT_RATE` vis dar perkeliamas be perskaičiavimo.
 - **Užšaldyto dialogo tekstas** „Patikrinkite ar visi serveriai veikia ir bandykite dar kartą."
   rodomas ir po ne-OCR atmetimų (`ExpenseUploadDialog.razor:83-85`, FROZEN §3) — reikia
   leidimo.
@@ -107,7 +159,7 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 - **decimal-precision radiniai** (`nordicbees-ef-decimal-precision-annotation-missing`).
   Ankstesnėje būsenoje — 12; 0c raporto priede po C8 — 57 šios taisyklės radiniai, nė vieno
   `Models/Expenses/`. Skaičių reikia suderinti.
-- **Re-OCR saugomiems failams** — sutvarkyta kode (S3, `8c67a62`); laukia staging patikros (`STAGING-CHECKS-ETAPAS1.md` 9–11).
+- **Re-OCR saugomiems failams** — sutvarkyta kode (S3, `8c67a62`); **patikrinta staginge 2026-09-27** (376: mygtukas, failo vardas, OCR_RETRIED); paskirstymų patvirtinimas (11) — tik automatiniai testai.
 - **Data Protection raktai neišsaugomi tarp konteinerių** — kiekvienas deploy'us atjungia
   naudotojus (už OCR ribų).
 - **3,8 GB RAM `lakstena-dev`** — prodas, staging, DB ir CI kartu (už OCR ribų).
@@ -134,11 +186,12 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 
 ## Kitas žingsnis
 
-**Etapas 1 staginge:** savininkas įvykdo `STAGING-CHECKS-ETAPAS1.md` ir pateikia rezultatus (go / no-go
-sąrašas dokumento gale). Po to — Etapas 2. **Deploy politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4
-nebaigti ir nepatikrinti staginge; dalinių deploy'ų į prodą nėra. Prieš galutinį deploy'ą — dokumento
-„Must be finished…" sąrašas (PVM tarifai, EE data, LI tiekėjai, drag & drop, našlaičiai dialogai, flaky testas,
-prodo duomenų valymas, `unit_price` DDL prode).
+**Etapas 2 (tiekėjo kaskada):** `PLAN-ETAPAS2.md` rengiamas (tik dokumentas, nieko neįgyvendinta);
+savininkas, kai jis bus parašytas, atsako į atvirų klausimų sąrašą ir paleidžia jo staging SELECT užklausas, tada — S1. **Deploy
+politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4 nebaigti ir nepatikrinti staginge; dalinių deploy'ų
+į prodą nėra. Prieš galutinį deploy'ą — atvirų punktų sąrašas skyriuje „Etapas 1 — staging patikrų
+rezultatai" ir `STAGING-CHECKS-ETAPAS1.md` „Must be finished…" (PVM tarifai, EE data, šalių valymas,
+drag & drop, našlaičiai dialogai, flaky testas, prodo duomenų valymas, `unit_price` DDL prode).
 
 ## Padaryta
 
@@ -155,6 +208,8 @@ prodo duomenų valymas, `unit_price` DDL prode).
   D-031…D-036, Etapo 1 validatoriai; `STAGING-CHECKS-ETAPAS0.md`.
 - 2026-09-26: staging patikros (iš dalies, žr. lentelę), prodo deploy'us v0.17.91, D-037.
 - 2026-09-26 (Claude Code): Etapas 1 S1–S7 (+ Azure korpusas už git ribų, D-038…D-041), 853 testai; S8 — `STAGING-CHECKS-ETAPAS1.md`.
+- 2026-09-26/27: Etapas 1 staging patikros (savininkas) — uždarytas staginge (D-043); šalies kodo taisymas (D-042, `073c299`).
+- 2026-09-27 (Claude Code): STATE/D-043 — Etapo 1 uždarymas.
 
 ## Storage gate — įrodymai (2026-09-25, staging)
 
@@ -194,8 +249,8 @@ prodo duomenų valymas, `unit_price` DDL prode).
 | Saugykla, 1 žingsnis | baigta, gate uždarytas 2026-09-25 |
 | Etapas 0 (tylios klaidos, vartai) | **baigta, prode v0.17.91**; staging patikros dalinės (žr. lentelę) |
 | Etapas 0c (redagavimas, įvestis, biudžetas) | **baigta, prode v0.17.91**; drag & drop FAILED, biudžetas nepatikrintas |
-| Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai, re-OCR) | **kodas baigtas `main` (v0.17.92), 853 testai; laukia staging patikrų** (`STAGING-CHECKS-ETAPAS1.md`); prode nėra (D-037) |
-| Etapas 2 (tiekėjo kaskada) | laukia |
+| Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai, re-OCR) | **uždarytas staginge 2026-09-26/27** (D-043; `main` v0.17.94); prode nėra (D-037) |
+| Etapas 2 (tiekėjo kaskada) | planas rengiamas (`PLAN-ETAPAS2.md`) |
 | Etapas 3 (ekstrakcija — D-023 kryptis, D-016 atviras) | laukia; Q-006, Q-007, Q-009 prieš pradedant |
 | Etapas 4 (matavimas) | laukia |
 | Saugykla, 2 žingsnis (PDF į IFileStore) | nepradėta |

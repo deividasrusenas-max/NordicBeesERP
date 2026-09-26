@@ -508,6 +508,23 @@ konstrukciją) — vėliavėlė lieka tik reikšmėms, gautoms ne per OCR išspr
 
 ---
 
+## D-043 — Etapas 1 uždarytas staginge (2026-09-27)
+
+**Sprendimas.** Etapas 1 (EN 16931 vartai, lokalės skaičiai, IBAN / PVM formatas, PVM tarifai,
+re-OCR pagal `file_id`) laikomas **uždarytu staginge** 2026-09-26/27 pagal savininko staging
+patikras (`STAGING-CHECKS-ETAPAS1.md`); rezultatai, praleisti punktai, rastas ir sutaisytas
+šalies kodo defektas (D-042) ir atviri punktai prieš Etapų 1–4 deploy'ą — `STATE.md`, skyrius
+„Etapas 1 — staging patikrų rezultatai". Prodas lieka v0.17.91 (D-037).
+
+**Taisyklė (iš KONICK RETAIL HUB atvejo).** Tiekėjo partnerio saugoma šalis
+(`business_partners.country_code`) yra **autoritetinga**, kai tiekėjas priskirtas; PVM prefiksas yra
+tik OCR metu naudojama euristika (D-042 prioritetas galioja OCR išsprendimo žingsnyje, kol tiekėjas
+dar nepriskirtas). Čekų įmonė su LT PVM registracija (KONICK RETAIL HUB) teisingai turi šalį CZ —
+valymo metu (D-042 pasekmė) ji **nekeičiama** pagal PVM prefiksą, ir jokia automatinė
+korekcija neturi „taisyti" partnerio šalies pagal PVM kodą.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
