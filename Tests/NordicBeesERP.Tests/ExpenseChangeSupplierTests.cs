@@ -174,13 +174,14 @@ public class ExpenseChangeSupplierTests : IClassFixture<DbTestFixture>
     {
         var oldPartner = await InsertPartnerAsync();
         var newPartner = await InsertPartnerAsync();
-        var invoice = await InsertInvoiceAsync("NEEDS_REVIEW", oldPartner, new[] { OcrFlag.VendorSuggested, OcrFlag.VendorAmbiguous, OcrFlag.ZeroVat });
+        var invoice = await InsertInvoiceAsync("NEEDS_REVIEW", oldPartner, new[] { OcrFlag.VendorNotFound, OcrFlag.VendorSuggested, OcrFlag.VendorAmbiguous, OcrFlag.ZeroVat });
         try
         {
             await CreateService().ChangeSupplierAsync(invoice, newPartner, "Test User");
 
             Assert.DoesNotContain(await AuditsAsync(invoice), a => a.Action == "APPROVAL_VOIDED");
             var flags = ExpenseStatusHelper.ParseFlags((await ReloadAsync(invoice)).OcrFlags);
+            Assert.DoesNotContain(OcrFlag.VendorNotFound, flags);
             Assert.DoesNotContain(OcrFlag.VendorSuggested, flags);
             Assert.DoesNotContain(OcrFlag.VendorAmbiguous, flags);
             Assert.Contains(OcrFlag.ZeroVat, flags);
@@ -225,10 +226,11 @@ public class ExpenseChangeSupplierTests : IClassFixture<DbTestFixture>
         var waiting = await InsertInvoiceAsync("PENDING_SUPPLIER", null);
         var pending = await InsertInvoiceAsync("PENDING", other);
         var assignedWaiting = await InsertInvoiceAsync("PENDING_SUPPLIER", other);
+        var noSupplierReview = await InsertInvoiceAsync("NEEDS_REVIEW", null); // status is not PENDING_SUPPLIER although there is no supplier
         try
         {
             await using (var context = await _fixture.Factory.CreateDbContextAsync())
-                foreach (var id in new[] { waiting, pending, assignedWaiting })
+                foreach (var id in new[] { waiting, pending, assignedWaiting, noSupplierReview })
                     await context.Database.ExecuteSqlRawAsync(
                         "UPDATE expense_invoices SET pending_supplier_vat = {0}, pending_supplier_country_code = 'LT' WHERE id = {1}", vat, id);
 
@@ -238,8 +240,11 @@ public class ExpenseChangeSupplierTests : IClassFixture<DbTestFixture>
             Assert.Equal(partner, (await ReloadAsync(waiting)).SupplierId);
             Assert.Equal(other, (await ReloadAsync(pending)).SupplierId);
             Assert.Equal(other, (await ReloadAsync(assignedWaiting)).SupplierId);
+            var untouched = await ReloadAsync(noSupplierReview);
+            Assert.Null(untouched.SupplierId);
+            Assert.Equal("NEEDS_REVIEW", untouched.Status);
         }
-        finally { await CleanupAsync(new[] { waiting, pending, assignedWaiting }, partner, other); }
+        finally { await CleanupAsync(new[] { waiting, pending, assignedWaiting, noSupplierReview }, partner, other); }
     }
 
     private sealed class NullAuth : IAuthService
