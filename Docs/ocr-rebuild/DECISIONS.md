@@ -303,6 +303,26 @@ išmetamos. Sąskaita be eilučių — antraštės neto su sąskaitos kategorija
 
 ---
 
+## D-037 — Deploy politika: kitas prodo deploy'us — tik baigus Etapus 1–4 (2026-09-26)
+
+**Kontekstas.** Etapas 0 (+ 0c ir Etapo 1 validatoriai, dar neprijungti) po staging patikrų
+2026-09-26 deploy'intas į prodą kaip **v0.17.91** (`main` `a1ad12a` → `production`). Staging
+patikrų rezultatai — `STATE.md`.
+
+**Sprendimas (savininkas).** Kitas prodo deploy'us vyksta tik tada, kai Etapai 1–4 **visiškai
+baigti ir patikrinti staginge**. Daliniai Etapų 1–4 deploy'ai į prodą nedaromi.
+
+**Pasekmės.**
+
+- `main` kaupia Etapus 1–4; staging yra integracijos aplinka (kiekvieno etapo patikra ten).
+- Prodas lieka v0.17.91, kol neįvykdyta aukščiau nurodyta sąlyga.
+- Skubūs prodo pataisymai, jei kada prireiktų, — atskiras savininko sprendimas, ne šios
+  politikos išimtis „savaime".
+- Keičia D-031 „Tvarka" dalį, kiek ji liečia prodą: etapas uždaromas staginge; prodas — vienu
+  deploy'umi po Etapo 4.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
