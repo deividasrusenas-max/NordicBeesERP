@@ -94,14 +94,13 @@ Numeriai ir tikėtinos vėliavėlės — `STAGING-CHECKS-ETAPAS1.md`. **Etapas 1
 
 **Pastebėta vykdant:**
 
-- Visi korpuso PDF jau buvo prode (liepos mėn.), todėl **kiekvienas įkėlimas tapo DUPLICATE_PENDING** —
+- Visi korpuso PDF jau buvo prode, todėl **kiekvienas įkėlimas tapo DUPLICATE_PENDING** —
   patikros lygino vėliavėles, ne statusą.
-- U3 UTA PL grįžo su **rastu tiekėju** (nėra laukiančio PVM kodo, todėl nėra VAT_FORMAT_UNCHECKED) —
-  tikėtina, kai tiekėjas sutapo.
+- U3 UTA PL grįžo su **rastu tiekėju**, todėl VAT_FORMAT_UNCHECKED nebuvo.
 
 **SKIPPED:**
 
-- Paskirstymai (staginge jų nėra) — automatiniai testai.
+- Paskirstymai — automatiniai testai.
 - TOTALS_OUT_OF_RANGE — automatiniai testai.
 - VAT_RATE_NOT_ALLOWED — nėra CONFIRMED eilučių.
 - Tiekėjo sukūrimo užpildymas (14b) — automatiniai testai.
