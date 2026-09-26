@@ -1,5 +1,6 @@
 using NordicBeesERP.Services;
 using NordicBeesERP.Helpers;
+using NordicBeesERP.Services.Validation;
 
 namespace NordicBeesERP.Services;
 
@@ -211,7 +212,7 @@ public interface ICompanyLookupService
                  Name = CleanCompanyName(vies.Name),
                 Address = string.IsNullOrWhiteSpace(vies.Address) || vies.Address == "---" ? null : vies.Address.Replace("\n", ", ").Replace("\r", "").Trim(),
                 VatCode = vatCode,
-                CountryCode = vies.CountryCode,
+                CountryCode = CountryCodeResolver.Resolve(vatCode, vies.CountryCode),
                 StatusLabel = "VIES patvirtinta"
             };
         }

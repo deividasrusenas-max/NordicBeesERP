@@ -4,6 +4,7 @@
 @using MudBlazor
 @using NordicBeesERP.Helpers
 @using NordicBeesERP.Services
+@using NordicBeesERP.Services.Validation
 @inject IDialogService DialogService
 @inject ISupplierService SupplierService
 @inject IGooglePlacesService GooglePlaces
@@ -289,7 +290,9 @@
 
         if (!string.IsNullOrEmpty(PrefilledName))
         {
-            var countryCode = (PrefilledCountryCode ?? "LT").ToUpper();
+            // ISO code only (D-042): VAT prefix, then the pending country; the LT default applies only when nothing was given
+            var countryCode = CountryCodeResolver.Resolve(PrefilledVatCode, PrefilledCountryCode)
+                ?? (string.IsNullOrWhiteSpace(PrefilledCountryCode) ? "LT" : "");
             var vatCheck = SupplierPrefillGate.CheckVatCode(PrefilledVatCode, PrefilledCountryCode);
             var ibanCheck = SupplierPrefillGate.CheckIban(PrefilledBankAccount);
             _prefillWarnings.Clear();
@@ -430,7 +433,7 @@
         if (!string.IsNullOrWhiteSpace(details.City)) supplier.City = details.City;
         if (!string.IsNullOrWhiteSpace(details.PostalCode)) supplier.PostalCode = details.PostalCode;
         if (!string.IsNullOrWhiteSpace(details.Country)) supplier.Country = details.Country;
-        if (!string.IsNullOrWhiteSpace(details.CountryCode)) supplier.CountryCode = details.CountryCode;
+        if (CountryCodeResolver.FromAddress(details.CountryCode) is { } placeCountry) supplier.CountryCode = placeCountry;
         _descriptionToPlaceId.Clear();
     }
 

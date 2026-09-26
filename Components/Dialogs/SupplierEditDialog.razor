@@ -2,6 +2,7 @@
 @using NordicBeesERP.Models.Expenses
 @using NordicBeesERP.Data
 @using NordicBeesERP.Services
+@using NordicBeesERP.Services.Validation
 @using NordicBeesERP.Helpers
 @using MudBlazor
 @inject IDialogService DialogService
@@ -496,7 +497,7 @@
         if (!string.IsNullOrWhiteSpace(details.City)) supplier.City = details.City;
         if (!string.IsNullOrWhiteSpace(details.PostalCode)) supplier.PostalCode = details.PostalCode;
         if (!string.IsNullOrWhiteSpace(details.Country)) supplier.Country = details.Country;
-        if (!string.IsNullOrWhiteSpace(details.CountryCode)) supplier.CountryCode = details.CountryCode;
+        if (CountryCodeResolver.FromAddress(details.CountryCode) is { } placeCountry) supplier.CountryCode = placeCountry;
         _descriptionToPlaceId.Clear();
     }
 
@@ -509,10 +510,10 @@
         if (!string.IsNullOrEmpty(result.VatCode)) supplier.VatCode = result.VatCode;
         if (string.IsNullOrEmpty(supplier.Email) && !string.IsNullOrEmpty(result.Email)) supplier.Email = result.Email;
         if (string.IsNullOrEmpty(supplier.Phone) && !string.IsNullOrEmpty(result.Phone)) supplier.Phone = result.Phone;
-        if (!string.IsNullOrEmpty(result.CountryCode))
+        if (CountryCodeResolver.FromAddress(result.CountryCode) is { } lookupCountry)
         {
-            supplier.CountryCode = result.CountryCode;
-            supplier.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? _companySettings.DefaultVatRate : 0m;
+            supplier.CountryCode = lookupCountry;
+            supplier.DefaultVatRate = lookupCountry == "LT" ? _companySettings.DefaultVatRate : 0m;
             _vatRate = (int)supplier.DefaultVatRate;
         }
         await InvokeAsync(StateHasChanged);

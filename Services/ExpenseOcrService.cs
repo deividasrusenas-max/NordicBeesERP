@@ -188,7 +188,7 @@ namespace NordicBeesERP.Services
                         }
                         if (addrObj.TryGetProperty("city", out var city)) result.SupplierCity = city.GetString() ?? "";
                         if (addrObj.TryGetProperty("postalCode", out var zip)) result.SupplierPostalCode = zip.GetString() ?? "";
-                        if (addrObj.TryGetProperty("countryRegion", out var country)) { result.SupplierCountryCode = country.GetString() ?? ""; result.SupplierCountryCode = NormalizeCountryCode(result.SupplierCountryCode); }
+                        if (addrObj.TryGetProperty("countryRegion", out var country)) result.SupplierCountryCode = CountryCodeResolver.FromAddress(country.GetString()) ?? "";
                     }
                     else if (vendorAddressField.TryGetProperty("content", out var cp))
                         result.SupplierAddress = cp.GetString() ?? "";
@@ -777,9 +777,9 @@ namespace NordicBeesERP.Services
 
             // Own company check is now handled inside VIES section above
 
-            // Normalize country code if still empty - take first 2 chars of VAT code
-            if (string.IsNullOrEmpty(result.SupplierCountryCode) && !string.IsNullOrEmpty(result.SupplierVatCode) && result.SupplierVatCode.Length >= 2)
-                result.SupplierCountryCode = NormalizeCountryCode(result.SupplierVatCode[..2]);
+            // Country is an ISO alpha-2 code or empty, never a truncated name (D-042): a well-formed VAT prefix wins
+            // over the address country
+            result.SupplierCountryCode = CountryCodeResolver.Resolve(result.SupplierVatCode, result.SupplierCountryCode) ?? "";
 
             // Normalize company name
             var normalized = CompanyNameHelper.Normalize(result.SupplierName);
@@ -885,12 +885,5 @@ namespace NordicBeesERP.Services
             return raw.Replace(" ", "").Replace("-", "").Replace(".", "").Trim();
         }
 
-        private static string NormalizeCountryCode(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return "";
-            if (value.Length == 2) return value.ToUpper();
-            try { return new System.Globalization.RegionInfo(value).TwoLetterISORegionName; }
-            catch { return value.Length >= 2 ? value[..2].ToUpper() : value.ToUpper(); }
-        }
     }
 }
