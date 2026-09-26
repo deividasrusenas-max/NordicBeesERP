@@ -7,6 +7,7 @@ using NordicBeesERP.Data;
 using NordicBeesERP.Models;
 using NordicBeesERP.Models.Expenses;
 using NordicBeesERP.Services.Dtos;
+using NordicBeesERP.Services.Validation;
 using System.Globalization;
 using NordicBeesERP.Helpers;
 
@@ -674,64 +675,8 @@ namespace NordicBeesERP.Services
                 // Load company settings early for VIES own-company check
                 var settings = await _companySettingsService.GetSettingsAsync();
 
-                // VIES lookup
-                if (!string.IsNullOrEmpty(result.SupplierVatCode))
-                {
-                    _logger.LogDebug("[VIES] Looking up: {VatCode}", result.SupplierVatCode);
-                    var viesResult = await _viesService.LookupAsync(result.SupplierVatCode);
-                    result.ViesServiceAvailable = viesResult.ServiceAvailable;
-
-                    if (viesResult.ServiceAvailable)
-                    {
-                        if (viesResult.IsValid)
-                        {
-                            result.ViesVerified = true;
-                            result.ViesName = viesResult.Name;
-                            if (!string.IsNullOrEmpty(viesResult.Address) && viesResult.Address != "---")
-                                result.ViesAddress = viesResult.Address;
-
-                            // Check if this is our own company VAT code before overriding name
-                            var isOwnCompany = !string.IsNullOrEmpty(result.SupplierVatCode) &&
-                                string.Equals(result.SupplierVatCode, settings.VatCode, StringComparison.OrdinalIgnoreCase);
-
-                            if (isOwnCompany)
-                            {
-                                // Keep original Azure DI vendor name, just add flag
-                                result.Flags.Add(OcrFlag.OwnCompany);
-                                result.PendingSupplierName = result.SupplierName;
-                                _logger.LogDebug("[VIES] Own company detected, keeping vendor name: {Name} pendingSupplier={Pending}", result.SupplierName, result.PendingSupplierName);
-                            }
-                            else if (!string.IsNullOrEmpty(viesResult.Name) && viesResult.Name != "---" &&
-                                !result.SupplierName.Equals(viesResult.Name, StringComparison.OrdinalIgnoreCase))
-                            {
-                                _logger.LogDebug("[VIES] Overriding supplier name: '{Old}' -> '{New}'", result.SupplierName, viesResult.Name);
-                                result.SupplierName = viesResult.Name;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        result.Flags.Add(OcrFlag.ViesUnavailable);
-                    }
-                }
-
-                // Own company check is now handled inside VIES section above
-
-                // Normalize country code if still empty - take first 2 chars of VAT code
-                if (string.IsNullOrEmpty(result.SupplierCountryCode) && !string.IsNullOrEmpty(result.SupplierVatCode) && result.SupplierVatCode.Length >= 2)
-                    result.SupplierCountryCode = NormalizeCountryCode(result.SupplierVatCode[..2]);
-
-                // Normalize company name
-                var normalized = CompanyNameHelper.Normalize(result.SupplierName);
-                if (!normalized.Equals(result.SupplierName, StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogDebug("[NAME NORMALIZE] '{Old}' -> '{New}'", result.SupplierName, normalized);
-                    result.SupplierName = normalized;
-                }
-
-                // Find supplier ID and DefaultExpenseCategoryId
-                var (supplierId, defaultCategoryId) = await FindSupplierIdAsync(result.SupplierName, result.SupplierVatCode);
-                result.SupplierId = supplierId;
+                var defaultCategoryId = await ResolveSupplierAsync(result, settings);
+                var supplierId = result.SupplierId;
 
                 // Auto-assign category from supplier default if result.CategoryId is null
                 if (supplierId != null && defaultCategoryId != null && result.CategoryId == null)
@@ -823,6 +768,85 @@ namespace NordicBeesERP.Services
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// VIES lookup, own-company check, country/name normalisation and supplier match for an extracted
+        /// invoice — the part of <see cref="ProcessAsync"/> that runs after the amounts are read. A
+        /// malformed VAT code (<see cref="VatCodeFormatValidator"/> WrongFormat) skips VIES and the VAT
+        /// match; the name match may still run. Returns the matched supplier's default expense category.
+        /// </summary>
+        public async Task<int?> ResolveSupplierAsync(OcrResultDto result, CompanySettings settings)
+        {
+            // VAT-code format gate (PLAN-ETAPAS1 §1.2, S5a): a malformed code is neither sent to VIES nor
+            // used to match a supplier. The hint is the address country only — the prefix fallback below
+            // runs later, so it cannot make a code agree with itself. INVALID_VAT_FORMAT is set here so the
+            // stopped lookup is visible; ExpenseService.RecomputeValidationFlags re-derives it from the final values.
+            var vatFormatWrong = VatCodeFormatValidator.Validate(result.SupplierVatCode, result.SupplierCountryCode).Reason
+                == VatCodeValidationReason.WrongFormat;
+            if (vatFormatWrong && !result.Flags.Contains(OcrFlag.InvalidVatFormat))
+                result.Flags.Add(OcrFlag.InvalidVatFormat);
+
+            // VIES lookup
+            if (!string.IsNullOrEmpty(result.SupplierVatCode) && !vatFormatWrong)
+            {
+                _logger.LogDebug("[VIES] Looking up: {VatCode}", result.SupplierVatCode);
+                var viesResult = await _viesService.LookupAsync(result.SupplierVatCode);
+                result.ViesServiceAvailable = viesResult.ServiceAvailable;
+
+                if (viesResult.ServiceAvailable)
+                {
+                    if (viesResult.IsValid)
+                    {
+                        result.ViesVerified = true;
+                        result.ViesName = viesResult.Name;
+                        if (!string.IsNullOrEmpty(viesResult.Address) && viesResult.Address != "---")
+                            result.ViesAddress = viesResult.Address;
+
+                        // Check if this is our own company VAT code before overriding name
+                        var isOwnCompany = !string.IsNullOrEmpty(result.SupplierVatCode) &&
+                            string.Equals(result.SupplierVatCode, settings.VatCode, StringComparison.OrdinalIgnoreCase);
+
+                        if (isOwnCompany)
+                        {
+                            // Keep original Azure DI vendor name, just add flag
+                            result.Flags.Add(OcrFlag.OwnCompany);
+                            result.PendingSupplierName = result.SupplierName;
+                            _logger.LogDebug("[VIES] Own company detected, keeping vendor name: {Name} pendingSupplier={Pending}", result.SupplierName, result.PendingSupplierName);
+                        }
+                        else if (!string.IsNullOrEmpty(viesResult.Name) && viesResult.Name != "---" &&
+                            !result.SupplierName.Equals(viesResult.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogDebug("[VIES] Overriding supplier name: '{Old}' -> '{New}'", result.SupplierName, viesResult.Name);
+                            result.SupplierName = viesResult.Name;
+                        }
+                    }
+                }
+                else
+                {
+                    result.Flags.Add(OcrFlag.ViesUnavailable);
+                }
+            }
+
+            // Own company check is now handled inside VIES section above
+
+            // Normalize country code if still empty - take first 2 chars of VAT code
+            if (string.IsNullOrEmpty(result.SupplierCountryCode) && !string.IsNullOrEmpty(result.SupplierVatCode) && result.SupplierVatCode.Length >= 2)
+                result.SupplierCountryCode = NormalizeCountryCode(result.SupplierVatCode[..2]);
+
+            // Normalize company name
+            var normalized = CompanyNameHelper.Normalize(result.SupplierName);
+            if (!normalized.Equals(result.SupplierName, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("[NAME NORMALIZE] '{Old}' -> '{New}'", result.SupplierName, normalized);
+                result.SupplierName = normalized;
+            }
+
+            // Find supplier ID and DefaultExpenseCategoryId; a malformed VAT code never matches by VAT
+            // (the name match still runs, as before)
+            var (supplierId, defaultCategoryId) = await FindSupplierIdAsync(result.SupplierName, vatFormatWrong ? "" : result.SupplierVatCode);
+            result.SupplierId = supplierId;
+            return defaultCategoryId;
         }
 
         public async Task<OcrResultDto> ExtractInvoiceDataAsync(string base64, string fileName)
