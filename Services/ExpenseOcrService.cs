@@ -548,9 +548,8 @@ namespace NordicBeesERP.Services
                 _logger.LogDebug("[CATEGORY] supplier={SupplierId} defaultCategory={CategoryId}", result.SupplierId, result.CategoryId);
 
                 // Build flags
-                // VENDOR_NOT_FOUND: result.SupplierId == null
-                if (result.SupplierId == null)
-                    result.Flags.Add(OcrFlag.VendorNotFound);
+                // VENDOR_NOT_FOUND (+ VENDOR_AMBIGUOUS / VENDOR_SUGGESTED by the matcher's outcome): result.SupplierId == null
+                ApplySupplierFlags(result);
 
                 // WRONG_RECIPIENT: !string.IsNullOrEmpty(result.CustomerVatCode) && result.CustomerVatCode != settings.VatCode && !result.CustomerName.Contains(settings.CompanyName, StringComparison.OrdinalIgnoreCase)
                 if (!string.IsNullOrEmpty(result.CustomerVatCode) && 
@@ -738,11 +737,34 @@ namespace NordicBeesERP.Services
                 result.SupplierName = normalized;
             }
 
-            // Find supplier ID and DefaultExpenseCategoryId; a malformed VAT code never matches by VAT
-            // (the name match still runs, as before)
-            var (supplierId, defaultCategoryId) = await FindSupplierIdAsync(result.SupplierName, vatFormatWrong ? "" : result.SupplierVatCode);
-            result.SupplierId = supplierId;
-            return defaultCategoryId;
+            // The ONE supplier match of the pipeline (Etapas 2 S3, D-044): the upload dialog and the save paths use
+            // result.SupplierId / result.SupplierMatch and never match again. A malformed VAT code never matches by VAT;
+            // an IBAN never assigns on its own (it only checks / suggests); the company code is the extracted one.
+            var document = SupplierMatching.Document(result.SupplierName, vatFormatWrong ? null : result.SupplierVatCode,
+                result.SupplierCompanyCode, result.SupplierBankAccount, result.SupplierCountryCode);
+            var (match, snapshot) = await SupplierMatching.MatchAsync(_dbFactory, document);
+            _logger.LogDebug("[SUPPLIER MATCH] {Match}", SupplierMatching.DescribeForAudit(match));
+            result.SupplierMatch = match;
+            result.SupplierId = match.PartnerId;
+            return snapshot.DefaultCategoryOf(match.PartnerId);
+        }
+
+        /// <summary>
+        /// The supplier flags of an OCR result without a supplier: VENDOR_NOT_FOUND always, plus VENDOR_AMBIGUOUS when two or
+        /// more partners tied and VENDOR_SUGGESTED when the matcher only has a weaker or contradicted candidate (D-044).
+        /// Information flags — the invoice is PENDING_SUPPLIER because it has no supplier. Nothing for an assigned supplier.
+        /// </summary>
+        public static void ApplySupplierFlags(OcrResultDto result)
+        {
+            if (result.SupplierId != null) return;
+
+            void Add(string flag) { if (!result.Flags.Contains(flag)) result.Flags.Add(flag); }
+            Add(OcrFlag.VendorNotFound);
+            switch (result.SupplierMatch?.Outcome)
+            {
+                case MatchOutcome.Ambiguous: Add(OcrFlag.VendorAmbiguous); break;
+                case MatchOutcome.Suggested: Add(OcrFlag.VendorSuggested); break;
+            }
         }
 
         public async Task<OcrResultDto> ExtractInvoiceDataAsync(string base64, string fileName)
@@ -791,64 +813,19 @@ namespace NordicBeesERP.Services
             return rate;
         }
 
+        /// <summary>
+        /// Interface-compatible wrapper over the cascade (<see cref="SupplierMatching"/>): the partner id and its default
+        /// category when the matcher would assign automatically, otherwise (null, null) — not found, ambiguous, suggested
+        /// (a contradicting or weaker match) and ineligible partners all stay loud (D-017, D-044, D-045).
+        /// </summary>
         public async Task<(int? supplierId, int? defaultCategoryId)> FindSupplierIdAsync(string supplierName, string vatCode)
         {
-            // Normalise: trim, drop inner spaces, upper-case. An empty code must never reach the
-            // VAT predicate — `VatCode == ""` would match any partner without a VAT code (D-017).
-            var normalizedVat = (vatCode ?? "").Replace(" ", "").Trim().ToUpperInvariant();
-            var trimmedName = (supplierName ?? "").Trim();
-
-            if (normalizedVat.Length == 0 && trimmedName.Length == 0) return (null, null);
-
-            await using var context = _dbFactory.CreateDbContext();
-
-            _logger.LogDebug("[FIND SUPPLIER] name='{Name}' vat='{Vat}'", trimmedName, normalizedVat);
-
-            // Try by VAT first, then fallback to name — return both Id and DefaultExpenseCategoryId.
-            // Ambiguous matches (more than one distinct partner) return (null, null): a loud
-            // VENDOR_NOT_FOUND is preferred over a silently wrong supplier (D-017).
-            if (normalizedVat.Length > 0)
-            {
-                var withPrefix = "LT" + normalizedVat;
-                var withoutPrefix = normalizedVat.StartsWith("LT") ? normalizedVat.Substring(2) : normalizedVat;
-
-                var byVat = await context.BusinessPartners
-                    .Where(bp => bp.VatCode != null && bp.VatCode != ""
-                              && (bp.VatCode == normalizedVat
-                                  || bp.VatCode == withPrefix
-                                  || bp.VatCode == withoutPrefix))
-                    .Select(bp => new { bp.Id, bp.DefaultExpenseCategoryId })
-                    .Take(2)
-                    .ToListAsync();
-
-                if (byVat.Count > 1)
-                {
-                    _logger.LogDebug("[FIND SUPPLIER] ambiguous VAT match '{Vat}' — not assigning", normalizedVat);
-                    return (null, null);
-                }
-                if (byVat.Count == 1)
-                    return (byVat[0].Id, byVat[0].DefaultExpenseCategoryId);
-            }
-
-            if (trimmedName.Length > 0)
-            {
-                // Exact name match only (DB collation is case-insensitive); partial matches are not accepted.
-                var byName = await context.BusinessPartners
-                    .Where(bp => bp.Name == trimmedName)
-                    .Select(bp => new { bp.Id, bp.DefaultExpenseCategoryId })
-                    .Take(2)
-                    .ToListAsync();
-
-                if (byName.Count > 1)
-                {
-                    _logger.LogDebug("[FIND SUPPLIER] ambiguous name match '{Name}' — not assigning", trimmedName);
-                    return (null, null);
-                }
-                if (byName.Count == 1)
-                    return (byName[0].Id, byName[0].DefaultExpenseCategoryId);
-            }
-
-            return (null, null);
+            var document = SupplierMatching.Document(supplierName, vatCode, null, null, null);
+            var (match, snapshot) = await SupplierMatching.MatchAsync(_dbFactory, document);
+            _logger.LogDebug("[FIND SUPPLIER] {Match}", SupplierMatching.DescribeForAudit(match));
+            return match.Outcome == MatchOutcome.Assigned
+                ? (match.PartnerId, snapshot.DefaultCategoryOf(match.PartnerId))
+                : (null, null);
         }
 
         internal static int ToConfidencePercent(float? confidence) =>

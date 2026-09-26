@@ -11,6 +11,10 @@ namespace NordicBeesERP.Tests;
 /// nordic_bees_erp_test database. Guards the production incident where an empty OCR
 /// VAT code matched the first partner with an empty VAT code (PROD-DATA-FINDINGS §3),
 /// and the D-017 rule that ambiguous matches must stay loud (null, null).
+/// Etapas 2 S3: FindSupplierIdAsync is a wrapper over the supplier cascade (SupplierMatcher). Changes to the seven original
+/// tests: D-044 Q7 — the fixture partners are now suppliers (is_supplier = 1), because only active suppliers are assigned
+/// automatically; D-045 Q8 — the "LT" prefix is no longer assumed, so two tests that asserted a match between a prefixed and a
+/// prefix-less VAT now assert NO match, and the two-partners-same-VAT test stores the same code in two spellings.
 /// </summary>
 public class ExpenseOcrServiceFindSupplierTests : IClassFixture<DbTestFixture>
 {
@@ -28,7 +32,8 @@ public class ExpenseOcrServiceFindSupplierTests : IClassFixture<DbTestFixture>
     private static string UniqueVatDigits() =>
         "9" + Random.Shared.NextInt64(10_000_000_000, 99_999_999_999).ToString();
 
-    private async Task<int> InsertPartnerAsync(string name, string? vatCode, int? defaultCategoryId = null)
+    private async Task<int> InsertPartnerAsync(string name, string? vatCode, int? defaultCategoryId = null,
+        bool isSupplier = true, bool isActive = true, string? companyCode = null)
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
         var partner = new BusinessPartner
@@ -41,7 +46,9 @@ public class ExpenseOcrServiceFindSupplierTests : IClassFixture<DbTestFixture>
             DefaultLanguage = "LT",
             PaymentTermDays = 14,
             DefaultVatRate = 21m,
-            IsActive = true,
+            IsSupplier = isSupplier,
+            CompanyCode = companyCode,
+            IsActive = isActive,
             DefaultExpenseCategoryId = defaultCategoryId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -77,14 +84,15 @@ public class ExpenseOcrServiceFindSupplierTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
-    public async Task VatWithLtPrefix_MatchesPartnerStoredWithoutPrefix()
+    public async Task VatWithLtPrefix_DoesNotMatchPartnerStoredWithoutPrefix()
     {
+        // D-045 Q8 (was: VatWithLtPrefix_MatchesPartnerStoredWithoutPrefix, Assert.Equal(id, supplierId)): no "LT" assumption
         var digits = UniqueVatDigits();
         var id = await InsertPartnerAsync($"VatNoPrefix {Guid.NewGuid():N}", digits);
         try
         {
             var (supplierId, _) = await CreateService().FindSupplierIdAsync("", "LT" + digits);
-            Assert.Equal(id, supplierId);
+            Assert.Null(supplierId);
         }
         finally
         {
@@ -93,14 +101,15 @@ public class ExpenseOcrServiceFindSupplierTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
-    public async Task VatWithoutPrefix_MatchesPartnerStoredWithLtPrefix()
+    public async Task VatWithoutPrefix_DoesNotMatchPartnerStoredWithLtPrefix()
     {
+        // D-045 Q8 (was: VatWithoutPrefix_MatchesPartnerStoredWithLtPrefix, Assert.Equal(id, supplierId)): no "LT" assumption
         var digits = UniqueVatDigits();
         var id = await InsertPartnerAsync($"VatPrefix {Guid.NewGuid():N}", "LT" + digits);
         try
         {
             var (supplierId, _) = await CreateService().FindSupplierIdAsync("", digits);
-            Assert.Equal(id, supplierId);
+            Assert.Null(supplierId);
         }
         finally
         {
@@ -145,8 +154,9 @@ public class ExpenseOcrServiceFindSupplierTests : IClassFixture<DbTestFixture>
     [Fact]
     public async Task TwoPartnersMatchingSameNormalisedVat_ReturnsNull()
     {
+        // D-045 Q8 (was: stored `digits` and `LT`+digits): the two spellings must now normalise to the SAME prefixed code
         var digits = UniqueVatDigits();
-        var a = await InsertPartnerAsync($"VatTwinA {Guid.NewGuid():N}", digits);
+        var a = await InsertPartnerAsync($"VatTwinA {Guid.NewGuid():N}", "lt " + digits);
         var b = await InsertPartnerAsync($"VatTwinB {Guid.NewGuid():N}", "LT" + digits);
         try
         {

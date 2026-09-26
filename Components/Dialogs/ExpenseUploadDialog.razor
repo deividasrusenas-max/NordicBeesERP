@@ -721,14 +721,12 @@
                 if (result.Confidence.Amounts > 0 && result.Confidence.Amounts < 70)
                     confidenceIssues.Add($"Sumos: žemas tikslumas ({result.Confidence.Amounts}%)");
 
-                var (foundSupplierId, foundDefaultCategoryId) = await ExpenseOcrService.FindSupplierIdAsync(
-                    result.SupplierName ?? "",
-                    result.SupplierVatCode ?? "");
-
-                if (foundSupplierId.HasValue)
+                // Etapas 2 S3: the supplier cascade ran once, in ProcessAsync — the dialog takes its result and never
+                // matches again (a second, weaker match here used to undo the gate and leave a stale VENDOR_NOT_FOUND)
+                if (result.SupplierId.HasValue)
                 {
-                    _supplierId = foundSupplierId.Value;
-                    _supplierMatchType = "vat";
+                    _supplierId = result.SupplierId.Value;
+                    _supplierMatchType = result.SupplierMatch?.Tier.ToString() ?? "matched";
                     _pendingSupplierName = "";
                     _pendingSupplierVat = "";
                 }

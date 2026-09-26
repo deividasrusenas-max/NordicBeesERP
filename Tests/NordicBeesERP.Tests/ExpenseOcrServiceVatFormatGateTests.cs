@@ -50,6 +50,7 @@ public class ExpenseOcrServiceVatFormatGateTests : IClassFixture<DbTestFixture>
             DefaultLanguage = "LT",
             PaymentTermDays = 14,
             DefaultVatRate = 21m,
+            IsSupplier = true, // D-044 Q7: only active suppliers are matched automatically
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

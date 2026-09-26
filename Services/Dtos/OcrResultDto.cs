@@ -1,5 +1,6 @@
 using System.Linq;
 using NordicBeesERP.Models;
+using NordicBeesERP.Services.Validation;
 
 public class OcrResultDto
 {
@@ -48,6 +49,9 @@ public class OcrResultDto
 
     // Validation
     public int? SupplierId { get; set; }
+    // What the supplier cascade decided (Etapas 2 S3): the one match the upload dialog and the save paths use. Null when no
+    // match ran (an invoice built by hand); audited as SUPPLIER_MATCHED on create and re-OCR.
+    public SupplierMatch? SupplierMatch { get; set; }
     public string? PendingSupplierName { get; set; }
     public int? CategoryId { get; set; }
     public List<string> Flags { get; set; } = new();
@@ -181,4 +185,8 @@ public static class OcrFlag
     // Etapas 2 S1 (D-044 Q6): re-OCR found a different partner than the one a human assigned. The assigned
     // supplier is kept; the fresh match is shown as a suggestion. Information only — never a review flag.
     public const string VendorSuggested          = "VENDOR_SUGGESTED";
+
+    // Etapas 2 S3 (D-044): two or more partners tie at the deciding tier — nothing is assigned, the candidates are shown.
+    // Information only; the invoice stays PENDING_SUPPLIER because there is no supplier.
+    public const string VendorAmbiguous          = "VENDOR_AMBIGUOUS";
 }

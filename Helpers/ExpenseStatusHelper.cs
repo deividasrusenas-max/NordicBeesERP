@@ -91,6 +91,7 @@ public static class ExpenseStatusHelper
         "LINE_LARGE_QUANTITY"        => "Didelis kiekis (> 1000) — eilutė palikta",
         "LINE_DUPLICATE_DESCRIPTION" => "Pasikartojantis aprašymas — eilutė palikta",
         "VENDOR_SUGGESTED"        => "Siūlomas kitas tiekėjas",
+        "VENDOR_AMBIGUOUS"        => "Keli galimi tiekėjai",
         _                    => flag
     };
 
@@ -129,6 +130,7 @@ public static class ExpenseStatusHelper
         "LINE_LARGE_QUANTITY"        => Color.Default,
         "LINE_DUPLICATE_DESCRIPTION" => Color.Default,
         "VENDOR_SUGGESTED"        => Color.Info,
+        "VENDOR_AMBIGUOUS"        => Color.Info,
         _                    => Color.Default
     };
 

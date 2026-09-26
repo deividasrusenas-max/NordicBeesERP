@@ -1395,6 +1395,7 @@ namespace NordicBeesERP.Services
             var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
             flags.Remove("VENDOR_NOT_FOUND");
             flags.Remove(OcrFlag.VendorSuggested);
+            flags.Remove(OcrFlag.VendorAmbiguous);
             await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, supplierId);
             var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
             var newStatus = StatusAfterSupplierAssigned(flags);
@@ -1481,6 +1482,8 @@ namespace NordicBeesERP.Services
                 // Recalculate OCR flags (remove VENDOR_NOT_FOUND)
                 var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
                 flags.Remove("VENDOR_NOT_FOUND");
+                flags.Remove(OcrFlag.VendorSuggested);
+                flags.Remove(OcrFlag.VendorAmbiguous);
                 await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, supplierId);
                 var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
                 var newStatus = StatusAfterSupplierAssigned(flags);
@@ -2290,6 +2293,7 @@ namespace NordicBeesERP.Services
                 PerformedBy = performedBy,
                 PerformedAt = DateTime.Now
             });
+            AddSupplierMatchedAudit(ctx, invoice.Id, invoice.InvoiceNumber, ocrResult, null, status, performedBy);
             await ctx.SaveChangesAsync();
 
             if (ocrResult.FileId.HasValue)
@@ -2366,7 +2370,10 @@ namespace NordicBeesERP.Services
                     if (!ocrResult.Flags.Contains(OcrFlag.VendorSuggested)) ocrResult.Flags.Add(OcrFlag.VendorSuggested);
                 }
                 ocrResult.SupplierId = invoice.SupplierId;
-                ocrResult.Flags.RemoveAll(f => f == OcrFlag.VendorNotFound);
+                // the fresh match found nothing better than the assigned supplier: its "no supplier / tie / weaker
+                // candidate" flags do not apply (VENDOR_SUGGESTED only for a different, assigned-quality partner above)
+                ocrResult.Flags.RemoveAll(f => f == OcrFlag.VendorNotFound || f == OcrFlag.VendorAmbiguous);
+                if (suggestedPartnerId == null) ocrResult.Flags.RemoveAll(f => f == OcrFlag.VendorSuggested);
             }
 
             // Determine flags and status
@@ -2530,10 +2537,33 @@ namespace NordicBeesERP.Services
                     PerformedAt = DateTime.Now
                 });
             }
+            AddSupplierMatchedAudit(ctx, invoice.Id, invoiceNumber, ocrResult, oldStatus, newStatus, performedBy);
             await ctx.SaveChangesAsync();
 
             await transaction.CommitAsync();
             return invoice;
+        }
+
+        /// <summary>
+        /// SUPPLIER_MATCHED (D-044 Q1): the cascade's outcome, tier, reason and candidate ids on create and re-OCR — ids
+        /// only, no personal data beyond what the invoice already holds. <c>supplier=</c> is the partner the invoice ends
+        /// up with (a re-OCR keeps a human-assigned supplier whatever the fresh match found). No row when no match ran.
+        /// </summary>
+        private static void AddSupplierMatchedAudit(NordicBeesERPContext ctx, int invoiceId, string? invoiceNumber,
+            OcrResultDto ocrResult, string? oldStatus, string newStatus, string performedBy)
+        {
+            if (ocrResult.SupplierMatch == null) return;
+            ctx.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
+            {
+                InvoiceId = invoiceId,
+                InvoiceNumber = invoiceNumber,
+                Action = "SUPPLIER_MATCHED",
+                ActionDetails = $"{SupplierMatching.DescribeForAudit(ocrResult.SupplierMatch)}; supplier={(ocrResult.SupplierId?.ToString() ?? "none")}",
+                OldStatus = oldStatus,
+                NewStatus = newStatus,
+                PerformedBy = performedBy,
+                PerformedAt = DateTime.Now
+            });
         }
     }
 }
