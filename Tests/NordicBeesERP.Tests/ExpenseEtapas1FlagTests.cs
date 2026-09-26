@@ -34,6 +34,15 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
         OcrFlag.LineAmountImplausible, OcrFlag.VatFormatUnchecked, OcrFlag.VatRateUnchecked
     };
 
+    // Review flags the edit path carries over as stored. TOTALS_OUT_OF_RANGE left this list in S4: it is
+    // recomputed on every path (ExpenseService.ValidationOwnedFlags), so a stale stored copy is dropped —
+    // covered by ExpenseValidationGateTests.
+    public static readonly TheoryData<string> CarriedReviewFlags = new()
+    {
+        OcrFlag.InvalidIban, OcrFlag.InvalidVatFormat,
+        OcrFlag.VatRateNotAllowed, OcrFlag.NumberMisread, OcrFlag.NumberAmbiguous
+    };
+
     // --- Codes, labels, colours (pure) ---
 
     [Fact]
@@ -151,7 +160,7 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
     }
 
     [Theory]
-    [MemberData(nameof(ReviewFlags))]
+    [MemberData(nameof(CarriedReviewFlags))]
     public async Task EditSave_StoredReviewFlag_NeedsReview(string flag)
     {
         var supplierId = await InsertSupplierAsync();

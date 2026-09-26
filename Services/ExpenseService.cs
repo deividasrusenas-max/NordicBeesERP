@@ -3,6 +3,7 @@ using NordicBeesERP.Data;
 using NordicBeesERP.Helpers;
 using NordicBeesERP.Models.Expenses;
 using NordicBeesERP.Services.Dtos;
+using NordicBeesERP.Services.Validation;
 
 namespace NordicBeesERP.Services
 {
@@ -504,8 +505,9 @@ namespace NordicBeesERP.Services
         {
             // recomputed from the edited values
             OcrFlag.MissingInvNumber, OcrFlag.MissingAmount, OcrFlag.ZeroVat, OcrFlag.LinesNotFound,
-            OcrFlag.AmountMismatch, OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField,
-            OcrFlag.FutureDate, OcrFlag.StaleDate, OcrFlag.MissingInvDate,
+            OcrFlag.AmountMismatch, OcrFlag.FutureDate, OcrFlag.StaleDate, OcrFlag.MissingInvDate,
+            // recomputed by RecomputeValidationFlags (ValidationOwnedFlags)
+            OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
             // explicit keep/drop rules
             OcrFlag.WrongRecipient, OcrFlag.VendorNotFound, OcrFlag.MissingDueDate, OcrFlag.LowConfidence
         };
@@ -525,7 +527,7 @@ namespace NordicBeesERP.Services
             // D-019/D-035: header is authoritative; lines disagreeing with it (net, 0.01) are flagged, never copied over
             if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountExclVat) - edited.AmountExclVat) > 0.01m)
                 flags.Add(OcrFlag.AmountMismatch);
-            RecomputeAmountConsistencyFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat);
+            RecomputeValidationFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat, ToValidationLines(lines));
             RecomputeDateFlags(flags, edited.InvoiceDate != default ? edited.InvoiceDate : null,
                 stored.CreatedAt != default ? stored.CreatedAt : VilniusToday());
 
@@ -1641,16 +1643,85 @@ namespace NordicBeesERP.Services
                 ? "NEEDS_REVIEW" : "PENDING";
 
         /// <summary>
-        /// Drops stale header-arithmetic flags and recomputes them from the final amounts —
-        /// the user may have edited amounts after OCR ran.
+        /// One invoice line as the validation gates see it. <paramref name="NetDerived"/>: the line net was
+        /// computed as UnitPrice × Quantity by the OCR step, not read from the document (PLAN-ETAPAS1 §1.4).
         /// </summary>
-        private static void RecomputeAmountConsistencyFlags(List<string> flags, decimal amountExclVat, decimal vatAmount, decimal amountInclVat)
+        public sealed record ValidationLine(decimal LineNet, decimal? Quantity, decimal? UnitPrice, bool NetDerived = false);
+
+        /// <summary>
+        /// Raw validator results for one invoice. <see cref="DerivedLines"/> (1-based) were left out of the
+        /// line rule because their net was derived; they are still part of BR-CO-10.
+        /// </summary>
+        public sealed record ValidationOutcome(En16931TotalsResult Totals, LineAmountResult LineRule, IReadOnlyList<int> DerivedLines);
+
+        /// <summary>Flags owned by <see cref="RecomputeValidationFlags"/>: dropped and recomputed on every path.</summary>
+        public static readonly IReadOnlyList<string> ValidationOwnedFlags = new[]
         {
-            flags.RemoveAll(f => f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField);
-            var probe = new OcrResultDto { AmountExclVat = amountExclVat, VatAmount = vatAmount, AmountInclVat = amountInclVat };
-            ExpenseOcrService.AddAmountConsistencyFlags(probe);
-            flags.AddRange(probe.Flags);
+            OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange
+        };
+
+        /// <summary>
+        /// Runs the EN 16931 totals validator and the line rule on an invoice's final values.
+        /// <para>Mapping to the validator (PLAN-ETAPAS1 §1.4, D-040) — not derivable from the validator itself:</para>
+        /// <list type="bullet">
+        /// <item>header net or gross ≤ 0 → null ("not extracted"): the rules that need it are NotApplicable, and
+        ///   MISSING_MONEY_FIELD stops the invoice instead;</item>
+        /// <item>VAT 0 → present 0 (a legitimate 0 % invoice must still satisfy net = gross under BR-CO-15);</item>
+        /// <item>the header net (the invoice's only net figure) feeds both BT-106 and BT-109;</item>
+        /// <item>no BT-107/108 (allowances, charges) and no BT-113/114/115 (paid, rounding, due): BR-CO-13 then
+        ///   compares BT-109 with BT-106 and always passes, BR-CO-16 is always NotApplicable — only BR-CO-10
+        ///   and BR-CO-15 are effectively live;</item>
+        /// <item>no lines → BT-131 missing → BR-CO-10 NotApplicable (LINES_NOT_FOUND shows the cause);</item>
+        /// <item>line rule: quantity or unit price null → NotApplicable; derived nets are left out.</item>
+        /// </list>
+        /// </summary>
+        public static ValidationOutcome EvaluateValidation(decimal amountExclVat, decimal vatAmount, decimal amountInclVat,
+            IReadOnlyList<ValidationLine> lines)
+        {
+            decimal? net = amountExclVat > 0m ? amountExclVat : null;
+            decimal? gross = amountInclVat > 0m ? amountInclVat : null;
+            var totals = En16931TotalsValidator.Validate(new En16931TotalsInput
+            {
+                LineNetAmounts = lines.Select(l => (decimal?)l.LineNet).ToList(),
+                SumOfLineNet = net,
+                TotalWithoutVat = net,
+                VatTotal = vatAmount,
+                TotalWithVat = gross
+            });
+
+            var derived = new List<int>();
+            var ruleInput = new List<LineAmountInput>();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (lines[i].NetDerived) derived.Add(i + 1);
+                else ruleInput.Add(new LineAmountInput(i + 1, lines[i].Quantity, lines[i].UnitPrice, lines[i].LineNet));
+            }
+            return new ValidationOutcome(totals, LineAmountPlausibilityRule.Check(ruleInput), derived);
         }
+
+        /// <summary>
+        /// Drops the flags in <see cref="ValidationOwnedFlags"/> and recomputes them from the final values —
+        /// the user may have edited amounts or lines after OCR ran. Called on all three write paths
+        /// (create, re-OCR, manual edit) and by the OCR step itself, so the same input gives the same flags.
+        /// </summary>
+        public static void RecomputeValidationFlags(List<string> flags, decimal amountExclVat, decimal vatAmount,
+            decimal amountInclVat, IReadOnlyList<ValidationLine> lines)
+        {
+            flags.RemoveAll(f => ValidationOwnedFlags.Contains(f));
+            var outcome = EvaluateValidation(amountExclVat, vatAmount, amountInclVat, lines);
+
+            if (amountExclVat <= 0m || amountInclVat <= 0m) flags.Add(OcrFlag.MissingMoneyField);
+            // D-040: BR-CO-15 exact, per Schematron (replaces the flat 0.02 tolerance)
+            if (outcome.Totals.Violations.Any(v => v.RuleId == En16931TotalsValidator.BrCo15))
+                flags.Add(OcrFlag.AmountArithmeticMismatch);
+            if (outcome.Totals.OutOfRange.Count > 0) flags.Add(OcrFlag.TotalsOutOfRange);
+        }
+
+        internal static List<ValidationLine> ToValidationLines(IEnumerable<OcrLineDto> lines) =>
+            lines.Select(l => new ValidationLine(l.AmountExclVat, l.Quantity, l.UnitPrice)).ToList();
+
+        private static List<ValidationLine> ToValidationLines(IEnumerable<ExpenseInvoiceLine> lines) =>
+            lines.Select(l => new ValidationLine(l.AmountExclVat, l.Quantity, l.UnitPrice)).ToList();
 
         private static DateTime VilniusToday() => LithuanianTimeHelper.ToLithuanianTime(DateTime.UtcNow).Date;
 
@@ -1702,7 +1773,8 @@ namespace NordicBeesERP.Services
             // invoice_date is NOT NULL: keep the placeholder, but flag it (art. 226(1) mandatory field)
             if (!hasInvoiceDate) invoiceDate = DateTime.Today;
 
-            RecomputeAmountConsistencyFlags(ocrResult.Flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat);
+            RecomputeValidationFlags(ocrResult.Flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
+                ToValidationLines(ocrResult.Lines));
             RecomputeDateFlags(ocrResult.Flags, hasInvoiceDate ? invoiceDate : null, VilniusToday());
             var status = DecideOcrStatus(ocrResult.Flags, ocrResult.SupplierId);
 
@@ -1868,7 +1940,8 @@ namespace NordicBeesERP.Services
                 if (!flags.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
             }
 
-            RecomputeAmountConsistencyFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat);
+            RecomputeValidationFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
+                ToValidationLines(ocrResult.Lines));
             RecomputeDateFlags(flags, hasInvoiceDate ? invoiceDate : null,
                 invoice.CreatedAt != default ? invoice.CreatedAt : VilniusToday());
 
