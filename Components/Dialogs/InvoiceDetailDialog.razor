@@ -373,12 +373,7 @@
                                     {
                                         @if (_lines.Any())
                                         {
-                                            @if (!LinesMatchHeader)
-                                            {
-                                                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
-                                                    Eilučių suma (@FormatAmountHelper.Trim(GetLinesTotal(), 2) €) nesutampa su sąskaitos suma (@FormatAmountHelper.Trim(_invoice?.AmountInclVat, 2) €)
-                                                </MudAlert>
-                                            }
+                                            @* The line-sum check lives in one place: the „Sumų patikra" block above (BR-CO-10, D-040) *@
                                             <table style="width:100%;font-size:0.83rem;border-collapse:collapse;">
                                                 <thead style="background:#f0f4ff;">
                                                     <tr>
@@ -819,7 +814,6 @@
     }
 
     private decimal GetLinesTotal() => _lines.Sum(l => l.AmountInclVat);
-    private bool LinesMatchHeader => Math.Abs(GetLinesTotal() - (_invoice?.AmountInclVat ?? 0m)) < 0.01m;
 
     private async Task CreateSupplierAsync()
     {
