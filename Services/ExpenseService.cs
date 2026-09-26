@@ -378,21 +378,22 @@ namespace NordicBeesERP.Services
                         UPDATE expense_invoice_lines SET
                             description = {0},
                             quantity = {1},
-                            amount_excl_vat = {2},
-                            vat_rate = {3},
-                            amount_incl_vat = {4},
-                            sort_order = {5}
-                        WHERE id = {6} AND invoice_id = {7}",
-                        line.Description, line.Quantity, line.AmountExclVat, line.VatRate,
+                            unit_price = {2},
+                            amount_excl_vat = {3},
+                            vat_rate = {4},
+                            amount_incl_vat = {5},
+                            sort_order = {6}
+                        WHERE id = {7} AND invoice_id = {8}",
+                        line.Description, line.Quantity, line.UnitPrice, line.AmountExclVat, line.VatRate,
                         line.AmountInclVat, line.SortOrder, line.Id, invoice.Id);
                 }
                 else
                 {
                     await context.Database.ExecuteSqlRawAsync(@"
                         INSERT INTO expense_invoice_lines
-                            (invoice_id, description, quantity, amount_excl_vat, vat_rate, amount_incl_vat, sort_order)
-                        VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6})",
-                        invoice.Id, line.Description, line.Quantity, line.AmountExclVat, line.VatRate,
+                            (invoice_id, description, quantity, unit_price, amount_excl_vat, vat_rate, amount_incl_vat, sort_order)
+                        VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                        invoice.Id, line.Description, line.Quantity, line.UnitPrice, line.AmountExclVat, line.VatRate,
                         line.AmountInclVat, line.SortOrder);
                 }
             }

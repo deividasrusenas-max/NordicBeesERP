@@ -298,6 +298,58 @@ public class ExpenseEditSaveTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task UnitPrice_SavedForEditedAndNewLines()
+    {
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync(supplierId);
+        await InsertLineAsync(id, 60m);
+        try
+        {
+            var lines = await LinesAsync(id);
+            Assert.Null(lines[0].UnitPrice); // the helper inserts no unit price
+            lines[0].Quantity = 4m;
+            lines[0].UnitPrice = 15m;
+            lines.Add(new ExpenseInvoiceLine { InvoiceId = id, Description = "Nauja", Quantity = 2m, UnitPrice = 20m, AmountExclVat = 40m, VatRate = 21m });
+
+            await CreateService().SaveInvoiceEditAsync(await ReloadAsync(id), lines, "Test User");
+
+            var after = await LinesAsync(id);
+            Assert.Equal(2, after.Count);
+            Assert.Equal(15m, after.Single(l => l.Id == lines[0].Id).UnitPrice);
+            Assert.Equal(4m, after.Single(l => l.Id == lines[0].Id).Quantity);
+            Assert.Equal(20m, after.Single(l => l.Id != lines[0].Id).UnitPrice);
+        }
+        finally
+        {
+            await CleanupAsync(id, supplierId);
+        }
+    }
+
+    [Fact]
+    public async Task UnitPrice_UntouchedLine_Kept()
+    {
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync(supplierId);
+        var lineId = await InsertLineAsync(id, 100m);
+        try
+        {
+            await using (var context = await _fixture.Factory.CreateDbContextAsync())
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE expense_invoice_lines SET unit_price = {0} WHERE id = {1}", 12.5m, lineId);
+
+            var invoice = await ReloadAsync(id);
+            invoice.Notes = "Tik pastaba";
+            await CreateService().SaveInvoiceEditAsync(invoice, await LinesAsync(id), "Test User");
+
+            Assert.Equal(12.5m, (await LinesAsync(id)).Single().UnitPrice);
+        }
+        finally
+        {
+            await CleanupAsync(id, supplierId);
+        }
+    }
+
+    [Fact]
     public async Task LineOfAnotherInvoice_Refused_NothingWritten()
     {
         var supplierId = await InsertSupplierAsync();
