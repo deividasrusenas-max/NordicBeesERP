@@ -447,8 +447,8 @@ Azure tipizuotą reikšmę; M = sutampa, X = klaidingai perskaityta, A = dvipras
    klaida, ne spėjimas (3 iš 3 korpuso atvejų — tikros Azure klaidos).
 2. **`NUMBER_AMBIGUOUS` — peržiūra, visada.** D-041 sąlyga švelninti (informacija, kai eilutės
    aritmetika sutampa su Azure pasirinkimu) taikoma tik jei korpusas rodo, kad vėliava dažnai
-   suveikia **teisingoms** reikšmėms. Korpusas rodo priešingai: 1 dviprasmybė iš 118 patikrintų
-   skaitinių laukų (0 iš 37 kiekių), ir ta viena — klaidinga reikšmė, kurios aritmetika **nepatvirtina**
+   suveikia **teisingoms** reikšmėms. Korpusas rodo priešingai: 1 dviprasmybė iš 145 patikrintų
+   skaitinių laukų (31 + 37 + 29 + 48; 0 iš 37 kiekių), ir ta viena — klaidinga reikšmė, kurios aritmetika **nepatvirtina**
    (todėl ir švelninta taisyklė duotų peržiūrą). Aritmetikos išimtis nerealizuojama. Ribotumas:
    11 sąskaitų — mažas pavyzdys; jei vėliau (staging) pasirodys daug teisingų „1,000" kiekių,
    sprendimas peržiūrimas su tais skaičiais.
@@ -462,12 +462,12 @@ Azure tipizuotą reikšmę; M = sutampa, X = klaidingai perskaityta, A = dvipras
    **teisingai** atspausdinti (Match), t. y. senasis žingsnis trintų teisingas eilutes; (b) toje
    situacijoje BR-CO-10 jau laiko sąskaitą peržiūroje (`AMOUNT_MISMATCH`), todėl papildomas
    peržiūros signalas nieko nepridėtų — informacija tik nurodo įtariamas eilutes.
-   **Sąžiningai:** vienoje korpuso sąskaitoje (10 eilučių, 2 aprašymai po 3 kartus, eilučių suma
-   2 385,61 prieš antraštę 2 060,33) senasis 3-ias žingsnis (pagal korpuso sumas, apskaičiuota
-   ranka — `ProcessAsync` be Azure nevykdytas) pašalindavo 4 eilutes ir suma sutapdavo iki cento su
-   antraštės — t. y. čia jis, atrodo, veikė teisingai. Pagal D-038 Q7 to nebedaroma:
-   tokia sąskaita dabar lieka peržiūroje (`AMOUNT_MISMATCH`) su informacine vėliavėle. Tai
-   sąmoninga kaina „jokio tylaus duomenų keitimo" principui.
+   **Sąžiningai:** korpuse yra viena sąskaita, kurioje eilučių suma viršija antraštę (10 eilučių,
+   2 385,61 prieš 2 060,33, aprašymai kartojasi). Senasis 3-ias žingsnis su tikru grupavimu pagal
+   tikslų aprašymą (peržiūrėtojo skaičiavimas iš korpuso JSON, ne per `ProcessAsync`) pašalintų
+   3 eilutes ir suma liktų 2 133,33 — vis dar virš antraštės. Taigi korpuse **nėra pavyzdžio, kur
+   senasis trynimas sąskaitą padarytų nuosekliai**; nėra ir įrodymo, kad trynimas buvo teisingas.
+   Pašalinimo priežastis — D-038 Q7 („jokio tylaus duomenų keitimo"), o ne korpusas.
 5. **Kaip vėliava išvaloma.** OCR keliuose (sukūrimas, re-OCR) `NUMBER_*` perskaičiuojamos iš
    galutinių reikšmių: žmogus pakeitęs reikšmę įkėlimo lange — vėliava dingsta tam laukui.
    Redagavimo kelyje jos **perkeliamos nepakeistos** (neperskaičiuojamos, nes atspausdinto teksto
