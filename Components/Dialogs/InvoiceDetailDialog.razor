@@ -160,6 +160,24 @@
                                                                 }
                                                             </div>
                                                         </div>
+                                                        @if (_candidates.Count > 0)
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Galimi tiekėjai</MudText>
+                                                            @foreach (var candidate in _candidates)
+                                                            {
+                                                                <div class="d-flex align-center justify-space-between gap-2 mb-1">
+                                                                    <div>
+                                                                        <MudText Typo="Typo.body2" Style="font-weight:600">@candidate.Name</MudText>
+                                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                                            @(string.Join(" · ", new[] { candidate.VatCode, candidate.CompanyCode, candidate.CountryCode }.Where(v => !string.IsNullOrWhiteSpace(v))))
+                                                                            — @SupplierMatchLabels.Tier(candidate.Tier)@(string.IsNullOrEmpty(SupplierMatchLabels.Reason(candidate.Reason)) ? "" : ": " + SupplierMatchLabels.Reason(candidate.Reason))
+                                                                        </MudText>
+                                                                    </div>
+                                                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary" Margin="Margin.Dense"
+                                                                               OnClick="() => AssignPartnerAsync(candidate.PartnerId)">Priskirti</MudButton>
+                                                                </div>
+                                                            }
+                                                        }
                                                     }
                                                     else
                                                     {
@@ -505,6 +523,8 @@
     // PLAN-ETAPAS1 §1.3: rule messages from the STORED invoice and lines, computed at load (not from unsaved edits)
     private IReadOnlyList<NordicBeesERP.Services.ExpenseService.ValidationMessage> _ruleMessages = Array.Empty<NordicBeesERP.Services.ExpenseService.ValidationMessage>();
     private List<BusinessPartner> _suppliers = new();
+    // Etapas 2 S3d: matcher candidates of a PENDING_SUPPLIER invoice, computed at load from the stored pending identifiers
+    private List<SupplierCandidateView> _candidates = new();
     private BusinessPartner? _selectedSupplier;
     private bool _isLoading = true;
     private bool _editMode = false;
@@ -668,6 +688,9 @@
         _wrongRecipientDismissed = !existingFlags.Contains(OcrFlag.WrongRecipient);
         _lines = await ExpenseService.GetInvoiceLinesAsync(InvoiceId);
         _ruleMessages = NordicBeesERP.Services.ExpenseService.DescribeValidation(_invoice!, _lines);
+        _candidates = _invoice?.Status == "PENDING_SUPPLIER"
+            ? await ExpenseService.GetSupplierCandidatesAsync(InvoiceId)
+            : new();
         if (_invoice?.Status == "PENDING_SUPPLIER")
         {
             await using var dbContext = DbFactory.CreateDbContext();
@@ -881,14 +904,18 @@
             Snackbar.Add("Pasirinkite tiekėją", Severity.Warning);
             return;
         }
+        await AssignPartnerAsync(_selectedSupplier.Id);
+    }
+
+    // The human's explicit choice — from the picker or from a candidate row
+    private async Task AssignPartnerAsync(int partnerId)
+    {
         try
         {
             var actor = await AuthService.GetRequiredActorNameAsync();
-            await ExpenseService.AssignSupplierAsync(_loadedInvoiceId, _selectedSupplier.Id, actor);
-            _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(_loadedInvoiceId);
-            _lines = await ExpenseService.GetInvoiceLinesAsync(_loadedInvoiceId);
-            if (_invoice != null) _ruleMessages = NordicBeesERP.Services.ExpenseService.DescribeValidation(_invoice, _lines);
-            _supplierFound = true;
+            await ExpenseService.AssignSupplierAsync(_loadedInvoiceId, partnerId, actor);
+            _loadedInvoiceId = 0;
+            await OnParametersSetAsync();
             _showAssignSupplier = false;
             _selectedSupplier = null;
             _searchTerm = "";

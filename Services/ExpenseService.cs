@@ -1455,19 +1455,23 @@ namespace NordicBeesERP.Services
                 .Select(s => new { s.DefaultExpenseCategoryId })
                 .FirstOrDefaultAsync();
 
-            // Match by VAT code OR supplier name (OR logic)
-            var matchingInvoices = await context.ExpenseInvoices
-                .Where(i => i.Status == "PENDING_SUPPLIER"
-                          && i.SupplierId != supplierId)
-                .Where(i =>
-                    (!string.IsNullOrWhiteSpace(vatCode)
-                     && i.PendingSupplierVat != null
-                     && i.PendingSupplierVat.Trim().ToUpper() == vatCode.Trim().ToUpper())
-                    ||
-                    (!string.IsNullOrWhiteSpace(supplierName)
-                     && i.PendingSupplierName != null
-                     && i.PendingSupplierName.Trim() == supplierName.Trim()))
+            // Match by VAT code OR supplier name, compared with the matcher's normalisers (Etapas 2 S3, D-044 Q4): the VAT ignores
+            // spaces / dots / dashes / case and keeps its prefix (no "LT" assumption, D-045 Q8); the name is the collation-style exact
+            // key. A name match is dropped when the invoice's VAT contradicts the one used. Not an alias confirmation.
+            var pending = await context.ExpenseInvoices
+                .Where(i => i.Status == "PENDING_SUPPLIER" && i.SupplierId == null)
                 .ToListAsync();
+            var sweepName = SupplierIdentityNormalizer.NameExact(supplierName);
+            var matchingInvoices = pending.Where(i =>
+            {
+                var sweepVat = SupplierIdentityNormalizer.Vat(vatCode, i.PendingSupplierCountryCode).Normalized;
+                var invoiceVat = SupplierIdentityNormalizer.Vat(i.PendingSupplierVat, i.PendingSupplierCountryCode).Normalized;
+                var vatMatch = sweepVat != null && sweepVat == invoiceVat;
+                var contradicts = sweepVat != null && invoiceVat != null && sweepVat != invoiceVat;
+                var nameMatch = sweepName.Length > 0 && !contradicts
+                    && SupplierIdentityNormalizer.NameExact(i.PendingSupplierName) == sweepName;
+                return vatMatch || nameMatch;
+            }).ToList();
 
             if (!matchingInvoices.Any())
                 return 0;
@@ -1708,6 +1712,30 @@ namespace NordicBeesERP.Services
                 .Select(a => a.ActionDetails)
                 .FirstOrDefaultAsync();
             return ParseSuggestedPartnerId(details);
+        }
+
+        /// <summary>
+        /// Candidates of an invoice that waits for a supplier (D-044): the cascade run now over the invoice's stored pending
+        /// identifiers, each with the tier / reason that produced it. Empty for any other invoice or when nothing matched.
+        /// Nothing is assigned here — the human picks (AssignSupplierAsync).
+        /// </summary>
+        public async Task<List<SupplierCandidateView>> GetSupplierCandidatesAsync(int invoiceId)
+        {
+            await using var context = _dbFactory.CreateDbContext();
+            var invoice = await context.ExpenseInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null || invoice.Status != "PENDING_SUPPLIER" || invoice.SupplierId != null) return new();
+
+            var document = SupplierMatching.Document(invoice.PendingSupplierName, invoice.PendingSupplierVat,
+                invoice.PendingSupplierCompanyCode, invoice.PendingSupplierBankAccount, invoice.PendingSupplierCountryCode);
+            var snapshot = await SupplierMatching.LoadSnapshotAsync(context);
+            var match = SupplierMatcher.Match(document, snapshot.Candidates);
+
+            return match.CandidateIds
+                .Select(id => snapshot.Candidates.FirstOrDefault(c => c.Id == id))
+                .Where(c => c != null)
+                .Select(c => new SupplierCandidateView(c!.Id, c.Name ?? "", c.VatCode, c.CompanyCode, c.CountryCode,
+                    match.Outcome, match.Tier, match.Reason, c.IsEligible))
+                .ToList();
         }
 
         public const string SuggestedPartnerPrefix = "partner_id=";

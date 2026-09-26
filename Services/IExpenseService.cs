@@ -96,6 +96,9 @@ namespace NordicBeesERP.Services
         // Restore a rejected invoice (D-044 Q13): removes WRONG_RECIPIENT, status by the shared rules (never re-rejected), audited
         Task RestoreInvoiceAsync(int invoiceId, string performedBy);
 
+        // Candidates for a PENDING_SUPPLIER invoice: the matcher run at display time on the stored pending identifiers (no schema)
+        Task<List<SupplierCandidateView>> GetSupplierCandidatesAsync(int invoiceId);
+
         // Partner a re-OCR suggested instead of the human-assigned supplier (VENDOR_SUGGESTED), from the audit trail
         Task<int?> GetSuggestedSupplierIdAsync(int invoiceId);
     }

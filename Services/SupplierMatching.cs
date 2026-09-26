@@ -14,6 +14,11 @@ public sealed record SupplierSnapshot(
         partnerId.HasValue && DefaultCategoryIds.TryGetValue(partnerId.Value, out var categoryId) ? categoryId : null;
 }
 
+/// <summary>One candidate shown next to a PENDING_SUPPLIER invoice: the partner and why the matcher offered it (Etapas 2 S3d).</summary>
+public sealed record SupplierCandidateView(
+    int PartnerId, string Name, string? VatCode, string? CompanyCode, string? CountryCode,
+    MatchOutcome Outcome, MatchTier Tier, MatchReason Reason, bool IsEligible);
+
 /// <summary>
 /// The I/O side of the supplier cascade (PLAN-ETAPAS2 §7.1 S3): loads the candidate snapshot from business_partners
 /// and runs the pure <see cref="SupplierMatcher"/> over it. One place for the upload path (<c>ExpenseOcrService</c>)
