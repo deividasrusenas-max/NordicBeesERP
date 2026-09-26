@@ -476,6 +476,38 @@ Azure tipizuotą reikšmę; M = sutampa, X = klaidingai perskaityta, A = dvipras
 
 ---
 
+## D-042 — Tiekėjo šalies kodas: tik ISO 3166-1 alpha-2, niekada neapkarpytas pavadinimas (2026-09-26)
+
+**Kontekstas.** Staging duomenys (savininkas, 2026-09-26): `pending_supplier_country_code` — LT PVM
+kodai `LT237375410`, `LT333702811`, `LT100001772414` saugomi su šalimi „LI"; Airijos PVM kodas
+`IE8256796U` — su šalimi „IR". 11 `business_partners` turi `country_code` „LI". Sąskaita 175 dabar
+turi `VAT_COUNTRY_MISMATCH`. Priežastis kode: `ExpenseOcrService.NormalizeCountryCode` — kai
+Azure `countryRegion` (šalies **pavadinimas**: Lietuva / Lithuania / Ireland) nėra ISO kodas ir
+`RegionInfo` jo neatpažįsta, grąžina pirmas dvi pavadinimo raides (Lietuva → LI, Ireland → IR).
+„LI" ir „IR" yra galiojantys ISO kodai (Lichtenšteinas, Iranas), todėl nė vienas formato patikrinimas
+to nepagauna.
+
+**Sprendimas.** Šalies kodas — tik ISO 3166-1 alpha-2. Prioritetas:
+
+1. gerai suformuotas PVM kodo prefiksas (`EL` → `GR`);
+2. Azure grąžintas ISO kodas;
+3. aiškus šalies pavadinimų žemėlapis (gimtoji, anglų, lietuvių kalbos; be diakritikų ir didžiųjų
+   raidžių jautrumo);
+4. kitaip — `null` / nežinoma.
+
+Pavadinimas **niekada** neapkarpomas. Dviejų raidžių reikšmė, kuri nėra galiojantis ISO kodas,
+niekada nesaugoma. Tą patį pagalbinį metodą naudoja kiekviena vieta, kuri išveda ar saugo tiekėjo
+šalį (OCR adresas, PVM prefiksas, tiekėjo kūrimo užpildymas, partnerio kūrimas iš laukiančių
+duomenų, įmonės paieška).
+
+**Pasekmė.** Esami neteisingi kodai `business_partners` ir `pending_supplier_country_code` yra
+**duomenys**, taisytini kartu su buhaltere. Ataskaita tik išvardija kandidatus (SELECT); jokio
+automatinio keitimo šiame sprendime nėra. Šalutinė pasekmė: kai šalis imama iš PVM prefikso,
+OCR keliu `VAT_COUNTRY_MISMATCH` praktiškai nebesuveikia (šalis ir prefiksas sutampa pagal
+konstrukciją) — vėliavėlė lieka tik reikšmėms, gautoms ne per OCR išsprendimą.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
