@@ -323,6 +323,41 @@ baigti ir patikrinti staginge**. Daliniai Etapų 1–4 deploy'ai į prodą nedar
 
 ---
 
+## D-038 — Etapo 1 sprendimai (atsakymai į PLAN-ETAPAS1 Q1–Q11) (2026-09-26)
+
+**Kontekstas.** `PLAN-ETAPAS1.md` §9 — 11 klausimų savininkui. Atsakymai žemiau; numeriai
+atitinka plano klausimus.
+
+**Sprendimai.**
+
+- **Q1 — tolerancija: sprendžiama pagal duomenis.** Savininkas paleidžia plano §7 staging
+  užklausas; kol jų nėra, S4 nepradedamas. Numatytas pasiūlymas: BR-CO-15 — tiksliai
+  (Schematron); BR-CO-10 skirtumai ≤ 0,05 € — informacija, didesni — peržiūra. Patvirtinama
+  su skaičiais.
+- **Q2 — PVM tarifų lentelė:** LT, LV, EE, DE, PL, RO. Buhalterė kiekvieną tarifą patikrina
+  pagal EK TEDB (Taxes in Europe Database) **prieš** prijungiant tarifų vartus (S6). Nežinoma
+  šalis → `VAT_RATE_UNCHECKED` (informacija).
+- **Q3:** `LINE_AMOUNT_IMPLAUSIBLE` — informacija.
+- **Q4:** `VAT_FORMAT_UNCHECKED` ir `VAT_RATE_UNCHECKED` — informacija.
+- **Q5:** priskyrus tiekėją, dokumento `INVALID_IBAN` / `INVALID_VAT_FORMAT` — informacija
+  (tapatybę jau nustatė žmogus). Neteisingas IBAN **neperkeliamas** į `SupplierCreateDialog` —
+  laukas lieka tuščias, rodomas įspėjimas lietuviškai.
+- **Q6:** tik aptikimas; Etape 1 reikšmės automatiškai niekada nekeičiamos.
+- **Q7:** suderinimo žingsniai „šalinti eilutes su kiekiu > 1000" ir „šalinti pasikartojančius
+  aprašymus" nebeištrina — tik pažymi (jokio tylaus duomenų pakeitimo).
+- **Q8:** re-OCR sąskaitai su paskirstymais — įspėti, reikalauti patvirtinimo, pašalintus
+  paskirstymus įrašyti audito eilutėje.
+- **Q9:** D-016 sąlyga „~10 žalių atsakymų" galioja tik Etapui 3 (ekstrakcijai);
+  deterministiniai vartai vykdomi pagal D-022. ~11 Azure kvietimų korpusas iš principo
+  patvirtintas, bet korpuse yra asmens duomenų (bitininkų vardai, adresai) → saugomas **už
+  git ribų**; jo reikalaujantys testai praleidžiami, kai korpuso nėra. Atskira užduotis prieš S7.
+- **Q10:** eilės darbuotojas (`OcrQueueWorker`) — atidėta, kol modulis baigtas (Etapuose 1–4
+  neliečiamas).
+- **Q11:** našlaičiai dialogai (biudžetas, cash flow, tiekėjo istorija) — prijungiami prie
+  išlaidų suvestinės („Suvestinė") kaip mygtukai; atskira nedidelė užduotis, ne Etapas 1.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
