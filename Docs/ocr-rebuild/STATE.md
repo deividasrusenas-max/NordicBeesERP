@@ -1,6 +1,6 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — planas rengiamas (`PLAN-ETAPAS2.md`)
+Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — planas parašytas (`PLAN-ETAPAS2.md`), laukia savininko atsakymų
 
 ## Dabartinė fazė
 
@@ -185,8 +185,8 @@ Ireland → IR) — D-042, `073c299`, deploy'inta į staging.
 
 ## Kitas žingsnis
 
-**Etapas 2 (tiekėjo kaskada):** `PLAN-ETAPAS2.md` rengiamas (tik dokumentas, nieko neįgyvendinta);
-savininkas, kai jis bus parašytas, atsako į atvirų klausimų sąrašą ir paleidžia jo staging SELECT užklausas, tada — S1. **Deploy
+**Etapas 2 (tiekėjo kaskada):** `PLAN-ETAPAS2.md` parašytas (tik dokumentas, nieko neįgyvendinta);
+savininkas atsako į atvirų klausimų sąrašą ir paleidžia jo staging SELECT užklausas, tada — S1. **Deploy
 politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4 nebaigti ir nepatikrinti staginge; dalinių deploy'ų
 į prodą nėra. Prieš galutinį deploy'ą — atvirų punktų sąrašas skyriuje „Etapas 1 — staging patikrų
 rezultatai" ir `STAGING-CHECKS-ETAPAS1.md` „Must be finished…" (PVM tarifai, EE data, šalių valymas,
@@ -208,7 +208,7 @@ drag & drop, našlaičiai dialogai, flaky testas, prodo duomenų valymas, `unit_
 - 2026-09-26: staging patikros (iš dalies, žr. lentelę), prodo deploy'us v0.17.91, D-037.
 - 2026-09-26 (Claude Code): Etapas 1 S1–S7 (+ Azure korpusas už git ribų, D-038…D-041), 853 testai; S8 — `STAGING-CHECKS-ETAPAS1.md`.
 - 2026-09-26/27: Etapas 1 staging patikros (savininkas) — uždarytas staginge (D-043); šalies kodo taisymas (D-042, `073c299`).
-- 2026-09-27 (Claude Code): STATE/D-043 — Etapo 1 uždarymas.
+- 2026-09-27 (Claude Code): STATE/D-043 — Etapo 1 uždarymas; `PLAN-ETAPAS2.md` (tik planas).
 
 ## Storage gate — įrodymai (2026-09-25, staging)
 
@@ -249,7 +249,7 @@ drag & drop, našlaičiai dialogai, flaky testas, prodo duomenų valymas, `unit_
 | Etapas 0 (tylios klaidos, vartai) | **baigta, prode v0.17.91**; staging patikros dalinės (žr. lentelę) |
 | Etapas 0c (redagavimas, įvestis, biudžetas) | **baigta, prode v0.17.91**; drag & drop FAILED, biudžetas nepatikrintas |
 | Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai, re-OCR) | **uždarytas staginge 2026-09-26/27** (D-043; `main` v0.17.94); prode nėra (D-037) |
-| Etapas 2 (tiekėjo kaskada) | planas rengiamas (`PLAN-ETAPAS2.md`) |
+| Etapas 2 (tiekėjo kaskada) | planas parašytas (`PLAN-ETAPAS2.md`), laukia savininko atsakymų |
 | Etapas 3 (ekstrakcija — D-023 kryptis, D-016 atviras) | laukia; Q-006, Q-007, Q-009 prieš pradedant |
 | Etapas 4 (matavimas) | laukia |
 | Saugykla, 2 žingsnis (PDF į IFileStore) | nepradėta |
