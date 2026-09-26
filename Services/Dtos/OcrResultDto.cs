@@ -172,4 +172,9 @@ public static class OcrFlag
     public const string VatRateUnchecked         = "VAT_RATE_UNCHECKED";
     public const string VatCountryMismatch       = "VAT_COUNTRY_MISMATCH"; // well-formed VAT code whose prefix differs from the supplier's country (S5)
     public const string LineSumRounding          = "LINE_SUM_ROUNDING";    // BR-CO-10 difference > 0 and ≤ 0.05 € (D-040)
+
+    // S7 (D-041, D-038 Q7): the reconcile step no longer deletes lines; where it used to, the line is kept and marked.
+    // Information only — BR-CO-10 already holds the invoice in review in that situation.
+    public const string LineLargeQuantity        = "LINE_LARGE_QUANTITY";        // a line with quantity > 1000 while lines exceed the header
+    public const string LineDuplicateDescription = "LINE_DUPLICATE_DESCRIPTION"; // repeated description while lines exceed the header
 }

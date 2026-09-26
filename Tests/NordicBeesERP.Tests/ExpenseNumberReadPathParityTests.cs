@@ -201,6 +201,44 @@ public class ExpenseNumberReadPathParityTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Theory]
+    [InlineData(Path.Create)]
+    [InlineData(Path.ReOcr)]
+    public async Task Asf0021438_ThroughProcessAsync_KeepsTheNineUnitLine_AndStoresAllFlags(Path path)
+    {
+        // S7(c): the same recorded response through ProcessAsync itself — the reconcile step no longer deletes the
+        // real 9-unit line, so both paths store both lines, the two number flags and the information flag
+        var supplierId = await InsertSupplierAsync();
+        int? invoiceId = null;
+        try
+        {
+            var dto = await new RecordedAzureOcrService(OcrFixtures.Asf0021438(), _fixture.Factory).ProcessAsync("", "fixture.pdf");
+            dto.SupplierId = supplierId;
+            dto.InvoiceNumber = $"NUMREAD-OCR-{Guid.NewGuid():N}";
+            dto.InvoiceDate = DateTime.Today.ToString("yyyy-MM-dd");
+            dto.DueDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd");
+            Assert.Equal(2, dto.Lines.Count);
+
+            var (invoice, reOcrId) = await SaveAsync(path, dto, supplierId);
+            invoiceId = reOcrId ?? invoice.Id;
+
+            var flags = FlagsOf(invoice);
+            Assert.Contains(OcrFlag.NumberMisread, flags);
+            Assert.Contains(OcrFlag.NumberAmbiguous, flags);
+            Assert.Contains(OcrFlag.LineLargeQuantity, flags);
+            Assert.Equal("NEEDS_REVIEW", invoice.Status);
+
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+            var quantities = await context.ExpenseInvoiceLines.AsNoTracking()
+                .Where(l => l.InvoiceId == invoiceId.Value).OrderBy(l => l.SortOrder).Select(l => l.Quantity).ToListAsync();
+            Assert.Equal(new decimal?[] { 3m, 9000m }, quantities.ToArray());
+        }
+        finally
+        {
+            await CleanupAsync(invoiceId, supplierId);
+        }
+    }
+
     [Fact]
     public async Task BothPathsStoreTheSameNumberFlags()
     {

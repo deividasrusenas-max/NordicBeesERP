@@ -563,72 +563,7 @@ namespace NordicBeesERP.Services
                 // =====================================================
                 // POST-PROCESSING: Reconcile lines against header totals
                 // =====================================================
-                if (result.Lines.Any() && result.AmountExclVat > 0)
-                {
-                    var linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
-                    var diff = linesSumExcl - result.AmountExclVat;
-
-                    // CASE 1: Lines sum EXCEEDS header (phantom lines from spec pages)
-                    // Strategy: remove lines that cause the excess, starting from zero-amount or duplicate-description lines
-                    if (diff > 0.05m)
-                    {
-                        _logger.LogDebug("[RECONCILE] Lines exceed header by {Diff}. Attempting to remove phantom lines.", diff);
-
-                        // Step 1: Remove zero-amount lines only
-                        var zeroAmountLines = result.Lines
-                            .Where(l => l.AmountExclVat == 0)
-                            .ToList();
-                        foreach (var candidate in zeroAmountLines)
-                        {
-                            result.Lines.Remove(candidate);
-                            _logger.LogDebug("[RECONCILE] Removed zero-amount line (conf={Conf}): {Desc}",
-                                candidate.Confidence, candidate.Description);
-                        }
-
-                        // Recalculate diff after zero-amount removal
-                        linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
-                        diff = linesSumExcl - result.AmountExclVat;
-
-                        // Step 2: If still over, remove lines where qty > 1000 (likely weight/volume)
-                        if (diff > 0.05m)
-                        {
-                            var weightLines = result.Lines
-                                .Where(l => l.Quantity.HasValue && l.Quantity.Value > 1000)
-                                .ToList();
-                            foreach (var wl in weightLines)
-                            {
-                                result.Lines.Remove(wl);
-                                _logger.LogDebug("[RECONCILE] Removed large-qty line (likely weight): {Desc} qty={Qty}", wl.Description, wl.Quantity);
-                            }
-                        }
-
-                        // Step 3: If still over, remove duplicate descriptions keeping the one closest to remaining diff
-                        linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
-                        diff = linesSumExcl - result.AmountExclVat;
-                        if (diff > 0.05m)
-                        {
-                            var duplicateDescs = result.Lines
-                                .GroupBy(l => l.Description)
-                                .Where(g => g.Count() > 1)
-                                .SelectMany(g => g.Skip(1))
-                                .ToList();
-                            foreach (var dl in duplicateDescs)
-                            {
-                                result.Lines.Remove(dl);
-                                _logger.LogDebug("[RECONCILE] Removed duplicate description line: {Desc}", dl.Description);
-                                linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
-                                if (Math.Abs(linesSumExcl - result.AmountExclVat) <= 0.05m) break;
-                            }
-                        }
-
-                        _logger.LogDebug("[RECONCILE] After cleanup: LinesSumExcl={Sum} HeaderExcl={Header}",
-                            result.Lines.Sum(l => l.AmountExclVat), result.AmountExclVat);
-                    }
-
-                    // CASE 2: Lines sum LESS than header (missing lines — e.g. Delamode with merged lines)
-                    // Strategy: do nothing — let user add lines manually via edit dialog
-                    // Just ensure AMOUNT_MISMATCH flag is set correctly (handled later)
-                }
+                ReconcileLines(result, _logger);
 
                 _logger.LogDebug("[AZURE DI] supplier={Supplier} vat={Vat} inv={Invoice} total={Total}",
                     result.SupplierName, result.SupplierVatCode, result.InvoiceNumber, result.AmountInclVat);
@@ -739,6 +674,47 @@ namespace NordicBeesERP.Services
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Post-processing: reconcile the lines against the header total. Lines that exceed the header by more than
+        /// 0.05 € lose their zero-amount lines (nothing to lose there). D-038 Q7 / D-041: the two steps that used to
+        /// delete real lines — quantity &gt; 1000 („likely weight") and repeated descriptions — no longer delete
+        /// anything; where they would have acted the lines are kept and the invoice is marked with the information
+        /// flags LINE_LARGE_QUANTITY / LINE_DUPLICATE_DESCRIPTION (BR-CO-10 already holds it in review). Lines exceeding
+        /// the header is never "fixed" by dropping data. Lines below the header: nothing (the user adds lines by hand).
+        /// </summary>
+        public static void ReconcileLines(OcrResultDto result, ILogger logger)
+        {
+            if (!result.Lines.Any() || result.AmountExclVat <= 0) return;
+
+            var linesSumExcl = result.Lines.Sum(l => l.AmountExclVat);
+            var diff = linesSumExcl - result.AmountExclVat;
+            if (diff <= 0.05m) return;
+
+            logger.LogDebug("[RECONCILE] Lines exceed header by {Diff}. Removing zero-amount lines only.", diff);
+
+            // Step 1: remove zero-amount lines only
+            foreach (var candidate in result.Lines.Where(l => l.AmountExclVat == 0).ToList())
+            {
+                result.Lines.Remove(candidate);
+                logger.LogDebug("[RECONCILE] Removed zero-amount line (conf={Conf}): {Desc}", candidate.Confidence, candidate.Description);
+            }
+
+            diff = result.Lines.Sum(l => l.AmountExclVat) - result.AmountExclVat;
+            if (diff > 0.05m)
+            {
+                if (result.Lines.Any(l => l.Quantity.HasValue && l.Quantity.Value > 1000)
+                    && !result.Flags.Contains(OcrFlag.LineLargeQuantity))
+                    result.Flags.Add(OcrFlag.LineLargeQuantity);
+
+                if (result.Lines.GroupBy(l => l.Description).Any(g => g.Count() > 1)
+                    && !result.Flags.Contains(OcrFlag.LineDuplicateDescription))
+                    result.Flags.Add(OcrFlag.LineDuplicateDescription);
+            }
+
+            logger.LogDebug("[RECONCILE] After cleanup: LinesSumExcl={Sum} HeaderExcl={Header}",
+                result.Lines.Sum(l => l.AmountExclVat), result.AmountExclVat);
         }
 
         /// <summary>

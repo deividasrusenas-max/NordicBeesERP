@@ -167,4 +167,15 @@ public class ExpenseNumberReadFlagsTests
 
         Assert.Empty(Flags(dto));
     }
+
+    [Fact]
+    public void SubCentHeaderTotal_IsJudgedByAzuresTypedValue_NotTheCentRoundedStoredOne()
+    {
+        // printed „1 130,404" typed 1130.404: a strict reading, so Match. The DTO holds 1130.40 (cent-rounded) — judging that
+        // against the text would wrongly say Misread
+        var dto = Dto(OcrFixtures.Response(OcrFixtures.Cur("934,22", 934.22), OcrFixtures.Cur("196,18", 196.18), OcrFixtures.Cur("1 130,404", 1130.404)));
+
+        Assert.Equal(1130.40m, dto.AmountInclVat);
+        Assert.Empty(Flags(dto));
+    }
 }

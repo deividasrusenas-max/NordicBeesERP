@@ -31,7 +31,8 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
 
     public static readonly TheoryData<string> InformationFlags = new()
     {
-        OcrFlag.LineAmountImplausible, OcrFlag.VatFormatUnchecked, OcrFlag.VatRateUnchecked
+        OcrFlag.LineAmountImplausible, OcrFlag.VatFormatUnchecked, OcrFlag.VatRateUnchecked,
+        OcrFlag.LineLargeQuantity, OcrFlag.LineDuplicateDescription // S7c, D-041: kept lines, information only
     };
 
     // Review flags the edit path carries over as stored. TOTALS_OUT_OF_RANGE left this list in S4: it is
@@ -48,7 +49,7 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
     // S6: VAT_RATE_NOT_ALLOWED / VAT_RATE_UNCHECKED left the carried lists — recomputed on every path (ExpenseVatRateGateTests).
     public static readonly TheoryData<string> CarriedInformationFlags = new()
     {
-        OcrFlag.VatFormatUnchecked
+        OcrFlag.VatFormatUnchecked, OcrFlag.LineLargeQuantity, OcrFlag.LineDuplicateDescription
     };
 
     // --- Codes, labels, colours (pure) ---
@@ -65,6 +66,8 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
         Assert.Equal("LINE_AMOUNT_IMPLAUSIBLE", OcrFlag.LineAmountImplausible);
         Assert.Equal("VAT_FORMAT_UNCHECKED", OcrFlag.VatFormatUnchecked);
         Assert.Equal("VAT_RATE_UNCHECKED", OcrFlag.VatRateUnchecked);
+        Assert.Equal("LINE_LARGE_QUANTITY", OcrFlag.LineLargeQuantity);
+        Assert.Equal("LINE_DUPLICATE_DESCRIPTION", OcrFlag.LineDuplicateDescription);
     }
 
     [Theory]
@@ -77,6 +80,8 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
     [InlineData("LINE_AMOUNT_IMPLAUSIBLE", "Eilutė: kiekis × kaina ≠ suma")]
     [InlineData("VAT_FORMAT_UNCHECKED", "PVM kodo formatas netikrintas")]
     [InlineData("VAT_RATE_UNCHECKED", "PVM tarifas netikrintas")]
+    [InlineData("LINE_LARGE_QUANTITY", "Didelis kiekis (> 1000) — eilutė palikta")]
+    [InlineData("LINE_DUPLICATE_DESCRIPTION", "Pasikartojantis aprašymas — eilutė palikta")]
     public void Labels_Lithuanian(string flag, string label)
     {
         Assert.Equal(label, ExpenseStatusHelper.GetFlagLabel(flag));

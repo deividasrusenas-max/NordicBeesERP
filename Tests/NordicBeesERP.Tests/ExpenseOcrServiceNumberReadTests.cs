@@ -90,6 +90,36 @@ public class ExpenseOcrServiceNumberReadTests : IClassFixture<DbTestFixture>
         Assert.Contains(OcrFlag.NumberMisread, result.Flags);                   // …but detection had already seen it
     }
 
+    // ---------- S7(c): the reconcile interaction, through ProcessAsync ----------
+
+    [Fact]
+    public async Task ProcessAsync_Asf0021438_TheRealNineUnitLine_IsKept_Flagged_AndStillAzuresValue()
+    {
+        var result = await ProcessAsync(OcrFixtures.Asf0021438());
+
+        Assert.Equal(2, result.Lines.Count); // before D-041 the 9000-quantity line was deleted here
+        var line = Assert.Single(result.Lines, l => l.Description == "Kuras B");
+        Assert.Equal(9000m, line.Quantity);
+        Assert.Equal(158.40m, line.AmountExclVat);
+        Assert.Contains(OcrFlag.LineLargeQuantity, result.Flags);
+        Assert.Contains(OcrFlag.NumberAmbiguous, result.Flags); // line 2: „9,000" is 9 or 9000
+        Assert.Contains(OcrFlag.NumberMisread, result.Flags);   // line 1: „3 888,000" is not 3
+        Assert.Contains(OcrFlag.AmountMismatch, result.Flags);  // BR-CO-10: 1 130,40 ≠ 934,22 — still review
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DuplicateDescriptions_AreKept_Flagged()
+    {
+        var json = OcrFixtures.Response(OcrFixtures.Cur("100,00", 100), OcrFixtures.Cur("21,00", 21), OcrFixtures.Cur("121,00", 121),
+            OcrFixtures.Line("Transportas", OcrFixtures.Num("1,00", 1), OcrFixtures.Cur("60,00", 60), OcrFixtures.Cur("60,00", 60)),
+            OcrFixtures.Line("Transportas", OcrFixtures.Num("1,00", 1), OcrFixtures.Cur("60,00", 60), OcrFixtures.Cur("60,00", 60)));
+
+        var result = await ProcessAsync(json);
+
+        Assert.Equal(2, result.Lines.Count);
+        Assert.Contains(OcrFlag.LineDuplicateDescription, result.Flags);
+    }
+
     [Fact]
     public async Task ProcessAsync_NotConfigured_ReturnsWithoutParsing()
     {
