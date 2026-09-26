@@ -50,6 +50,14 @@ public class VatRateTableTests
     [InlineData("EE", "24")]
     [InlineData("EE", "13")]
     [InlineData("EE", "9")]
+    [InlineData("PL", "23")]   // general-knowledge rows (D-039 item 3)
+    [InlineData("PL", "8")]
+    [InlineData("PL", "5")]
+    [InlineData("CZ", "21")]
+    [InlineData("CZ", "12")]
+    [InlineData("ES", "21")]
+    [InlineData("ES", "10")]
+    [InlineData("ES", "4")]
     [InlineData("lt", "21.00")]   // case-insensitive country, scale-insensitive rate
     public void ResearchedRates_Allowed(string country, string rate)
     {
@@ -63,6 +71,9 @@ public class VatRateTableTests
     [InlineData("DE", "21")]
     [InlineData("EE", "22")]
     [InlineData("LV", "17")]   // a blended rate from a mixed-rate invoice
+    [InlineData("PL", "21")]
+    [InlineData("CZ", "23")]
+    [InlineData("ES", "7")]
     public void OtherRates_NotAllowed(string country, string rate)
     {
         var r = decimal.Parse(rate, System.Globalization.CultureInfo.InvariantCulture);
@@ -94,20 +105,51 @@ public class VatRateTableTests
     }
 
     [Fact]
-    public void Pl_TodoRow_NoRateData()
+    public void Validity_StartsOn_2025_01_01_ForEveryCountry()
     {
-        var result = VatRateTable.Check("PL", InTable, 23m);
-
-        Assert.Equal(VatRateCheckOutcome.NoRateData, result.Outcome);
-        Assert.Equal(VatRateRowStatus.Todo, result.Row!.Status);
+        // D-039 item 3: the day before is "no rate data", the first day is judged
+        foreach (var country in new[] { "LT", "DE", "LV", "EE", "PL", "CZ", "ES", "RO" })
+        {
+            Assert.Equal(VatRateCheckOutcome.NoRateData, VatRateTable.Check(country, new DateTime(2024, 12, 31), 21m).Outcome);
+            Assert.NotEqual(VatRateCheckOutcome.NoRateData, VatRateTable.Check(country, new DateTime(2025, 1, 1), 21m).Outcome);
+        }
+        Assert.Equal(VatRateCheckOutcome.Allowed, VatRateTable.Check("LT", new DateTime(2025, 1, 1), 21m).Outcome);
+        Assert.Equal(VatRateCheckOutcome.Allowed, VatRateTable.Check("EE", new DateTime(2025, 1, 1), 24m).Outcome);
     }
 
     [Fact]
-    public void DateBeforeResearchedRange_NoRateData()
+    public void Ro_OldRatesStartOn_2025_01_01()
     {
-        // LT/DE/LV/EE are researched for 2026 only; earlier dates are not guessed
-        Assert.Equal(VatRateCheckOutcome.NoRateData, VatRateTable.Check("LT", new DateTime(2025, 12, 31), 21m).Outcome);
-        Assert.Equal(VatRateCheckOutcome.NoRateData, VatRateTable.Check("EE", new DateTime(2025, 6, 30), 24m).Outcome);
+        Assert.Equal(VatRateCheckOutcome.NoRateData, VatRateTable.Check("RO", new DateTime(2024, 12, 31), 19m).Outcome);
+        Assert.Equal(VatRateCheckOutcome.Allowed, VatRateTable.Check("RO", new DateTime(2025, 1, 1), 19m).Outcome);
+    }
+
+    [Fact]
+    public void EveryRow_IsUnconfirmed_WithoutTodoRows_AndGeneralKnowledgeRowsSaySo()
+    {
+        Assert.DoesNotContain(VatRateTable.Rows, r => r.Status == VatRateRowStatus.Todo);
+        foreach (var country in new[] { "PL", "CZ", "ES" })
+            Assert.Contains("general knowledge", VatRateTable.Rows.Single(r => r.Country == country).Source);
+    }
+
+    [Fact]
+    public void TodoRow_GivesNoRateData_ConfirmedRow_IsJudged()
+    {
+        var todo = new[] { new VatRateRow("XX", null, null, Array.Empty<decimal>(), VatRateRowStatus.Todo, "test") };
+        var confirmed = new[] { new VatRateRow("XX", null, null, new[] { 20m }, VatRateRowStatus.Confirmed, "test") };
+
+        var noData = VatRateTable.Check("XX", InTable, 20m, todo);
+        Assert.Equal(VatRateCheckOutcome.NoRateData, noData.Outcome);
+        Assert.Equal(VatRateRowStatus.Todo, noData.Row!.Status);
+        Assert.Equal(VatRateCheckOutcome.Allowed, VatRateTable.Check("XX", InTable, 20m, confirmed).Outcome);
+        Assert.Equal(VatRateCheckOutcome.NotAllowed, VatRateTable.Check("XX", InTable, 19m, confirmed).Outcome);
+    }
+
+    [Fact]
+    public void DateBeforeRange_NoRateData()
+    {
+        Assert.Equal(VatRateCheckOutcome.NoRateData, VatRateTable.Check("LT", new DateTime(2024, 12, 31), 21m).Outcome);
+        Assert.Equal(VatRateCheckOutcome.NoRateData, VatRateTable.Check("EE", new DateTime(2024, 6, 30), 24m).Outcome);
         Assert.Equal(VatRateCheckOutcome.Allowed, VatRateTable.Check("LT", new DateTime(2026, 1, 1), 21m).Outcome);
     }
 
@@ -121,9 +163,9 @@ public class VatRateTableTests
     }
 
     [Fact]
-    public void Table_CoversExactlyTheD038Countries()
+    public void Table_CoversExactlyTheD038AndD039Countries()
     {
-        Assert.Equal(new[] { "DE", "EE", "LT", "LV", "PL", "RO" },
+        Assert.Equal(new[] { "CZ", "DE", "EE", "ES", "LT", "LV", "PL", "RO" },
             VatRateTable.Rows.Select(r => r.Country).Distinct().OrderBy(c => c).ToArray());
     }
 
