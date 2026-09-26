@@ -212,7 +212,7 @@ namespace NordicBeesERP.Models.Expenses
         [Column("quantity", TypeName = "decimal(10,3)")]
         public decimal? Quantity { get; set; }
 
-        [Column("unit_price", TypeName = "decimal(12,2)")]
+        [Column("unit_price", TypeName = "decimal(18,6)")]
         public decimal? UnitPrice { get; set; }
 
         [Column("category_id")]
