@@ -383,6 +383,34 @@ priskiriant tiekėją; `VatRateTable` pradžios datos nebuvo žinomos.
 
 ---
 
+## D-040 — EN 16931 vartų slenksčiai (2026-09-26)
+
+**Kontekstas.** D-038 Q1 tolerancijas paliko spręsti pagal duomenis. `PLAN-ETAPAS1.md` §1.4–§1.5,
+S4. Staging matavimas 2026-09-26 (savininkas, plano §7 užklausa).
+
+**Sprendimai.**
+
+1. **BR-CO-15** (antraštė: be PVM + PVM = su PVM) — **tiksliai**, kaip Schematron (`round()` iki
+   centų, lygybė, jokios plokščios tolerancijos). Pažeidimas → `AMOUNT_ARITHMETIC_MISMATCH`
+   (peržiūra). Staging matavimas 2026-09-26: tikslus 0,01 palyginimas papildomai pažymi **2 iš 248**
+   sąskaitų (iki šiol tolerancija buvo 0,02).
+2. **BR-CO-10** (eilučių sumų be PVM suma = antraštės suma be PVM), skirtumas po Schematron
+   apvalinimo:
+   - **> 0 ir ≤ 0,05 €** → nauja informacinė vėliavėlė `LINE_SUM_ROUNDING` („Eilučių suma skiriasi
+     keliais centais"), statuso nekeičia;
+   - **> 0,05 €** → `AMOUNT_MISMATCH` (peržiūra).
+   Pakeičia abi senas patikras (OCR kelias ~0,05 ir redagavimo kelias 0,01). Staginge dar
+   **neišmatuota** — patvirtinama S8 su realiais skaičiais; jei informacinė juosta pasirodys
+   nenaudinga ar triukšminga, sprendimas peržiūrimas.
+3. **Eilutės taisyklė** (`LINE_AMOUNT_IMPLAUSIBLE`, kiekis × kaina ≈ eilutės suma) — informacija
+   (D-038 Q3).
+4. **Etape 1 realiai veikia tik BR-CO-10 ir BR-CO-15** (plano §1.4). Sąskaita turi vieną sumą be PVM,
+   ji paduodama ir kaip BT-106, ir kaip BT-109, nuolaidų / priemokų (BT-107/108) nėra, todėl
+   **BR-CO-13 visada tenkinama**; mokėtinos sumos (BT-115) nėra, todėl **BR-CO-16 visada
+   netaikoma**. Tai užrašyta, kad niekas nemanytų, jog veikia keturios taisyklės.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
