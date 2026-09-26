@@ -147,8 +147,8 @@ The `CREATED` audit row lists the flags („požymiai: …"). Open each new invo
 the „Sumų patikra" block. The status depends on whether the supplier matches an existing partner (PENDING_SUPPLIER
 when not) — **compare flags, not only status.** Every new invoice must have `file_id` set (re-OCR needs it).
 
-Upload order matters for re-OCR checks: keep U1, U2 and the clean invoice U6 (their re-OCR/edit follow-ups are
-checks 9, 12–14).
+Upload order matters for the follow-up checks: keep U1 (re-OCR and edit follow-ups: checks 9, 12a) and the clean
+invoice U6 (checks 12–14); U2–U5 are create-path checks only.
 
 ## 3. U1 — fuel invoice `20260707_235156_Eurovertis.pdf` (the real NUMBER_MISREAD case)
 
@@ -172,7 +172,7 @@ PENDING (with a supplier).
 
 **Proves:** BR-CO-10 > 0,05 € → AMOUNT_MISMATCH; reconcile no longer deletes (D-038 Q7, S7c).
 
-Header net 2 060,33; the lines sum to 2 385,61 (10 Azure items; one without amount, one zero-amount line).
+Header net 2 060,33; the lines sum to 2 385,61 (10 Azure items; two of them have no amount — both become zero-amount lines and are dropped).
 
 | Expect | Value |
 |---|---|
@@ -197,26 +197,28 @@ supplier with 23 %.
 
 | File | Header net / VAT / gross | Lines sum | Expect |
 |---|---|---|---|
-| EGO transport | 430,00 / 90,30 / 520,30 | 520,30 | AMOUNT_MISMATCH (diff 90,30), VAT_RATE_UNCHECKED |
-| UTA PL | 268,30 / 61,70 / 330,00 (23 %) | 330,00 | AMOUNT_MISMATCH (diff 61,70), VAT_RATE_UNCHECKED; no INVALID_VAT_FORMAT (PL code, 10 digits) |
+| EGO transport | 430,00 / 90,30 / 520,30 | 520,30 | AMOUNT_MISMATCH (diff 90,30), LINE_AMOUNT_IMPLAUSIBLE (1 × 430 against a 520,30 line), VAT_RATE_UNCHECKED |
+| UTA PL | 268,30 / 61,70 / 330,00 (23 %) | 330,00 | AMOUNT_MISMATCH (diff 61,70), LINE_AMOUNT_IMPLAUSIBLE, VAT_RATE_UNCHECKED, **VAT_FORMAT_UNCHECKED** (Azure returns the VAT code on two lines and no address country, so the country is unknown); no INVALID_VAT_FORMAT |
 
-Failure: no AMOUNT_MISMATCH; INVALID_VAT_FORMAT on UTA PL.
+Failure: no AMOUNT_MISMATCH; INVALID_VAT_FORMAT on UTA PL (VAT_FORMAT_UNCHECKED there is expected).
 
 ## 6. U4 — `20260708_004344_LD.pdf` (missing net and VAT)
 
 **Proves:** MISSING_MONEY_FIELD (Azure returned only the gross total, 158,49).
 
-Expect: **MISSING_MONEY_FIELD** („Trūksta sumos duomenų"), no AMOUNT_ARITHMETIC_MISMATCH; possibly ZERO_VAT; status
+Expect: **MISSING_MONEY_FIELD** („Trūksta sumos duomenų"), no AMOUNT_ARITHMETIC_MISMATCH; **ZERO_VAT** (no rate, no net); status
 NEEDS_REVIEW / PENDING_SUPPLIER. Note in the "Sumų patikra" block: „nepatikrinta: BR-CO-…" for rules that could not
 run — never shown as passed.
+Failure: no MISSING_MONEY_FIELD; an arithmetic flag computed from a net that was never read.
 
 ## 7. U5 — `Docs/Invoice pvz/Invoice (1231).PDF` (old, non-LT supplier, 0 % VAT)
 
 **Proves:** STALE_DATE; a non-LT VAT code is „unchecked", not invalid.
 
 Invoice date 2015-05-04, supplier VAT code with prefix NL, VAT 0 %, 256,00 €.
-Expect: **STALE_DATE**, **VAT_FORMAT_UNCHECKED** (information; NL is outside the format table), ZERO_VAT
-(possible). **No** VAT_RATE_* flag (0 % is never checked; unknown country / date before 2025). No INVALID_VAT_FORMAT.
+Expect: **STALE_DATE**, **VAT_FORMAT_UNCHECKED** (information; NL is outside the format table), **ZERO_VAT**
+(0 %). **No** VAT_RATE_* flag (0 % is never checked; unknown country / date before 2025). No INVALID_VAT_FORMAT.
+Failure: no STALE_DATE; INVALID_VAT_FORMAT on the NL code.
 
 ## 8. U6 — a clean document (the "must pass" case): `20260707_224024_Taurobilis.pdf` (or `…_224106_Gerunda.pdf` / `…_224355_Venipak.pdf`)
 
@@ -224,7 +226,8 @@ Expect: **STALE_DATE**, **VAT_FORMAT_UNCHECKED** (information; NL is outside the
 
 Taurobilis: 546,46 + 114,76 = 661,22; 10 lines summing to 546,46. Expect: **no** review flag from Etapas 1; flags
 limited to information (VAT_RATE_UNCHECKED, possibly LINE_AMOUNT_IMPLAUSIBLE where a printed price disagrees);
-status PENDING with a matched supplier (PENDING_SUPPLIER without). Keep this invoice as the scratch for checks 12–14.
+status PENDING with a matched supplier (PENDING_SUPPLIER without).
+Failure: any Etapas 1 **review** flag on this consistent document. Keep this invoice as the scratch for checks 12–14.
 
 ---
 
@@ -240,9 +243,10 @@ Browser: U1 detail → **„PAKARTOTI OCR"** (shown only for NEEDS_REVIEW / PEND
 `file_id`**) → the review dialog → save without editing.
 Expect: NUMBER_MISREAD, NUMBER_AMBIGUOUS, LINE_AMOUNT_IMPLAUSIBLE as after the upload (same set); `original_filename`
 unchanged (not NULL, not empty); one new audit row **`OCR_RETRIED`**; the invoice is still one row (no new invoice).
-Then in the same dialog path again: re-OCR, **type the correct unit price / quantity** for the misread lines
-before saving → the corresponding NUMBER_* flag disappears (a human editing the value is the resolution) and the
-value you typed is stored.
+Note: the review dialog exposes only quantity (Kiekis), line net (Be PVM), VAT % and the header totals — **not the
+unit price**, and U1's misreads are all unit prices, so on U1 the NUMBER_* flags are expected to **stay** after
+re-OCR (a flag clears on the OCR paths only when every flagged field is changed by hand; see the ASF0021438 row in
+check 4 for a quantity case, where correcting the two quantities before saving clears both flags).
 Failure: no button; filename lost; a duplicate invoice row; different flags than on create.
 
 ## 10. Re-OCR of invoice 376 (Artea `PL99810705.pdf`, already on staging)
@@ -254,6 +258,7 @@ PENDING_SUPPLIER there is no button — record its status; then this check is no
 Expect: `OCR_RETRIED` audit row; `original_filename` unchanged; the flags are recomputed by the current code — the
 Artea document was the header-total-0 case (gross 0, lines > 0): MISSING_MONEY_FIELD is the expected new chip if the
 header net or gross is still 0; VAT_RATE_UNCHECKED information. Record all changes.
+Failure: no button on a NEEDS_REVIEW / PENDING invoice with `file_id`; filename lost; the old flags kept unchanged.
 
 ## 11. Re-OCR with allocations (confirmation dialog)
 
@@ -270,6 +275,7 @@ sudo mariadb nordic_bees_erp_staging -e "SELECT COUNT(*) FROM expense_line_alloc
 
 If no such invoice exists and creating one is not worth it: **skip — covered by `ExpenseOcrPersistTests` (automated),
 not blocking.**
+Failure: allocations deleted without the message box, or the audit row without the removed count.
 
 ---
 
@@ -284,7 +290,7 @@ same fields before saving (create / re-OCR path).
 **Proves:** the edit form no longer drops flags it does not own; NUMBER_* survive an edit; PATVIRTINTI clears the review.
 
 a) **NUMBER_* carried.** U1 detail → edit → change only the notes → save. Expect: NUMBER_MISREAD and
-   NUMBER_AMBIGUOUS still in `ocr_flags`; status NEEDS_REVIEW; audit `EDITED`.
+   NUMBER_AMBIGUOUS still in `ocr_flags`; status NEEDS_REVIEW (PENDING_SUPPLIER if U1 has no supplier — then compare flags only); audit `EDITED`.
    Then **„PATVIRTINTI"** → status PENDING, `approved_by` set, audit `APPROVED`; the flags **stay** in `ocr_flags`
    (they are a record). (Correcting a value in the edit form does *not* clear them — only re-OCR/the upload dialog
    recompute them; documented in D-041.)
@@ -301,19 +307,18 @@ c) Failure: any of NUMBER_*, OWN_COMPANY, INVALID_VAT_RATE missing after the edi
 
 ## 13. Arithmetic gates on three paths (S4)
 
-**Proves:** BR-CO-15 is exact (0,01 flags) and BR-CO-10 has two bands, identically on create, re-OCR and edit.
+**Proves:** BR-CO-15 is exact (0,01 flags) and BR-CO-10 has two bands, on create and re-OCR (BR-CO-15) and on create and edit (BR-CO-10 bands).
 
 | Path | How | Expect |
 |---|---|---|
 | Create | **new upload of `20260707_224106_Gerunda.pdf`** (a second clean document; re-uploading `<U6>`'s file is refused as a duplicate); in the review phase change **„PVM suma"** by +0,01 → save | **AMOUNT_ARITHMETIC_MISMATCH**, status NEEDS_REVIEW (with supplier) |
-| Edit | `<U6>` → edit form: set net, then gross, **then** „PVM suma" +0,01 (the form recalculates VAT when net/gross change; edit VAT last) → save | AMOUNT_ARITHMETIC_MISMATCH; restore the value → flag gone |
-| Re-OCR | `<U6>` „PAKARTOTI OCR" → review phase: „PVM suma" +0,01 → save | AMOUNT_ARITHMETIC_MISMATCH |
-| BR-CO-10 band | `<U6>` edit: change header „Suma be PVM" so it differs from the line sum by **0,03 €** | **LINE_SUM_ROUNDING** (information), status **not** held (PENDING) |
+| Edit | **not producible**: in the edit form „PVM suma“ is read-only and net / gross are derived from each other, so BR-CO-15 cannot be violated there | covered by automated tests only (`ExpenseValidationGateTests`, path parity) |
+| Re-OCR | `<U6>` „PAKARTOTI OCR“ → review phase: „PVM suma“ +0,01 → save | AMOUNT_ARITHMETIC_MISMATCH; then re-OCR again without edits → flag gone |
+| BR-CO-10 band | `<U6>` edit form: change header „Be PVM“ (gross follows) so it differs from the line sum by **0,03 €** | **LINE_SUM_ROUNDING** (information), status **not** held (PENDING) |
 | BR-CO-10 band | same, difference **0,06 €** | **AMOUNT_MISMATCH**, NEEDS_REVIEW; restore → gone |
 
-Failure: 0,01 not flagged; 0,03 holding the invoice; 0,06 not flagged; a path that behaves differently. Because the
-edit form recalculates VAT/gross on some field edits, if a row cannot be produced in the edit form, produce it in
-the upload-dialog review phase and record that.
+Failure: 0,01 not flagged on create / re-OCR; 0,03 holding the invoice; 0,06 not flagged; a path that behaves
+differently. (BR-CO-10 on the create path can also be seen with U2 / U3.)
 
 ## 14. IBAN and VAT-code gates + supplier-create prefill (S5) — on `<PS>` (a PENDING_SUPPLIER invoice with a VAT code, from check 2)
 
@@ -329,8 +334,8 @@ the upload-dialog review phase and record that.
 | f | **CHANGES:** restore the original `pending_supplier_vat`, set `pending_supplier_country_code = 'LV'` (VAT code has the LT prefix), on a PENDING_SUPPLIER invoice → edit → save | **VAT_COUNTRY_MISMATCH** (information) |
 
 `<PS>`'s original values are in check 2's output — write them down before step b and restore them after step f.
-VAT_FORMAT_UNCHECKED has a real case: U5. The upload dialog also lets you type the VAT code before saving (create
-path): typing `LT123` there and saving gives INVALID_VAT_FORMAT the same way.
+VAT_FORMAT_UNCHECKED has a real case: U5. (The upload dialog shows the VAT code read-only, so a malformed code
+cannot be typed there; the `UPDATE` above is the way. Step f assumes `<PS>` has a well-formed LT-prefixed code.)
 Failure: the malformed VAT code reaching VIES / matching a supplier; an invalid IBAN/VAT prefilled in the supplier
 dialog; an invalid code holding a supplier-assigned invoice in NEEDS_REVIEW.
 
@@ -438,5 +443,5 @@ UNCONFIRMED), LINE_LARGE_QUANTITY unless ASF0021438 is available.
 | Part E | Etapas 0 leftovers |
 | Part F | noise |
 
-**Checks that CHANGE staging data:** 3–8 (uploads), 9–11 (re-OCR), 12, 13, 14 (incl. manual `UPDATE`s in 12b and 14b, 14c, 14f).
+**Checks that CHANGE staging data:** 3–8 (uploads), 9–10 (re-OCR), 11 (only if an allocation is added or confirmed away), 12 (the edit; 12b's `UPDATE` only if no OWN_COMPANY row exists), 13, 14 (manual `UPDATE`s in b, c and f), and the Etapas 0 items 10–12 and 15–17 of Part E.
 **No data change:** 1, 2, 15, Part F, and the Part E items 6 and 7.
