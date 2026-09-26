@@ -31,13 +31,17 @@
                             <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Style="color:#f9a825" />
                             <div>
                                 <MudText Typo="Typo.body1" Style="font-weight:500">@PrefilledName</MudText>
-                                @if (!string.IsNullOrEmpty(PrefilledVatCode))
+                                @if (!string.IsNullOrEmpty(supplier.VatCode))
                                 {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas: @PrefilledVatCode</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">PVM kodas: @supplier.VatCode</MudText>
                                 }
                             </div>
                         </div>
                     </MudPaper>
+                    @foreach (var warning in _prefillWarnings)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">@warning</MudAlert>
+                    }
                 }
 
                 <MudText Typo="Typo.overline" Style="color:#6b7280; font-size:0.7rem; letter-spacing:0.08em" Class="mb-1">Pagrindinė informacija</MudText>
@@ -245,6 +249,9 @@
     private Supplier supplier = new();
     private int _vatRate = 21;
 
+    // Invalid OCR codes are not prefilled (S5d, D-038 Q5): the field stays empty and the user is told why
+    private readonly List<string> _prefillWarnings = new();
+
     private string _sessionToken = "";
     private readonly Dictionary<string, string> _descriptionToPlaceId = new();
     private bool _placesLoading = false;
@@ -283,17 +290,22 @@
         if (!string.IsNullOrEmpty(PrefilledName))
         {
             var countryCode = (PrefilledCountryCode ?? "LT").ToUpper();
+            var vatCheck = SupplierPrefillGate.CheckVatCode(PrefilledVatCode, PrefilledCountryCode);
+            var ibanCheck = SupplierPrefillGate.CheckIban(PrefilledBankAccount);
+            _prefillWarnings.Clear();
+            if (vatCheck.Warning != null) _prefillWarnings.Add(vatCheck.Warning);
+            if (ibanCheck.Warning != null) _prefillWarnings.Add(ibanCheck.Warning);
             supplier = new Supplier
             {
                 Name = PrefilledName,
-                VatCode = PrefilledVatCode,
+                VatCode = vatCheck.Value,
                 Address = PrefilledAddress ?? "",
                 City = PrefilledCity ?? "",
                 PostalCode = PrefilledPostalCode ?? "",
                 CountryCode = countryCode,
                 Country = CountryFromCode(countryCode),
                 CompanyCode = PrefilledCompanyCode ?? "",
-                BankAccount = PrefilledBankAccount ?? "",
+                BankAccount = ibanCheck.Value ?? "",
                 PartnerType = PartnerType.ExpenseSupplier,
                 IsExpenseSupplier = true,
                 IsSupplier = false,
