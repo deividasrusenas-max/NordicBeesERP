@@ -208,66 +208,9 @@ namespace NordicBeesERP.Services
                     }
                 }
 
-                // Universal EU company code extraction
-                // Priority: VendorTaxId → VendorBusinessNumber → VendorAddressRecipient → LT regex fallback
-                if (string.IsNullOrEmpty(result.SupplierCompanyCode))
-                {
-                    // 1. Try VendorTaxId first (e.g., "LT123456789" for LT, DE123456789 for DE, etc.)
-                    if (TryGetField("VendorTaxId", out var companyCodeTaxIdField))
-                    {
-                        var taxId = companyCodeTaxIdField.TryGetProperty("valueString", out var vs) ? vs.GetString() ?? "" :
-                                    companyCodeTaxIdField.TryGetProperty("content", out var cp) ? cp.GetString() ?? "" : "";
-                        if (!string.IsNullOrWhiteSpace(taxId))
-                        {
-                            // Extract just the numeric part (remove country prefix like LT, DE, PL, etc.)
-                            var cleanTaxId = CleanVatCode(taxId);
-                            if (!string.IsNullOrWhiteSpace(cleanTaxId))
-                            {
-                                result.SupplierCompanyCode = cleanTaxId;
-                                _logger.LogDebug("[COMPANY CODE] source=VendorTaxId value={Code}", result.SupplierCompanyCode);
-                            }
-                        }
-                    }
-                }
-
-                // 2. Try VendorBusinessNumber if still empty
-                if (string.IsNullOrEmpty(result.SupplierCompanyCode) && TryGetField("VendorBusinessNumber", out var businessNumberField))
-                {
-                    var businessNumber = businessNumberField.TryGetProperty("valueString", out var vs) ? vs.GetString() ?? "" :
-                                         businessNumberField.TryGetProperty("content", out var cp) ? cp.GetString() ?? "" : "";
-                    if (!string.IsNullOrWhiteSpace(businessNumber))
-                    {
-                        result.SupplierCompanyCode = businessNumber.Trim();
-                        _logger.LogDebug("[COMPANY CODE] source=VendorBusinessNumber value={Code}", result.SupplierCompanyCode);
-                    }
-                }
-
-                // 3. Try VendorAddressRecipient full value if still empty
-                if (string.IsNullOrEmpty(result.SupplierCompanyCode) && TryGetField("VendorAddressRecipient", out var recipientField))
-                {
-                    var recipient = recipientField.TryGetProperty("valueString", out var vs) ? vs.GetString() ?? "" : "";
-                    if (!string.IsNullOrWhiteSpace(recipient))
-                    {
-                        // Use the full value as company code (Azure may return it as a single identifier)
-                        result.SupplierCompanyCode = recipient.Trim();
-                        _logger.LogDebug("[COMPANY CODE] source=VendorAddressRecipient value={Code}", result.SupplierCompanyCode);
-                    }
-                }
-
-                // 4. LT-only regex fallback: only if SupplierCountryCode == "LT" and still empty
-                if (string.IsNullOrEmpty(result.SupplierCompanyCode) && result.SupplierCountryCode == "LT")
-                {
-                    if (TryGetField("VendorAddressRecipient", out var ltRecipientField))
-                    {
-                        var ltRecipient = ltRecipientField.TryGetProperty("valueString", out var vs) ? vs.GetString() ?? "" : "";
-                        var codeMatch = System.Text.RegularExpressions.Regex.Match(ltRecipient, @"\b\d{9}\b");
-                        if (codeMatch.Success)
-                        {
-                            result.SupplierCompanyCode = codeMatch.Value;
-                            _logger.LogDebug("[COMPANY CODE] source=LT_regex_fallback value={Code}", result.SupplierCompanyCode);
-                        }
-                    }
-                }
+                // Company (registration) code: NOT read here. The old four-step block filled SupplierCompanyCode with the
+                // whole VAT code (prefix included) or with the address recipient's name; it is now extracted after the
+                // own company's settings are loaded, so the buyer's codes can be excluded (Etapas 2 S2c, D-045).
 
                 // Get PaymentDetails (bank account)
                 if (TryGetField("PaymentDetails", out var paymentDetailsField))
@@ -571,6 +514,12 @@ namespace NordicBeesERP.Services
                 // Load company settings early for VIES own-company check
                 var settings = await _companySettingsService.GetSettingsAsync();
 
+                // Registration code: a number, or empty — never a VAT code, never a name (PLAN-ETAPAS2 §0.3, D-045). An invoice
+                // prints both parties' codes, so our own codes and the buyer's VAT digits are excluded from the candidates.
+                var companyCode = ExtractSupplierCompanyCode(root, settings, result.CustomerVatCode);
+                result.SupplierCompanyCode = companyCode.Code;
+                _logger.LogDebug("[COMPANY CODE] source={Source} found={Found}", companyCode.Source, companyCode.Code.Length > 0);
+
                 var defaultCategoryId = await ResolveSupplierAsync(result, settings);
                 var supplierId = result.SupplierId;
 
@@ -798,6 +747,32 @@ namespace NordicBeesERP.Services
 
         public async Task<OcrResultDto> ExtractInvoiceDataAsync(string base64, string fileName)
             => await ProcessAsync(base64, fileName);
+
+        /// <summary>
+        /// The supplier's registration code from a raw Azure response (Etapas 2 S2c, D-045): a number or empty, never a VAT code or
+        /// a name. Reads <c>VendorBusinessNumber</c> and the document text; our own company code / VAT digits and the buyer's VAT
+        /// digits are excluded because an invoice prints both parties' codes. See <see cref="SupplierCompanyCodeExtractor"/>.
+        /// </summary>
+        public static CompanyCodeExtraction ExtractSupplierCompanyCode(JsonElement root, CompanySettings settings, string? customerVatCode)
+        {
+            var resultRoot = root.TryGetProperty("analyzeResult", out var analyzeRoot) ? analyzeRoot : root;
+            var documentText = resultRoot.TryGetProperty("content", out var contentEl) && contentEl.ValueKind == JsonValueKind.String
+                ? contentEl.GetString() ?? "" : "";
+
+            var businessNumber = "";
+            if ((resultRoot.TryGetProperty("documents", out var documents) || resultRoot.TryGetProperty("Documents", out documents))
+                && documents.ValueKind == JsonValueKind.Array && documents.GetArrayLength() > 0)
+            {
+                var doc = documents[0];
+                var fields = doc.TryGetProperty("fields", out var f1) ? f1 : doc.TryGetProperty("Fields", out var f2) ? f2 : doc;
+                if (fields.TryGetProperty("VendorBusinessNumber", out var field) && field.ValueKind != JsonValueKind.Null)
+                    businessNumber = field.TryGetProperty("valueString", out var vs) ? vs.GetString() ?? "" :
+                                     field.TryGetProperty("content", out var cp) ? cp.GetString() ?? "" : "";
+            }
+
+            return SupplierCompanyCodeExtractor.Extract(businessNumber, documentText,
+                new[] { settings.CompanyCode, settings.VatCode, customerVatCode });
+        }
 
         public static decimal? ParseVatRate(string? raw)
         {
