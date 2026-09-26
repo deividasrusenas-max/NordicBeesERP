@@ -39,15 +39,16 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
     // covered by ExpenseValidationGateTests.
     public static readonly TheoryData<string> CarriedReviewFlags = new()
     {
-        OcrFlag.VatRateNotAllowed, OcrFlag.NumberMisread, OcrFlag.NumberAmbiguous
+        OcrFlag.NumberMisread, OcrFlag.NumberAmbiguous
     };
 
     // S5(c), D-039 item 2: INVALID_IBAN / INVALID_VAT_FORMAT left this list — with a supplier they are information on
     // every path (ExpenseSupplierDocumentStatusTests). They are still carried over (stored) on edit.
     // Same for information flags: LINE_AMOUNT_IMPLAUSIBLE left this list in S4(c) — recomputed on every path.
+    // S6: VAT_RATE_NOT_ALLOWED / VAT_RATE_UNCHECKED left the carried lists — recomputed on every path (ExpenseVatRateGateTests).
     public static readonly TheoryData<string> CarriedInformationFlags = new()
     {
-        OcrFlag.VatFormatUnchecked, OcrFlag.VatRateUnchecked
+        OcrFlag.VatFormatUnchecked
     };
 
     // --- Codes, labels, colours (pure) ---
@@ -227,7 +228,7 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
 
     [Theory]
     [InlineData("TOTALS_OUT_OF_RANGE")]
-    [InlineData("VAT_RATE_NOT_ALLOWED")]
+    // VAT_RATE_NOT_ALLOWED left this list in S6: it is recomputed on assignment (ExpenseVatRateGateTests)
     [InlineData("NUMBER_MISREAD")]
     [InlineData("NUMBER_AMBIGUOUS")]
     public async Task AssignSupplier_OtherReviewFlag_StillNeedsReview(string flag)

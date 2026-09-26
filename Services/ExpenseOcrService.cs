@@ -742,8 +742,18 @@ namespace NordicBeesERP.Services
                 // EN 16931 gates (AMOUNT_ARITHMETIC_MISMATCH / MISSING_MONEY_FIELD / TOTALS_OUT_OF_RANGE,
                 // AMOUNT_MISMATCH / LINE_SUM_ROUNDING by BR-CO-10, D-040): the same helper the save paths
                 // use, so the preview shows what will be stored
+                // (the VAT-rate whitelist too: the partner's country when a supplier matched, the document's otherwise)
+                string? partnerCountry = null;
+                if (supplierId.HasValue)
+                {
+                    await using var countryContext = _dbFactory.CreateDbContext();
+                    partnerCountry = await countryContext.BusinessPartners.Where(b => b.Id == supplierId.Value)
+                        .Select(b => b.CountryCode).FirstOrDefaultAsync();
+                }
+                DateTime? invoiceDate = DateTime.TryParse(result.InvoiceDate, out var parsedDate) && parsedDate != default ? parsedDate : null;
                 ExpenseService.RecomputeValidationFlags(result.Flags, result.AmountExclVat, result.VatAmount,
-                    result.AmountInclVat, ExpenseService.ToValidationLines(result.Lines), ExpenseService.ToDocumentInput(result));
+                    result.AmountInclVat, ExpenseService.ToValidationLines(result.Lines), ExpenseService.ToDocumentInput(result),
+                    ExpenseService.ToRateInput(result, partnerCountry, invoiceDate, "STANDARD"));
 
                 // LOW_CONFIDENCE: result.Confidence.Overall > 0 && result.Confidence.Overall < 50
                 if (result.Confidence.Overall > 0 && result.Confidence.Overall < 50)

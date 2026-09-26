@@ -13,11 +13,16 @@ namespace NordicBeesERP.Services
         private readonly IAuthService _authService;
         private readonly ICompanySettingsService _companySettingsService;
 
-        public ExpenseService(IDbContextFactory<NordicBeesERPContext> dbFactory, IAuthService authService, ICompanySettingsService companySettingsService)
+        private readonly IReadOnlyList<VatRateRow> _vatRateRows;
+
+        /// <param name="vatRateRows">The VAT-rate whitelist; null = <see cref="VatRateTable.Rows"/>. Tests pass CONFIRMED rows.</param>
+        public ExpenseService(IDbContextFactory<NordicBeesERPContext> dbFactory, IAuthService authService, ICompanySettingsService companySettingsService,
+            IReadOnlyList<VatRateRow>? vatRateRows = null)
         {
             _dbFactory = dbFactory;
             _authService = authService;
             _companySettingsService = companySettingsService;
+            _vatRateRows = vatRateRows ?? VatRateTable.Rows;
         }
 
         // =====================================================
@@ -290,7 +295,8 @@ namespace NordicBeesERP.Services
             // Recalculate OCR flags after saving invoice changes
             var lines = await context.ExpenseInvoiceLines.Where(l => l.InvoiceId == invoice.Id).ToListAsync();
             var existing = ExpenseStatusHelper.ParseFlags(stored.OcrFlags);
-            var flags = ComputeManualEditFlags(invoice, stored, lines, existing, overriddenFlags);
+            var partnerCountry = await GetPartnerCountryAsync(context, stored.SupplierId);
+            var flags = ComputeManualEditFlags(invoice, stored, lines, existing, overriddenFlags, partnerCountry, _vatRateRows);
 
             // supplier_id is not written by this method, so it cannot change here.
             var changedGateFields = ChangedGateFields(invoice, stored);
@@ -404,7 +410,8 @@ namespace NordicBeesERP.Services
                 .Where(l => l.InvoiceId == invoice.Id)
                 .ToListAsync();
             var existing = ExpenseStatusHelper.ParseFlags(stored.OcrFlags);
-            var flags = ComputeManualEditFlags(invoice, stored, finalLines, existing, null);
+            var partnerCountry = await GetPartnerCountryAsync(context, stored.SupplierId);
+            var flags = ComputeManualEditFlags(invoice, stored, finalLines, existing, null, partnerCountry, _vatRateRows);
 
             var changedGateFields = ChangedGateFields(invoice, stored);
             if (LinesChanged(storedLines, finalLines)) changedGateFields.Add("lines");
@@ -509,6 +516,8 @@ namespace NordicBeesERP.Services
             // recomputed by RecomputeValidationFlags (ValidationOwnedFlags)
             OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
             OcrFlag.AmountMismatch, OcrFlag.LineSumRounding, OcrFlag.LineAmountImplausible,
+            // recomputed by RecomputeVatRateFlags (VatRateOwnedFlags)
+            OcrFlag.VatRateNotAllowed, OcrFlag.VatRateUnchecked,
             // explicit keep/drop rules
             OcrFlag.WrongRecipient, OcrFlag.VendorNotFound, OcrFlag.MissingDueDate, OcrFlag.LowConfidence
         };
@@ -518,7 +527,8 @@ namespace NordicBeesERP.Services
         /// saved; all other stored flags are carried over (<see cref="ManualEditOwnedFlags"/>).
         /// </summary>
         private static List<string> ComputeManualEditFlags(ExpenseInvoice edited, ExpenseInvoice stored,
-            List<ExpenseInvoiceLine> lines, List<string> existing, List<string>? overriddenFlags)
+            List<ExpenseInvoiceLine> lines, List<string> existing, List<string>? overriddenFlags,
+            string? partnerCountry = null, IReadOnlyList<VatRateRow>? rateRows = null)
         {
             var flags = new List<string>();
             if (string.IsNullOrEmpty(edited.InvoiceNumber)) flags.Add(OcrFlag.MissingInvNumber);
@@ -531,7 +541,10 @@ namespace NordicBeesERP.Services
             SupplierDocumentInput? document = stored.SupplierId == null
                 ? new SupplierDocumentInput(stored.PendingSupplierVat, stored.PendingSupplierCountryCode, stored.PendingSupplierBankAccount)
                 : null;
-            RecomputeValidationFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat, ToValidationLines(lines), document);
+            // VAT-rate gate: the country is the partner's when a supplier is set (it can change on assignment), else the pending one
+            var rate = ToVatRateInput(ResolveRateCountry(partnerCountry, stored.PendingSupplierCountryCode, stored.SupplierId != null),
+                edited.InvoiceDate != default ? edited.InvoiceDate : null, edited.VatRate, lines.Select(l => l.VatRate), stored.InvoiceType);
+            RecomputeValidationFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat, ToValidationLines(lines), document, rate, rateRows);
             RecomputeDateFlags(flags, edited.InvoiceDate != default ? edited.InvoiceDate : null,
                 stored.CreatedAt != default ? stored.CreatedAt : VilniusToday());
 
@@ -1373,6 +1386,7 @@ namespace NordicBeesERP.Services
             // Recalculate OCR flags (remove VENDOR_NOT_FOUND)
             var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
             flags.Remove("VENDOR_NOT_FOUND");
+            await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, supplierId);
             var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
             var newStatus = StatusAfterSupplierAssigned(flags);
 
@@ -1395,6 +1409,27 @@ namespace NordicBeesERP.Services
                 PerformedBy = performedBy, PerformedAt = now
             });
             await context.SaveChangesAsync();
+        }
+
+        private static async Task<string?> GetPartnerCountryAsync(NordicBeesERPContext context, int? supplierId) =>
+            supplierId.HasValue
+                ? await context.BusinessPartners.Where(b => b.Id == supplierId.Value).Select(b => b.CountryCode).FirstOrDefaultAsync()
+                : null;
+
+        /// <summary>
+        /// The supplier's country can differ from the document's, so the rate gate is recomputed when a supplier is
+        /// assigned (PLAN §8). The stored line rates and header rate are used; a missing invoice date (MISSING_INV_DATE)
+        /// is passed as "no date". Not done in DismissWrongRecipientAsync / ResolveDuplicateAsDifferentAsync: they change
+        /// neither the supplier, the date nor a rate, so the stored rate flags are still current.
+        /// </summary>
+        private async Task RecomputeRateFlagsForSupplierAsync(NordicBeesERPContext context, ExpenseInvoice invoice, List<string> flags, int supplierId)
+        {
+            var country = await GetPartnerCountryAsync(context, supplierId);
+            var lineRates = await context.ExpenseInvoiceLines.Where(l => l.InvoiceId == invoice.Id).Select(l => l.VatRate).ToListAsync();
+            DateTime? date = flags.Contains(OcrFlag.MissingInvDate) ? null : invoice.InvoiceDate;
+            RecomputeVatRateFlags(flags,
+                ToVatRateInput(ResolveRateCountry(country, invoice.PendingSupplierCountryCode, true), date, invoice.VatRate, lineRates, invoice.InvoiceType),
+                _vatRateRows);
         }
 
         public async Task<int> AutoAssignSupplierAsync(string? vatCode, string? supplierName, int supplierId)
@@ -1437,6 +1472,7 @@ namespace NordicBeesERP.Services
                 // Recalculate OCR flags (remove VENDOR_NOT_FOUND)
                 var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
                 flags.Remove("VENDOR_NOT_FOUND");
+                await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, supplierId);
                 var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
                 var newStatus = StatusAfterSupplierAssigned(flags);
 
@@ -1706,6 +1742,84 @@ namespace NordicBeesERP.Services
             }
         }
 
+        /// <summary>
+        /// What the VAT-rate gate needs (S6, PLAN-ETAPAS1 §2.2): the supplier's country, the invoice date (null when the
+        /// document had none), the header rate, the per-line rates and the invoice type.
+        /// </summary>
+        public sealed record VatRateInput(string? SupplierCountry, DateTime? InvoiceDate, decimal HeaderRate,
+            IReadOnlyList<decimal> LineRates, string? InvoiceType);
+
+        /// <summary>Flags owned by <see cref="RecomputeVatRateFlags"/>: recomputed on every path that can change their inputs.</summary>
+        public static readonly IReadOnlyList<string> VatRateOwnedFlags = new[] { OcrFlag.VatRateNotAllowed, OcrFlag.VatRateUnchecked };
+
+        /// <summary>Verdict of <see cref="EvaluateVatRates"/>: any rate the whitelist forbids, and/or any rate it could not judge.</summary>
+        public sealed record VatRateVerdict(bool NotAllowed, bool Unchecked);
+
+        /// <summary>
+        /// Country for the rate gate: with a supplier, the partner's <c>CountryCode</c> when it has one, otherwise the
+        /// document's country. NOTE (PLAN §2.2 risk): <c>business_partners.country_code</c> defaults to "LT", so a foreign
+        /// partner created without a real country is stored as LT and is judged against the LT rates — the gate cannot tell
+        /// that from a real LT supplier. While the rows are UNCONFIRMED this only yields VAT_RATE_UNCHECKED.
+        /// </summary>
+        public static string? ResolveRateCountry(string? partnerCountry, string? documentCountry, bool hasSupplier) =>
+            hasSupplier && !string.IsNullOrWhiteSpace(partnerCountry) ? partnerCountry : documentCountry;
+
+        /// <summary>Builds the rate-gate input; a line rate of 0 is dropped later (0 % is ZERO_VAT's job, D-026).</summary>
+        public static VatRateInput ToVatRateInput(string? country, DateTime? invoiceDate, decimal headerRate,
+            IEnumerable<decimal> lineRates, string? invoiceType) =>
+            new(country, invoiceDate, headerRate, lineRates.ToList(), invoiceType);
+
+        /// <summary>The rate-gate input of an OCR result (create, re-OCR and the OCR preview all use it).</summary>
+        public static VatRateInput ToRateInput(OcrResultDto result, string? partnerCountry, DateTime? invoiceDate, string? invoiceType) =>
+            ToVatRateInput(ResolveRateCountry(partnerCountry, result.SupplierCountryCode, result.SupplierId != null),
+                invoiceDate, result.VatRate, result.Lines.Select(l => l.VatRate), invoiceType);
+
+        /// <summary>
+        /// VAT-rate whitelist verdict (S6, D-038 Q2, D-039 item 3). Rates checked: each line's rate when any line has a
+        /// non-zero one, otherwise the header rate; 0 % is never checked. Per rate, by the row that covers the date:
+        /// row CONFIRMED and rate not in it → NotAllowed (review); row UNCONFIRMED, unknown country, no row for the date
+        /// or no invoice date → Unchecked (information). ULAK invoices are exempt (their 6 % is a fixed rate, FROZEN §4 —
+        /// unreachable through OCR today, which always stores STANDARD; coded defensively, PLAN §8).
+        /// </summary>
+        public static VatRateVerdict EvaluateVatRates(VatRateInput input, IReadOnlyList<VatRateRow>? rows = null)
+        {
+            if (string.Equals(input.InvoiceType, "ULAK", StringComparison.OrdinalIgnoreCase))
+                return new VatRateVerdict(false, false);
+
+            var rates = input.LineRates.Where(r => r > 0m).Distinct().ToList();
+            if (rates.Count == 0 && input.HeaderRate > 0m) rates.Add(input.HeaderRate);
+
+            bool notAllowed = false, unjudged = false;
+            foreach (var rate in rates)
+            {
+                if (input.InvoiceDate is null) { unjudged = true; continue; }
+                var result = VatRateTable.Check(input.SupplierCountry, input.InvoiceDate.Value, rate, rows ?? VatRateTable.Rows);
+                switch (result.Outcome)
+                {
+                    case VatRateCheckOutcome.ZeroRate:
+                        break;
+                    case VatRateCheckOutcome.Allowed:
+                    case VatRateCheckOutcome.NotAllowed:
+                        if (result.Row!.Status != VatRateRowStatus.Confirmed) unjudged = true;
+                        else if (result.Outcome == VatRateCheckOutcome.NotAllowed) notAllowed = true;
+                        break;
+                    default: // UnknownCountry, NoRateData
+                        unjudged = true;
+                        break;
+                }
+            }
+            return new VatRateVerdict(notAllowed, unjudged);
+        }
+
+        /// <summary>Drops <see cref="VatRateOwnedFlags"/> and recomputes them from <see cref="EvaluateVatRates"/>.</summary>
+        public static void RecomputeVatRateFlags(List<string> flags, VatRateInput input, IReadOnlyList<VatRateRow>? rows = null)
+        {
+            flags.RemoveAll(f => VatRateOwnedFlags.Contains(f));
+            var verdict = EvaluateVatRates(input, rows);
+            if (verdict.NotAllowed) flags.Add(OcrFlag.VatRateNotAllowed);
+            if (verdict.Unchecked) flags.Add(OcrFlag.VatRateUnchecked);
+        }
+
         /// <summary>D-040: a BR-CO-10 difference up to this many euro is information (LINE_SUM_ROUNDING), above it review.</summary>
         public const decimal LineSumRoundingBand = 0.05m;
 
@@ -1811,10 +1925,12 @@ namespace NordicBeesERP.Services
         /// (create, re-OCR, manual edit) and by the OCR step itself, so the same input gives the same flags.
         /// </summary>
         public static void RecomputeValidationFlags(List<string> flags, decimal amountExclVat, decimal vatAmount,
-            decimal amountInclVat, IReadOnlyList<ValidationLine> lines, SupplierDocumentInput? document = null)
+            decimal amountInclVat, IReadOnlyList<ValidationLine> lines, SupplierDocumentInput? document = null,
+            VatRateInput? rate = null, IReadOnlyList<VatRateRow>? rateRows = null)
         {
             flags.RemoveAll(f => ValidationOwnedFlags.Contains(f));
             if (document != null) RecomputeSupplierDocumentFlags(flags, document);
+            if (rate != null) RecomputeVatRateFlags(flags, rate, rateRows);
             var outcome = EvaluateValidation(amountExclVat, vatAmount, amountInclVat, lines);
 
             if (amountExclVat <= 0m || amountInclVat <= 0m) flags.Add(OcrFlag.MissingMoneyField);
@@ -1896,8 +2012,12 @@ namespace NordicBeesERP.Services
             // invoice_date is NOT NULL: keep the placeholder, but flag it (art. 226(1) mandatory field)
             if (!hasInvoiceDate) invoiceDate = DateTime.Today;
 
+            string? partnerCountry;
+            await using (var countryContext = _dbFactory.CreateDbContext())
+                partnerCountry = await GetPartnerCountryAsync(countryContext, ocrResult.SupplierId);
             RecomputeValidationFlags(ocrResult.Flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
-                ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult));
+                ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult),
+                ToRateInput(ocrResult, partnerCountry, hasInvoiceDate ? invoiceDate : null, "STANDARD"), _vatRateRows);
             RecomputeDateFlags(ocrResult.Flags, hasInvoiceDate ? invoiceDate : null, VilniusToday());
             var status = DecideOcrStatus(ocrResult.Flags, ocrResult.SupplierId);
 
@@ -2063,8 +2183,10 @@ namespace NordicBeesERP.Services
                 if (!flags.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
             }
 
+            var partnerCountry = await GetPartnerCountryAsync(ctx, ocrResult.SupplierId);
             RecomputeValidationFlags(flags, ocrResult.AmountExclVat, ocrResult.VatAmount, ocrResult.AmountInclVat,
-                ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult));
+                ToValidationLines(ocrResult.Lines), ToDocumentInput(ocrResult),
+                ToRateInput(ocrResult, partnerCountry, hasInvoiceDate ? invoiceDate : null, invoice.InvoiceType), _vatRateRows);
             RecomputeDateFlags(flags, hasInvoiceDate ? invoiceDate : null,
                 invoice.CreatedAt != default ? invoice.CreatedAt : VilniusToday());
 
