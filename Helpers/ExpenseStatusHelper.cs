@@ -77,6 +77,15 @@ public static class ExpenseStatusHelper
         "DUPLICATE"          => "Dublikatas",
         "VIES_UNAVAILABLE"   => "VIES nepasiekiamas",
         "AZURE_LIMIT"        => "Azure limitas viršytas",
+        "TOTALS_OUT_OF_RANGE"     => "Sumos neįtikėtinai didelės",
+        "INVALID_IBAN"            => "Neteisingas IBAN",
+        "INVALID_VAT_FORMAT"      => "Neteisingas PVM kodo formatas",
+        "VAT_RATE_NOT_ALLOWED"    => "PVM tarifas negalimas šaliai ir datai",
+        "NUMBER_MISREAD"          => "Skaičius nesutampa su dokumento tekstu",
+        "NUMBER_AMBIGUOUS"        => "Dviprasmiškas skaičius",
+        "LINE_AMOUNT_IMPLAUSIBLE" => "Eilutė: kiekis × kaina ≠ suma",
+        "VAT_FORMAT_UNCHECKED"    => "PVM kodo formatas netikrintas",
+        "VAT_RATE_UNCHECKED"      => "PVM tarifas netikrintas",
         _                    => flag
     };
 
@@ -101,6 +110,15 @@ public static class ExpenseStatusHelper
         "MISSING_DUE_DATE"   => Color.Default,
         "LINES_NOT_FOUND"    => Color.Default,
         "VIES_UNAVAILABLE"   => Color.Default,
+        "TOTALS_OUT_OF_RANGE"     => Color.Error,
+        "INVALID_IBAN"            => Color.Error,
+        "INVALID_VAT_FORMAT"      => Color.Error,
+        "VAT_RATE_NOT_ALLOWED"    => Color.Error,
+        "NUMBER_MISREAD"          => Color.Error,
+        "NUMBER_AMBIGUOUS"        => Color.Warning,
+        "LINE_AMOUNT_IMPLAUSIBLE" => Color.Default,
+        "VAT_FORMAT_UNCHECKED"    => Color.Default,
+        "VAT_RATE_UNCHECKED"      => Color.Default,
         _                    => Color.Default
     };
 
@@ -118,7 +136,10 @@ public static class ExpenseStatusHelper
     public static bool IsCriticalFlag(string flag) =>
         flag is "VENDOR_NOT_FOUND" or "WRONG_RECIPIENT" or "AMOUNT_MISMATCH" or "DUPLICATE"
             or "AMOUNT_ARITHMETIC_MISMATCH" or "MISSING_MONEY_FIELD"
-            or "FUTURE_DATE" or "STALE_DATE" or "MISSING_INV_DATE";
+            or "FUTURE_DATE" or "STALE_DATE" or "MISSING_INV_DATE"
+            // OCR Etapas 1 review flags (PLAN-ETAPAS1 §1.3); information flags are never critical
+            or "TOTALS_OUT_OF_RANGE" or "INVALID_IBAN" or "INVALID_VAT_FORMAT"
+            or "VAT_RATE_NOT_ALLOWED" or "NUMBER_MISREAD" or "NUMBER_AMBIGUOUS";
 
     public static string Recalculate(decimal paidAmount, decimal invoiceAmount, DateTime? dueDate, string? currentStatus = null)
     {

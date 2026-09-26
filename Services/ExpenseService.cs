@@ -1606,13 +1606,20 @@ namespace NordicBeesERP.Services
         // AssignSupplierAsync and AutoAssignSupplierAsync, so the review list cannot drift.
         // =====================================================
 
-        /// <summary>Flags that keep an invoice with a known supplier in NEEDS_REVIEW.</summary>
+        /// <summary>
+        /// Flags that keep an invoice with a known supplier in NEEDS_REVIEW. The OCR Etapas 1 flags are
+        /// classified per D-038: TOTALS_OUT_OF_RANGE, INVALID_IBAN, INVALID_VAT_FORMAT,
+        /// VAT_RATE_NOT_ALLOWED, NUMBER_MISREAD and NUMBER_AMBIGUOUS are review;
+        /// LINE_AMOUNT_IMPLAUSIBLE, VAT_FORMAT_UNCHECKED and VAT_RATE_UNCHECKED are information only.
+        /// </summary>
         private static bool HasReviewFlag(IEnumerable<string> flags) =>
             flags.Any(f => f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch ||
                            f == OcrFlag.LowConfidence || f == OcrFlag.ZeroVat ||
                            f == OcrFlag.MissingInvNumber ||
                            f == OcrFlag.AmountArithmeticMismatch || f == OcrFlag.MissingMoneyField ||
-                           f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate);
+                           f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate ||
+                           f == OcrFlag.TotalsOutOfRange || f == OcrFlag.InvalidIban || f == OcrFlag.InvalidVatFormat ||
+                           f == OcrFlag.VatRateNotAllowed || f == OcrFlag.NumberMisread || f == OcrFlag.NumberAmbiguous);
 
         /// <summary>Status precedence for OCR ingestion: WRONG_RECIPIENT → supplier missing → review flags.</summary>
         private static string DecideOcrStatus(IEnumerable<string> flags, int? supplierId)
@@ -1623,9 +1630,14 @@ namespace NordicBeesERP.Services
             return HasReviewFlag(list) ? "NEEDS_REVIEW" : "PENDING";
         }
 
-        /// <summary>Status once a supplier is assigned: the review gate still applies (D-028).</summary>
+        /// <summary>
+        /// Status once a supplier is assigned: the review gate still applies (D-028), except that the
+        /// document's INVALID_IBAN / INVALID_VAT_FORMAT become information — a human has just
+        /// established the supplier's identity (D-038 Q5). The flags stay stored.
+        /// </summary>
         private static string StatusAfterSupplierAssigned(IEnumerable<string> flags) =>
-            HasReviewFlag(flags) ? "NEEDS_REVIEW" : "PENDING";
+            HasReviewFlag(flags.Where(f => f != OcrFlag.InvalidIban && f != OcrFlag.InvalidVatFormat))
+                ? "NEEDS_REVIEW" : "PENDING";
 
         /// <summary>
         /// Drops stale header-arithmetic flags and recomputes them from the final amounts —

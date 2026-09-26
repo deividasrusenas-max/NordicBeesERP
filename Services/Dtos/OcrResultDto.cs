@@ -135,4 +135,17 @@ public static class OcrFlag
     public const string FutureDate               = "FUTURE_DATE";
     public const string StaleDate                = "STALE_DATE";
     public const string MissingInvDate           = "MISSING_INV_DATE";
+
+    // OCR Etapas 1 (PLAN-ETAPAS1 §1.3, §2, §3; D-038). Declared in S2; nothing sets them yet.
+    // Review (hold the invoice in NEEDS_REVIEW):
+    public const string TotalsOutOfRange         = "TOTALS_OUT_OF_RANGE";
+    public const string InvalidIban              = "INVALID_IBAN";         // information once a supplier is assigned (D-038 Q5)
+    public const string InvalidVatFormat         = "INVALID_VAT_FORMAT";   // information once a supplier is assigned (D-038 Q5)
+    public const string VatRateNotAllowed        = "VAT_RATE_NOT_ALLOWED";
+    public const string NumberMisread            = "NUMBER_MISREAD";
+    public const string NumberAmbiguous          = "NUMBER_AMBIGUOUS";
+    // Information only (D-038 Q3, Q4):
+    public const string LineAmountImplausible    = "LINE_AMOUNT_IMPLAUSIBLE";
+    public const string VatFormatUnchecked       = "VAT_FORMAT_UNCHECKED";
+    public const string VatRateUnchecked         = "VAT_RATE_UNCHECKED";
 }
