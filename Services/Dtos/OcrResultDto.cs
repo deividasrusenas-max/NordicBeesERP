@@ -177,4 +177,8 @@ public static class OcrFlag
     // Information only — BR-CO-10 already holds the invoice in review in that situation.
     public const string LineLargeQuantity        = "LINE_LARGE_QUANTITY";        // a line with quantity > 1000 while lines exceed the header
     public const string LineDuplicateDescription = "LINE_DUPLICATE_DESCRIPTION"; // repeated description while lines exceed the header
+
+    // Etapas 2 S1 (D-044 Q6): re-OCR found a different partner than the one a human assigned. The assigned
+    // supplier is kept; the fresh match is shown as a suggestion. Information only — never a review flag.
+    public const string VendorSuggested          = "VENDOR_SUGGESTED";
 }

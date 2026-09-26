@@ -90,6 +90,7 @@ public static class ExpenseStatusHelper
         "LINE_SUM_ROUNDING"       => "Eilučių suma skiriasi keliais centais",
         "LINE_LARGE_QUANTITY"        => "Didelis kiekis (> 1000) — eilutė palikta",
         "LINE_DUPLICATE_DESCRIPTION" => "Pasikartojantis aprašymas — eilutė palikta",
+        "VENDOR_SUGGESTED"        => "Siūlomas kitas tiekėjas",
         _                    => flag
     };
 
@@ -127,6 +128,7 @@ public static class ExpenseStatusHelper
         "LINE_SUM_ROUNDING"       => Color.Default,
         "LINE_LARGE_QUANTITY"        => Color.Default,
         "LINE_DUPLICATE_DESCRIPTION" => Color.Default,
+        "VENDOR_SUGGESTED"        => Color.Info,
         _                    => Color.Default
     };
 

@@ -164,6 +164,10 @@
                                                     else
                                                     {
                                                         <MudText Typo="Typo.body2" Style="font-weight:600">@(_supplierName ?? "---")</MudText>
+                                                        @if (!string.IsNullOrEmpty(_suggestedSupplierName))
+                                                        {
+                                                            <MudText Typo="Typo.caption" Style="color:#0369a1">Pakartotinis OCR siūlo kitą tiekėją: @_suggestedSupplierName (priskirtas tiekėjas paliktas)</MudText>
+                                                        }
                                                     }
                                                 </MudItem>
                                                 @if (!string.IsNullOrEmpty(_supplierVat))
@@ -457,7 +461,11 @@
             {
                 <MudSpacer />
                 <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ShowRejectConfirmAsync">ATMESTI</MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.CheckCircle" OnClick="ApproveAsync">PATVIRTINTI</MudButton>
+                @* Gate 3 (D-044): an invoice without a supplier cannot be approved — assign or create the supplier first *@
+                @if (_invoice!.SupplierId.HasValue)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.CheckCircle" OnClick="ApproveAsync">PATVIRTINTI</MudButton>
+                }
             }
 
             @* Right side: Filled button for payment-eligible statuses *@
@@ -508,6 +516,8 @@
     private string _supplierName = "";
     private string? _supplierVat;
     private bool _supplierFound = false;
+    // D-044 Q6: partner a re-OCR suggested instead of the assigned supplier (VENDOR_SUGGESTED)
+    private string? _suggestedSupplierName;
     private List<ExpensePayment> _payments = new();
     private List<NordicBeesERP.Models.Expenses.ExpenseCategory> _categories = new();
     private int? _editCategoryId;
@@ -690,6 +700,21 @@
         {
             _supplierFound = false;
             _supplierName = _invoice.PendingSupplierName;
+        }
+
+        _suggestedSupplierName = null;
+        if (existingFlags.Contains(OcrFlag.VendorSuggested))
+        {
+            var suggestedId = await ExpenseService.GetSuggestedSupplierIdAsync(InvoiceId);
+            if (suggestedId.HasValue)
+            {
+                await using var dbContext3 = DbFactory.CreateDbContext();
+                _suggestedSupplierName = await dbContext3.BusinessPartners
+                    .AsNoTracking()
+                    .Where(b => b.Id == suggestedId.Value)
+                    .Select(b => b.Name)
+                    .FirstOrDefaultAsync();
+            }
         }
 
         // Load payment history

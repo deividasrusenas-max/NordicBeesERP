@@ -10,6 +10,7 @@
 @using System.Globalization
 @inject NavigationManager Navigation
 @inject IExpenseService ExpenseService
+@inject IAuthService AuthService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
@@ -595,15 +596,6 @@
         return $"{FormatAmountHelper.Trim(remaining, 2)} €";
     }
 
-    private async Task OpenAssignSupplierDialog(ExpenseInvoice invoice)
-    {
-        var parameters = new DialogParameters { ["InvoiceId"] = invoice.Id };
-        var dialog = await DialogService.ShowAsync<AssignSupplierDialog>("Priskirti tiekėją", parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true });
-        var result = await dialog.Result;
-        if (!result.Canceled)
-            await LoadDataAsync();
-    }
-
     private async Task OpenPaymentDialog(ExpenseInvoice invoice)
     {
         Console.WriteLine($"Opening payment dialog for invoice id: {invoice.Id}");
@@ -764,7 +756,7 @@
     {
         var confirmed = await DialogService.ShowMessageBox(
             "Atstatyti sąskaitą?",
-            $"Sąskaita {invoice.InvoiceNumber} bus atstatyta į 'Reikia patikrinti' būseną.",
+            $"Sąskaita {invoice.InvoiceNumber} bus atstatyta ir vertinama iš naujo pagal taisykles (be tiekėjo — „Nežinomas tiekėjas“, dublikatas — karantinas). Žyma „Ne įmonės sąskaita“, jei yra, bus pašalinta.",
             yesText: "Atstatyti",
             cancelText: "Atšaukti");
 
@@ -772,7 +764,8 @@
 
         try
         {
-            await ExpenseService.RestoreInvoiceAsync(invoice.Id);
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.RestoreInvoiceAsync(invoice.Id, actor);
             Snackbar.Add("Sąskaita atstatyta", Severity.Success);
             await LoadDataAsync();
             await InvokeAsync(StateHasChanged);

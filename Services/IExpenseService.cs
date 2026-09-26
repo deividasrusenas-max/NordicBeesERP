@@ -92,6 +92,11 @@ namespace NordicBeesERP.Services
 
         // Wrong-recipient dismissal: removes WRONG_RECIPIENT, clears the „Sąskaita ne …" rejection, status by the shared rules, audited
         Task DismissWrongRecipientAsync(int invoiceId, string performedBy);
-        Task RestoreInvoiceAsync(int invoiceId);
+
+        // Restore a rejected invoice (D-044 Q13): removes WRONG_RECIPIENT, status by the shared rules (never re-rejected), audited
+        Task RestoreInvoiceAsync(int invoiceId, string performedBy);
+
+        // Partner a re-OCR suggested instead of the human-assigned supplier (VENDOR_SUGGESTED), from the audit trail
+        Task<int?> GetSuggestedSupplierIdAsync(int invoiceId);
     }
 }

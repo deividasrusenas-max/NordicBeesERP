@@ -445,7 +445,6 @@ Maps to `BusinessPartner` filtered by `PartnerType.Customer` or `PartnerType.Bot
 |-----------|---------|
 | `ExpenseUploadDialog.razor` | Upload and OCR invoice PDF |
 | `InvoiceDetailDialog.razor` | View/edit expense invoice detail |
-| `AssignSupplierDialog.razor` | Assign/create supplier for invoice |
 | `SupplierCreateDialog.razor` | Create new business partner |
 | `SupplierEditDialog.razor` | Edit existing business partner |
 | `SupplierSelectDialog.razor` | Select from existing suppliers |

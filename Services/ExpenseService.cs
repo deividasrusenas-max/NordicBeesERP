@@ -1382,13 +1382,19 @@ namespace NordicBeesERP.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
-            
+
+            // D-044 Q16 / gate 3: only an invoice waiting for a supplier can be assigned one — assigning on a
+            // quarantined (DUPLICATE_PENDING), REJECTED, paid or already-assigned invoice would rewrite its status
+            if (invoice.Status != "PENDING_SUPPLIER")
+                throw new InvalidOperationException("Tiekėją galima priskirti tik sąskaitai, kuri laukia tiekėjo");
+
             var oldStatus = invoice.Status;
             var invoiceNumber = invoice.InvoiceNumber;
-            
+
             // Recalculate OCR flags (remove VENDOR_NOT_FOUND)
             var flags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(invoice.OcrFlags ?? "[]") ?? new();
             flags.Remove("VENDOR_NOT_FOUND");
+            flags.Remove(OcrFlag.VendorSuggested);
             await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, supplierId);
             var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
             var newStatus = StatusAfterSupplierAssigned(flags);
@@ -1542,6 +1548,10 @@ namespace NordicBeesERP.Services
             if (invoice.Status == "DUPLICATE_PENDING")
                 throw new InvalidOperationException("Dublikatą pirmiausia reikia išspręsti");
 
+            // Gate 3 (RESEARCH §6, D-044): an invoice never leaves PENDING_SUPPLIER without a supplier
+            if (invoice.SupplierId == null)
+                throw new InvalidOperationException("Pirmiausia priskirkite tiekėją");
+
             var oldStatus = invoice.Status;
             var invoiceNumber = invoice.InvoiceNumber;
             var now = DateTime.Now;
@@ -1608,12 +1618,104 @@ namespace NordicBeesERP.Services
                 oldStatus, newStatus, performedBy, now);
         }
 
-        public async Task RestoreInvoiceAsync(int invoiceId)
+        /// <summary>
+        /// Restoring a rejected invoice is an explicit human override (D-044 Q13): WRONG_RECIPIENT is removed
+        /// (audited, like <see cref="DismissWrongRecipientAsync"/>), the rejection reason is cleared and the status
+        /// comes from the shared rules — a duplicate of another invoice goes back to quarantine, no supplier →
+        /// PENDING_SUPPLIER, review flag → NEEDS_REVIEW, else PENDING. It is never re-rejected.
+        /// </summary>
+        public async Task RestoreInvoiceAsync(int invoiceId, string performedBy)
         {
             using var context = _dbFactory.CreateDbContext();
-            await context.Database.ExecuteSqlRawAsync(
-                "UPDATE expense_invoices SET status = 'NEEDS_REVIEW', rejected_reason = NULL, updated_at = {0} WHERE id = {1}",
-                DateTime.Now, invoiceId);
+
+            var invoice = await context.ExpenseInvoices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null)
+                throw new InvalidOperationException($"Sąskaita #{invoiceId} nerasta");
+            if (invoice.Status != "REJECTED")
+                throw new InvalidOperationException("Atstatyti galima tik atmestą sąskaitą");
+
+            var flags = ExpenseStatusHelper.ParseFlags(invoice.OcrFlags);
+            var wrongRecipientRemoved = flags.RemoveAll(f => f == OcrFlag.WrongRecipient) > 0;
+
+            // Same quarantine rule as create / re-OCR: a restored duplicate must not become payable again
+            var duplicateId = await CheckDuplicateAsync(invoice.SupplierId, invoice.PendingSupplierVat,
+                invoice.InvoiceNumber, invoice.AmountInclVat, excludeInvoiceId: invoiceId);
+            string newStatus;
+            if (duplicateId.HasValue)
+            {
+                if (!flags.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
+                newStatus = "DUPLICATE_PENDING";
+            }
+            else
+            {
+                newStatus = DecideOcrStatus(flags, invoice.SupplierId);
+            }
+
+            var oldStatus = invoice.Status;
+            var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
+            var now = DateTime.Now;
+
+            // D-010: status, flags and audit rows are one transaction
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE expense_invoices SET
+                    ocr_flags = {0},
+                    status = {1},
+                    rejected_reason = NULL,
+                    updated_at = {2}
+                WHERE id = {3}",
+                ocrFlagsJson, newStatus, now, invoiceId);
+
+            if (wrongRecipientRemoved)
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO expense_invoice_audit
+                        (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                    VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                    invoiceId, invoice.InvoiceNumber, "WRONG_RECIPIENT_DISMISSED",
+                    "Gavėjas patvirtintas rankiniu būdu (sąskaitos atstatymas)",
+                    oldStatus, newStatus, performedBy, now);
+            }
+
+            await context.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO expense_invoice_audit
+                    (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                invoiceId, invoice.InvoiceNumber, "RESTORED",
+                "Atmesta sąskaita atstatyta rankiniu būdu",
+                oldStatus, newStatus, performedBy, now);
+
+            await transaction.CommitAsync();
+        }
+
+        /// <summary>
+        /// The partner a re-OCR suggested instead of the human-assigned supplier (D-044 Q6): the latest
+        /// SUPPLIER_SUGGESTED audit row of the invoice, or null. Read only when the invoice carries VENDOR_SUGGESTED.
+        /// </summary>
+        public async Task<int?> GetSuggestedSupplierIdAsync(int invoiceId)
+        {
+            using var context = _dbFactory.CreateDbContext();
+            var details = await context.ExpenseInvoiceAudits
+                .AsNoTracking()
+                .Where(a => a.InvoiceId == invoiceId && a.Action == "SUPPLIER_SUGGESTED")
+                .OrderByDescending(a => a.Id)
+                .Select(a => a.ActionDetails)
+                .FirstOrDefaultAsync();
+            return ParseSuggestedPartnerId(details);
+        }
+
+        public const string SuggestedPartnerPrefix = "partner_id=";
+
+        public static int? ParseSuggestedPartnerId(string? actionDetails)
+        {
+            if (actionDetails == null || !actionDetails.StartsWith(SuggestedPartnerPrefix, StringComparison.Ordinal)) return null;
+            var rest = actionDetails[SuggestedPartnerPrefix.Length..];
+            var end = 0;
+            while (end < rest.Length && char.IsDigit(rest[end])) end++;
+            return end > 0 && int.TryParse(rest[..end], out var id) ? id : null;
         }
 
         public async Task RejectAsync(int invoiceId, string reason, string performedBy)
@@ -2251,6 +2353,22 @@ namespace NordicBeesERP.Services
             DateTime.TryParse(ocrResult.DueDate, out var dueDate);
             if (dueDate == default) dueDate = invoiceDate.AddDays(30);
 
+            // D-044 Q6: re-OCR never unassigns or swaps a supplier a human assigned. A fresh match that is null keeps
+            // the assigned supplier (no flag); a fresh match that is a different partner keeps it too, adds the
+            // information flag VENDOR_SUGGESTED and records the suggested partner in the audit trail. Everything below
+            // (country of the rate gate, pending_* fields, status) then sees the kept supplier.
+            int? suggestedPartnerId = null;
+            if (invoice.SupplierId != null)
+            {
+                if (ocrResult.SupplierId != null && ocrResult.SupplierId != invoice.SupplierId)
+                {
+                    suggestedPartnerId = ocrResult.SupplierId;
+                    if (!ocrResult.Flags.Contains(OcrFlag.VendorSuggested)) ocrResult.Flags.Add(OcrFlag.VendorSuggested);
+                }
+                ocrResult.SupplierId = invoice.SupplierId;
+                ocrResult.Flags.RemoveAll(f => f == OcrFlag.VendorNotFound);
+            }
+
             // Determine flags and status
             var flags = new List<string>(ocrResult.Flags);
             var duplicateId = await CheckDuplicateAsync(ocrResult.SupplierId, ocrResult.SupplierVatCode,
@@ -2397,6 +2515,21 @@ namespace NordicBeesERP.Services
                 PerformedBy = performedBy,
                 PerformedAt = DateTime.Now
             });
+            if (suggestedPartnerId.HasValue)
+            {
+                ctx.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
+                {
+                    InvoiceId = invoice.Id,
+                    InvoiceNumber = invoiceNumber,
+                    Action = "SUPPLIER_SUGGESTED",
+                    // parsed by ParseSuggestedPartnerId — keep the "partner_id=" prefix first
+                    ActionDetails = $"{SuggestedPartnerPrefix}{suggestedPartnerId.Value}; pakartotinis OCR rado kitą tiekėją nei priskirtas (ID {invoice.SupplierId}); priskirtas tiekėjas paliktas",
+                    OldStatus = oldStatus,
+                    NewStatus = newStatus,
+                    PerformedBy = performedBy,
+                    PerformedAt = DateTime.Now
+                });
+            }
             await ctx.SaveChangesAsync();
 
             await transaction.CommitAsync();
