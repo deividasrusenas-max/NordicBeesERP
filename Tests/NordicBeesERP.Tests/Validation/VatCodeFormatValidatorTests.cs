@@ -133,4 +133,106 @@ public class VatCodeFormatValidatorTests
     {
         Assert.Equal(VatCodeValidationReason.UnknownCountry, VatCodeFormatValidator.Validate(input).Reason);
     }
+
+    // --- S1b: the four open notes from the validator review (PLAN-ETAPAS1 §1.1) ---
+
+    [Theory]
+    [InlineData("LT120\u2013252\u2013515")]  // en dash
+    [InlineData("LT120\u2014252515")]         // em dash
+    [InlineData("LT120\u2212252515")]         // minus sign
+    [InlineData("LT120\u2010252515")]         // Unicode hyphen
+    public void DashCharacters_Stripped(string input)
+    {
+        var result = VatCodeFormatValidator.Validate(input);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("LT120252515", result.NormalizedCode);
+    }
+
+    [Theory]
+    [InlineData(".-.-")]
+    [InlineData(" . - ")]
+    [InlineData("\u2013")]
+    public void SeparatorOnlyInput_Empty(string input)
+    {
+        var result = VatCodeFormatValidator.Validate(input);
+
+        Assert.False(result.IsValid);
+        Assert.Equal(VatCodeValidationReason.Empty, result.Reason);
+        Assert.Null(result.NormalizedCode);
+    }
+
+    [Theory]
+    [InlineData("LTU")]
+    [InlineData("L")]
+    [InlineData("1T")]
+    [InlineData("L-")]
+    [InlineData("")]
+    public void HintNotTwoLetters_TreatedAsNoHint(string hint)
+    {
+        var result = VatCodeFormatValidator.Validate("120252515", hint);
+
+        Assert.False(result.IsValid);
+        Assert.Equal(VatCodeValidationReason.UnknownCountry, result.Reason);
+        Assert.Equal("120252515", result.NormalizedCode); // nothing prepended
+        Assert.Null(result.CountryCode);
+    }
+
+    [Fact]
+    public void HintWithSpacesAndLowerCase_Accepted()
+    {
+        var result = VatCodeFormatValidator.Validate("120252515", " lt ");
+
+        Assert.True(result.IsValid);
+        Assert.Equal("LT120252515", result.NormalizedCode);
+    }
+
+    [Fact]
+    public void PrefixDisagreesWithHint_CountryMismatch()
+    {
+        var result = VatCodeFormatValidator.Validate("LT120252515", "DE");
+
+        Assert.False(result.IsValid);
+        Assert.Equal(VatCodeValidationReason.CountryMismatch, result.Reason);
+        Assert.Equal("LT", result.CountryCode);
+        Assert.Equal("LT120252515", result.NormalizedCode);
+    }
+
+    [Fact]
+    public void PrefixAgreesWithHint_Valid()
+    {
+        Assert.True(VatCodeFormatValidator.Validate("LT120252515", "lt").IsValid);
+    }
+
+    [Fact]
+    public void MalformedCodeWithDisagreeingHint_WrongFormatWins()
+    {
+        Assert.Equal(VatCodeValidationReason.WrongFormat, VatCodeFormatValidator.Validate("LT12025251", "DE").Reason);
+    }
+
+    [Fact]
+    public void UnsupportedPrefixWithHint_UnknownCountryWins()
+    {
+        Assert.Equal(VatCodeValidationReason.UnknownCountry, VatCodeFormatValidator.Validate("FR12345678901", "LT").Reason);
+    }
+
+    [Fact]
+    public void InvalidHintWithPrefixedCode_PrefixDecides()
+    {
+        Assert.True(VatCodeFormatValidator.Validate("LT120252515", "LTU").IsValid);
+    }
+
+    [Fact]
+    public void RandomInputs_NeverThrow()
+    {
+        var random = new Random(20260926);
+        const string alphabet = "LTDEPLROEVGR0123456789 .-\u2013\u2212abcXYZ\u00c4";
+        string?[] hints = { null, "", "LT", "DE", "lt", "LTU", "1", " ", "EL" };
+        for (int i = 0; i < 20_000; i++)
+        {
+            var chars = Enumerable.Range(0, random.Next(0, 18)).Select(_ => alphabet[random.Next(alphabet.Length)]).ToArray();
+            var result = VatCodeFormatValidator.Validate(new string(chars), hints[random.Next(hints.Length)]);
+            Assert.Equal(result.IsValid, result.Reason is null);
+        }
+    }
 }
