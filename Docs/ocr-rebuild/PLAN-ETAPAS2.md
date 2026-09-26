@@ -27,7 +27,7 @@ on staging. Etapas 2 is closed on **staging**.
 
 ## 0. How supplier assignment works today
 
-### 0.1 Where a supplier gets set (five paths)
+### 0.1 Where a supplier gets set (five live paths + one apparently dead)
 
 | # | Path | Code | What it does |
 |---|---|---|---|
@@ -37,8 +37,10 @@ on staging. Etapas 2 is closed on **staging**.
 | D | Create supplier from the invoice | `InvoiceDetailDialog.razor:818-850` → `SupplierCreateDialog` → `AutoAssignSupplierAsync` (`:839`; `ExpenseService.cs:1438-1530`) | Bulk-assigns **every** `PENDING_SUPPLIER` invoice whose pending VAT (trim + upper-case equality, no other normalisation) **or** pending name (exact after trim) equals the just-used values (`:1451-1463`). |
 | E | Edit form | — | Cannot change the supplier: `invoice.SupplierId = stored.SupplierId` (`ExpenseService.cs:462`; `UpdateInvoiceAsync` comment `:301`). |
 
-`ExpenseOcrService.ProcessAsync` is also what `OcrQueueWorker` calls (`OcrQueueWorker.cs:77`, per
-PLAN-ETAPAS1 §0; FROZEN §5) — dead today, but a revived worker would get whatever matcher we build.
+| F | `Components/Dialogs/AssignSupplierDialog.razor` (apparently **dead**) | Calls `AssignSupplierAsync` (`:258`, `:285`). After "create supplier" it runs its own ad-hoc matcher (`:209-254`): exact VAT, exact name, then `_suppliers.OrderByDescending(s => s.Id).First()` (`:232`, `:237`, `:249`, `:254`) — the **newest partner, silently**: the exact D-017 failure shape. Opened only from `ExpenseInvoices.razor:598-601` (`OpenAssignSupplierDialog`); a grep of `Components` finds no caller of that method (2026-09-27). *(read, not run)* S1 deletes it or routes it through the assign guard and the new matcher (Q16). |
+
+`ExpenseOcrService.ProcessAsync` is also what `OcrQueueWorker` calls (`OcrQueueWorker.cs:77`; FROZEN §5 separately
+requires the `ExtractInvoiceDataAsync` alias to stay) — dead today, but a revived worker would get whatever matcher we build.
 
 ### 0.2 What `FindSupplierIdAsync` does (`ExpenseOcrService.cs:819-877`, after Etapas 0 commit 1 `5e44f7c`)
 
@@ -169,6 +171,10 @@ document facts the edit form cannot recompute, so the default carry-over rule of
 | 6–7 | email domain, phone | partner has them (`:178-190`); the document's are extracted but not persisted | — | — | **No** (RESEARCH: confirmatory only). Not in Etapas 2 |
 | 8 | **Alias** (§2) | — | table | frozen on conflict | Yes, after promotion, with the tier-1/2 contradiction check |
 | 9 | Registry enrichment | — | — | — | Not in Etapas 2 (§4) |
+
+**Deviation from RESEARCH §4 tier 1** (which says "strip the country prefix"): the plan compares **with** the prefix,
+using the partner's `country_code` only to give a prefix-less stored code its prefix. Reason: D-043 (country is
+authoritative once stored) and the cross-country 9-digit collision in §0.2 item 2. Put to the owner in Q8.
 
 ### 1.3 Contradiction rule (the behaviour change to accept)
 
@@ -497,7 +503,7 @@ partners must be cleaned **before** the cascade goes live (Q9); 8 gate 3's real-
 
 | # | Session | Content | Files | Frozen conflicts | Depends on | Est. |
 |---|---|---|---|---|---|---|
-| **S1** | **Gate 3** (no schema) | `ApproveAsync` refuses without a supplier; PATVIRTINTI hidden for supplier-less `PENDING_SUPPLIER`; `RestoreInvoiceAsync` by `DecideOcrStatus`; `AssignSupplierAsync` status guard; re-OCR keeps a human-assigned supplier (Q6) | `Services/ExpenseService.cs`, `Services/IExpenseService.cs` (only if a signature changes), `Components/Dialogs/InvoiceDetailDialog.razor`, tests | none (`InvoiceDetailDialog` is not frozen; `BankImport.razor` untouched) | Q6, Q13 | 3–5 h |
+| **S1** | **Gate 3** (no schema) | `ApproveAsync` refuses without a supplier; PATVIRTINTI hidden for supplier-less `PENDING_SUPPLIER`; `RestoreInvoiceAsync` by `DecideOcrStatus`; `AssignSupplierAsync` status guard; re-OCR keeps a human-assigned supplier (Q6); `AssignSupplierDialog.razor` deleted or guarded (Q16) | `Services/ExpenseService.cs`, `Services/IExpenseService.cs` (only if a signature changes), `Components/Dialogs/InvoiceDetailDialog.razor`, `Components/Dialogs/AssignSupplierDialog.razor` + `ExpenseInvoices.razor:598-601`, tests | none (`InvoiceDetailDialog` is not frozen; `BankImport.razor` untouched) | Q6, Q13 | 3–5 h |
 | **S2** | **Pure matcher** (new files, no DB) | `SupplierIdentityNormalizer` (VAT, company code, IBAN, name — reuses `VatCodeFormatValidator` and `DiacriticHelper`), `SupplierMatcher` (tiers 1, 2, 4, 4b, contradiction rule, outcomes), candidate DTOs; also the **company-code extraction clean-up** in `ExpenseOcrService` (§0.3) | `Services/Validation/…` (new), `Services/ExpenseOcrService.cs:211-270` | none (the extraction block is not frozen) | Q1, Q7, Q8 | 8–12 h |
 | **S3** | **Wire the matcher** | `FindSupplierIdAsync` → matcher (keep the interface member, `IExpenseOcrService.cs:12`); dialog uses `result.SupplierId` (one call); `VENDOR_AMBIGUOUS`, `VENDOR_SUGGESTED` flags + labels; candidates and tier in the detail dialog; audit row `SUPPLIER_MATCHED` with tier/reason; `AutoAssignSupplierAsync` uses the same normalisers; updates the 7 existing `FindSupplier` tests | `Services/ExpenseOcrService.cs`, `Services/Dtos/OcrResultDto.cs` (flag consts), `Helpers/ExpenseStatusHelper.cs`, `Services/ExpenseService.cs`, `Components/Dialogs/ExpenseUploadDialog.razor` (only the analysis method around `:724`), `InvoiceDetailDialog.razor`, tests | `ExpenseUploadDialog.razor` §3: only `OnAfterRenderAsync`, `OnFileDropped`, `DisposeAsync`, `DroppedFile` are frozen — the analysis method is outside; `ViesService` (§6) and `OcrQueueWorker` (§5) not touched | S2; §5 data (Q9) | 8–10 h |
 | **S4** | **Known IBANs** (schema) | `supplier_bank_accounts` model + migration (owner runs the DDL + backfill); IBAN check tier; `SUPPLIER_NEW_IBAN` (review) + "add IBAN" action; stop nulling `pending_supplier_bank_account` on match; partner save upserts the IBAN | `Models/…` (new), `Data/NordicBeesErpContext.cs`, `Migrations/` (new file), `SupplierService.cs`, `ExpenseService.cs`, dialogs | none | S3, Q2, Q5, Q11, owner DDL | 8–10 h |
@@ -520,12 +526,14 @@ Suggested order: S1 first (independent, closes a live hole), S2 in parallel (new
   `DUPLICATE_PENDING`/`REJECTED`; re-OCR keeps the human-assigned supplier; approved invoice keeps its supplier.
 - **S2** (pure, table-driven): VAT normalisation (spaces, dots, en/em dash, lower case, missing prefix with and without
   country hint); tier order; contradiction rule (same name/different VAT → `Suggested`; VAT→A and code→B →
-  `Ambiguous`); two partners same VAT → `Ambiguous`; empty identifiers never match (the 336 case); name
+  `Ambiguous`); two partners same VAT → `Ambiguous`; empty identifiers never match (the partner-336 case: 16 invoices wrongly linked, `PROD-DATA-FINDINGS-2026-09-25.md` §3); name
   normalisation (`UAB „Rotoma"`, `Rotoma, UAB`, `ROTOMA`, `Žūklinė`), legal-form stripping never yields `Assigned`;
   IBAN check-only behaviour; company-code extraction stops returning a VAT with prefix or a name.
 - **S3** (integration): the 7 existing `FindSupplier` cases still hold; document VAT not on any partner but name
   equal → not assigned; ambiguity → `PENDING_SUPPLIER` + `VENDOR_AMBIGUOUS` + candidates; dialog path produces the same
-  result as `ProcessAsync` (regression for the second call); audit row content.
+  result as `ProcessAsync` (regression for the second call, including: `ProcessAsync` finds no supplier, so
+`VENDOR_NOT_FOUND` is in `result.Flags`, while the dialog's own call would have matched — no stale flag next to a
+supplier); audit row content.
 - **S4**: known-IBAN match, new IBAN with ≥ 1 known → `NEEDS_REVIEW`, none known → no flag, invalid IBAN never added,
   "add IBAN" clears the flag, edit path carries the flag, PATVIRTINTI keeps it.
 - **S5**: N confirmations promote, re-OCR of the same invoice does not count twice, conflict freezes both, frozen never
@@ -585,3 +593,7 @@ against the §5 baseline). **Caveat learned in Etapas 1:** every corpus PDF is a
 - **Q14 — Personal ID (`national_id_number`) as a key for individual suppliers** (beekeepers, no VAT): proposed **no**
   (personal data extraction/storage); confirm.
 - **Q15 — Registries.** Confirm "none in Etapas 2" (§4).
+- **Q16 — `AssignSupplierDialog.razor`.** Apparently dead (§0.1 F) with a "newest partner" fallback. Delete it
+  (proposed, in S1) or keep and route through the guard and matcher?
+- **Note on scope (Q3).** RESEARCH §10 item 9 counts "FuzzySharp Token Sort ≥95" inside Etapas 2; deferring auto-fuzzy is a
+  deliberate scope deviation, argued in §1.6.
