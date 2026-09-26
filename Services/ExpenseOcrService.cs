@@ -793,24 +793,9 @@ namespace NordicBeesERP.Services
                 if (result.Lines.Count == 0)
                     result.Flags.Add(OcrFlag.LinesNotFound);
 
-                // AMOUNT_MISMATCH: result.Lines.Count > 0 && ExclVat diff >= 0.05
-                // If ExclVat matches (diff < 0.05) but InclVat doesn't - do NOT set flag (InclVat diff is just VAT rounding)
-                // Exclude zero-amount lines when calculating sum for mismatch check
-                // (these are often summary lines like "Bendra mokėtina suma" with 0 value)
-                var nonZeroLines = result.Lines.Where(l => l.AmountExclVat > 0 || l.AmountInclVat > 0).ToList();
-                var mismatchLinesSumExcl = nonZeroLines.Sum(l => l.AmountExclVat);
-                var diffExcl = Math.Abs(mismatchLinesSumExcl - result.AmountExclVat);
-                _logger.LogDebug("[MISMATCH CHECK] NonZeroLines={Count} LinesSumExcl={Lines} HeaderExcl={Header} Diff={Diff}", nonZeroLines.Count, mismatchLinesSumExcl, result.AmountExclVat, diffExcl);
-
-                var linesSumIncl = nonZeroLines.Sum(l => l.AmountInclVat);
-                var diffIncl = Math.Abs(linesSumIncl - result.AmountInclVat);
-                _logger.LogDebug("[MISMATCH CHECK] NonZeroLines={Count} LinesSumIncl={Lines} HeaderIncl={Header} Diff={Diff}", nonZeroLines.Count, linesSumIncl, result.AmountInclVat, diffIncl);
-
-                if (result.Lines.Count > 0 && diffExcl >= 0.05m && diffIncl >= 0.05m)
-                    result.Flags.Add(OcrFlag.AmountMismatch);
-
-                // EN 16931 gates (AMOUNT_ARITHMETIC_MISMATCH / MISSING_MONEY_FIELD / TOTALS_OUT_OF_RANGE):
-                // the same helper the save paths use, so the preview shows what will be stored
+                // EN 16931 gates (AMOUNT_ARITHMETIC_MISMATCH / MISSING_MONEY_FIELD / TOTALS_OUT_OF_RANGE,
+                // AMOUNT_MISMATCH / LINE_SUM_ROUNDING by BR-CO-10, D-040): the same helper the save paths
+                // use, so the preview shows what will be stored
                 ExpenseService.RecomputeValidationFlags(result.Flags, result.AmountExclVat, result.VatAmount,
                     result.AmountInclVat, ExpenseService.ToValidationLines(result.Lines));
 

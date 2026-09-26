@@ -140,12 +140,82 @@ public class ExpenseOcrServiceAmountConsistencyTests
         Assert.DoesNotContain(OcrFlag.AmountArithmeticMismatch, flags);
     }
 
+    // ---------- BR-CO-10 bands (D-040) ----------
+
+    private static ExpenseService.ValidationLine[] Lines(params decimal[] nets) =>
+        nets.Select(n => new ExpenseService.ValidationLine(n, 1m, null)).ToArray();
+
+    [Fact]
+    public void BrCo10_LinesEqualHeader_NoLineFlag()
+    {
+        var flags = Flags(100m, 21m, 121m, Lines(60m, 40m));
+
+        Assert.DoesNotContain(OcrFlag.AmountMismatch, flags);
+        Assert.DoesNotContain(OcrFlag.LineSumRounding, flags);
+    }
+
+    [Theory]
+    [InlineData(99.99)]   // 0.01
+    [InlineData(99.98)]   // 0.02
+    [InlineData(99.95)]   // 0.05 — the band's upper edge is still information
+    [InlineData(100.05)]  // lines above the header
+    public void BrCo10_DifferenceUpTo5Cents_LineSumRounding_Information(double lineNet)
+    {
+        var flags = Flags(100m, 21m, 121m, Lines((decimal)lineNet));
+
+        Assert.Contains(OcrFlag.LineSumRounding, flags);
+        Assert.DoesNotContain(OcrFlag.AmountMismatch, flags);
+    }
+
+    [Theory]
+    [InlineData(99.94)]   // 0.06
+    [InlineData(100.06)]
+    [InlineData(50)]
+    public void BrCo10_DifferenceAbove5Cents_AmountMismatch(double lineNet)
+    {
+        var flags = Flags(100m, 21m, 121m, Lines((decimal)lineNet));
+
+        Assert.Contains(OcrFlag.AmountMismatch, flags);
+        Assert.DoesNotContain(OcrFlag.LineSumRounding, flags);
+    }
+
+    [Fact]
+    public void BrCo10_LineSumRoundedPerSchematron_Passes()
+    {
+        // 33.333 × 3 = 99.999 → round(99.999 × 100) / 100 = 100.00 = header
+        var flags = Flags(100m, 21m, 121m, Lines(33.333m, 33.333m, 33.333m));
+
+        Assert.DoesNotContain(OcrFlag.AmountMismatch, flags);
+        Assert.DoesNotContain(OcrFlag.LineSumRounding, flags);
+    }
+
+    [Fact]
+    public void RealInvoice_370_LinesFromBePvmColumn_AmountMismatch()
+    {
+        // 370: lines sum 506,06 („Be PVM" column read as line nets) vs header net 418,24.
+        // The two-line split is synthetic; the sum and header are the real figures.
+        var flags = Flags(418.24m, 87.83m, 506.07m, Lines(300.00m, 206.06m));
+
+        Assert.Contains(OcrFlag.AmountMismatch, flags);
+        Assert.DoesNotContain(OcrFlag.AmountArithmeticMismatch, flags);
+    }
+
+    [Fact]
+    public void BrCo10_HeaderNetMissing_NotApplicable_NoLineFlag()
+    {
+        // net ≤ 0 → null: BR-CO-10 cannot run; MISSING_MONEY_FIELD carries the stop
+        var flags = Flags(0m, 0m, 465374.45m, Lines(465374.45m));
+
+        Assert.Equal(new[] { OcrFlag.MissingMoneyField }, flags);
+    }
+
     [Fact]
     public void StaleOwnedFlags_Dropped_OtherFlagsKept()
     {
         var flags = new List<string>
         {
-            OcrFlag.OwnCompany, OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange
+            OcrFlag.OwnCompany, OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
+            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding
         };
 
         ExpenseService.RecomputeValidationFlags(flags, 100m, 21m, 121m, NoLines);

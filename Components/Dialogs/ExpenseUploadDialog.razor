@@ -763,12 +763,7 @@
                     ocrFlags.Add(OcrFlag.ZeroVat);
                 if (result.Lines.Count == 0)
                     ocrFlags.Add(OcrFlag.LinesNotFound);
-                if (result.Lines.Count > 0 && result.AmountExclVat > 0)
-                {
-                    var linesSum = result.Lines.Sum(l => l.AmountExclVat);
-                    if (Math.Abs(linesSum - result.AmountExclVat) > 0.01m)
-                        ocrFlags.Add(OcrFlag.AmountMismatch);
-                }
+                // AMOUNT_MISMATCH / LINE_SUM_ROUNDING come from ProcessAsync (BR-CO-10, D-040), merged below
                 if (result.Confidence.Overall > 0 && result.Confidence.Overall < 50)
                     ocrFlags.Add(OcrFlag.LowConfidence);
 

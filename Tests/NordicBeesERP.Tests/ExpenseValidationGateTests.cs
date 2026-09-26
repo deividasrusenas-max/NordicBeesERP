@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using NordicBeesERP.Helpers;
 using NordicBeesERP.Models;
 using NordicBeesERP.Models.Expenses;
 using NordicBeesERP.Services;
@@ -134,12 +135,18 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
         await context.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", supplierId);
     }
 
+    private Task<(List<string> Flags, string Status)> RunAsync(WritePath path, decimal excl, decimal vat, decimal incl,
+        GateLine[] lines, params string[] incomingFlags) =>
+        RunAsync(path, "NEEDS_REVIEW", excl, vat, incl, lines, incomingFlags);
+
     /// <summary>
     /// Writes one invoice through <paramref name="path"/> with the given final header, lines and incoming
     /// flags (the OCR result's flags, or the stored flags for an edit), and returns the stored flags and status.
+    /// <paramref name="startStatus"/> is the stored row's status before re-OCR / edit: tests expecting
+    /// NEEDS_REVIEW start from PENDING, so the outcome proves the gate held the invoice.
     /// </summary>
-    private async Task<(List<string> Flags, string Status)> RunAsync(WritePath path, decimal excl, decimal vat, decimal incl,
-        GateLine[] lines, params string[] incomingFlags)
+    private async Task<(List<string> Flags, string Status)> RunAsync(WritePath path, string startStatus,
+        decimal excl, decimal vat, decimal incl, GateLine[] lines, params string[] incomingFlags)
     {
         var supplierId = await InsertSupplierAsync();
         int? id = null;
@@ -153,12 +160,12 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
                     break;
                 case WritePath.ReOcr:
                     // the stored row is unrelated to the case; re-OCR replaces its header, lines and flags
-                    id = await InsertInvoiceAsync(supplierId, 10m, 2.1m, 12.1m, Array.Empty<string>());
+                    id = await InsertInvoiceAsync(supplierId, 10m, 2.1m, 12.1m, Array.Empty<string>(), startStatus);
                     await InsertLinesAsync(id.Value, new[] { new GateLine(10m) });
                     await service.UpdateFromOcrAsync(id.Value, NewOcrResult(supplierId, excl, vat, incl, lines, incomingFlags));
                     break;
                 case WritePath.Edit:
-                    id = await InsertInvoiceAsync(supplierId, excl, vat, incl, incomingFlags);
+                    id = await InsertInvoiceAsync(supplierId, excl, vat, incl, incomingFlags, startStatus);
                     await InsertLinesAsync(id.Value, lines);
                     await service.SaveInvoiceEditAsync(await ReloadAsync(id.Value), await LinesAsync(id.Value), "Test User");
                     break;
@@ -180,7 +187,7 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
     [InlineData(WritePath.Edit)]
     public async Task BrCo15_OneCentOff_ArithmeticMismatch_NeedsReview(WritePath path)
     {
-        var (flags, status) = await RunAsync(path, 100m, 21m, 121.01m, new[] { new GateLine(100m) });
+        var (flags, status) = await RunAsync(path, "PENDING", 100m, 21m, 121.01m, new[] { new GateLine(100m) });
 
         Assert.Contains(OcrFlag.AmountArithmeticMismatch, flags);
         Assert.Equal("NEEDS_REVIEW", status);
@@ -209,7 +216,7 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
     public async Task RealInvoice_213_ZeroNetHugeGross_MissingMoneyField_NeedsReview(WritePath path)
     {
         // 0,00 / 465 374,45: net → null, BR-CO-15 not applicable, MISSING_MONEY_FIELD stops the invoice
-        var (flags, status) = await RunAsync(path, 0m, 0m, 465374.45m, new[] { new GateLine(0m) });
+        var (flags, status) = await RunAsync(path, "PENDING", 0m, 0m, 465374.45m, new[] { new GateLine(0m) });
 
         Assert.Contains(OcrFlag.MissingMoneyField, flags);
         Assert.DoesNotContain(OcrFlag.AmountArithmeticMismatch, flags);
@@ -235,6 +242,124 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
         Assert.DoesNotContain(OcrFlag.MissingMoneyField, flags);
         Assert.Contains(OcrFlag.OwnCompany, flags); // not owned by the gate — kept
         Assert.Equal("PENDING", status);
+    }
+
+    // ---------- (b) BR-CO-10: LINE_SUM_ROUNDING (≤ 0.05 €, information) vs AMOUNT_MISMATCH (review), D-040 ----------
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task BrCo10_TwoCentsOff_LineSumRounding_Information_Pending(WritePath path)
+    {
+        // before D-040 the edit path flagged this as AMOUNT_MISMATCH (0.01), the OCR path not at all (0.05)
+        var (flags, status) = await RunAsync(path, 100m, 21m, 121m, new[] { new GateLine(60m), new GateLine(39.98m) });
+
+        Assert.Contains(OcrFlag.LineSumRounding, flags);
+        Assert.DoesNotContain(OcrFlag.AmountMismatch, flags);
+        Assert.Equal("PENDING", status);
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task BrCo10_SixCentsOff_AmountMismatch_NeedsReview(WritePath path)
+    {
+        // before D-040 the OCR path let 0.06 through when the line gross happened to match within 0.05
+        var (flags, status) = await RunAsync(path, "PENDING", 100m, 21m, 121m, new[] { new GateLine(99.94m) });
+
+        Assert.Contains(OcrFlag.AmountMismatch, flags);
+        Assert.DoesNotContain(OcrFlag.LineSumRounding, flags);
+        Assert.Equal("NEEDS_REVIEW", status);
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task RealInvoice_370_LinesSum506_06_VsHeaderNet418_24_AmountMismatch(WritePath path)
+    {
+        // 370: lines („Be PVM") sum 506,06 vs header net 418,24. The two-line split is synthetic.
+        var (flags, status) = await RunAsync(path, "PENDING", 418.24m, 87.83m, 506.07m,
+            new[] { new GateLine(300.00m), new GateLine(206.06m) });
+
+        Assert.Contains(OcrFlag.AmountMismatch, flags);
+        Assert.DoesNotContain(OcrFlag.AmountArithmeticMismatch, flags);
+        Assert.Equal("NEEDS_REVIEW", status);
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task BrCo10_StaleLineFlags_Dropped_WhenLinesMatch(WritePath path)
+    {
+        // S2a carry-over: AMOUNT_MISMATCH and LINE_SUM_ROUNDING are recomputed flags, never carried over
+        var (flags, status) = await RunAsync(path, 100m, 21m, 121m, new[] { new GateLine(100m) },
+            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding);
+
+        Assert.DoesNotContain(OcrFlag.AmountMismatch, flags);
+        Assert.DoesNotContain(OcrFlag.LineSumRounding, flags);
+        Assert.Equal("PENDING", status);
+    }
+
+    [Fact]
+    public void LineSumRounding_LithuanianLabel_InformationOnly()
+    {
+        Assert.Equal("LINE_SUM_ROUNDING", OcrFlag.LineSumRounding);
+        Assert.Equal("Eilučių suma skiriasi keliais centais", ExpenseStatusHelper.GetFlagLabel(OcrFlag.LineSumRounding));
+        Assert.Equal(MudBlazor.Color.Default, ExpenseStatusHelper.GetFlagColor(OcrFlag.LineSumRounding));
+        Assert.False(ExpenseStatusHelper.IsCriticalFlag(OcrFlag.LineSumRounding));
+        Assert.False(ExpenseStatusHelper.NeedsAttention("PAID", JsonSerializer.Serialize(new[] { OcrFlag.LineSumRounding })));
+    }
+
+    [Fact]
+    public async Task BrCo10_ApprovedInvoice_GateFieldsNotEdited_StaysApproved()
+    {
+        // Lines off by 1,00 €: the gate flags AMOUNT_MISMATCH on the next save, but a notes-only edit changes
+        // no gate field and no line, so the approval stands.
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync(supplierId, 100m, 21m, 121m, Array.Empty<string>(), "PENDING", "Approver");
+        await InsertLinesAsync(id, new[] { new GateLine(99m) });
+        try
+        {
+            var invoice = await ReloadAsync(id);
+            invoice.Notes = "Tik pastaba";
+            await CreateService().SaveInvoiceEditAsync(invoice, await LinesAsync(id), "Test User");
+
+            var after = await ReloadAsync(id);
+            Assert.Equal("PENDING", after.Status);
+            Assert.Equal("Approver", after.ApprovedBy);
+            Assert.Contains(OcrFlag.AmountMismatch, FlagsOf(after));
+        }
+        finally
+        {
+            await CleanupAsync(id, supplierId);
+        }
+    }
+
+    [Fact]
+    public async Task BrCo10_ApprovedInvoice_LineEdited_NeedsReview_ApprovalVoided()
+    {
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync(supplierId, 100m, 21m, 121m, Array.Empty<string>(), "PENDING", "Approver");
+        await InsertLinesAsync(id, new[] { new GateLine(100m) });
+        try
+        {
+            var lines = await LinesAsync(id);
+            lines[0].AmountExclVat = 99m;
+            await CreateService().SaveInvoiceEditAsync(await ReloadAsync(id), lines, "Test User");
+
+            var after = await ReloadAsync(id);
+            Assert.Equal("NEEDS_REVIEW", after.Status);
+            Assert.Null(after.ApprovedBy);
+            Assert.Contains(OcrFlag.AmountMismatch, FlagsOf(after));
+        }
+        finally
+        {
+            await CleanupAsync(id, supplierId);
+        }
     }
 
     // ---------- Approval retention (PLAN §8) ----------

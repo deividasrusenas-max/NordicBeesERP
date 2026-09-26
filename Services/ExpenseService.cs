@@ -505,9 +505,10 @@ namespace NordicBeesERP.Services
         {
             // recomputed from the edited values
             OcrFlag.MissingInvNumber, OcrFlag.MissingAmount, OcrFlag.ZeroVat, OcrFlag.LinesNotFound,
-            OcrFlag.AmountMismatch, OcrFlag.FutureDate, OcrFlag.StaleDate, OcrFlag.MissingInvDate,
+            OcrFlag.FutureDate, OcrFlag.StaleDate, OcrFlag.MissingInvDate,
             // recomputed by RecomputeValidationFlags (ValidationOwnedFlags)
             OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
+            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding,
             // explicit keep/drop rules
             OcrFlag.WrongRecipient, OcrFlag.VendorNotFound, OcrFlag.MissingDueDate, OcrFlag.LowConfidence
         };
@@ -524,9 +525,7 @@ namespace NordicBeesERP.Services
             if (edited.AmountInclVat == 0) flags.Add(OcrFlag.MissingAmount);
             if (edited.VatRate == 0 && edited.AmountInclVat > 0) flags.Add(OcrFlag.ZeroVat);
             if (lines.Count == 0) flags.Add(OcrFlag.LinesNotFound);
-            // D-019/D-035: header is authoritative; lines disagreeing with it (net, 0.01) are flagged, never copied over
-            if (lines.Count > 0 && Math.Abs(lines.Sum(l => l.AmountExclVat) - edited.AmountExclVat) > 0.01m)
-                flags.Add(OcrFlag.AmountMismatch);
+            // D-019/D-035: lines disagreeing with the header → AMOUNT_MISMATCH / LINE_SUM_ROUNDING (BR-CO-10, D-040)
             RecomputeValidationFlags(flags, edited.AmountExclVat, edited.VatAmount, edited.AmountInclVat, ToValidationLines(lines));
             RecomputeDateFlags(flags, edited.InvoiceDate != default ? edited.InvoiceDate : null,
                 stored.CreatedAt != default ? stored.CreatedAt : VilniusToday());
@@ -1613,7 +1612,8 @@ namespace NordicBeesERP.Services
         /// Flags that keep an invoice with a known supplier in NEEDS_REVIEW. The OCR Etapas 1 flags are
         /// classified per D-038: TOTALS_OUT_OF_RANGE, INVALID_IBAN, INVALID_VAT_FORMAT,
         /// VAT_RATE_NOT_ALLOWED, NUMBER_MISREAD and NUMBER_AMBIGUOUS are review;
-        /// LINE_AMOUNT_IMPLAUSIBLE, VAT_FORMAT_UNCHECKED and VAT_RATE_UNCHECKED are information only.
+        /// LINE_AMOUNT_IMPLAUSIBLE, VAT_FORMAT_UNCHECKED and VAT_RATE_UNCHECKED are information only, and so is
+        /// LINE_SUM_ROUNDING (BR-CO-10 difference ≤ 0.05 €, D-040).
         /// </summary>
         private static bool HasReviewFlag(IEnumerable<string> flags) =>
             flags.Any(f => f == OcrFlag.MissingAmount || f == OcrFlag.AmountMismatch ||
@@ -1657,8 +1657,12 @@ namespace NordicBeesERP.Services
         /// <summary>Flags owned by <see cref="RecomputeValidationFlags"/>: dropped and recomputed on every path.</summary>
         public static readonly IReadOnlyList<string> ValidationOwnedFlags = new[]
         {
-            OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange
+            OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
+            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding
         };
+
+        /// <summary>D-040: a BR-CO-10 difference up to this many euro is information (LINE_SUM_ROUNDING), above it review.</summary>
+        public const decimal LineSumRoundingBand = 0.05m;
 
         /// <summary>
         /// Runs the EN 16931 totals validator and the line rule on an invoice's final values.
@@ -1714,6 +1718,12 @@ namespace NordicBeesERP.Services
             // D-040: BR-CO-15 exact, per Schematron (replaces the flat 0.02 tolerance)
             if (outcome.Totals.Violations.Any(v => v.RuleId == En16931TotalsValidator.BrCo15))
                 flags.Add(OcrFlag.AmountArithmeticMismatch);
+            // D-019/D-040: header is authoritative; lines disagreeing with it are flagged, never copied over.
+            // BR-CO-10 replaces the old OCR-path (~0.05, net and gross) and edit-path (0.01, net) checks.
+            var brCo10 = outcome.Totals.Violations.FirstOrDefault(v => v.RuleId == En16931TotalsValidator.BrCo10);
+            if (brCo10 != null)
+                flags.Add(Math.Abs(brCo10.Actual - brCo10.Expected) <= LineSumRoundingBand
+                    ? OcrFlag.LineSumRounding : OcrFlag.AmountMismatch);
             if (outcome.Totals.OutOfRange.Count > 0) flags.Add(OcrFlag.TotalsOutOfRange);
         }
 
