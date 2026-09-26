@@ -1,12 +1,18 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-26 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; kitas — Etapas 1
+Atnaujinta: 2026-09-26 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **kodas baigtas `main` (v0.17.92), laukia staging patikrų**
 
 ## Dabartinė fazė
 
 Etapas 0 ir Etapas 0c — **BAIGTI, prode v0.17.91** (2026-09-26; `main` `a1ad12a` →
 `production`). Tame pačiame deploy'uje yra ir Etapo 1 validatoriai (IBAN, PVM kodo formatas,
 EN 16931 sumos) — **neprijungti**, niekur nekviečiami.
+
+**Etapas 1 — kodas baigtas `main`** (S1–S7, D-038…D-041; `e5cfb95`, versija 0.17.92 `b3e19ca`;
+**853 testai žali**, `dotnet test --filter "Category!=E2E"`). **Nedeploy'intas niekur** — laukia
+staging patikrų pagal `STAGING-CHECKS-ETAPAS1.md` (savininkas). Etapas 1 uždaromas **staginge**;
+prodo deploy'o nėra, kol Etapai 1–4 nebaigti (D-037, žr. žemiau). Staging DDL (`unit_price
+decimal(18,6)`) savininko pritaikytas.
 
 **Deploy politika — D-037:** kitas prodo deploy'us tik tada, kai Etapai 1–4 visiškai baigti ir
 patikrinti staginge. `main` kaupia Etapus 1–4, staging — integracijos aplinka, prodas lieka
@@ -32,6 +38,19 @@ tik planavimo pokalbis.
 | Etapas 0 | `5e44f7c..c93e9af` (8) | `.opencode/reports/ocr-etapas0-20260925-2354.md` |
 | Etapas 0c | `4eb3f5d..8d5b95f` (intervale yra ir `50f6a3d` — Etapo 1 `IbanValidator`) | `.opencode/reports/ocr-etapas0c-20260926-0136.md` |
 | Etapo 1 validatoriai | merge `4a04361` .. `8535767` | `overnight-20260926-0157.md`, `prepush-20260926-0301.md` |
+
+## Etapas 1 — commit'ų intervalai (`main`, ne prode)
+
+| Sesija | Intervalas | Ką daro | Raportas |
+|---|---|---|---|
+| S1 | `6a4a33d`, `c94d38f`, `21b0234`, `82cb1e9` (+ `41d69a6`) | grynieji validatoriai: eilutės taisyklė nemeta, PVM kodo formatas, `VatRateTable`, `LocaleNumberCandidates` | `etapas1-s1-s2-20260926-1427.md` |
+| S2 | `c7bd26b`, `3e83933`, `c89ff74` | redagavimas perkelia nežinomas vėliavėles (OWN_COMPANY), naujos vėliavėlės/etiketės, redagavimas rašo `unit_price` | tas pats |
+| S3 | `bfd34da` (D-039), `8c67a62`, `fd28df4` | re-OCR pagal `file_id` (mygtukas, failo vardas, transakcija, paskirstymų patvirtinimas), `unit_price` → `decimal(18,6)` migracija | `etapas1-s3-20260926-1624.md` |
+| S4 | `0b1beb2` (D-040) .. `a16ca5e` | EN 16931 vartai: BR-CO-15 tiksliai, BR-CO-10 juostos (`LINE_SUM_ROUNDING`), `MISSING_MONEY_FIELD`, `TOTALS_OUT_OF_RANGE`, eilutės taisyklė (informacija), taisyklių žinutės detalėje | `etapas1-s4-20260926-1714.md` |
+| S5 | `f401f6e` .. `ccbc58f` | IBAN ir PVM kodo formato vartai, `VAT_COUNTRY_MISMATCH`, tiekėjo sukūrimo dialogas neperkelia neteisingo IBAN/PVM kodo | `etapas1-s5-s6-20260926-1859.md` |
+| S6 | `6c817c6` .. `51b20b6`, `7857ad0` | PVM tarifų vartai (visos eilutės NEPATVIRTINTOS → tik `VAT_RATE_UNCHECKED`), UI nuoseklumas | tas pats |
+| Korpusas + S7 | `1a81092`, `28dc8e1` (D-041), `6cb4c9f`, `279a3a6`, `6bb9158`, `e5cfb95` | Azure korpusas (už git ribų), lokalės skaičių aptikimas (`NUMBER_MISREAD` / `NUMBER_AMBIGUOUS`, peržiūra), suderinimas nebetrina eilučių (`LINE_LARGE_QUANTITY`, `LINE_DUPLICATE_DESCRIPTION`) | `etapas1-corpus-s7-20260926-2025.md` |
+| S8 | `216dd5d` | `STAGING-CHECKS-ETAPAS1.md` | `etapas1-s8-*.md` |
 
 ## Staging patikrų rezultatai (savininkas, 2026-09-26)
 
@@ -72,8 +91,8 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
   išsaugojimas vėliavėles perkuria iš naujo ir `OWN_COMPANY` į perkeliamų sąrašą neįtraukia
   (`ExpenseService.ComputeManualEditFlags`, `ExpenseService.cs:498-529`). T. y. redagavimas
   **numeta** `OWN_COMPANY` — tas pats nutinka `INVALID_VAT_RATE`. Nėra požymių, kad tai
-  sąmoningas sprendimas (`LOW_CONFIDENCE` numetamas su komentaru, šie du — be jokio). Taisyti — Etape 1
-  (`PLAN-ETAPAS1.md` §5).
+  sąmoningas sprendimas (`LOW_CONFIDENCE` numetamas su komentaru, šie du — be jokio). Sutaisyta kode Etape 1 (S2a, `c7bd26b`: redagavimas perkelia viską, ko neperskaičiuoja); laukia staging
+  patikros (`STAGING-CHECKS-ETAPAS1.md` 12). `INVALID_VAT_RATE` vis dar perkeliamas be perskaičiavimo.
 - **Užšaldyto dialogo tekstas** „Patikrinkite ar visi serveriai veikia ir bandykite dar kartą."
   rodomas ir po ne-OCR atmetimų (`ExpenseUploadDialog.razor:83-85`, FROZEN §3) — reikia
   leidimo.
@@ -88,11 +107,19 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 - **decimal-precision radiniai** (`nordicbees-ef-decimal-precision-annotation-missing`).
   Ankstesnėje būsenoje — 12; 0c raporto priede po C8 — 57 šios taisyklės radiniai, nė vieno
   `Models/Expenses/`. Skaičių reikia suderinti.
-- **Re-OCR saugomiems failams nepasiekiamas** (STAGING-CHECKS 2 įspėjimas) — Etapas 1
-  (`PLAN-ETAPAS1.md` §4).
+- **Re-OCR saugomiems failams** — sutvarkyta kode (S3, `8c67a62`); laukia staging patikros (`STAGING-CHECKS-ETAPAS1.md` 9–11).
 - **Data Protection raktai neišsaugomi tarp konteinerių** — kiekvienas deploy'us atjungia
   naudotojus (už OCR ribų).
 - **3,8 GB RAM `lakstena-dev`** — prodas, staging, DB ir CI kartu (už OCR ribų).
+- **PVM tarifų lentelė — visos eilutės NEPATVIRTINTOS** (`Services/Validation/VatRateTable.cs`): kol buhalterė
+  nepatikrina pagal EK TEDB, vartai tik informuoja (`VAT_RATE_UNCHECKED` beveik ant kiekvienos sąskaitos).
+  EE 22 → 24 % keitimo data nežinoma (eilutė nesuskaidyta); RO — dvi eilutės; „LI" tiekėjai (11) — įtariamos
+  pagrindinių duomenų klaidos, lentelėje nėra (D-039).
+- **Flaky testas** `CreditNoteServiceTests.UpdateCreditNoteAsync_NonExistentInvoiceLineId_…` — kartais krenta
+  (nesusijęs su OCR; nesutvarkytas).
+- **Du `IbanValidator`** (`Helpers` ir `Services.Validation`) — konsolidacija atskira užduotis.
+- **Vėliavėlių čipai** `INVALID_IBAN` / `INVALID_VAT_FORMAT` su tiekėju vis dar raudoni (`IsCriticalFlag`), nors
+  D-039 sako „informacija" — tik atvaizdavimas.
 - **Prodo duomenų valymas su buhaltere** — `PROD-DATA-FINDINGS-2026-09-25.md` §6, Q-010.
 - **„248 sąskaitos reikalauja dėmesio"** skaitiklis — beprasmis triukšmas, kol nevalyti
   duomenys.
@@ -107,7 +134,11 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 
 ## Kitas žingsnis
 
-**Etapas 1** — planas `PLAN-ETAPAS1.md` (savininko ir planavimo patarėjo peržiūrai prieš kodą).
+**Etapas 1 staginge:** savininkas įvykdo `STAGING-CHECKS-ETAPAS1.md` ir pateikia rezultatus (go / no-go
+sąrašas dokumento gale). Po to — Etapas 2. **Deploy politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4
+nebaigti ir nepatikrinti staginge; dalinių deploy'ų į prodą nėra. Prieš galutinį deploy'ą — dokumento
+„Must be finished…" sąrašas (PVM tarifai, EE data, LI tiekėjai, drag & drop, našlaičiai dialogai, flaky testas,
+prodo duomenų valymas, `unit_price` DDL prode).
 
 ## Padaryta
 
@@ -123,6 +154,7 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 - 2026-09-25/26 (Claude Code): Etapas 0 (8 commit'ai), Etapas 0c (C1–C9 + fix-up'ai),
   D-031…D-036, Etapo 1 validatoriai; `STAGING-CHECKS-ETAPAS0.md`.
 - 2026-09-26: staging patikros (iš dalies, žr. lentelę), prodo deploy'us v0.17.91, D-037.
+- 2026-09-26 (Claude Code): Etapas 1 S1–S7 (+ Azure korpusas už git ribų, D-038…D-041), 853 testai; S8 — `STAGING-CHECKS-ETAPAS1.md`.
 
 ## Storage gate — įrodymai (2026-09-25, staging)
 
@@ -162,7 +194,7 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 | Saugykla, 1 žingsnis | baigta, gate uždarytas 2026-09-25 |
 | Etapas 0 (tylios klaidos, vartai) | **baigta, prode v0.17.91**; staging patikros dalinės (žr. lentelę) |
 | Etapas 0c (redagavimas, įvestis, biudžetas) | **baigta, prode v0.17.91**; drag & drop FAILED, biudžetas nepatikrintas |
-| Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai) | validatoriai prode, neprijungti; planas `PLAN-ETAPAS1.md` |
+| Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai, re-OCR) | **kodas baigtas `main` (v0.17.92), 853 testai; laukia staging patikrų** (`STAGING-CHECKS-ETAPAS1.md`); prode nėra (D-037) |
 | Etapas 2 (tiekėjo kaskada) | laukia |
 | Etapas 3 (ekstrakcija — D-023 kryptis, D-016 atviras) | laukia; Q-006, Q-007, Q-009 prieš pradedant |
 | Etapas 4 (matavimas) | laukia |
