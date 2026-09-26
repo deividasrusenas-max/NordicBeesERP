@@ -39,6 +39,7 @@ public class ExpenseSupplierDocumentFlagsTests : IClassFixture<DbTestFixture>
     [Theory]
     [InlineData("LT12100001110100100")]        // WrongLength
     [InlineData("LT121000011101001000000")]    // WrongLength
+    [InlineData("LT35100001110100100")]        // WrongLength (19, LT needs 20) with a valid mod-97: needs the per-country length table
     [InlineData("LT12100001110100100$")]       // BadCharacters
     [InlineData("LT131000011101001000")]       // ChecksumFailed
     public void Iban_Invalid_FlagsInvalidIban(string iban)

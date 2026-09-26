@@ -20,6 +20,7 @@ public class SupplierPrefillGateTests
 
     [Theory]
     [InlineData("LT12100001110100100")]      // wrong length
+    [InlineData("LT35100001110100100")]      // wrong length (19, LT needs 20) but mod-97 valid: only the per-country length table catches it
     [InlineData("LT12100001110100100$")]     // bad character
     [InlineData("LT131000011101001000")]     // checksum
     public void Iban_Invalid_NotPrefilled_WithWarning(string iban)
