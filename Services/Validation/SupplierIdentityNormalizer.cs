@@ -81,7 +81,8 @@ public static class SupplierIdentityNormalizer
         return CollapseSpaces(DiacriticHelper.Fold(raw));
     }
 
-    private static readonly string[] AndWords = { "&", " ir ", " und ", " si ", " and " };
+    // "and" in the languages of our suppliers (folded); "&" is handled before punctuation is dropped
+    private static readonly HashSet<string> AndTokens = new() { "ir", "und", "si", "and" };
 
     // Legal-form tokens after folding (Į→i, Š→s, Ž→z, Ū→u, Ü→u) and punctuation → space, longest sequence first.
     private static readonly string[][] LegalForms =
@@ -107,13 +108,14 @@ public static class SupplierIdentityNormalizer
         var folded = NameExact(raw);
         if (folded.Length == 0) return string.Empty;
 
-        var s = " " + folded + " ";
-        foreach (var word in AndWords) s = s.Replace(word, " and ", StringComparison.Ordinal);
+        var s = folded.Replace("&", " and ", StringComparison.Ordinal);
 
         var sb = new StringBuilder(s.Length);
         foreach (var c in s)
             sb.Append(char.IsLetterOrDigit(c) ? c : ' ');
-        var tokens = sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var tokens = sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => AndTokens.Contains(t) ? "and" : t)
+            .ToList();
 
         var changed = true;
         while (changed && tokens.Count > 0)
@@ -135,6 +137,9 @@ public static class SupplierIdentityNormalizer
                 }
             }
         }
+
+        // a key made only of conjunctions ("Ir Ir", "&") says nothing about the company — it must never match
+        if (tokens.All(t => t == "and")) return string.Empty;
 
         return string.Join(' ', tokens);
     }

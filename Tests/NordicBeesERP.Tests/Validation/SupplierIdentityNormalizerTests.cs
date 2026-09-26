@@ -209,6 +209,9 @@ public class SupplierIdentityNormalizerTests
     [InlineData("UAB AB")]
     [InlineData("Sp. z o.o.")]
     [InlineData("„“")]
+    [InlineData("&")]          // only conjunctions left says nothing about the company (review of S2a)
+    [InlineData("Ir Ir")]
+    [InlineData("AS Ir")]
     [InlineData("")]
     [InlineData(null)]
     public void NameNormalized_NothingLeft_IsEmpty_SoItCanNeverMatch(string? raw)
