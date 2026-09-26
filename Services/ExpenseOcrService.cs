@@ -564,6 +564,7 @@ namespace NordicBeesERP.Services
                         else if (lineDto.UnitPrice.HasValue && lineDto.Quantity.HasValue)
                         {
                             lineDto.AmountExclVat = Math.Round(lineDto.UnitPrice.Value * lineDto.Quantity.Value, 2);
+                            lineDto.NetDerived = true;
                             lineDto.AmountInclVat = lineDto.VatRate > 0
                                 ? Math.Round(lineDto.AmountExclVat * (1 + lineDto.VatRate / 100), 2)
                                 : lineDto.AmountExclVat;

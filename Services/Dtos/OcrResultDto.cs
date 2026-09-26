@@ -75,6 +75,10 @@ public class OcrLineDto
     public decimal AmountInclVat { get; set; }
     public int? SuggestedCategoryId { get; set; }
     public decimal Confidence { get; set; } = 1.0m;
+
+    // The document gave no line amount: AmountExclVat was computed as UnitPrice × Quantity. Such a line is
+    // left out of the line rule (it would only compare the number with itself) but stays in BR-CO-10.
+    public bool NetDerived { get; set; }
 }
 
 public class OcrConfidenceDto

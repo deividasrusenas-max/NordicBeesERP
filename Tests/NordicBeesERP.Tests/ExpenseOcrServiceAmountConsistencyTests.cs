@@ -209,13 +209,80 @@ public class ExpenseOcrServiceAmountConsistencyTests
         Assert.Equal(new[] { OcrFlag.MissingMoneyField }, flags);
     }
 
+    // ---------- Line rule (D-038 Q3: information) ----------
+
+    [Fact]
+    public void LineRule_QuantityTimesPriceOff_LineAmountImplausible()
+    {
+        // 10 × 2,50 = 25,00 ≠ 30,00 (tolerance max(0,01; 0,5 % × 30) = 0,15)
+        var flags = Flags(30m, 6.3m, 36.3m, new[] { new ExpenseService.ValidationLine(30m, 10m, 2.5m) });
+
+        Assert.Equal(new[] { OcrFlag.LineAmountImplausible }, flags);
+    }
+
+    [Fact]
+    public void LineRule_WithinTolerance_NoFlag()
+    {
+        // 25,00 vs 25,10: difference 0,10 ≤ 0,1255
+        Assert.Empty(Flags(25.1m, 5.27m, 30.37m, new[] { new ExpenseService.ValidationLine(25.1m, 10m, 2.5m) }));
+    }
+
+    [Fact]
+    public void LineRule_RealInvoice_ASF0021438_FourDecimalPrice_Passes_RoundedPriceWouldNot()
+    {
+        // 3 888 × 0,2066 = 803,2608 ≈ 803,31 — passes only with the unrounded price (D-039: decimal(18,6))
+        Assert.Empty(Flags(803.31m, 168.70m, 972.01m, new[] { new ExpenseService.ValidationLine(803.31m, 3888m, 0.2066m) }));
+        Assert.Contains(OcrFlag.LineAmountImplausible,
+            Flags(803.31m, 168.70m, 972.01m, new[] { new ExpenseService.ValidationLine(803.31m, 3888m, 0.21m) }));
+    }
+
+    [Fact]
+    public void LineRule_NullPriceOrQuantity_NotApplicable_NoFlag()
+    {
+        var lines = new[]
+        {
+            new ExpenseService.ValidationLine(60m, 10m, null),
+            new ExpenseService.ValidationLine(40m, null, 2.5m)
+        };
+
+        Assert.Empty(Flags(100m, 21m, 121m, lines));
+        var outcome = ExpenseService.EvaluateValidation(100m, 21m, 121m, lines);
+        Assert.Equal(new[] { 1, 2 }, outcome.LineRule.NotApplicableLines);
+    }
+
+    [Fact]
+    public void LineRule_DerivedNet_ExcludedFromLineRule_KeptInBrCo10()
+    {
+        // a derived net that no longer matches quantity × price is not judged by the line rule,
+        // but it still counts in the line sum
+        var lines = new[] { new ExpenseService.ValidationLine(30m, 10m, 2.5m, NetDerived: true) };
+
+        var flags = Flags(100m, 21m, 121m, lines);
+        Assert.DoesNotContain(OcrFlag.LineAmountImplausible, flags);
+        Assert.Contains(OcrFlag.AmountMismatch, flags); // 30 vs 100
+
+        var outcome = ExpenseService.EvaluateValidation(100m, 21m, 121m, lines);
+        Assert.Equal(new[] { 1 }, outcome.DerivedLines);
+        Assert.Empty(outcome.LineRule.PassedLines);
+        Assert.Empty(outcome.LineRule.Violations);
+    }
+
+    [Fact]
+    public void LineRule_Overflow_LineAmountImplausible()
+    {
+        var flags = Flags(100m, 21m, 121m, new[] { new ExpenseService.ValidationLine(100m, 1e20m, 1e10m) });
+
+        Assert.Contains(OcrFlag.LineAmountImplausible, flags);
+        Assert.DoesNotContain(OcrFlag.TotalsOutOfRange, flags);
+    }
+
     [Fact]
     public void StaleOwnedFlags_Dropped_OtherFlagsKept()
     {
         var flags = new List<string>
         {
             OcrFlag.OwnCompany, OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
-            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding
+            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding, OcrFlag.LineAmountImplausible
         };
 
         ExpenseService.RecomputeValidationFlags(flags, 100m, 21m, 121m, NoLines);

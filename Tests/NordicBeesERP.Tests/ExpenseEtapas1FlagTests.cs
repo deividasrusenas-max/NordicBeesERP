@@ -43,6 +43,12 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
         OcrFlag.VatRateNotAllowed, OcrFlag.NumberMisread, OcrFlag.NumberAmbiguous
     };
 
+    // Same for information flags: LINE_AMOUNT_IMPLAUSIBLE left this list in S4(c) — recomputed on every path.
+    public static readonly TheoryData<string> CarriedInformationFlags = new()
+    {
+        OcrFlag.VatFormatUnchecked, OcrFlag.VatRateUnchecked
+    };
+
     // --- Codes, labels, colours (pure) ---
 
     [Fact]
@@ -178,7 +184,7 @@ public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
     }
 
     [Theory]
-    [MemberData(nameof(InformationFlags))]
+    [MemberData(nameof(CarriedInformationFlags))]
     public async Task EditSave_StoredInformationFlag_StaysPending(string flag)
     {
         var supplierId = await InsertSupplierAsync();

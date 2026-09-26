@@ -1070,7 +1070,11 @@
         if (decimal.TryParse(_lineQuantities[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var qty))
             _ocrLines[idx].Quantity = qty;
         if (decimal.TryParse(_lineAmounts[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amt))
+        {
+            // a typed amount is no longer derived from quantity × price, so the line rule checks it
+            if (amt != _ocrLines[idx].AmountExclVat) _ocrLines[idx].NetDerived = false;
             _ocrLines[idx].AmountExclVat = amt;
+        }
         if (decimal.TryParse(_lineVatRates[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var vat))
             _ocrLines[idx].VatRate = vat;
         _ocrLines[idx].AmountInclVat = _ocrLines[idx].AmountExclVat * (1 + _ocrLines[idx].VatRate / 100);

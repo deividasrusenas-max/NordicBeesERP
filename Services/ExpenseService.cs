@@ -508,7 +508,7 @@ namespace NordicBeesERP.Services
             OcrFlag.FutureDate, OcrFlag.StaleDate, OcrFlag.MissingInvDate,
             // recomputed by RecomputeValidationFlags (ValidationOwnedFlags)
             OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
-            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding,
+            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding, OcrFlag.LineAmountImplausible,
             // explicit keep/drop rules
             OcrFlag.WrongRecipient, OcrFlag.VendorNotFound, OcrFlag.MissingDueDate, OcrFlag.LowConfidence
         };
@@ -1658,7 +1658,7 @@ namespace NordicBeesERP.Services
         public static readonly IReadOnlyList<string> ValidationOwnedFlags = new[]
         {
             OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField, OcrFlag.TotalsOutOfRange,
-            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding
+            OcrFlag.AmountMismatch, OcrFlag.LineSumRounding, OcrFlag.LineAmountImplausible
         };
 
         /// <summary>D-040: a BR-CO-10 difference up to this many euro is information (LINE_SUM_ROUNDING), above it review.</summary>
@@ -1725,11 +1725,17 @@ namespace NordicBeesERP.Services
                 flags.Add(Math.Abs(brCo10.Actual - brCo10.Expected) <= LineSumRoundingBand
                     ? OcrFlag.LineSumRounding : OcrFlag.AmountMismatch);
             if (outcome.Totals.OutOfRange.Count > 0) flags.Add(OcrFlag.TotalsOutOfRange);
+            // D-038 Q3: the line rule is information only. A line whose quantity × price overflows is
+            // nonsense input of the same kind and is reported with it.
+            if (outcome.LineRule.Violations.Count > 0 || outcome.LineRule.OutOfRangeLines.Count > 0)
+                flags.Add(OcrFlag.LineAmountImplausible);
         }
 
         internal static List<ValidationLine> ToValidationLines(IEnumerable<OcrLineDto> lines) =>
-            lines.Select(l => new ValidationLine(l.AmountExclVat, l.Quantity, l.UnitPrice)).ToList();
+            lines.Select(l => new ValidationLine(l.AmountExclVat, l.Quantity, l.UnitPrice, l.NetDerived)).ToList();
 
+        // Stored lines carry no "derived" marker; the line rule uses the stored unit_price (decimal(18,6), D-039),
+        // and a NULL price makes the rule not applicable for that line.
         private static List<ValidationLine> ToValidationLines(IEnumerable<ExpenseInvoiceLine> lines) =>
             lines.Select(l => new ValidationLine(l.AmountExclVat, l.Quantity, l.UnitPrice)).ToList();
 

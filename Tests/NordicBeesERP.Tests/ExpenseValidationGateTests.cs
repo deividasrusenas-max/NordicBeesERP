@@ -28,7 +28,7 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
     public enum WritePath { Create, ReOcr, Edit }
 
     /// <summary>One invoice line of a case.</summary>
-    public sealed record GateLine(decimal Net, decimal? Quantity = 1m, decimal? UnitPrice = null);
+    public sealed record GateLine(decimal Net, decimal? Quantity = 1m, decimal? UnitPrice = null, bool Derived = false);
 
     private ExpenseService CreateService() =>
         new(_fixture.Factory, new NullAuthService(), new DefaultCompanySettingsService());
@@ -104,7 +104,8 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
             UnitPrice = l.UnitPrice,
             AmountExclVat = l.Net,
             VatRate = 21m,
-            AmountInclVat = Math.Round(l.Net * 1.21m, 2)
+            AmountInclVat = Math.Round(l.Net * 1.21m, 2),
+            NetDerived = l.Derived
         }).ToList()
     };
 
@@ -355,6 +356,96 @@ public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
             Assert.Equal("NEEDS_REVIEW", after.Status);
             Assert.Null(after.ApprovedBy);
             Assert.Contains(OcrFlag.AmountMismatch, FlagsOf(after));
+        }
+        finally
+        {
+            await CleanupAsync(id, supplierId);
+        }
+    }
+
+    // ---------- (c) Line rule: LINE_AMOUNT_IMPLAUSIBLE, information only (D-038 Q3) ----------
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task LineRule_Violation_LineAmountImplausible_Information_Pending(WritePath path)
+    {
+        // 10 × 2,50 = 25,00 ≠ 30,00; information does not hold the invoice
+        var (flags, status) = await RunAsync(path, 30m, 6.3m, 36.3m, new[] { new GateLine(30m, 10m, 2.5m) });
+
+        Assert.Contains(OcrFlag.LineAmountImplausible, flags);
+        Assert.Equal("PENDING", status);
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task LineRule_RealInvoice_ASF0021438_FourDecimalUnitPrice_Passes(WritePath path)
+    {
+        // 3 888 × 0,2066 = 803,2608 ≈ 803,31. On the edit path this reads the stored unit_price back: it
+        // passes only because the column now keeps 6 decimals (D-039) — at 0,21 it would be 816,48.
+        var (flags, status) = await RunAsync(path, 803.31m, 168.70m, 972.01m, new[] { new GateLine(803.31m, 3888m, 0.2066m) });
+
+        Assert.DoesNotContain(OcrFlag.LineAmountImplausible, flags);
+        Assert.Equal("PENDING", status);
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task LineRule_NullUnitPrice_NotApplicable_NoFlag(WritePath path)
+    {
+        var (flags, _) = await RunAsync(path, 30m, 6.3m, 36.3m, new[] { new GateLine(30m, 10m, null) });
+
+        Assert.DoesNotContain(OcrFlag.LineAmountImplausible, flags);
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task LineRule_DerivedNet_NoFlag_SameOnEveryPath(WritePath path)
+    {
+        // 3 × 0,3333 = 0,9999 → derived net 1,00. The OCR paths skip the line (derived); the edit path has no
+        // marker and checks it, which passes because a derived net is within tolerance by construction.
+        var (flags, status) = await RunAsync(path, 1m, 0.21m, 1.21m, new[] { new GateLine(1m, 3m, 0.3333m, Derived: true) });
+
+        Assert.DoesNotContain(OcrFlag.LineAmountImplausible, flags);
+        Assert.Equal("PENDING", status);
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    [InlineData(WritePath.Edit)]
+    public async Task LineRule_StaleFlag_Dropped_WhenLineIsPlausible(WritePath path)
+    {
+        var (flags, _) = await RunAsync(path, 25m, 5.25m, 30.25m, new[] { new GateLine(25m, 10m, 2.5m) },
+            OcrFlag.LineAmountImplausible);
+
+        Assert.DoesNotContain(OcrFlag.LineAmountImplausible, flags);
+    }
+
+    [Fact]
+    public async Task LineRule_ApprovedInvoice_GateFieldsNotEdited_StaysApproved()
+    {
+        // information never reopens anything; stated per PLAN §8 for every gate
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync(supplierId, 30m, 6.3m, 36.3m, Array.Empty<string>(), "PENDING", "Approver");
+        await InsertLinesAsync(id, new[] { new GateLine(30m, 10m, 2.5m) });
+        try
+        {
+            var invoice = await ReloadAsync(id);
+            invoice.Notes = "Tik pastaba";
+            await CreateService().SaveInvoiceEditAsync(invoice, await LinesAsync(id), "Test User");
+
+            var after = await ReloadAsync(id);
+            Assert.Equal("PENDING", after.Status);
+            Assert.Equal("Approver", after.ApprovedBy);
+            Assert.Contains(OcrFlag.LineAmountImplausible, FlagsOf(after));
         }
         finally
         {
