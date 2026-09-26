@@ -411,6 +411,71 @@ S4. Staging matavimas 2026-09-26 (savininkas, plano §7 užklausa).
 
 ---
 
+## D-041 — S7 apimtis pagal korpusą (2026-09-26)
+
+**Kontekstas.** D-038 Q9 leido ~11 Azure kvietimų korpusą, saugomą **už git ribų**
+(`~/NordicBeesERP-corpus/`, asmens duomenys). PLAN-ETAPAS1 §3.3: „ar `NUMBER_AMBIGUOUS` dažnai
+suveikia teisingoms reikšmėms — spręsti pagal duomenis". Korpusas surinktas vienkartine
+programa už repozitorijos ribų (ta pati `prebuilt-invoice`, `lt-LT`, `pages 1-2`, SDK 1.0.0
+API versija kaip `ExpenseOcrService`; raktas tik iš aplinkos kintamųjų).
+
+**Korpuso dydis.** 14 vietinių PDF: 11 skaitmeninių (11 Azure kvietimų), 3 skenuoti — atmesti
+D-032 patikra prieš Azure. 11 atsakymų, 52 sąskaitų eilutės.
+
+**Skaičiai** (`LocaleNumberCandidates`, kiekvieno skaitinio lauko atspausdintas `content` prieš
+Azure tipizuotą reikšmę; M = sutampa, X = klaidingai perskaityta, A = dviprasmiška, NC = nėra ką tikrinti):
+
+| Lauko tipas | M | X | A | NC |
+|---|---|---|---|---|
+| antraštės sumos (be PVM, PVM, su PVM) | 31 | 0 | 0 | 0 |
+| kiekis | 37 | 0 | 0 | 0 |
+| vieneto kaina | 25 | 3 | 1 | 0 |
+| eilutės suma | 48 | 0 | 0 | 1 |
+
+- 3 X — vienos sąskaitos kuro kainos su trimis skaitmenimis po kablelio: atspausdinta „0,115",
+  „0,118", „0,006"; Azure grąžino 115, 118, 6. Griežtas kandidatas kiekvienu atveju vienintelis
+  (0,115 / 0,118 / 0,006). Šios klasės PLAN-ETAPAS1 nenumatė (jame — tik kiekiai).
+- 1 A — „11,990" (kandidatai 11,99 ir 11 990), Azure grąžino 11 990, kiekis 1, eilutės suma 11,99:
+  **Azure pasirinkimas klaidingas**, eilutės aritmetika (1 × 11 990 ≠ 11,99) jam prieštarauja.
+- 1 NC — eilutės sumos lauko tekstas „€" be reikšmės (nėra ką lyginti).
+- Antraštės sumos ir kiekiai: 0 klaidų iš 68 patikrintų laukų. Kiekių su „1,000"-tipo dviprasmybe
+  korpuse nėra (0 iš 37).
+
+**Sprendimai.**
+
+1. **`NUMBER_MISREAD`** (Azure reikšmė nėra griežtas kandidatas) — **peržiūra, visada**. Tai tikra
+   klaida, ne spėjimas (3 iš 3 korpuso atvejų — tikros Azure klaidos).
+2. **`NUMBER_AMBIGUOUS` — peržiūra, visada.** D-041 sąlyga švelninti (informacija, kai eilutės
+   aritmetika sutampa su Azure pasirinkimu) taikoma tik jei korpusas rodo, kad vėliava dažnai
+   suveikia **teisingoms** reikšmėms. Korpusas rodo priešingai: 1 dviprasmybė iš 118 patikrintų
+   skaitinių laukų (0 iš 37 kiekių), ir ta viena — klaidinga reikšmė, kurios aritmetika **nepatvirtina**
+   (todėl ir švelninta taisyklė duotų peržiūrą). Aritmetikos išimtis nerealizuojama. Ribotumas:
+   11 sąskaitų — mažas pavyzdys; jei vėliau (staging) pasirodys daug teisingų „1,000" kiekių,
+   sprendimas peržiūrimas su tais skaičiais.
+3. **Reikšmės niekada nekeičiamos** (D-038 Q6): rodomi tik Azure reikšmė ir griežtas(-i)
+   kandidatas(-ai) iš dokumento teksto.
+4. **D-038 Q7 — pašalinimo žingsniai nebetrina, eilutės paliekamos ir pažymimos INFORMACIJA**
+   (ne peržiūra): `LINE_LARGE_QUANTITY` („kiekis > 1000") ir `LINE_DUPLICATE_DESCRIPTION`
+   (pasikartojantis aprašymas). Vėliavėlė dedama tik toje situacijoje, kurioje senasis žingsnis
+   būtų trynęs (eilučių suma viršija antraštę > 0,05 € po nulinių eilučių pašalinimo). Pagrindimas
+   skaičiais: (a) korpuse 3 eilutės su kiekiu > 1000 (1600, 1800, 11 000 — kuras) — visi trys kiekiai
+   **teisingai** atspausdinti (Match), t. y. senasis žingsnis trintų teisingas eilutes; (b) toje
+   situacijoje BR-CO-10 jau laiko sąskaitą peržiūroje (`AMOUNT_MISMATCH`), todėl papildomas
+   peržiūros signalas nieko nepridėtų — informacija tik nurodo įtariamas eilutes.
+   **Sąžiningai:** vienoje korpuso sąskaitoje (10 eilučių, 2 aprašymai po 3 kartus, eilučių suma
+   2 385,61 prieš antraštę 2 060,33) senasis 3-ias žingsnis (pagal korpuso sumas, apskaičiuota
+   ranka — `ProcessAsync` be Azure nevykdytas) pašalindavo 4 eilutes ir suma sutapdavo iki cento su
+   antraštės — t. y. čia jis, atrodo, veikė teisingai. Pagal D-038 Q7 to nebedaroma:
+   tokia sąskaita dabar lieka peržiūroje (`AMOUNT_MISMATCH`) su informacine vėliavėle. Tai
+   sąmoninga kaina „jokio tylaus duomenų keitimo" principui.
+5. **Kaip vėliava išvaloma.** OCR keliuose (sukūrimas, re-OCR) `NUMBER_*` perskaičiuojamos iš
+   galutinių reikšmių: žmogus pakeitęs reikšmę įkėlimo lange — vėliava dingsta tam laukui.
+   Redagavimo kelyje jos **perkeliamos nepakeistos** (neperskaičiuojamos, nes atspausdinto teksto
+   redagavimo forma neturi); sąskaitos peržiūrą užbaigia **PATVIRTINTI**, o vėliavėlė lieka kaip įrašas.
+   Re-OCR perskaičiuoja iš naujo.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
