@@ -493,7 +493,25 @@ namespace NordicBeesERP.Services
         }
 
         /// <summary>
-        /// Flags after a manual edit, recomputed from the values being saved (C2 rules).
+        /// Flags the manual-edit path owns: recomputed from the values being saved, or dropped/kept by
+        /// an explicit rule below. Every other stored flag (OWN_COMPANY, INVALID_VAT_RATE,
+        /// VIES_UNAVAILABLE, DUPLICATE, any future code, …) is a fact about the document or an earlier
+        /// step that an edit cannot re-derive, so it is carried over unchanged — an unknown flag
+        /// survives by default instead of vanishing (PLAN-ETAPAS1 §5, the 370 OWN_COMPANY finding).
+        /// </summary>
+        private static readonly HashSet<string> ManualEditOwnedFlags = new()
+        {
+            // recomputed from the edited values
+            OcrFlag.MissingInvNumber, OcrFlag.MissingAmount, OcrFlag.ZeroVat, OcrFlag.LinesNotFound,
+            OcrFlag.AmountMismatch, OcrFlag.AmountArithmeticMismatch, OcrFlag.MissingMoneyField,
+            OcrFlag.FutureDate, OcrFlag.StaleDate, OcrFlag.MissingInvDate,
+            // explicit keep/drop rules
+            OcrFlag.WrongRecipient, OcrFlag.VendorNotFound, OcrFlag.MissingDueDate, OcrFlag.LowConfidence
+        };
+
+        /// <summary>
+        /// Flags after a manual edit (C2 rules): the owned flags are recomputed from the values being
+        /// saved; all other stored flags are carried over (<see cref="ManualEditOwnedFlags"/>).
         /// </summary>
         private static List<string> ComputeManualEditFlags(ExpenseInvoice edited, ExpenseInvoice stored,
             List<ExpenseInvoiceLine> lines, List<string> existing, List<string>? overriddenFlags)
@@ -510,13 +528,11 @@ namespace NordicBeesERP.Services
             RecomputeDateFlags(flags, edited.InvoiceDate != default ? edited.InvoiceDate : null,
                 stored.CreatedAt != default ? stored.CreatedAt : VilniusToday());
 
-            // Non-recalculable flags carried over from the stored invoice
+            // Owned flags with explicit keep/drop rules
             bool wrongRecipientDismissed = overriddenFlags != null && !overriddenFlags.Contains(OcrFlag.WrongRecipient);
             if (!wrongRecipientDismissed && existing.Contains(OcrFlag.WrongRecipient))
                 flags.Add(OcrFlag.WrongRecipient);
-            if (existing.Contains(OcrFlag.ViesUnavailable)) flags.Add(OcrFlag.ViesUnavailable);
             if (existing.Contains(OcrFlag.VendorNotFound) && stored.SupplierId == null) flags.Add(OcrFlag.VendorNotFound);
-            if (existing.Contains(OcrFlag.Duplicate)) flags.Add(OcrFlag.Duplicate);
 
             // D-025: the due date stays marked as assumed until the user actually changes it.
             if (existing.Contains(OcrFlag.MissingDueDate) && edited.DueDate.Date == stored.DueDate.Date)
@@ -525,6 +541,12 @@ namespace NordicBeesERP.Services
             // LOW_CONFIDENCE is deliberately NOT carried over: a human has just reviewed and saved
             // these values, and an OCR confidence score the user cannot change must not lock the
             // invoice in NEEDS_REVIEW.
+
+            // Everything the edit path does not own is carried over as stored (order kept, no duplicates)
+            foreach (var flag in existing)
+                if (!ManualEditOwnedFlags.Contains(flag) && !flags.Contains(flag))
+                    flags.Add(flag);
+
             return flags;
         }
 
