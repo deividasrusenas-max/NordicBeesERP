@@ -525,6 +525,42 @@ korekcija neturi „taisyti" partnerio šalies pagal PVM kodą.
 
 ---
 
+## D-044 — Etapo 2 sprendimai (PLAN-ETAPAS2 Q1–Q16) (2026-09-27)
+
+**Kontekstas.** `PLAN-ETAPAS2.md` §7.5 — 16 klausimų savininkui. Atsakymai žemiau; numeriai atitinka
+plano klausimus. Du sprendimai (Q8, Q9) laukia savininko §5 staging užklausų rezultatų.
+
+**Sprendimai.**
+
+- **Q1:** automatinis priskyrimas pagal unikalų tikslų pavadinimą — tik kai dokumentas neturi nei PVM,
+  nei įmonės kodo (arba jie sutampa su partnerio); pakopa įrašoma audito eilutėje. Tas pats pavadinimas
+  + kitas PVM / kodas **niekada** nepriskiriamas (PLAN §1.3).
+- **Q2:** vien IBAN → Etape 2 tik siūlymas; peržiūrima pagal duomenis.
+- **Q3:** fuzzy pavadinimas → tik siūlymų reitingavimas pasirinkimo lange (S6); jokio automatinio priskyrimo.
+- **Q4:** N = 2 patvirtinimai iš skirtingų sąskaitų; aliasai tik pagal pavadinimą; jokio atgalinio
+  perpriskyrimo; ACTIVE alias taikymas (matomas, atšaukiamas, paklūsta prieštaravimo taisyklei) atitinka D-017.
+- **Q5:** `SUPPLIER_NEW_IBAN` tik kai tiekėjas jau turi ≥ 1 žinomą sąskaitą; pirmas tiekėjo galiojantis IBAN
+  **siūlomas** veiksmu „pridėti IBAN" (be vėliavėlės).
+- **Q6:** re-OCR palieka žmogaus priskirtą tiekėją; jei naujas atitikmuo — kitas partneris →
+  `VENDOR_SUGGESTED` ir rodomi abu; jei `null` → paliekama, be vėliavėlės.
+- **Q7:** automatiškai tikrinama tik `is_active` partneriai su `is_supplier` arba `is_expense_supplier`;
+  kiti → tik `Suggested`.
+- **Q8:** naudojama šalis, žinoma iš adreso / `CountryCodeResolver`; „PVM be prefikso ⇒ LT" prielaida
+  taikoma tik kai šalis nežinoma — galutinis sprendimas po savininko §5 užklausų (laukia).
+- **Q9:** partnerių dublikatai valomi rankiniu būdu su buhaltere **prieš** S3 paleidimą; sujungimo įrankis
+  — tik jei §5 užklausa 7 rodo daug (laukia).
+- **Q10:** visos S1–S7, tvarka S1 → S2 → S3 → S4 → S5 → S6 → S7 (D-031).
+- **Q11:** naujos lentelės be užsienio raktų.
+- **Q12:** dublikatų aptikimas lieka nepriklausomas nuo tiekėjo.
+- **Q13:** atmestos sąskaitos atstatymas — aiškus žmogaus sprendimas: `WRONG_RECIPIENT` pašalinamas (su
+  audito eilute, kaip `DismissWrongRecipientAsync`), statusas nustatomas bendromis taisyklėmis ir sąskaita
+  **nebeatmetama**; be tiekėjo → `PENDING_SUPPLIER`.
+- **Q14:** `national_id_number` niekada nenaudojamas kaip sutapatinimo raktas.
+- **Q15:** registrų Etape 2 nėra.
+- **Q16:** `AssignSupplierDialog.razor` (ir jo negyvas atidarymo metodas) šalinamas.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
