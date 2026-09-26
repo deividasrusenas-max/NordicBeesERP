@@ -30,7 +30,7 @@ tik planavimo pokalbis.
 | Dalis | Intervalas | Raportas |
 |---|---|---|
 | Etapas 0 | `5e44f7c..c93e9af` (8) | `.opencode/reports/ocr-etapas0-20260925-2354.md` |
-| Etapas 0c | `4eb3f5d..8d5b95f` | `.opencode/reports/ocr-etapas0c-20260926-0136.md` |
+| Etapas 0c | `4eb3f5d..8d5b95f` (intervale yra ir `50f6a3d` — Etapo 1 `IbanValidator`) | `.opencode/reports/ocr-etapas0c-20260926-0136.md` |
 | Etapo 1 validatoriai | merge `4a04361` .. `8535767` | `overnight-20260926-0157.md`, `prepush-20260926-0301.md` |
 
 ## Staging patikrų rezultatai (savininkas, 2026-09-26)
@@ -54,34 +54,41 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
 ## Atviri klausimai ir tęsiniai (savininko sprendimai / follow-up)
 
 - **Drag & drop neveikia** (patikra 9). Kodas — užšaldytas `FROZEN.md` §3; priežastis dar
-  nediagnozuota. Taisymui reikės savininko leidimo.
+  nediagnozuota naršyklėje. Hipotezė iš 0c raporto §5: `setupDropZone` kviečiamas tik pirmo
+  render'io metu, o jo pakartojimo ciklas `OnAfterRenderAsync` niekada nesikartoja (funkcija
+  tyliai grįžta, kai elemento nėra). Taisymui reikės savininko leidimo.
 - **Biudžeto, cash flow ir tiekėjo istorijos dialogai UI nepasiekiami** (nustatyta iš kodo
   2026-09-26). `ExpenseBudgetDialog`, `ExpenseCashFlow`, `ExpenseSupplierHistory`
   (`Components/Dialogs/`) — nė vienas failas projekte jų neatidaro (nėra `ShowAsync<…>`,
   nėra `@page`). Meniu „Išlaidos" → „Išlaidų prognozė" (`NavMenu.razor:247`,
   `/expenses/forecast`, `ExpenseForecast.razor`) yra kitas puslapis ir šių dialogų neatidaro.
-  Todėl Etapo 0 karantino (E0-1) ir D-036 biudžeto pakeitimai šiuose dialoguose vartotojui
+  Taip pat nesupainioti su „Įplaukų prognozė" (`NavMenu.razor:286`, `/payments/forecast`,
+  `CashFlowForecast.razor`) — tai kitas, su `ExpenseCashFlow` nesusijęs puslapis.
+  Todėl Etapo 0 karantino (E0-1) ir D-036 biudžeto pakeitimai šiuose dialoguose naudotojui
   nematomi, o patikros 2 ir 5 neįmanomos. Sprendimas: prijungti prie UI (kur?) ar pašalinti.
 - **„Savos įmonės sąskaita" dingsta po redagavimo** (370). Nustatyta iš kodo: čipas rodomas iš
   `ocr_flags` (`InvoiceDetailDialog.razor:46-51` → `ExpenseStatusHelper.cs:63`), o redagavimo
   išsaugojimas vėliavėles perkuria iš naujo ir `OWN_COMPANY` į perkeliamų sąrašą neįtraukia
-  (`ExpenseService.ComputeManualEditFlags`, `ExpenseService.cs:498-529`). T.y. redagavimas
-  **numeta** `OWN_COMPANY` — tas pats nutinka `INVALID_VAT_RATE`. Tai ne sąmoningas
-  sprendimas (`LOW_CONFIDENCE` numetamas sąmoningai, su komentaru). Taisyti — Etape 1
+  (`ExpenseService.ComputeManualEditFlags`, `ExpenseService.cs:498-529`). T. y. redagavimas
+  **numeta** `OWN_COMPANY` — tas pats nutinka `INVALID_VAT_RATE`. Nėra požymių, kad tai
+  sąmoningas sprendimas (`LOW_CONFIDENCE` numetamas su komentaru, šie du — be jokio). Taisyti — Etape 1
   (`PLAN-ETAPAS1.md` §5).
 - **Užšaldyto dialogo tekstas** „Patikrinkite ar visi serveriai veikia ir bandykite dar kartą."
   rodomas ir po ne-OCR atmetimų (`ExpenseUploadDialog.razor:83-85`, FROZEN §3) — reikia
   leidimo.
 - **`OcrQueueWorker` `Attempts++` niekada neišsaugomas** (FROZEN §5; 0c raportas §2).
-  Papildomai: kode nėra nė vieno eilės įrašų kūrėjo, o darbuotojas apeina visus vartus
-  (`PLAN-ETAPAS1.md` §5).
+  Papildomai: vienintelis eilės įrašų kūrėjas — n8n webhook'as `POST api/expense/webhook`
+  (`Controllers/ExpenseController.cs:24-58`), visada su `InvoiceId = 0`, todėl darbuotojas
+  sąskaitos nerašo; kadangi eilės įrašo būsena neišsaugoma, toks įrašas (iš kodo skaitymo,
+  nevykdyta) būtų siunčiamas į Azure kas 30 s be galo. Jei darbuotojas kada rašytų į sąskaitą,
+  jis apeitų visus vartus (`PLAN-ETAPAS1.md` §0, §5). Ar n8n siunčia į prodą — nežinoma.
 - **decimal-precision radiniai** (`nordicbees-ef-decimal-precision-annotation-missing`).
   Ankstesnėje būsenoje — 12; 0c raporto priede po C8 — 57 šios taisyklės radiniai, nė vieno
   `Models/Expenses/`. Skaičių reikia suderinti.
 - **Re-OCR saugomiems failams nepasiekiamas** (STAGING-CHECKS 2 įspėjimas) — Etapas 1
   (`PLAN-ETAPAS1.md` §4).
-- **Data Protection raktai nepersistuojami tarp konteinerių** — kiekvienas deploy'us atjungia
-  vartotojus (už OCR ribų).
+- **Data Protection raktai neišsaugomi tarp konteinerių** — kiekvienas deploy'us atjungia
+  naudotojus (už OCR ribų).
 - **3,8 GB RAM `lakstena-dev`** — prodas, staging, DB ir CI kartu (už OCR ribų).
 - **Prodo duomenų valymas su buhaltere** — `PROD-DATA-FINDINGS-2026-09-25.md` §6, Q-010.
 - **„248 sąskaitos reikalauja dėmesio"** skaitiklis — beprasmis triukšmas, kol nevalyti
@@ -112,7 +119,7 @@ Numeriai — `STAGING-CHECKS-ETAPAS0.md`.
   Q-005…Q-010. Detalės — `sessions/2026-09-25-05.md`.
 - 2026-09-25/26 (Claude Code): Etapas 0 (8 commit'ai), Etapas 0c (C1–C9 + fix-up'ai),
   D-031…D-036, Etapo 1 validatoriai; `STAGING-CHECKS-ETAPAS0.md`.
-- 2026-09-26: staging patikros (dalinai, žr. lentelę), prodo deploy'us v0.17.91, D-037.
+- 2026-09-26: staging patikros (iš dalies, žr. lentelę), prodo deploy'us v0.17.91, D-037.
 
 ## Storage gate — įrodymai (2026-09-25, staging)
 
