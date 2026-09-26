@@ -561,6 +561,58 @@ plano klausimus. Du sprendimai (Q8, Q9) laukia savininko §5 staging užklausų 
 
 ---
 
+## D-045 — Etapo 2 duomenys, Q8/Q9 sprendimai ir švari išlaidų sąskaitų pradžia (2026-09-27)
+
+**Kontekstas.** Savininko staging duomenys 2026-09-27 (`PLAN-ETAPAS2.md` §5); D-044 Q8 ir Q9 laukė šių
+rezultatų.
+
+**Duomenys.**
+
+- 119 `PENDING_SUPPLIER` sąskaitų: 117 su PVM kodu, 117 su įmonės kodu, 101 su IBAN, 0 be jokio
+  identifikatoriaus. Iš 117 PVM kodų **0** yra kuriame nors partneryje — nei kaip saugoma, nei
+  normalizuoti, nei ignoruojant prefiksą. Todėl kaskada **nesumažins** dabartinio užsilikimo: tų tiekėjų
+  tiesiog nėra pagrindiniuose duomenyse. Užsilikimas — duomenų įvedimo darbas (sukurti tiekėjus; esamas
+  „sukurti tiekėją" perpriskyrimas priskiria jų sąskaitas). Etapo 2 vertė — prevencija: jokio tylaus
+  neteisingo tiekėjo ateityje, 3 vartai, matomas dviprasmiškumas, mokymasis iš žmogaus pasirinkimų.
+- Tiekėjų partnerių su banko sąskaita: 66 iš 120 → `SUPPLIER_NEW_IBAN` prasmingas nuo pirmos dienos.
+- 3 vartai: nė viena sąskaita be tiekėjo niekada nebuvo patvirtinta (approved = 0 kiekviename statuse).
+- LT PVM kodas ≠ „LT" + įmonės kodas: Artea sąskaitoje įmonės kodas 112025254, PVM kodas LT120252515 —
+  nei vienas negali būti išvestas iš kito. **Paneigia** `PLAN-ETAPAS2.md` §7.4 3 punktą; įmonės kodas
+  tikrinamas kaip atskiras identifikatorius, niekada išvedamas iš PVM kodo.
+
+**Sprendimai.**
+
+- **Q8 — nuspręsta:** „PVM be prefikso ⇒ LT" prielaida **atmetama**. Tik 1 iš 206 partnerių saugo PVM be
+  raidinio prefikso ir 1 turi skyriklį — prielaida beveik nieko neduoda ir yra spėjimas. Dokumento PVM be
+  prefikso naudoja šalį, žinomą iš adreso / `CountryCodeResolver`; kitaip sutampa tik su saugoma reikšme,
+  identiška po normalizavimo. Vienintelis partneris be prefikso taisomas pagrindinių duomenų valymo metu.
+- **Q9 — nuspręsta:** dublikatų nedaug — pagal PVM: Rotoma 369/381, Rokiškio vandenys 370/377, HONEYMARK PL
+  36/386 (386 be pavadinimo); pagal pavadinimą: 6 fiziniai bitininkai (Bernotas 79/328, Žalalis 92/173,
+  Žilinskienė 89/170, Balčiūnas 78/326, Arbutavičius 65/333, Macijauskas 85/185) ir Deltamark 396/399 (396
+  su šiukšliniu PVM). Valoma **rankiniu būdu** su buhaltere, sujungimo įrankio nekuriama. Bitininkų
+  dublikatai gali turėti pristatymų / mokėjimų — sujungimas yra atsargus, atskiras prodo duomenų darbas,
+  atliekamas **prieš** žemiau aprašytą pakartotinį įkėlimą.
+
+**Švari pradžia (savininko sprendimas).** Savininkas turi visų iki šiol įkeltų išlaidų sąskaitų originalus.
+Prode — 247 išlaidų sąskaitos, 0 mokėjimų, 0 paskirstymų, 0 apmokėtų. Visos išlaidų sąskaitos bus ištrintos ir
+įkeltos iš naujo per naują grandinę:
+
+1. pirma — tiekėjų pagrindinių duomenų valymas (aukščiau nurodyti dublikatai, D-042 šalių sąrašas);
+2. staginge po Etapo 2 — atsarginė kopija, ištrynimas, viskas įkeliama iš naujo, matuojama (švari /
+   sustabdyta / kodėl). Tai didelis realus viso modulio testas ir Etapų 3–4 žalių JSON korpusas;
+3. prode po galutinio Etapų 1–4 deploy'o (D-037), su atsargine kopija;
+4. buhaltė įspėjama iš anksto (Q-010).
+
+Šis vienkartinis perkėlimas yra aiški **išimtis** iš „apskaitos dokumentas niekada netrinamas fiziškai"
+(D-027), pateisinama atsargine kopija, originalais ir mokėjimų nebuvimu. `PROD-DATA-FINDINGS-2026-09-25.md`
+§6 sąskaitų lygio valymas tampa nebereikalingas; pagrindinių duomenų valymas lieka.
+
+**Pridėta prie S3 apimties:** veiksmas „Pakeisti tiekėją" — priskirto tiekėjo keitimas neapmokėtoje
+sąskaitoje (audituojamas, perskaičiuoja tarifų vėliavėles, skaitomas kaip aiškus žmogaus pasirinkimas
+aliasams). Šiandien UI negali ištaisyti neteisingo tiekėjo (S1 raportas).
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
