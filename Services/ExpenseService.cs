@@ -1703,6 +1703,63 @@ namespace NordicBeesERP.Services
             return new ValidationOutcome(totals, LineAmountPlausibilityRule.Check(ruleInput), derived);
         }
 
+        public enum ValidationMessageKind { Review, Information, NotChecked }
+
+        /// <summary>One line of the detail dialog's rule list (Lithuanian, from the validators).</summary>
+        public sealed record ValidationMessage(string Text, ValidationMessageKind Kind);
+
+        private static string BtName(string bt) => bt switch
+        {
+            "BT-106" => "suma be PVM (BT-106)",
+            "BT-109" => "suma be PVM (BT-109)",
+            "BT-110" => "PVM suma (BT-110)",
+            "BT-112" => "suma su PVM (BT-112)",
+            "BT-115" => "mokėtina suma (BT-115)",
+            "BT-131" => "eilučių sumos (BT-131)",
+            _ => bt
+        };
+
+        private static string LinePhrase(IReadOnlyList<int> lines) =>
+            lines.Count == 1 ? $"{lines[0]} eilutėje" : $"eilutėse {string.Join(", ", lines)}";
+
+        /// <summary>
+        /// The rule list for an invoice (PLAN-ETAPAS1 §1.3–§1.4): violations and out-of-range results with
+        /// the validator's own Lithuanian message, then „nepatikrinta: …" for every rule that could not run —
+        /// a rule that did not run is never shown as passed. Kinds follow the flags: BR-CO-10 within the D-040
+        /// band and the line rule are information, other violations review.
+        /// </summary>
+        public static IReadOnlyList<ValidationMessage> DescribeValidation(ValidationOutcome outcome)
+        {
+            var messages = new List<ValidationMessage>();
+            foreach (var v in outcome.Totals.Violations)
+            {
+                var information = v.RuleId == En16931TotalsValidator.BrCo10 && Math.Abs(v.Actual - v.Expected) <= LineSumRoundingBand;
+                messages.Add(new(v.Message, information ? ValidationMessageKind.Information : ValidationMessageKind.Review));
+            }
+            foreach (var o in outcome.Totals.OutOfRange)
+                messages.Add(new(o.Message, ValidationMessageKind.Review));
+            foreach (var v in outcome.LineRule.Violations)
+                messages.Add(new(v.Message, ValidationMessageKind.Information));
+            foreach (var o in outcome.LineRule.OutOfRangeLines)
+                messages.Add(new(o.Message, ValidationMessageKind.Information));
+
+            foreach (var n in outcome.Totals.NotApplicable)
+                messages.Add(new($"nepatikrinta: {n.RuleId} (trūksta: {string.Join(", ", n.MissingInputs.Select(BtName))})",
+                    ValidationMessageKind.NotChecked));
+            if (outcome.LineRule.NotApplicableLines.Count > 0)
+                messages.Add(new($"nepatikrinta: {LineAmountPlausibilityRule.RuleId} {LinePhrase(outcome.LineRule.NotApplicableLines)} (nėra kiekio arba vieneto kainos)",
+                    ValidationMessageKind.NotChecked));
+            if (outcome.DerivedLines.Count > 0)
+                messages.Add(new($"nepatikrinta: {LineAmountPlausibilityRule.RuleId} {LinePhrase(outcome.DerivedLines)} (suma apskaičiuota iš kiekio × kainos)",
+                    ValidationMessageKind.NotChecked));
+            return messages;
+        }
+
+        /// <summary>The rule list for a stored invoice and its stored lines (detail dialog, display time).</summary>
+        public static IReadOnlyList<ValidationMessage> DescribeValidation(ExpenseInvoice invoice, IEnumerable<ExpenseInvoiceLine> lines) =>
+            DescribeValidation(EvaluateValidation(invoice.AmountExclVat, invoice.VatAmount, invoice.AmountInclVat,
+                ToValidationLines(lines.OrderBy(l => l.SortOrder))));
+
         /// <summary>
         /// Drops the flags in <see cref="ValidationOwnedFlags"/> and recomputes them from the final values —
         /// the user may have edited amounts or lines after OCR ran. Called on all three write paths

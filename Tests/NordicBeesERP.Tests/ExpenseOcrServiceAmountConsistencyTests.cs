@@ -292,6 +292,86 @@ public class ExpenseOcrServiceAmountConsistencyTests
         Assert.DoesNotContain(OcrFlag.TotalsOutOfRange, flags);
     }
 
+    // ---------- (d) rule messages for the detail dialog ----------
+
+    private static IReadOnlyList<ExpenseService.ValidationMessage> Describe(decimal excl, decimal vat, decimal incl,
+        params ExpenseService.ValidationLine[] lines) =>
+        ExpenseService.DescribeValidation(ExpenseService.EvaluateValidation(excl, vat, incl, lines));
+
+    [Fact]
+    public void Messages_BrCo15_ValidatorLithuanianMessage_Review()
+    {
+        var messages = Describe(100m, 21m, 121.01m, new ExpenseService.ValidationLine(100m, 1m, 100m));
+
+        var m = Assert.Single(messages, x => x.Kind == ExpenseService.ValidationMessageKind.Review);
+        Assert.Equal("BR-CO-15 pažeista: suma su PVM 121,01 ≠ suma be PVM 100,00 + PVM 21,00", m.Text);
+    }
+
+    [Fact]
+    public void Messages_RealInvoice_370_BrCo10Review_BrCo16NotChecked_LineRuleNotChecked()
+    {
+        var messages = Describe(418.24m, 87.83m, 506.07m,
+            new ExpenseService.ValidationLine(300.00m, 1m, null), new ExpenseService.ValidationLine(206.06m, 1m, null));
+
+        Assert.Contains(messages, m => m.Kind == ExpenseService.ValidationMessageKind.Review && m.Text.StartsWith("BR-CO-10 pažeista:"));
+        Assert.Contains(messages, m => m.Kind == ExpenseService.ValidationMessageKind.NotChecked
+            && m.Text == "nepatikrinta: BR-CO-16 (trūksta: mokėtina suma (BT-115))");
+        Assert.Contains(messages, m => m.Kind == ExpenseService.ValidationMessageKind.NotChecked
+            && m.Text == "nepatikrinta: PROJ-LINE-QTY-PRICE eilutėse 1, 2 (nėra kiekio arba vieneto kainos)");
+    }
+
+    [Fact]
+    public void Messages_BrCo10WithinBand_Information()
+    {
+        var messages = Describe(100m, 21m, 121m, new ExpenseService.ValidationLine(99.98m, 1m, 99.98m));
+
+        var m = Assert.Single(messages, x => x.Text.StartsWith("BR-CO-10"));
+        Assert.Equal(ExpenseService.ValidationMessageKind.Information, m.Kind);
+    }
+
+    [Fact]
+    public void Messages_RealInvoice_213_RulesNotChecked_NoneShownAsPassedOrViolated()
+    {
+        var messages = Describe(0m, 0m, 465374.45m);
+
+        Assert.All(messages, m => Assert.Equal(ExpenseService.ValidationMessageKind.NotChecked, m.Kind));
+        Assert.Contains("nepatikrinta: BR-CO-15 (trūksta: suma be PVM (BT-109))", messages.Select(m => m.Text));
+        Assert.Contains("nepatikrinta: BR-CO-10 (trūksta: suma be PVM (BT-106), eilučių sumos (BT-131))", messages.Select(m => m.Text));
+    }
+
+    [Fact]
+    public void Messages_ConsistentInvoice_OnlyBrCo16Unchecked()
+    {
+        // BR-CO-10/13/15 hold; the list never claims BR-CO-16 was checked (D-040: only two rules are live)
+        var messages = Describe(100m, 21m, 121m, new ExpenseService.ValidationLine(100m, 4m, 25m));
+
+        Assert.Equal(new[] { "nepatikrinta: BR-CO-16 (trūksta: mokėtina suma (BT-115))" }, messages.Select(m => m.Text));
+    }
+
+    [Fact]
+    public void Messages_DerivedLine_NotChecked()
+    {
+        var messages = Describe(1m, 0.21m, 1.21m, new ExpenseService.ValidationLine(1m, 3m, 0.3333m, NetDerived: true));
+
+        Assert.Contains("nepatikrinta: PROJ-LINE-QTY-PRICE 1 eilutėje (suma apskaičiuota iš kiekio × kainos)", messages.Select(m => m.Text));
+    }
+
+    [Fact]
+    public void Messages_StoredInvoice_LinesNumberedBySortOrder_LineRuleInformation()
+    {
+        var invoice = new NordicBeesERP.Models.Expenses.ExpenseInvoice { AmountExclVat = 130m, VatAmount = 27.3m, AmountInclVat = 157.3m };
+        var lines = new[]
+        {
+            new NordicBeesERP.Models.Expenses.ExpenseInvoiceLine { SortOrder = 2, AmountExclVat = 30m, Quantity = 10m, UnitPrice = 2.5m },
+            new NordicBeesERP.Models.Expenses.ExpenseInvoiceLine { SortOrder = 1, AmountExclVat = 100m, Quantity = 4m, UnitPrice = 25m }
+        };
+
+        var messages = ExpenseService.DescribeValidation(invoice, lines);
+
+        var m = Assert.Single(messages, x => x.Kind == ExpenseService.ValidationMessageKind.Information);
+        Assert.StartsWith("Projekto taisyklė PROJ-LINE-QTY-PRICE (ne EN 16931) pažeista 2 eilutėje", m.Text);
+    }
+
     [Fact]
     public void StaleOwnedFlags_Dropped_OtherFlagsKept()
     {
