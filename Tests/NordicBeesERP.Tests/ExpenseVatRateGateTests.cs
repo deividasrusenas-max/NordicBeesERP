@@ -231,14 +231,14 @@ public class ExpenseVatRateGateTests : IClassFixture<DbTestFixture>
         return id;
     }
 
-    private static OcrResultDto NewOcrResult(int? supplierId, decimal rate, string country = "LT")
+    private static OcrResultDto NewOcrResult(int? supplierId, decimal rate, string country = "LT", string? invoiceDate = null)
     {
         var net = 100m;
         var vat = Math.Round(net * rate / 100m, 2);
         return new OcrResultDto
         {
             InvoiceNumber = $"RATEGATE-OCR-{Guid.NewGuid():N}",
-            InvoiceDate = DateTime.Today.ToString("yyyy-MM-dd"),
+            InvoiceDate = invoiceDate ?? DateTime.Today.ToString("yyyy-MM-dd"),
             DueDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd"),
             Currency = "EUR",
             AmountExclVat = net,
@@ -489,6 +489,71 @@ public class ExpenseVatRateGateTests : IClassFixture<DbTestFixture>
         var ltPartner = await InsertSupplierAsync("LT");
         var id = await InsertInvoiceAsync(null, "PENDING_SUPPLIER", new[] { OcrFlag.VendorNotFound }, 19m,
             pendingCountry: "LT", invoiceDate: new DateTime(2024, 12, 31));
+        try
+        {
+            await CreateService(Confirmed).AssignSupplierAsync(id, ltPartner, "TEST");
+
+            var flags = FlagsOf(await ReloadAsync(id));
+            Assert.Contains(OcrFlag.VatRateUnchecked, flags);
+            Assert.DoesNotContain(OcrFlag.VatRateNotAllowed, flags);
+        }
+        finally
+        {
+            await CleanupAsync(new[] { id }, ltPartner);
+        }
+    }
+
+    [Fact]
+    public void OnlyTheConfirmedRow_ChangesBehaviour_OtherRowsStayInformation()
+    {
+        // the header of VatRateTable.cs promises a per-row flip: confirm LT only
+        var ltOnly = VatRateTable.Rows.Select(r => r.Country == "LT" ? r with { Status = VatRateRowStatus.Confirmed } : r).ToList();
+
+        Assert.Equal(new ExpenseService.VatRateVerdict(true, false), Verdict("LT", Today2026, 19m, Array.Empty<decimal>(), ltOnly));
+        Assert.Equal(new ExpenseService.VatRateVerdict(false, true), Verdict("DE", Today2026, 21m, Array.Empty<decimal>(), ltOnly));
+        Assert.Equal(new ExpenseService.VatRateVerdict(false, true), Verdict("RO", new DateTime(2025, 7, 31), 21m, Array.Empty<decimal>(), ltOnly));
+        // and one RO row only: the other RO row (other dates) is still unconfirmed
+        var roOld = VatRateTable.Rows.Select(r => r.Country == "RO" && r.ValidTo != null ? r with { Status = VatRateRowStatus.Confirmed } : r).ToList();
+        Assert.True(Verdict("RO", new DateTime(2025, 7, 31), 21m, Array.Empty<decimal>(), roOld).NotAllowed);
+        Assert.Equal(new ExpenseService.VatRateVerdict(false, true), Verdict("RO", new DateTime(2025, 8, 1), 19m, Array.Empty<decimal>(), roOld));
+    }
+
+    [Theory]
+    [InlineData(WritePath.Create)]
+    [InlineData(WritePath.ReOcr)]
+    public async Task MissingInvoiceDate_IsNotJudgedAsToday_OnOcrPaths(WritePath path)
+    {
+        // no date on the document: the stored invoice_date is only a placeholder (today) and must not be judged
+        var supplierId = await InsertSupplierAsync("LT");
+        int? id = null;
+        try
+        {
+            var service = CreateService(Confirmed);
+            var ocr = NewOcrResult(supplierId, 19m, invoiceDate: "");
+            if (path == WritePath.Create)
+                id = (await service.CreateFromOcrAsync(ocr)).Id;
+            else
+            {
+                id = await InsertInvoiceAsync(supplierId, "PENDING", Array.Empty<string>(), 21m);
+                await service.UpdateFromOcrAsync(id.Value, ocr);
+            }
+
+            var flags = FlagsOf(await ReloadAsync(id.Value));
+            Assert.Contains(OcrFlag.MissingInvDate, flags);
+            Assert.Contains(OcrFlag.VatRateUnchecked, flags);
+            Assert.DoesNotContain(OcrFlag.VatRateNotAllowed, flags);
+        }
+        finally
+        {
+            await CleanupAsync(id.HasValue ? new[] { id.Value } : Array.Empty<int>(), supplierId);
+        }
+    }
+
+    [Fact]
+    public async Task Assignment_MissingInvoiceDateFlag_IsNotJudgedAsTheStoredPlaceholder()
+    {
+        var ltPartner = await InsertSupplierAsync("LT");
+        var id = await InsertInvoiceAsync(null, "PENDING_SUPPLIER", new[] { OcrFlag.VendorNotFound, OcrFlag.MissingInvDate }, 19m, pendingCountry: "LT");
         try
         {
             await CreateService(Confirmed).AssignSupplierAsync(id, ltPartner, "TEST");
