@@ -1,6 +1,6 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`); Etapas 3 — **S1–S4 baigtos `main`**, laukia S5 (Etapo 2 švarios pradžios) ir S6
+Atnaujinta: 2026-09-27 (vakaras) | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`); Etapas 3 — **S1–S4 baigtos `main`**, laukia S5 (Etapo 2 švarios pradžios) ir S6; Etapas 4 — **planas parašytas ir dalis kodo baigta `main`** (`PLAN-ETAPAS4.md`, C1–C3), laukia D-045/D-047 švarios pradžios laiko sprendimo prieš realius skaičius; D-047 — **A1–A4 baigti ir peržiūrėti `main`**
 
 ## Dabartinė fazė
 
@@ -183,6 +183,48 @@ padengimas golden-file momentinėje nuotraukoje), gavo taisymo commit'ą, visi g
 **Kitas:** S5 (matavimas ant realaus korpuso) laukia Etapo 2 švarios pradžios rezultatų; S6 (Q-006/Q-007, parinkties
 (a)/(b) persvarstymas) — po S5.
 
+## D-047 (open fixes) ir Etapas 4 (matavimas) — būsena (2026-09-27, Claude Code, autonominis paleidimas)
+
+D-047 priimtas (autorizuotas ilgas autonominis paleidimas): Part A (D-047 atviri taisymai),
+Part B (Etapo 4 planas), Part C (trys Etapo 4 komponentai). Kiekvienas kodo commit'as praėjo
+nepriklausomą peržiūrą (peržiūrėtojas vykdo testus, tikrina kodą, bando sulaužyti kiekvieną naują
+elgseną); abu dokumentų commit'ai (D-047 ir `PLAN-ETAPAS4.md`) buvo bent kartą atmesti dėl netikslių
+citatų ir taisyti. Pilnas `dotnet test --filter "Category!=E2E"`: **1448 žali** (prieš šią sesiją —
+1399).
+
+| Dalis | Commit'ai | Ką daro | Verdiktas |
+|---|---|---|---|
+| Commit 0 (D-047 docs) | `def21df` → `22b5a99` | Švarios pradžios laikas, išlaidų tiekėjai, užšaldyto dialogo leidimai | **ATMESTA DU KARTUS** — pagal taisyklę, trečias taisymas nedarytas; žr. žemiau |
+| A1 | `d419386` | Drag & drop veikia ir po failo pašalinimo (`_dropZoneNeedsSetup`) | PATVIRTINTA |
+| A2 | `916688e` | Klaidos fazės paantraštė nerodoma ne-OCR atsisakymams | PATVIRTINTA |
+| A3 | `49a878a` | `CreditNoteServiceTests` nestabilaus testo taisymas (fiksuotas `int.MinValue`, ne gyvas `MAX(id)+1`) | PATVIRTINTA |
+| A4 | `41a5e8f` | Įėjimo taškai biudžeto/pinigų srautų/tiekėjo istorijos dialogams | PATVIRTINTA (rastas nesusijęs pre-existing radinys: `ExpenseBudgetDialog.Year` neveikia) |
+| Part B | `332ac84` → `bf4f481` | `PLAN-ETAPAS4.md` (D-031 kriterijai 3–6) | ATMESTA (2 klaidingos citatos) → PATVIRTINTA po taisymo |
+| C1 | `1c7a140` | Žymėjimo CSV eksportas/importas (`Services/Labeling/*`, `/admin/ocr-labels`) | PATVIRTINTA |
+| C2 | `36a8781` | Peržiūros eilės senėjimas (`LithuanianWorkingDayCalculator`, `ReviewQueueAgingService`) | PATVIRTINTA |
+| C3 | `13e5ad4` | Savaitinė suvestinė (penki skaičiai) | PATVIRTINTA (nebloki radinys: „arithmetic" vartų kategorija naudoja AMOUNT_MISMATCH/TOTALS_OUT_OF_RANGE, o realų antraštės kietą vartą varo AMOUNT_ARITHMETIC_MISMATCH/MISSING_MONEY_FIELD — plano lygio klausimas, ne šio commit'o defektas) |
+
+**D-047 docs (`def21df`/`22b5a99`) liko atmesta be trečio bandymo** (taisyklė: du atmetimai =
+stabdyti tą dalį). Pirmas atmetimas: item 1 tyliai pakeitė D-045 2 žingsnio laiką (švarios pradžios
+pakartotinis įkėlimas „po Etapo 2" → „pačioje pabaigoje") nepripažindamas, kad tai keičia planą, o
+ne tik jį perrašo. Taisymas pripažino įtampą, bet antras atmetimas rado, kad taisymo sprendimas
+citavo `PLAN-ETAPAS4.md` „kriterijų 3", kurio tuo metu dar nebuvo. Šis failas dabar egzistuoja (šios
+pačios sesijos Part B), tad citata dabar teisinga, bet commit'ai liko be trečios peržiūros — **reikia
+savininko dėmesio**.
+
+**Neuždarytas D-045/D-047 klausimas** (taip pat `PLAN-ETAPAS4.md` OQ-4): ar švarios pradžios
+pakartotinis įkėlimas vyksta iš karto po Etapo 2 (kaip originaliai sakė D-045 — Etapo 3 S5 to
+reikalauja kaip savo šaltinio), ar pačioje pabaigoje (D-047), priimant, kad kriterijai 3/4 lieka
+neišmatuoti tol.
+
+**Kitas:** išspręsti D-045/D-047 laiko klausimą; savininkas patvirtina Lietuvos švenčių sąrašą
+(`PLAN-ETAPAS4.md` OQ-2) ir suvestinės rodymo kanalą (OQ-3); `expense_audit_samples` DDL, kai
+savininkas nori pradėti ketvirtinį auditą (OQ-5). C3 peržiūrėtojo nebloko radinys: savaitinės
+suvestinės „arithmetic" vartų skaičius (2 numeris) naudoja `AMOUNT_MISMATCH`/`TOTALS_OUT_OF_RANGE`,
+o realų antraštės kietą vartą (D-028/BR-CO-15) varo `AMOUNT_ARITHMETIC_MISMATCH`/
+`MISSING_MONEY_FIELD` — paveldėta iš pačio plano (jau peržiūrėto/patvirtinto) kategorizavimo, ne šio
+commit'o kodo defektas; verta patikslinti `PLAN-ETAPAS4.md` §5, kai bus grįžtama prie šio komponento.
+
 ## Atviri klausimai ir tęsiniai (savininko sprendimai / follow-up)
 
 - **Drag & drop neveikia** (patikra 9). Kodas — užšaldytas `FROZEN.md` §3; priežastis dar
@@ -282,6 +324,12 @@ ims ką nors realiai keisti (šiandien elgsena nepakitusi).
   karkasas (`Verify.Xunit`), deterministinis lentelės taisymas (`TableLineRepair`, UTA PL realiai pataisytas),
   ZERO_VAT teisinio pagrindo patikra (`ZeroVatFormulationExtractor`, elgsena nepakitusi kol viskas NEPATVIRTINTA).
   1399 testai žali. `main` `c6b20bf`..`2950b84`.
+- 2026-09-27 (Claude Code, autonominis paleidimas): D-047 + Part A (A1–A4: drag & drop po failo
+  pašalinimo, klaidos paantraštė, `CreditNoteServiceTests` nestabilaus testo taisymas, orphan
+  dialogų įėjimo taškai) + Part B (`PLAN-ETAPAS4.md`, D-031 kriterijai 3–6) + Part C (C1 žymėjimo
+  CSV, C2 eilės senėjimas, C3 savaitinė suvestinė). D-047 docs commit'ai atmesti du kartus
+  (netikslios citatos/D-045 laiko konfliktas), palikti be trečio bandymo pagal taisyklę — žr.
+  aukščiau. 1448 testai žali. `main` `def21df`..`13e5ad4`.
 
 ## Storage gate — įrodymai (2026-09-25, staging)
 
@@ -324,5 +372,5 @@ ims ką nors realiai keisti (šiandien elgsena nepakitusi).
 | Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai, re-OCR) | **uždarytas staginge 2026-09-26/27** (D-043; `main` v0.17.94); prode nėra (D-037) |
 | Etapas 2 (tiekėjo kaskada) | planas parašytas (`PLAN-ETAPAS2.md`), laukia savininko atsakymų |
 | Etapas 3 (ekstrakcija — D-023 kryptis, D-016 UŽDARYTAS) | D-046 priimtas; **S1–S4 baigtos `main`** (`c6b20bf`..`2950b84`), ne staginge, ne prode; S5 (matavimas) laukia Etapo 2 švarios pradžios, S6 (Q-006/Q-007) nepradėtas |
-| Etapas 4 (matavimas) | laukia |
+| Etapas 4 (matavimas) | planas parašytas (`PLAN-ETAPAS4.md`, D-031 kriterijai 3–6); **C1–C3 baigti `main`** (žymėjimo CSV, eilės senėjimas, savaitinė suvestinė); realūs skaičiai laukia D-045/D-047 švarios pradžios laiko sprendimo |
 | Saugykla, 2 žingsnis (PDF į IFileStore) | nepradėta |
