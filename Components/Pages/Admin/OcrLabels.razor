@@ -1,0 +1,129 @@
+@page "/admin/ocr-labels"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject NordicBeesERP.Services.Labeling.IOcrLabelExportService LabelService
+@inject ISnackbar Snackbar
+@using MudBlazor
+
+<PageTitle>OCR žymėjimas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-2">OCR žymėjimo eksportas (Etapas 4, kriterijus 3/5)</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+        Failai rašomi/skaitomi TIK iš serverio failų sistemos kelio, kurį įvedate — niekada ne repo viduje.
+        Žr. PLAN-ETAPAS4.md §1.
+    </MudText>
+
+    <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px">
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Atsitiktinė imtis (dev + hold-out)</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="3"><MudNumericField T="int" @bind-Value="_devCount" Label="Dev" Min="0" /></MudItem>
+            <MudItem xs="12" sm="3"><MudNumericField T="int" @bind-Value="_holdoutCount" Label="Hold-out" Min="0" /></MudItem>
+            <MudItem xs="12" sm="3"><MudNumericField T="int" @bind-Value="_seed" Label="Seed" /></MudItem>
+            <MudItem xs="12" sm="3">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="ExportSampleAsync" Disabled="_busy">
+                    Eksportuoti
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+        <MudTextField T="string" @bind-Value="_exportPath" Label="CSV kelias (pvz. /home/.../nordicbees-labels/etapas4.csv)" FullWidth="true" Class="mt-2" />
+        @if (_lastSample is { } sample)
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-2">
+                @sample.RowCount eilučių. Dev ID: @string.Join(", ", sample.DevIds). Hold-out ID: @string.Join(", ", sample.HoldoutIds).
+                <br />Išsaugokite šiuos hold-out ID atskirai — jie reikalingi palyginimui, bet CSV faile jie NEPAŽYMĖTI (aklinimas).
+            </MudAlert>
+        }
+    </MudPaper>
+
+    <MudPaper Elevation="0" Class="pa-4" Style="background:#f8fafc; border-radius:12px">
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Palyginimas (užpildytas CSV → tylių klaidų ataskaita)</MudText>
+        <MudTextField T="string" @bind-Value="_comparePath" Label="Užpildyto CSV kelias" FullWidth="true" />
+        <MudTextField T="string" @bind-Value="_holdoutIdsText" Label="Hold-out ID (kableliais atskirti, nebūtina)" FullWidth="true" Class="mt-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="CompareAsync" Disabled="_busy">
+            Palyginti
+        </MudButton>
+
+        @if (_lastReport is not null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-3">
+                Pažymėtų laukų: @_lastReport.LabelledFieldCount. Neteisingų: @_lastReport.WrongFieldCount
+                (iš jų su vėliavėle: @_lastReport.FlaggedWrongFieldCount).
+                <br />Tylių klaidų sąskaitos: @string.Join(", ", _lastReport.SilentErrorInvoiceIds)
+                @if (_lastReport.HoldoutSilentErrorInvoiceCount.HasValue)
+                {
+                    <br />
+                    <text>Hold-out: @_lastReport.HoldoutSilentErrorInvoiceCount iš @_lastReport.HoldoutLabelledInvoiceCount pažymėtų hold-out sąskaitų su tylia klaida pinigų lauke.</text>
+                }
+            </MudAlert>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private int _devCount = 40;
+    private int _holdoutCount = 20;
+    private int _seed = 2026;
+    private string _exportPath = "";
+    private string _comparePath = "";
+    private string _holdoutIdsText = "";
+    private bool _busy;
+
+    private (IReadOnlyList<int> DevIds, IReadOnlyList<int> HoldoutIds, int RowCount)? _lastSample;
+    private NordicBeesERP.Services.Labeling.SilentErrorReport? _lastReport;
+
+    private async Task ExportSampleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_exportPath))
+        {
+            Snackbar.Add("Nurodykite CSV kelią.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _lastSample = await LabelService.ExportRandomSampleAsync(_devCount, _holdoutCount, _seed, _exportPath);
+            Snackbar.Add("Eksportuota.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CompareAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_comparePath))
+        {
+            Snackbar.Add("Nurodykite užpildyto CSV kelią.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            HashSet<int>? holdoutIds = null;
+            if (!string.IsNullOrWhiteSpace(_holdoutIdsText))
+            {
+                holdoutIds = _holdoutIdsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(int.Parse).ToHashSet();
+            }
+
+            _lastReport = await LabelService.CompareAsync(_comparePath, holdoutIds);
+            Snackbar.Add("Palyginta.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

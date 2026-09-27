@@ -14,6 +14,7 @@ using MudBlazor; // Pridėjome šią eilutę
 using MudBlazor.Services;
 using NordicBeesERP.Services.Artwork;
 using NordicBeesERP.Services.Storage;
+using NordicBeesERP.Services.Labeling;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,6 +76,7 @@ builder.Services.AddScoped<IRawMaterialTypeService, RawMaterialTypeService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IExpenseExportService, ExpenseExportService>();
+builder.Services.AddScoped<IOcrLabelExportService, OcrLabelExportService>();
 builder.Services.AddScoped<DashboardPeriodState>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
