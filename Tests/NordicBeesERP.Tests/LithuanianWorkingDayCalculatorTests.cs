@@ -61,6 +61,7 @@ public class LithuanianWorkingDayCalculatorTests
     [InlineData(2025, 4, 20)]  // known Easter Sunday 2025
     [InlineData(2026, 4, 5)]   // known Easter Sunday 2026
     [InlineData(2027, 3, 28)]  // known Easter Sunday 2027
+    [InlineData(2028, 4, 16)]  // known Easter Sunday 2028 — D-047 asked for 2026-2028 coverage
     public void IsPublicHoliday_EasterSundayAndMonday_AreHolidays(int year, int month, int day)
     {
         var easterSunday = new DateTime(year, month, day);

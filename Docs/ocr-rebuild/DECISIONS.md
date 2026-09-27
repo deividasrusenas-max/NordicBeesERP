@@ -647,52 +647,61 @@ ir 11 žalių Azure atsakymų perskaityta (korpusas, D-041). Ekstrakcijos archit
 
 ---
 
-## D-047 — Švarios pradžios laikas, išlaidų tiekėjai, leidimai užšaldytam įkėlimo dialogui (2026-09-27)
+## D-047 — Švarios pradžios laikas, išlaidų tiekėjai, leidimai užšaldytam įkėlimo dialogui (2026-09-27, PATAISYTA 2026-09-27 vakare)
 
 **Kontekstas.** Savininko autorizuotas ilgas autonominis paleidimas (Claude Code): D-047 open
-fixes (Part A), Etapo 4 planas (Part B), trys Etapo 4 komponentai (Part C).
+fixes (Part A), Etapo 4 planas (Part B), trys Etapo 4 komponentai (Part C). **Ši versija pakeičia
+turinį, kuris buvo commit'uose `def21df`/`22b5a99` — abu atmesti nepriklausomos peržiūros (žr.
+`.opencode/reports/d047-partA-20260927-1632.md`), o taisymo bandymas sustabdytas pagal „du
+atmetimai" taisyklę. Šis pakeitimas yra naujas commit'as, ne istorijos perrašymas.**
 
 **Sprendimai.**
 
-1. **Švarios pradžios laikas.** Pilnas D-045 švarios pradžios ištrynimas + pakartotinis
-   įkėlimas vyksta VIENĄ KARTĄ, pačioje pabaigoje, kai Etapų 3–4 kodas baigtas — pirma staginge,
-   tada prode po galutinio deploy'o. Staginge šiuo metu 0 išlaidų sąskaitų (savininkas ištrynė
-   2026-09-27 po atsarginių kopijų `~/backup/staging-before-clean-start.sql.gz` ir
-   `staging-blobs-before-clean-start.tgz`); 2026-09-27 pagrindinių duomenų valymas (11 šiukšlinių
-   dubliuotų partnerių ištrinti: 381, 377, 386, 396, 79, 92, 89, 78, 333, 85, 378; `bank_account`
-   išvalytas 326, 328; asmens kodas pašalintas iš 185 `company_code`; šalis LT priskirta 371, 406
-   ir EE 374; PVM kodai pašalinti iš `company_code` 373, 375, 376, 379, 380, 406, 419) pritaikytas
-   tik staginge.
+1. **Švarios pradžios laikas (PAKEIČIA ankstesnę formuluotę).** Savininko ketinimas buvo „švari
+   pradžia po kodo, kuriam duomenų nereikia, baigtas" — **tai yra DABAR**. Staginge švari pradžia
+   (D-045 2 žingsnis — visų originalų pakartotinis įkėlimas) yra KITAS žingsnis po šios sesijos,
+   ne atidėtas iki Etapų 3–4 pabaigos. Tai duomenų rinkimo žingsnis, nuo kurio priklauso Etapo 3
+   S5 (matavimas: ar parinktis (c) pakanka — D-046 OQ-1, `PLAN-ETAPAS3.md` §8.1) ir Etapo 4
+   kriterijus 3 (40 dev + 20 hold-out žymėtas rinkinys, `PLAN-ETAPAS4.md` §1). **Kodas baigtas ≠
+   modulis baigtas** — modulis baigtas tik kai įvykdyti D-031 kriterijai, o tam reikia šių duomenų.
+   Ankstesnė D-047 versija (`def21df`) tyliai perrašė D-045 2 žingsnio laiką ir sukūrė žiedą (Etapas
+   3 negali užsidaryti be S5, S5 negali įvykti be korpuso, korpusas — tik po Etapų 3–4); ši versija
+   tą žiedą pašalina, grąžindama D-045 originalią tvarką.
 
-   **Pakeičia D-045 2 žingsnį — neuždarytas prieštaravimas, atviras klausimas savininkui.** D-045
-   sakė: staginge švari pradžia „**po Etapo 2**" ir kad ji „yra... Etapų 3–4 žalių JSON korpusas"
-   — t. y. pakartotinis įkėlimas turėjo įvykti PRIEŠ Etapo 3 S5 (matavimas ant realaus korpuso),
-   nes S5 yra jos vartotojas (`STATE.md`: „S5... laukia Etapo 2 švarios pradžios rezultatų — tai
-   jos šaltinis"). Ištrynimas staginge jau įvyko 2026-09-27 (aukščiau), **bet pakartotinis
-   įkėlimas** šia D-047 versija atidedamas iki Etapų 3–4 kodo pabaigos. Jei S5 (Etapo 3 dalis)
-   tikrai reikalauja korpuso PRIEŠ save, o korpusas atsiranda tik po Etapų 3–4 kodo — žiedas:
-   Etapas 3 negali užsidaryti be S5, S5 negali įvykti be korpuso, korpusas — tik po Etapo 3–4.
-   Šia sesija (Part B, Etapo 4 planas) daroma prielaida, kad S5 stiliaus matavimas ant realaus
-   korpuso pilnai perkeliamas į Etapo 4 kriterijų 3 (žr. PLAN-ETAPAS4.md), t. y. Etapo 3 „baigtas
-   kode" nebelaukia savo S5 punkto atskirai — tai savininko sprendimas, o ne šio dokumento
-   nutarimas; jei savininkas nesutinka, D-045 2 žingsnio tvarka lieka galioti ir pakartotinis
-   įkėlimas turi įvykti anksčiau, ne „pačioje pabaigoje".
+   Staginge šiuo metu 0 išlaidų sąskaitų (savininkas ištrynė 2026-09-27 po atsarginių kopijų
+   `~/backup/staging-before-clean-start.sql.gz` ir `staging-blobs-before-clean-start.tgz`);
+   2026-09-27 pagrindinių duomenų valymas (11 šiukšlinių dubliuotų partnerių ištrinti: 381, 377,
+   386, 396, 79, 92, 89, 78, 333, 85, 378; `bank_account` išvalytas 326, 328; asmens kodas
+   pašalintas iš 185 `company_code`; šalis LT priskirta 371, 406 ir EE 374; PVM kodai pašalinti iš
+   `company_code` 373, 375, 376, 379, 380, 406, 419) pritaikytas tik staginge. **Tie patys
+   taisymai kartojami prode prodo švarios pradžios metu** (D-037, po galutinio Etapų 1–4 deploy'o).
 2. **Išlaidų tiekėjai.** Švarios pradžios metu kiekvienas partneris su `is_expense_supplier = 1`,
    kurio nenurodo joks kitas įrašas (`honey_deliveries`, `supplier_payments`, `containers` įsk.
    `reservation_customer_id`, `deliveries`, `invoices`, `credit_notes`, `orders`, `payments`,
    `lots`), ištrinamas kartu su savo `supplier_bank_accounts` / aliasų įrašais; tiekėjai
    atkuriami iš pakartotinio įkėlimo. Bitininkai ir klientai šia taisykle niekada netrinami.
+   Staginge atliekama tiesiai prieš pakartotinį įkėlimą (t. y. dabar, kaip šios sesijos kitas
+   žingsnis).
 3. **Užšaldytas `ExpenseUploadDialog` (FROZEN §3),** pagal savininko 2026-09-26 leidimą
-   („visa kita darom profesionaliai"):
+   („visa kita darom profesionaliai") ir 2026-09-27 pakartotinį patvirtinimą:
    a. klaidos fazės paantraštė „Patikrinkite ar visi serveriai veikia…" nerodoma po ne-OCR
       atsisakymų (skenavimo atsisakymas, to paties failo atsisakymas, ne-PDF) — pratęsia D-034
       punktą 2 (item A2).
-   b. drag & drop turi veikti toliau ir po to, kai pasirinktas failas pašalinamas (drop zona
-      sujungiama tik pirmo render'io metu) — minimalus pakeitimas
-      `OnAfterRenderAsync`/`DisposeAsync` persujungimo logikoje leidžiamas; `wwwroot/js/dropzone.js`
-      keičiamas tik jei taisymas neįmanomas be jo (item A1; nereikėjo — žr. FROZEN §3).
+   b. drag & drop turi veikti nuo pirmo panaudojimo IR po to, kai pasirinktas failas pašalinamas —
+      minimalūs pakeitimai `OnAfterRenderAsync`/`DisposeAsync`/persujungimo logikoje leidžiami;
+      `wwwroot/js/dropzone.js` keičiamas tik jei taisymas neįmanomas be jo, su priežastimi (item
+      A1).
    c. `FROZEN.md` §3 atnaujinamas, kad atspindėtų realų rezultatą.
 4. **`OcrQueueWorker` (§5) lieka nepaliestas** (D-044 K10: atidėta, kol modulis baigtas).
+5. **Etapo 4 savininko atsakymai** (`PLAN-ETAPAS4.md` atviri klausimai):
+   - **OQ-2 (LT viešosios šventės).** Sausio 1, vasario 16, kovo 11, Velykų sekmadienis ir
+     pirmadienis, gegužės 1, birželio 24, liepos 6, rugpjūčio 15, lapkričio 1, lapkričio 2,
+     gruodžio 24, 25, 26. (Gegužės/birželio „pirmasis sekmadienis" tipo šventės šiaip krenta
+     sekmadienį — jokio atskiro darbo dienos poveikio.) `LithuanianWorkingDayCalculator` sąrašas
+     patikrinamas prieš šį ir taisomas, jei skiriasi, su testu kiekvienam kilnojamam šventės
+     atvejui (Velykoms) 2026–2028 m.
+   - **OQ-3 (savaitinės suvestinės kanalas).** Tik prietaisų skydelio kortelė šiuo metu; jokio
+     išorinio siuntimo. Telegram — atskiras sprendimas vėliau, jei apskritai bus.
 
 ---
 

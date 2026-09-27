@@ -2,11 +2,11 @@ namespace NordicBeesERP.Helpers;
 
 /// <summary>
 /// Working-day calculation for the Etapas 4 review-queue aging control (PLAN-ETAPAS4.md §4,
-/// D-031 criterion 6). The holiday list is written from general knowledge of Lithuanian
-/// statutory holidays, NOT verified against an official calendar in this session — same
-/// NEPATVIRTINTA-until-confirmed pattern this project already uses for the VAT rate table
-/// (D-039) and formulation lists (D-046 OQ-5). The accountant should confirm the list (open
-/// question OQ-2) before it governs anything the owner relies on.
+/// D-031 criterion 6). The fixed-date holiday list matches the owner's confirmed answer to OQ-2
+/// (D-047, 2026-09-27 correction): 1 Jan, 16 Feb, 11 Mar, Easter Sunday/Monday, 1 May, 24 Jun,
+/// 6 Jul, 15 Aug, 1 Nov, 2 Nov, 24/25/26 Dec — the list written from general knowledge in the
+/// original C2 build was cross-checked against this answer and matches exactly, so no change was
+/// needed here beyond this confirmation.
 /// </summary>
 public static class LithuanianWorkingDayCalculator
 {
