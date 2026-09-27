@@ -28,19 +28,29 @@ Working mechanism:
 
 ## 3. DRAG & DROP — `Components/Dialogs/ExpenseUploadDialog.razor` (@code block)
 
-**Status:** implemented 2026-09-26 (D-034). Earlier versions of this section claimed a working
-`OnFileDropped`; git history shows it never existed in this file, so drag & drop in the expense
-dialog never worked before. Browser verification (Chrome + Firefox) pending — see the Etapas 0c report.
-**Do not touch these methods:**
-- `OnAfterRenderAsync` — setupDropZone with retry logic
+**Status:** implemented 2026-09-26 (D-034); remove-then-drop re-wiring fixed 2026-09-27 (D-047
+3(b), item A1). Earlier versions of this section claimed a working `OnFileDropped`; git history
+shows it never existed in this file, so drag & drop in the expense dialog never worked before.
+Owner staging check 9 (2026-09-26) found it not working even on first use — root cause was
+`OnAfterRenderAsync` only calling `setupDropZone` when `firstRender == true`; after the file is
+removed (`RemoveFile`), the `@if (_file == null)` block re-renders a brand-new `#expense-drop-zone`
+div with no listeners, and nothing ever re-ran `setupDropZone` on it. Browser verification (Chrome
++ Firefox) of the fix is still pending — see the D-047 Part A report.
+**Do not touch these methods (their JS/DOM contract, not their exact statements):**
+- `OnAfterRenderAsync` — now re-runs `setupDropZone` (retry loop unchanged) whenever the drop-zone
+  div is on screen and unwired, tracked by `_dropZoneNeedsSetup` (set on first render and again by
+  `RemoveFile`), not only on the dialog's first render. `setupDropZone` itself is idempotent
+  (`wwwroot/js/dropzone.js` removes old listeners before adding new ones), so calling it again on
+  the same or a fresh element is safe.
 - `OnFileDropped(string fileName, long size, string mimeType)` — [JSInvokable], called by
   `dropzone.js`; fetches the bytes with `getDropFileBase64("expense-drop-zone")` and hands them to the
   same PDF-only intake as the file picker (`AcceptPdf`)
 - `DisposeAsync` — disposes the `DotNetObjectReference` (it does NOT call `cleanupDropZone`)
 - `DroppedFile` — IBrowserFile wrapper class used for dropped files
 
-**OK to change:** only the HTML upload phase and other @code methods (D-034 additionally allowed
-the error-phase heading)
+**OK to change:** the HTML upload phase, `RemoveFile` (now also re-arms `_dropZoneNeedsSetup`),
+and other @code methods (D-034 additionally allowed the error-phase heading; D-047 additionally
+allowed the error-phase subtitle, item A2).
 
 ---
 

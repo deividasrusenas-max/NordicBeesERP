@@ -378,6 +378,10 @@
     [Parameter] public bool AllocationRemovalConfirmed { get; set; }
 
     private DotNetObjectReference<ExpenseUploadDialog>? _dotNetRef;
+    // D-047 3(b): setupDropZone only ever wires the element that exists at the moment it runs.
+    // RemoveFile() re-renders a brand new #expense-drop-zone div with no listeners, so this flag
+    // asks OnAfterRenderAsync to re-run setupDropZone on it, not just on the dialog's first render.
+    private bool _dropZoneNeedsSetup = true;
     private string _phase = "upload";
     private IBrowserFile? _file;
     private int _processingStep = 0;
@@ -437,15 +441,19 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // Re-runs whenever the drop-zone div is back on screen and not yet wired — on first
+        // render, and again after RemoveFile() re-renders a fresh element with no listeners
+        // (D-047 3(b); setupDropZone itself is idempotent, see wwwroot/js/dropzone.js).
+        if (_phase == "upload" && _file == null && _dropZoneNeedsSetup)
         {
-            _dotNetRef = DotNetObjectReference.Create(this);
+            _dotNetRef ??= DotNetObjectReference.Create(this);
             for (int i = 0; i < 5; i++)
             {
                 await Task.Delay(200);
                 try
                 {
                     await JS.InvokeVoidAsync("setupDropZone", _dotNetRef, "expense-drop-zone");
+                    _dropZoneNeedsSetup = false;
                     break;
                 }
                 catch { }
@@ -570,6 +578,7 @@
         _file = null;
         _pdfBase64 = "";
         _convertedFileName = "";
+        _dropZoneNeedsSetup = true;
         _supplierName = "";
         _invoiceNumber = "";
         _invoiceDate = null;
