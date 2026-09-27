@@ -318,11 +318,14 @@ prodą — viskas parašyta ir sausai/integraciniu testu patikrinta DEV (`nordic
 | Part B (masinis įkėlimas) | `00fbccf` | `/expenses/bulk-upload` (`[Authorize(Roles="Admin")]`), `BulkUploadService`/`IBulkUploadService` — naudoja TĄ PATĮ paslaugų sluoksnį kaip įkėlimo dialogas (`CreateFromOcrAsync`), neliečiant nė vieno užšaldyto dialogo nario; `BULK_CREATED` audito eilutė su partijos id, atskirai nuo `CREATED` | **ATMESTA** — recenzentas empiriškai atkūrė: dalinis OCR rezultatas (suma+tiekėjas atpažinti, numeris — ne) pasiekdavo `FileStore.SaveAsync` PRIEŠ `CreateFromOcrAsync` išmesdamas išimtį dėl tuščio numerio, taip „pametant" nesusietą `files` eilutę/blob'ą amžinai |
 | Part B taisymas | `944d83e` | Atsisakymas PRIEŠ `FileStore.SaveAsync`, kai sąskaitos numeris neatpažintas; naujas testas įrodo abu (atsisakymą ir kad joks `files` įrašas nesukuriamas) | PATVIRTINTA (pakartotinė peržiūra) |
 | Part D (D1+D2) | `b7da7ed` | D1: `ExpenseBudgetDialog.Year` dabar realiai valdo `_year` per `OnInitialized`; D2: „arithmetic" vartų skaitiklis dabar įtraukia BR-CO-15 (`AMOUNT_ARITHMETIC_MISMATCH`/`MISSING_MONEY_FIELD`, D-028), ne tik BR-CO-10 (`AMOUNT_MISMATCH`); `TOTALS_OUT_OF_RANGE` priklausomybė „arithmetic" grupei paliktas atviru klausimu (`PLAN-ETAPAS4.md` OQ-6, trys variantai, joks tyliai nepasirinktas) | PATVIRTINTA |
-| Part C (runbook) | `0b1780f` | `Docs/ocr-rebuild/RUNBOOK-FINAL-PROD-DEPLOY.md` — visos schemos pakeitimai nuo v0.17.91 (D-039 `unit_price`, `supplier_bank_accounts`, `supplier_aliases`+`supplier_alias_events`) su DDL, patikrinta prieš DEV `information_schema`; IBAN backfill pažymėtas kaip neegzistuojantis įrankis (tik specifikacija); `expense_audit_samples` pažymėta PENDING (jokios DDL niekur nėra) | PATVIRTINTA |
+| Part C (runbook) | `0b1780f` | `Docs/ocr-rebuild/RUNBOOK-FINAL-PROD-DEPLOY.md` — visos schemos pakeitimai nuo v0.17.91 (D-039 `unit_price`, `supplier_bank_accounts`, `supplier_aliases`+`supplier_alias_events`) su DDL, patikrinta prieš DEV `information_schema`; `expense_audit_samples` pažymėta PENDING (jokios DDL niekur nėra) | **ATMESTA** — §3 klaidingai teigė, kad IBAN backfill įrankio nėra |
+| Part C taisymas | `39e1c88` | §3 perrašyta: nurodo esamą, jau patikrintą skriptą `Migrations/Scripts/20260927_backfill_supplier_bank_accounts.sql` (commit `55f27bc`) + `STAGING-CHECKS-ETAPAS2.md` §1.5 procedūrą; pažymėta, kad backfill'as patikrintas tik DEV MySQL, ne MariaDB | PATVIRTINTA po pataisymo |
 
 **Visi keturi šios sesijos darbai (A, B, C, D) dabar sukurti `main` ir nepriklausomai
-peržiūrėti/patvirtinti.** Pilnas `dotnet test --filter "Category!=E2E"`: **1462/1462 žali**
-(nuo 1454 sesijos pradžioje — 8 nauji testai, 0 regresijų).
+peržiūrėti/patvirtinti** (B ir C kiekvienas turėjo po vieną ATMESTA→pataisymas→PATVIRTINTA
+ciklą — abu realūs, recenzento rasti defektai, ne formalumas). Pilnas
+`dotnet test --filter "Category!=E2E"`: **1462/1462 žali** (nuo 1454 sesijos pradžioje —
+8 nauji testai, 0 regresijų; Part C pataisymas dokumentacinis, testų skaičiaus nekeitė).
 
 **Kitas žingsnis (savininkui, šia tvarka):**
 
@@ -336,8 +339,11 @@ peržiūrėti/patvirtinti.** Pilnas `dotnet test --filter "Category!=E2E"`: **14
    staginge naudojama pagal analogiją, ne kaip runbook'o eilutė), tada pati švari pradžia
    (D-045/D-047), tada pakartotinis įkėlimas per `/expenses/bulk-upload`.
 4. Etapo 4 kriterijų 3–4 matavimas su tais duomenimis (D-047 punktas 1).
-5. Atsakyti PLAN-ETAPAS4.md OQ-6 (ar `TOTALS_OUT_OF_RANGE` priklauso „arithmetic" grupei).
-6. Kai pasiruošę galutiniam deploy'ui — `Docs/ocr-rebuild/RUNBOOK-FINAL-PROD-DEPLOY.md`, jos
+5. IBAN backfill: paleisti `Migrations/Scripts/20260927_backfill_supplier_bank_accounts.sql`
+   prode ta pačia `STAGING-CHECKS-ETAPAS2.md` §1.5 procedūra (skriptas jau egzistuoja ir
+   patikrintas DEV — nereikia naujo įrankio).
+6. Atsakyti PLAN-ETAPAS4.md OQ-6 (ar `TOTALS_OUT_OF_RANGE` priklauso „arithmetic" grupei).
+7. Kai pasiruošę galutiniam deploy'ui — `Docs/ocr-rebuild/RUNBOOK-FINAL-PROD-DEPLOY.md`, jos
    pačios pažymėtus ⚠ punktus patikrinti pirmiausia.
 
 ## Už OCR ribų — tik užfiksuota
