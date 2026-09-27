@@ -236,17 +236,22 @@ else
 
         if (_isAdmin || _isManager)
         {
+            var expenseItems = new List<NavItem>
+            {
+                new() { Href = "/expenses", Label = "Suvestinė" },
+                new() { Href = "/expense-invoices", Label = "Sąskaitos" },
+                new() { Href = "/expense-payments", Label = "Mokėjimai" },
+                new() { Href = "/expenses/forecast", Label = "Išlaidų prognozė" },
+                new() { Href = "/bank-import?type=expense", Label = "Banko importas" }
+            };
+            if (_isAdmin)
+            {
+                expenseItems.Add(new NavItem { Href = "/expenses/bulk-upload", Label = "Masinis įkėlimas" });
+            }
             _topSections.Add(new NavSection
             {
                 Title = "Išlaidos",
-                Items = new List<NavItem>
-                {
-                    new() { Href = "/expenses", Label = "Suvestinė" },
-                    new() { Href = "/expense-invoices", Label = "Sąskaitos" },
-                    new() { Href = "/expense-payments", Label = "Mokėjimai" },
-                    new() { Href = "/expenses/forecast", Label = "Išlaidų prognozė" },
-                    new() { Href = "/bank-import?type=expense", Label = "Banko importas" }
-                },
+                Items = expenseItems,
                 DefaultExpanded = false
             });
         }

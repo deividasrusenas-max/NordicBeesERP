@@ -1,0 +1,203 @@
+@page "/expenses/bulk-upload"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject NordicBeesERP.Services.IBulkUploadService BulkUploadService
+@inject ISnackbar Snackbar
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+
+<PageTitle>Masinis įkėlimas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-2">Masinis sąskaitų įkėlimas</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+        Vykdo lygiai tą patį OCR vamzdyną kaip įprastas įkėlimo dialogas — be peržiūros prieš
+        kiekvieno dokumento išsaugojimą. Niekas neautomatiškai patvirtinama; peržiūra vyksta per
+        statusus (Reikia patikrinti, Nežinomas tiekėjas, Dublikatas). Failai apdorojami po vieną
+        (vienas Azure iškvietimas vienu metu).
+    </MudText>
+
+    @if (!_busy)
+    {
+        <MudFileUpload T="IReadOnlyList<IBrowserFile>" Accept=".pdf" FilesChanged="OnFilesSelected">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.UploadFile">
+                    Pasirinkti PDF failus
+                </MudButton>
+            </ActivatorContent>
+        </MudFileUpload>
+    }
+
+    @if (_selectedCount > 0 && !_busy && !_started)
+    {
+        <MudText Typo="Typo.body1" Class="mt-3">Pasirinkta failų: @_selectedCount</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Class="mt-2" OnClick="StartAsync">
+            Pradėti apdorojimą
+        </MudButton>
+    }
+
+    @if (_busy)
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" Class="mt-3" OnClick="Cancel">
+            Sustabdyti (po dabartinio failo)
+        </MudButton>
+    }
+
+    @if (_progress.Count > 0)
+    {
+        <MudPaper Elevation="0" Class="pa-3 mt-4" Style="background:#f8fafc; border-radius:12px">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">
+                Eiga: @_progress.Count / @_selectedCount
+                @if (_busy) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ml-2" /> }
+            </MudText>
+            <MudTable Items="_progress" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Failas</MudTh>
+                    <MudTh>Rezultatas</MudTh>
+                    <MudTh>Sąskaita</MudTh>
+                    <MudTh>Statusas</MudTh>
+                    <MudTh>Tiekėjas</MudTh>
+                    <MudTh>Vėliavėlės</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="row">
+                    <MudTd>@row.FileName</MudTd>
+                    <MudTd>
+                        @if (row.Accepted)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Priimta</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small">Atmesta</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd>@(row.InvoiceId?.ToString() ?? row.RefusalReason ?? "—")</MudTd>
+                    <MudTd>@(row.Status ?? "—")</MudTd>
+                    <MudTd>@(row.SupplierOutcome ?? "—")</MudTd>
+                    <MudTd>@(row.Flags.Count > 0 ? string.Join(", ", row.Flags) : "—")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+
+        @if (!_busy)
+        {
+            <MudPaper Elevation="0" Class="pa-3 mt-3" Style="background:#f0fdf4; border-radius:12px">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Suvestinė</MudText>
+                <MudText Typo="Typo.body2">Priimta: @_progress.Count(r => r.Accepted)</MudText>
+                <MudText Typo="Typo.body2">Atmesta: @_progress.Count(r => !r.Accepted)</MudText>
+                @foreach (var group in _progress.Where(r => r.Accepted).GroupBy(r => r.Status))
+                {
+                    <MudText Typo="Typo.caption">@group.Key: @group.Count()</MudText>
+                }
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Class="mt-2" OnClick="CopySummary">
+                    Kopijuoti suvestinę
+                </MudButton>
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private IReadOnlyList<IBrowserFile> _files = Array.Empty<IBrowserFile>();
+    private int _selectedCount;
+    private bool _busy;
+    private bool _started;
+    private bool _cancelRequested;
+    private readonly List<NordicBeesERP.Services.BulkUploadFileResult> _progress = new();
+    private const long MaxUploadBytes = NordicBeesERP.Services.BulkUploadService.MaxUploadBytes;
+
+    private void OnFilesSelected(IReadOnlyList<IBrowserFile> files)
+    {
+        _files = files;
+        _selectedCount = files.Count;
+        _progress.Clear();
+        _started = false;
+    }
+
+    private void Cancel()
+    {
+        _cancelRequested = true;
+    }
+
+    private async Task StartAsync()
+    {
+        _busy = true;
+        _started = true;
+        _cancelRequested = false;
+        _progress.Clear();
+        StateHasChanged();
+
+        var batchId = Guid.NewGuid();
+
+        try
+        {
+            foreach (var file in _files)
+            {
+                if (_cancelRequested) break;
+
+                try
+                {
+                    byte[] bytes;
+                    using (var stream = file.OpenReadStream(MaxUploadBytes))
+                    using (var ms = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(ms);
+                        bytes = ms.ToArray();
+                    }
+
+                    var result = await BulkUploadService.ProcessFileAsync(bytes, file.Name, batchId);
+                    _progress.Add(result);
+                }
+                catch (Exception ex)
+                {
+                    _progress.Add(new NordicBeesERP.Services.BulkUploadFileResult
+                    {
+                        FileName = file.Name,
+                        Accepted = false,
+                        RefusalReason = $"Netikėta klaida: {ex.Message}"
+                    });
+                }
+
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+
+        if (_cancelRequested)
+        {
+            Snackbar.Add("Sustabdyta. Apdorota failų: " + _progress.Count, Severity.Warning);
+        }
+        else
+        {
+            Snackbar.Add("Baigta. Apdorota failų: " + _progress.Count, Severity.Success);
+        }
+    }
+
+    private async Task CopySummary()
+    {
+        var lines = new List<string>
+        {
+            $"Masinis įkėlimas — priimta {_progress.Count(r => r.Accepted)}, atmesta {_progress.Count(r => !r.Accepted)} (iš {_selectedCount})"
+        };
+        foreach (var row in _progress)
+        {
+            lines.Add(row.Accepted
+                ? $"{row.FileName}: priimta, sąskaita {row.InvoiceId}, statusas {row.Status}"
+                : $"{row.FileName}: atmesta — {row.RefusalReason}");
+        }
+
+        await ClipboardCopyAsync(string.Join("\n", lines));
+        Snackbar.Add("Nukopijuota.", Severity.Success);
+    }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private async Task ClipboardCopyAsync(string text)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+    }
+}

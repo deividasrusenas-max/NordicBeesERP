@@ -79,6 +79,7 @@ builder.Services.AddScoped<IExpenseExportService, ExpenseExportService>();
 builder.Services.AddScoped<IOcrLabelExportService, OcrLabelExportService>();
 builder.Services.AddScoped<IReviewQueueAgingService, ReviewQueueAgingService>();
 builder.Services.AddScoped<IWeeklySummaryService, WeeklySummaryService>();
+builder.Services.AddScoped<IBulkUploadService, BulkUploadService>();
 builder.Services.AddScoped<DashboardPeriodState>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
