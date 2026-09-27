@@ -93,6 +93,9 @@ namespace NordicBeesERP.Data
         public DbSet<NordicBeesERP.Models.Expenses.ExpenseOcrQueue> ExpenseOcrQueue { get; set; }
          public DbSet<NordicBeesERP.Models.Expenses.AppSetting> AppSettings { get; set; }
          public DbSet<NordicBeesERP.Models.Expenses.ExpenseInvoiceAudit> ExpenseInvoiceAudits { get; set; }
+
+        // Supplier recognition (Etapas 2)
+        public DbSet<NordicBeesERP.Models.SupplierBankAccount> SupplierBankAccounts { get; set; }
          
          public DbSet<NordicBeesERP.Models.InvoiceAudit> InvoiceAudits { get; set; }
 
