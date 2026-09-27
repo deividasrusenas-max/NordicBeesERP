@@ -705,6 +705,29 @@ atmetimai" taisyklę. Šis pakeitimas yra naujas commit'as, ne istorijos perraš
 
 ---
 
+## D-048 — Masinis įkėlimas ir švarios pradžios scenarijus (2026-09-27)
+
+**Kontekstas.** Prieš faktinį švarios pradžios (D-045/D-047) vykdymą staginge, reikalingi du
+įrankiai: (1) būdas pakartotinai įkelti visus originalius PDF failus be žmogaus, tikrinančio
+kiekvieną atskirai prieš išsaugant (masinis įkėlimas), ir (2) vienas peržiūrėtas, du kartus
+naudojamas (staginge dabar, prode po galutinio deploy'o) skriptas pačiam ištrynimui.
+
+**Sprendimai.**
+
+1. **Masinis įkėlimas.** Administratoriaus puslapis, vykdantis LYGIAI TĄ PATĮ vamzdyną kaip
+   įkėlimo dialogas (D-032 teksto sluoksnio patikra, SHA-256 dedup, Azure, visi Etapų 0–3 vartai
+   ir vėliavėlės, tiekėjo atitikmuo) ir išsaugantis kiekvieną dokumentą su taisyklių nustatytu
+   statusu. Vienintelis skirtumas nuo dialogo — nėra peržiūros prieš išsaugant kiekvieną dokumentą:
+   žmogaus peržiūra vyksta per statusus (NEEDS_REVIEW, PENDING_SUPPLIER, DUPLICATE_PENDING …).
+   Niekas neautomatiškai patvirtinama; joks tiekėjas nekuriamas automatiškai. Kiekviena sukurta
+   sąskaita turi audito eilutę, nurodančią, kad ji atsirado iš masinio įkėlimo, su partijos (batch)
+   id.
+2. **Švari pradžia** (D-045/D-047) vykdoma vienu peržiūrėtu skriptu
+   (`Migrations/Scripts/clean-start-expenses.sql`), naudojamu du kartus (staginge dabar, prode po
+   galutinio deploy'o), su sausojo bandymo (dry-run) režimu, kuris nieko nekeičia.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
