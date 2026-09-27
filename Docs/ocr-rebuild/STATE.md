@@ -1,6 +1,6 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-27 (naktis) | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`); Etapas 3 — **S1–S4 baigtos `main`**, laukia S5 (Etapo 2 švarios pradžios) ir S6; Etapas 4 — **planas parašytas ir dalis kodo baigta `main`** (`PLAN-ETAPAS4.md`, C1–C3); D-047 — **PATAISYTAS** (švari pradžia dabar KITAS žingsnis, ne atidėta) ir A1/A2 dabar turi tikrus bUnit testus; test-DB deadlock flake (Part D) sutvarkytas
+Atnaujinta: 2026-09-28 (naktis) | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`); Etapas 3 — **S1–S4 baigtos `main`**, laukia S5 (Etapo 2 švarios pradžios) ir S6; Etapas 4 — **planas parašytas ir dalis kodo baigta `main`** (`PLAN-ETAPAS4.md`, C1–C3); D-047 — **PATAISYTAS** (švari pradžia dabar KITAS žingsnis, ne atidėta) ir A1/A2 dabar turi tikrus bUnit testus; test-DB deadlock flake (Part D) sutvarkytas; D-048 — **masinis įkėlimas + švarios pradžios skriptas + galutinio deploy'o instrukcija baigti `main`, visi keturi nepriklausomai patvirtinti** (žr. „D-048 pre-clean-start tooling" žemiau)
 
 ## Dabartinė fazė
 
@@ -301,6 +301,43 @@ klaida čia tyliai atkurtų tą patį nestabilumą.
 - **Prodo duomenų valymas su buhaltere** — `PROD-DATA-FINDINGS-2026-09-25.md` §6, Q-010.
 - **„248 sąskaitos reikalauja dėmesio"** skaitiklis — beprasmis triukšmas, kol nevalyti
   duomenys.
+
+## D-048 pre-clean-start tooling: bulk upload, clean-start script, prod runbook, D1/D2 — 2026-09-27/28 naktis, trečia sesija
+
+Owner autorizuotas tolesnis paleidimas: D-048 (masinis įkėlimas + švarios pradžios scenarijus),
+Part A (`clean-start-expenses.sql`), Part B (masinio įkėlimo administratoriaus puslapis), Part C
+(galutinio prodo deploy'o instrukcija), Part D (`ExpenseBudgetDialog.Year` negyvas parametras,
+C3 „arithmetic gate" kategorizacijos klausimas). NO DDL, niekas nepaleista prieš staging ar
+prodą — viskas parašyta ir sausai/integraciniu testu patikrinta DEV (`nordic_bees_erp`,
+`nordic_bees_erp_test` ant `100.110.26.80`) arba nepaliesta jokios DB (Part C — dokumentacija).
+
+| Dalis | Commit'ai | Ką daro | Verdiktas |
+|---|---|---|---|
+| D-048 (docs) | `185fa61` | `DECISIONS.md` D-048 įrašas: masinio įkėlimo ir švarios pradžios sprendimai | PATVIRTINTA |
+| Part A (skriptas) | `247f6d4` | `Migrations/Scripts/clean-start-expenses.sql` (DRY RUN + GUARD + DELETE + post-checks sekcijos, DB pavadinimas niekada neįrašytas kietai) + `CleanStartExpensesScriptTests` integracinis testas; naujai rasta schemos nuokrypa (`supplier_approvals.supplier_id` — realus FK į `business_partners`, kurio ankstesnis sąrašas nežinojo) įtraukta į abi (peržiūros ir vartų) užklausas | PATVIRTINTA (pirmą kartą) |
+| Part B (masinis įkėlimas) | `00fbccf` | `/expenses/bulk-upload` (`[Authorize(Roles="Admin")]`), `BulkUploadService`/`IBulkUploadService` — naudoja TĄ PATĮ paslaugų sluoksnį kaip įkėlimo dialogas (`CreateFromOcrAsync`), neliečiant nė vieno užšaldyto dialogo nario; `BULK_CREATED` audito eilutė su partijos id, atskirai nuo `CREATED` | **ATMESTA** — recenzentas empiriškai atkūrė: dalinis OCR rezultatas (suma+tiekėjas atpažinti, numeris — ne) pasiekdavo `FileStore.SaveAsync` PRIEŠ `CreateFromOcrAsync` išmesdamas išimtį dėl tuščio numerio, taip „pametant" nesusietą `files` eilutę/blob'ą amžinai |
+| Part B taisymas | `944d83e` | Atsisakymas PRIEŠ `FileStore.SaveAsync`, kai sąskaitos numeris neatpažintas; naujas testas įrodo abu (atsisakymą ir kad joks `files` įrašas nesukuriamas) | PATVIRTINTA (pakartotinė peržiūra) |
+| Part D (D1+D2) | `b7da7ed` | D1: `ExpenseBudgetDialog.Year` dabar realiai valdo `_year` per `OnInitialized`; D2: „arithmetic" vartų skaitiklis dabar įtraukia BR-CO-15 (`AMOUNT_ARITHMETIC_MISMATCH`/`MISSING_MONEY_FIELD`, D-028), ne tik BR-CO-10 (`AMOUNT_MISMATCH`); `TOTALS_OUT_OF_RANGE` priklausomybė „arithmetic" grupei paliktas atviru klausimu (`PLAN-ETAPAS4.md` OQ-6, trys variantai, joks tyliai nepasirinktas) | PATVIRTINTA |
+| Part C (runbook) | `0b1780f` | `Docs/ocr-rebuild/RUNBOOK-FINAL-PROD-DEPLOY.md` — visos schemos pakeitimai nuo v0.17.91 (D-039 `unit_price`, `supplier_bank_accounts`, `supplier_aliases`+`supplier_alias_events`) su DDL, patikrinta prieš DEV `information_schema`; IBAN backfill pažymėtas kaip neegzistuojantis įrankis (tik specifikacija); `expense_audit_samples` pažymėta PENDING (jokios DDL niekur nėra) | PATVIRTINTA |
+
+**Visi keturi šios sesijos darbai (A, B, C, D) dabar sukurti `main` ir nepriklausomai
+peržiūrėti/patvirtinti.** Pilnas `dotnet test --filter "Category!=E2E"`: **1462/1462 žali**
+(nuo 1454 sesijos pradžioje — 8 nauji testai, 0 regresijų).
+
+**Kitas žingsnis (savininkui, šia tvarka):**
+
+1. Peržiūrėti ir push'inti (`bump-version.sh` → `git push origin main`) — niekas nestumta šios
+   sesijos metu.
+2. Naršyklės patikros: A1 (drag & drop po failo pašalinimo), A2 (klaidos paantraštė), masinio
+   įkėlimo puslapis (`/expenses/bulk-upload`) su keliais realiais PDF, `ExpenseBudgetDialog` su
+   skirtingu „Metai" nei einamieji.
+3. Staginge: `clean-start-expenses.sql` DRY RUN patikra prieš `nordic_bees_erp_staging` (Part C
+   §7 žingsnis 2), tada pati švari pradžia (D-045/D-047), tada pakartotinis įkėlimas per
+   `/expenses/bulk-upload`.
+4. Etapo 4 kriterijų 3–4 matavimas su tais duomenimis (D-047 punktas 1).
+5. Atsakyti PLAN-ETAPAS4.md OQ-6 (ar `TOTALS_OUT_OF_RANGE` priklauso „arithmetic" grupei).
+6. Kai pasiruošę galutiniam deploy'ui — `Docs/ocr-rebuild/RUNBOOK-FINAL-PROD-DEPLOY.md`, jos
+   pačios pažymėtus ⚠ punktus patikrinti pirmiausia.
 
 ## Už OCR ribų — tik užfiksuota
 
