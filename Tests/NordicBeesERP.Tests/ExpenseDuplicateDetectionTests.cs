@@ -10,6 +10,7 @@ namespace NordicBeesERP.Tests;
 /// '-', '/', '.') in SQL and never matches on a non-positive amount (production false
 /// positive 277 ↔ 173, both „1" / 0,00 €). Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseDuplicateDetectionTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

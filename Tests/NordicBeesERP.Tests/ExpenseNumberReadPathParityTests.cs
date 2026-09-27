@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// flags over (not recomputed; a human editing the value is the resolution — PATVIRTINTI clears the review). Integration
 /// tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseNumberReadPathParityTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

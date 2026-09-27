@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// D-025 (B2): MISSING_DUE_DATE is information, not an error. The label says the due date
 /// was assumed (+30 d.), the colour stays Default, and the flag does not change status.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseDueDateInfoTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

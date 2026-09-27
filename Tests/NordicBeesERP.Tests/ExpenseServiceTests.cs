@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// nordic_bees_erp_test database. Verifies that ExecuteSqlRawAsync-based
 /// UPDATE/DELETE actually persist changes (not silent NoTracking no-ops).
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

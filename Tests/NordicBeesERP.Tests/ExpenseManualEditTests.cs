@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// reads the old status from the DB, and wrong-recipient dismissal is its own audited method.
 /// Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseManualEditTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

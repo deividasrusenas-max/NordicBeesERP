@@ -11,6 +11,7 @@ namespace NordicBeesERP.Tests;
 /// number in the service itself and must never allow null to reach the
 /// NOT NULL expense_invoices.invoice_number column.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseServiceInvoiceNumberValidationTests : IClassFixture<DbTestFixture>
 {
     private const string ExpectedErrorMessage =

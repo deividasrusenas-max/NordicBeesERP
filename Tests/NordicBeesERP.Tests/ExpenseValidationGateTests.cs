@@ -16,6 +16,7 @@ namespace NordicBeesERP.Tests;
 /// Approval retention (PLAN §8): a gate does not reopen an approved invoice whose gate fields were not
 /// edited. Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseValidationGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

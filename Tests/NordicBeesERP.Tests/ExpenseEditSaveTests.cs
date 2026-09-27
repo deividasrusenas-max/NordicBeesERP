@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// upserted by id so their category allocations survive. Integration tests against
 /// nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseEditSaveTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

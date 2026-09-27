@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// information classification (D-038). Nothing sets these flags yet, so the status tests seed them
 /// as stored flags. The status tests are integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

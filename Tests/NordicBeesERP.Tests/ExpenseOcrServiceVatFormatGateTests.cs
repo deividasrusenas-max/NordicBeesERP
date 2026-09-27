@@ -11,6 +11,7 @@ namespace NordicBeesERP.Tests;
 /// (PLAN-ETAPAS1 §1.2): a malformed code reaches neither VIES nor the VAT-code supplier match; the name
 /// match may still run. Integration tests against nordic_bees_erp_test (supplier match reads partners).
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseOcrServiceVatFormatGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

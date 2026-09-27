@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// header net. Year 2093 isolates the data from other tests. Integration tests against
 /// nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseBudgetActualsTests : IClassFixture<DbTestFixture>, IAsyncLifetime
 {
     private const int Year = 2093;

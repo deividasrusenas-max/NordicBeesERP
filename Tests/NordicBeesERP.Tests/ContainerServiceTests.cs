@@ -11,6 +11,7 @@ namespace NordicBeesERP.Tests;
 /// nordic_bees_erp_test database. Verifies that the ExecuteSqlRawAsync write
 /// path actually persists changes (no silent NoTracking drop).
 /// </summary>
+[Collection("RealDatabase")]
 public class ContainerServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

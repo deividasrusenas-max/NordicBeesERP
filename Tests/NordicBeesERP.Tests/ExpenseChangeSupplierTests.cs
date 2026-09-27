@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// OCR Etapas 2 S3c (D-045): ChangeSupplierAsync — allowed for NEEDS_REVIEW and PENDING invoices without payments, refused for every
 /// other status, voids an approval, recomputes flags and status by the shared rules, audits SUPPLIER_CHANGED. Real nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseChangeSupplierTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

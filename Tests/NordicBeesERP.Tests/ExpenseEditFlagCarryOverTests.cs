@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// stored flag over (before, an allow-list of five dropped OWN_COMPANY and INVALID_VAT_RATE on every
 /// edit-form save — invoice 370 on staging). Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseEditFlagCarryOverTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

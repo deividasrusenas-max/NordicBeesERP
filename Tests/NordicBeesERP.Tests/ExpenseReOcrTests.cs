@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// or overwrite paid ones, and a duplicate found on re-OCR quarantines the invoice exactly
 /// like CreateFromOcrAsync. Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseReOcrTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

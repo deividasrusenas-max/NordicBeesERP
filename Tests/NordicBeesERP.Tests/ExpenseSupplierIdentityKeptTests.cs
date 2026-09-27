@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// learning gap it left (a matcher-assigned invoice had no OCR name for <c>ChangeSupplierAsync</c> to teach an alias with).
 /// Address / city / postal code / country are unaffected — still pending-only. Real nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierIdentityKeptTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

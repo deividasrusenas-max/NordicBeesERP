@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// reaches the database — not just mutates in-memory state — and that a
 /// second call REPLACES unshipped batches instead of appending to them.
 /// </summary>
+[Collection("RealDatabase")]
 public class OrderServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

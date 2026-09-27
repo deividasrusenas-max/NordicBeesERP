@@ -15,6 +15,7 @@ namespace NordicBeesERP.Tests;
 /// (AutoAssignSupplierAsync) on the matcher's normalisers, and the three S3a rules the first review found unguarded
 /// (IsExpenseSupplier role, sweep flag removal, re-OCR dropping a stale VENDOR_SUGGESTED). Real nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierCandidatesTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

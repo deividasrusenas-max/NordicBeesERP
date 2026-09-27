@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// rows — the exact bug class that was fixed in commit fef84aa
 /// (FindAsync + Remove + SaveChangesAsync silently persisted 0 rows).
 /// </summary>
+[Collection("RealDatabase")]
 public class ProductServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

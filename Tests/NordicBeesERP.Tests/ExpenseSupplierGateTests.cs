@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// never unassigns or swaps a supplier a human assigned (VENDOR_SUGGESTED). Integration tests against
 /// nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// ExecuteSqlRawAsync instead of silently persisting 0 rows through
 /// a detached-entity SaveChangesAsync.
 /// </summary>
+[Collection("RealDatabase")]
 public class WarehouseServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

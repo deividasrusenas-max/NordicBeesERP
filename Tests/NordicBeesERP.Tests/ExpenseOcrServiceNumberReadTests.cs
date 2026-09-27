@@ -7,6 +7,7 @@ namespace NordicBeesERP.Tests;
 /// place of the Azure call (the virtual <c>AnalyzeInvoiceAsync</c> seam), so the wiring — not just the helpers — is
 /// exercised. Integration tests against nordic_bees_erp_test (the supplier match reads partners).
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseOcrServiceNumberReadTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -16,6 +16,7 @@ namespace NordicBeesERP.Tests;
 /// re-OCR / repeat does not count twice; a conflict freezes both; frozen and revoked never apply; an alias never overrides a
 /// contradicting VAT; revoke and unfreeze write events. Real nordic_bees_erp_test (supplier_aliases, supplier_alias_events).
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierAliasTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

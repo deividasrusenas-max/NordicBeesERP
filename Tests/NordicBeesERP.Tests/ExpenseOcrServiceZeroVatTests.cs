@@ -7,6 +7,7 @@ namespace NordicBeesERP.Tests;
 /// <see cref="ExpenseOcrService.ProcessAsync"/> itself — the wiring, not just <c>ZeroVatFormulationExtractor</c> in
 /// isolation (that class's own behaviour is <see cref="Validation.ZeroVatFormulationExtractorTests"/>).
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseOcrServiceZeroVatTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

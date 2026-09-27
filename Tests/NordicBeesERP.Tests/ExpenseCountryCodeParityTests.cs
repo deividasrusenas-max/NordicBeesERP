@@ -17,6 +17,7 @@ namespace NordicBeesERP.Tests;
 /// nordic_bees_erp_test. The rate whitelist is injected as CONFIRMED rows so that a wrong country (LI) is visible as
 /// VAT_RATE_UNCHECKED, while LT with a legal 21 % is not.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseCountryCodeParityTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

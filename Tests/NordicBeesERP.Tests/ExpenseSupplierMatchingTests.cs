@@ -15,6 +15,7 @@ namespace NordicBeesERP.Tests;
 /// the flags of its outcome (VENDOR_NOT_FOUND / VENDOR_AMBIGUOUS / VENDOR_SUGGESTED), and the SUPPLIER_MATCHED audit row.
 /// Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierMatchingTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

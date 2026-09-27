@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// on manual edit, and after a supplier is assigned later. Integration tests against
 /// nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseStatusGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -11,6 +11,7 @@ namespace NordicBeesERP.Tests;
 /// guards (last-active-admin and self-modification), run against the real
 /// nordic_bees_erp_test database via DbTestFixture.
 /// </summary>
+[Collection("RealDatabase")]
 public class ErpUserServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

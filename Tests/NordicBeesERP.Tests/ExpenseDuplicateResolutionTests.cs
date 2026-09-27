@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// "reject" keeps the row as REJECTED, and approving an unresolved duplicate is refused.
 /// Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseDuplicateResolutionTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

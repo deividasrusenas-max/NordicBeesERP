@@ -17,6 +17,7 @@ namespace NordicBeesERP.Tests;
 /// The real table has no CONFIRMED row, so CONFIRMED behaviour is tested with the real rows flipped to Confirmed
 /// and injected through <c>ExpenseService</c>'s optional row-set constructor argument.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseVatRateGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

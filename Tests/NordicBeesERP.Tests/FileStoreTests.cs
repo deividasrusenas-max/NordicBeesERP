@@ -18,6 +18,7 @@ namespace NordicBeesERP.Tests;
 /// class marker in created_by and are deleted in teardown; the temp root is
 /// deleted in teardown as well.
 /// </summary>
+[Collection("RealDatabase")]
 public class FileStoreTests : IClassFixture<DbTestFixture>, IDisposable
 {
     private readonly DbTestFixture _fixture;

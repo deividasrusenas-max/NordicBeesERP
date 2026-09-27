@@ -11,6 +11,7 @@ using Xunit;
 
 namespace NordicBeesERP.Tests;
 
+[Collection("RealDatabase")]
 public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

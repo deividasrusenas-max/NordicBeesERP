@@ -8,6 +8,7 @@ namespace NordicBeesERP.Tests;
 /// Etapas 4 Part C, C3: integration tests against the real nordic_bees_erp_test database, fixed
 /// synthetic data (RESEARCH-2026-09-25-reliability.md §7's five numbers, PLAN-ETAPAS4.md §5).
 /// </summary>
+[Collection("RealDatabase")]
 public class WeeklySummaryServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

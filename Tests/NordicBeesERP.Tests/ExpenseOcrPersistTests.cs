@@ -11,6 +11,7 @@ namespace NordicBeesERP.Tests;
 /// saves are one transaction, and re-OCR over allocations needs confirmation and is audited.
 /// Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseOcrPersistTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

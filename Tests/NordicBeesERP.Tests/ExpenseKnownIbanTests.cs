@@ -16,6 +16,7 @@ namespace NordicBeesERP.Tests;
 /// offered, not flagged; an invalid IBAN is never used or added; „Pridėti IBAN prie tiekėjo" inserts INVOICE_CONFIRMED and clears the
 /// flag; PATVIRTINTI keeps it as a record; the partner save upserts a valid IBAN. Real nordic_bees_erp_test (supplier_bank_accounts).
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseKnownIbanTests : IClassFixture<DbTestFixture>
 {
     private const string IbanA = "LT121000011101001000";     // valid (Lietuvos bankas example)

@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// a later edit after assignment, and the two status decisions of DismissWrongRecipient / ResolveDuplicateAsDifferent.
 /// The flags stay stored, and a real review flag still holds the invoice. Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierDocumentStatusTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

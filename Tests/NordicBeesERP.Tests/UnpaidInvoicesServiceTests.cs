@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// LAK invoice), assert the computed remaining balances and period/total
 /// aggregations, then delete every row they created.
 /// </summary>
+[Collection("RealDatabase")]
 public class UnpaidInvoicesServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

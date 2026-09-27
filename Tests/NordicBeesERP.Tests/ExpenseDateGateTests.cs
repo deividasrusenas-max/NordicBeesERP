@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// on manual edit clears the gate. Production evidence: invoices 167, 168, 341.
 /// Integration tests against nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseDateGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

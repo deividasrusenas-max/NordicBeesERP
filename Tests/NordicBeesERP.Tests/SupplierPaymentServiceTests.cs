@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// method that appears to succeed (no exception) but silently persists
 /// zero rows.
 /// </summary>
+[Collection("RealDatabase")]
 public class SupplierPaymentServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// one payment) to drive the balance math and delete every row they created in
 /// cleanup, mirroring SupplierServiceTests' setup/cleanup pattern.
 /// </summary>
+[Collection("RealDatabase")]
 public class DebtReconciliationServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

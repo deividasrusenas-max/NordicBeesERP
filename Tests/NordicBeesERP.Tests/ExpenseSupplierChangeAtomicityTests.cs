@@ -19,6 +19,7 @@ namespace NordicBeesERP.Tests;
 /// on the <c>supplier_alias_events</c> INSERT, the one write every confirmation makes) and verify nothing was saved: the
 /// invoice's supplier, status and flags are unchanged, no audit row and no alias row exist. Real nordic_bees_erp_test.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierChangeAtomicityTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -15,6 +15,7 @@ namespace NordicBeesERP.Tests;
 /// On the edit path the inputs are the pending_* columns when there is no supplier; with a supplier the
 /// document's codes are stored nowhere else, so the stored flags are carried over.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseSupplierDocumentFlagsTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;
