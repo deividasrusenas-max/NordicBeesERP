@@ -206,23 +206,34 @@ gyventi įprastoje schemoje.
 
 ---
 
-## 3. IBAN backfill produi
+## 3. IBAN backfill produkcijai
 
-`PLAN-ETAPAS2.md` §1.4 (eilutė 212): **savininko paleidžiamas** vienkartinis veiksmas —
-kiekviena `business_partners.bank_account` reikšmė, kuri praeina `IbanValidator.Validate`
-(`Services/Validation/IbanValidator.cs:65`), tampa eilute `supplier_bank_accounts` su
-`source = 'MIGRATED'`; reikšmės, kurios netenkina IBAN patikros, lieka tik senajame
-stulpelyje ir surašomos buhalteriui atskirai (nesukuriamos automatiškai).
+**Pataisyta (D-048 Part C, po nepriklausomos peržiūros):** ankstesnė šio dokumento versija
+klaidingai teigė, kad backfill įrankio nėra. **Jis egzistuoja, jau patikrintas ir jau
+paleistas staginge/DEV** —
+`Migrations/Scripts/20260927_backfill_supplier_bank_accounts.sql` (commit `55f27bc`, Etapas 2
+S4a, D-044 Q2/Q5): grynas, aplinkai nepriklausomas SQL (rekursinis CTE, veikia MySQL 8.0 ir
+MariaDB ≥ 10.2), pilnai reimplementuojantis `IbanValidator` taisykles (šalies ilgio lentelė +
+ISO 13616 mod-97 kontrolinė suma) tiesiogiai SQL, be jokio kodo iškvietimo. Kiekviena
+`business_partners.bank_account` reikšmė, praeinanti šias taisykles, tampa eilute
+`supplier_bank_accounts` su `source = 'MIGRATED'`; netenkinančios reikšmės lieka tik senajame
+stulpelyje. Idempotentiškas (`NOT EXISTS` apsauga — saugu paleisti pakartotinai).
 
-**Tai NĖRA grynas SQL** — IBAN patikra (kontrolinė suma, šalies kodas, ilgis) yra kodo
-logika `IbanValidator`, ne SQL funkcija. **⚠ SAVININKAS SPRENDŽIA:** šiai sesijai nebuvo
-pavesta parašyti šio backfill vykdomojo įrankio (nei kaip vienkartinė konsolės programa,
-nei kaip administratoriaus veiksmas UI) — jis **neegzistuoja šiuo metu**. Prieš §8 (prodo
-švari pradžia) savininkas turi arba (a) paprašyti tokio įrankio atskira užduotimi, arba
-(b) atlikti backfill'ą rankiniu būdu peržiūrėdamas kiekvieną `bank_account` reikšmę. Be šio
-žingsnio `SUPPLIER_NEW_IBAN` (D-044 Q5) veiks nuo nulio prode net tiems tiekėjams, kurie jau
-turi žinomą IBAN pagrindiniuose duomenyse — funkcionalu, bet nereikalingai triukšminga
-pirmomis dienomis.
+**Jau patikrintas:** `Tests/NordicBeesERP.Tests/ExpenseKnownIbanTests.cs:409`
+(`BackfillSql_AgreesWithIbanValidator_OnEverySample_AndIsIdempotent`) įrodo SQL logika sutampa
+su `IbanValidator` ~20 kraštinių atvejų. Jau paleistas DEV: 57 iš 61 reikšmių tapo `MIGRATED`
+(`.opencode/reports/etapas2-s4-20260927-0416.md`). Tiksli žingsnis po žingsnio procedūra jau
+parašyta `STAGING-CHECKS-ETAPAS2.md` §1.5 (nukopijuoti failą į `lakstena-dev`, paleisti dry-run
+SELECT dalį, palyginti su tikėtinu kiekiu, tada INSERT dalį, tada patikros užklausos) — prode
+naudoti TĄ PAČIĄ procedūrą, pakeičiant `nordic_bees_staging` → `nordic_bees_erp`.
+
+**⚠ SAVININKAS PATIKRINA:** `STAGING-CHECKS-ETAPAS2.md` pati įspėja — rekursinis CTE
+backfill'as patikrintas tik DEV MySQL 8.0.46, **NE MariaDB** (prodas ir staging yra MariaDB
+11.8). Jei staginge (kuris naudoja tą pačią MariaDB variklio versiją kaip prodas) dry-run
+SELECT dalis sėkmingai įvykdyta be sintaksės klaidos prieš pradedant šį deploy'ą — tai jau ir
+yra MariaDB suderinamumo įrodymas prodo daliai; jei staginge dar nepaleista, paleisti pirma
+ten, ne tiesiai prode. Be šio žingsnio `SUPPLIER_NEW_IBAN` (D-044 Q5) veiks nuo nulio prode net
+tiems tiekėjams, kurie jau turi žinomą IBAN pagrindiniuose duomenyse.
 
 ---
 
@@ -355,5 +366,6 @@ jei tarp jų praėjo laiko ir kažkas pasikeitė.
 2. §1.3: PVM tarifai (su EE data) ir `ZERO_VAT_NO_BASIS` formuluotės patvirtintos su buhalteriu?
 3. §1.4: ar staging partnerių ID (381, 377, 386…) egzistuoja prode su tais pačiais duomenimis?
 4. §2 pradžia: ar prode jau yra `__EFMigrationsHistory` eilutė `20260915120000_...`?
-5. §3: IBAN backfill įrankio nėra — sukurti atskira užduotimi ar daryti rankiniu būdu?
+5. §3: IBAN backfill skriptas jau yra ir patikrintas (`20260927_backfill_supplier_bank_accounts.sql`) —
+   paleisti tą pačią `STAGING-CHECKS-ETAPAS2.md` §1.5 procedūrą prieš `nordic_bees_erp`.
 6. §9: schema rollback realiai = atstatymas iš kopijos, ne `Down()` prode — priimtina?
