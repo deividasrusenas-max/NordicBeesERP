@@ -80,6 +80,9 @@ namespace NordicBeesERP.Services
         // Supplier Assignment
         Task AssignSupplierAsync(int invoiceId, int supplierId, string performedBy);
 
+        // The human created a supplier for this invoice: one alias confirmation (S5, D-044 Q4); the sweep is not a confirmation
+        Task ConfirmSupplierAliasAsync(int invoiceId, int partnerId, string performedBy);
+
         // D-045: change the supplier of an unpaid invoice (NEEDS_REVIEW / PENDING, no payments); voids an approval, audited SUPPLIER_CHANGED
         Task ChangeSupplierAsync(int invoiceId, int partnerId, string performedBy);
         

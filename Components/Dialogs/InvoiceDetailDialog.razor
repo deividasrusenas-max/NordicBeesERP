@@ -924,6 +924,8 @@
             {
                 // Auto-assign this supplier to all PENDING_SUPPLIER invoices with matching VAT code or name
                 await ExpenseService.AutoAssignSupplierAsync(_invoice.PendingSupplierVat, _invoice.PendingSupplierName, newSupplier.Id);
+                // creating the supplier for THIS invoice is an explicit choice (alias confirmation); the sweep above is not
+                await ExpenseService.ConfirmSupplierAliasAsync(_invoice.Id, newSupplier.Id, await AuthService.GetRequiredActorNameAsync());
 
                 _loadedInvoiceId = 0;
                 await OnParametersSetAsync();

@@ -1420,6 +1420,21 @@ namespace NordicBeesERP.Services
                 PerformedBy = performedBy, PerformedAt = now
             });
             await context.SaveChangesAsync();
+
+            // an explicit human choice: it counts towards an alias of the invoice's OCR supplier name (S5, D-044 Q4)
+            await SupplierAliases.ConfirmAsync(context, invoiceId, supplierId, invoice.PendingSupplierName, performedBy);
+        }
+
+        /// <summary>
+        /// The human created a supplier for THIS invoice (the „Sukurti tiekėją" dialog): counts as one alias confirmation for it. The
+        /// sweep that assigns the other matching invoices is not a confirmation. No-op unless the invoice now has exactly that supplier.
+        /// </summary>
+        public async Task ConfirmSupplierAliasAsync(int invoiceId, int partnerId, string performedBy)
+        {
+            using var context = _dbFactory.CreateDbContext();
+            var invoice = await context.ExpenseInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null || invoice.SupplierId != partnerId) return;
+            await SupplierAliases.ConfirmAsync(context, invoiceId, partnerId, invoice.PendingSupplierName, performedBy);
         }
 
         /// <summary>
@@ -1501,6 +1516,9 @@ namespace NordicBeesERP.Services
                 oldStatus, newStatus, performedBy, now);
 
             await transaction.CommitAsync();
+
+            // an explicit human choice (D-045): it counts towards an alias of the invoice's OCR supplier name — when the invoice still holds it
+            await SupplierAliases.ConfirmAsync(context, invoiceId, partnerId, invoice.PendingSupplierName, performedBy);
         }
 
         /// <summary>
@@ -1826,7 +1844,7 @@ namespace NordicBeesERP.Services
             var document = SupplierMatching.Document(invoice.PendingSupplierName, invoice.PendingSupplierVat,
                 invoice.PendingSupplierCompanyCode, invoice.PendingSupplierBankAccount, invoice.PendingSupplierCountryCode);
             var snapshot = await SupplierMatching.LoadSnapshotAsync(context);
-            var match = SupplierMatcher.Match(document, snapshot.Candidates);
+            var match = SupplierMatcher.Match(document, snapshot.Candidates, snapshot.Aliases);
 
             return match.CandidateIds
                 .Select(id => snapshot.Candidates.FirstOrDefault(c => c.Id == id))
@@ -2482,6 +2500,7 @@ namespace NordicBeesERP.Services
             });
             AddSupplierMatchedAudit(ctx, invoice.Id, invoice.InvoiceNumber, ocrResult, null, status, performedBy);
             await ctx.SaveChangesAsync();
+            await RecordAliasAppliedAsync(ctx, invoice.Id, ocrResult, performedBy);
 
             if (ocrResult.FileId.HasValue)
             {
@@ -2727,9 +2746,18 @@ namespace NordicBeesERP.Services
             }
             AddSupplierMatchedAudit(ctx, invoice.Id, invoiceNumber, ocrResult, oldStatus, newStatus, performedBy);
             await ctx.SaveChangesAsync();
+            await RecordAliasAppliedAsync(ctx, invoice.Id, ocrResult, performedBy);
 
             await transaction.CommitAsync();
             return invoice;
+        }
+
+        /// <summary>An alias decided the assignment (tier Alias, and the invoice ended up with that partner): an APPLIED event on the alias.</summary>
+        private static async Task RecordAliasAppliedAsync(NordicBeesERPContext ctx, int invoiceId, OcrResultDto ocrResult, string performedBy)
+        {
+            var match = ocrResult.SupplierMatch;
+            if (match is { Outcome: MatchOutcome.Assigned, Tier: MatchTier.Alias, PartnerId: not null } && ocrResult.SupplierId == match.PartnerId)
+                await SupplierAliases.RecordAppliedAsync(ctx, invoiceId, ocrResult.SupplierName, match.PartnerId.Value, performedBy);
         }
 
         /// <summary>

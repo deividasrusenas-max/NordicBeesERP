@@ -8,8 +8,12 @@ namespace NordicBeesERP.Services;
 public sealed record SupplierSnapshot(
     IReadOnlyList<SupplierCandidate> Candidates,
     IReadOnlyDictionary<int, int?> DefaultCategoryIds,
-    IReadOnlyDictionary<int, string> Names)
+    IReadOnlyDictionary<int, string> Names,
+    IReadOnlyList<ActiveAlias>? ActiveAliases = null)
 {
+    /// <summary>The ACTIVE learned aliases (S5) — candidates, frozen and revoked ones are never applied.</summary>
+    public IReadOnlyList<ActiveAlias> Aliases => ActiveAliases ?? Array.Empty<ActiveAlias>();
+
     public int? DefaultCategoryOf(int? partnerId) =>
         partnerId.HasValue && DefaultCategoryIds.TryGetValue(partnerId.Value, out var categoryId) ? categoryId : null;
 }
@@ -57,7 +61,8 @@ public static class SupplierMatching
         return new SupplierSnapshot(
             candidates,
             rows.ToDictionary(r => r.Id, r => r.DefaultExpenseCategoryId),
-            rows.ToDictionary(r => r.Id, r => r.Name ?? ""));
+            rows.ToDictionary(r => r.Id, r => r.Name ?? ""),
+            await SupplierAliases.LoadActiveAsync(context, ct));
     }
 
     /// <summary>
@@ -75,7 +80,7 @@ public static class SupplierMatching
     {
         await using var context = dbFactory.CreateDbContext();
         var snapshot = await LoadSnapshotAsync(context, ct);
-        return (SupplierMatcher.Match(document, snapshot.Candidates), snapshot);
+        return (SupplierMatcher.Match(document, snapshot.Candidates, snapshot.Aliases), snapshot);
     }
 
     /// <summary>The audit text of a match (no personal data beyond ids): parsed by nothing, read by people and the staging queries.</summary>

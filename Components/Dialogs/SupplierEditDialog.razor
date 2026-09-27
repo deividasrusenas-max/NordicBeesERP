@@ -11,6 +11,7 @@
 @inject ICompanyLookupService CompanyLookupService
 @inject ICompanySettingsService CompanySettingsService
 @inject IGooglePlacesService GooglePlaces
+@inject IAuthService AuthService
 
 <MudDialog>
     <TitleContent>
@@ -268,6 +269,40 @@
             <MudItem xs="12">
                 <MudSwitch @bind-Value="supplier.IsActive" Label="Aktyvus" Color="Color.Success" Variant="Variant.Outlined" />
             </MudItem>
+
+            @if (supplier.Id > 0 && _aliases.Count > 0)
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Išmokti pavadinimai (aliasai)</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                        Sąskaitoje nuskaitytas pavadinimas, kurį žmogus ne mažiau kaip @SupplierAliases.PromotionThreshold kartus priskyrė šiam tiekėjui.
+                        Taikomi tik aktyvūs; nesutampant PVM / įmonės kodui niekada netaikomi.
+                    </MudText>
+                    @foreach (var alias in _aliases)
+                    {
+                        <div class="d-flex align-center justify-space-between gap-2 mb-1">
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight:600">@alias.RawExample</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @AliasStateLabel(alias.State) · patvirtinimų: @alias.Confirmations@(string.IsNullOrEmpty(alias.FrozenReason) ? "" : " · " + alias.FrozenReason)
+                                </MudText>
+                            </div>
+                            <div class="d-flex gap-1">
+                                @if (alias.State == SupplierAliases.Frozen)
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Margin="Margin.Dense"
+                                               OnClick="() => UnfreezeAliasAsync(alias.Id)">Atblokuoti</MudButton>
+                                }
+                                @if (alias.State != SupplierAliases.Revoked)
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Margin="Margin.Dense"
+                                               OnClick="() => RevokeAliasAsync(alias.Id)">Atšaukti aliasą</MudButton>
+                                }
+                            </div>
+                        </div>
+                    }
+                </MudItem>
+            }
         </MudGrid>
     </DialogContent>
     <DialogActions>
@@ -309,6 +344,50 @@
             .OrderBy(c => c.SortOrder)
             .ToListAsync();
         _companySettings = await CompanySettingsService.GetSettingsAsync();
+        await LoadAliasesAsync();
+    }
+
+    // Etapas 2 S5: the partner's learned aliases (state, confirmations, raw example) with revoke / unfreeze, each writing an event row
+    private List<SupplierAlias> _aliases = new();
+
+    private async Task LoadAliasesAsync()
+    {
+        var partnerId = Supplier?.Id ?? 0;
+        if (partnerId <= 0) { _aliases = new(); return; }
+        await using var ctx = DbFactory.CreateDbContext();
+        _aliases = await SupplierAliases.ListAsync(ctx, partnerId);
+    }
+
+    private static string AliasStateLabel(string state) => state switch
+    {
+        SupplierAliases.Active => "Aktyvus",
+        SupplierAliases.Candidate => "Kandidatas",
+        SupplierAliases.Frozen => "Užblokuotas",
+        SupplierAliases.Revoked => "Atšauktas",
+        _ => state
+    };
+
+    private async Task RevokeAliasAsync(int aliasId) => await RunAliasActionAsync(aliasId, SupplierAliases.RevokeAsync, "Aliasas atšauktas");
+    private async Task UnfreezeAliasAsync(int aliasId) => await RunAliasActionAsync(aliasId, SupplierAliases.UnfreezeAsync, "Aliasas atblokuotas");
+
+    private async Task RunAliasActionAsync(int aliasId, Func<NordicBeesERPContext, int, string, Task> action, string doneText)
+    {
+        try
+        {
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await using (var ctx = DbFactory.CreateDbContext())
+                await action(ctx, aliasId, actor);
+            await LoadAliasesAsync();
+            snackbar.Add(doneText, Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            snackbar.Add("Klaida: " + ex.Message, Severity.Error);
+        }
     }
 
     protected override void OnParametersSet()
