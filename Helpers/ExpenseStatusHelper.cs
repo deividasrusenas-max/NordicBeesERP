@@ -93,6 +93,8 @@ public static class ExpenseStatusHelper
         "VENDOR_SUGGESTED"        => "Siūlomas kitas tiekėjas",
         "VENDOR_AMBIGUOUS"        => "Keli galimi tiekėjai",
         "SUPPLIER_NEW_IBAN"       => "Naujas tiekėjo IBAN",
+        "LINES_REPAIRED_FROM_TABLE" => "Eilutės pataisytos pagal lentelę",
+        "ZERO_VAT_NO_BASIS"       => "PVM 0%, teisinio pagrindo formuluotė nerasta",
         _                    => flag
     };
 
@@ -133,6 +135,8 @@ public static class ExpenseStatusHelper
         "VENDOR_SUGGESTED"        => Color.Info,
         "VENDOR_AMBIGUOUS"        => Color.Info,
         "SUPPLIER_NEW_IBAN"       => Color.Warning,
+        "LINES_REPAIRED_FROM_TABLE" => Color.Info,
+        "ZERO_VAT_NO_BASIS"       => Color.Warning,
         _                    => Color.Default
     };
 

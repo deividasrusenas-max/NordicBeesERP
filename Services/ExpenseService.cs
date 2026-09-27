@@ -1989,7 +1989,10 @@ namespace NordicBeesERP.Services
                            (!hasSupplier && (f == OcrFlag.InvalidIban || f == OcrFlag.InvalidVatFormat)) ||
                            f == OcrFlag.VatRateNotAllowed || f == OcrFlag.NumberMisread || f == OcrFlag.NumberAmbiguous ||
                            // D-044 Q5: review even with a supplier — NOT covered by the D-039 item 2 exemption above
-                           f == OcrFlag.SupplierNewIban);
+                           f == OcrFlag.SupplierNewIban ||
+                           // Etapas 3 S4 (D-026, PLAN-ETAPAS3 §5): a CONFIRMED country's legal-basis list found no
+                           // match — real, actionable review. Never fires today (every country is UNCONFIRMED).
+                           f == OcrFlag.ZeroVatNoBasis);
 
         /// <summary>Status precedence for OCR ingestion: WRONG_RECIPIENT → supplier missing → review flags.</summary>
         private static string DecideOcrStatus(IEnumerable<string> flags, int? supplierId)

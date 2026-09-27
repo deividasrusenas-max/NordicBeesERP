@@ -199,4 +199,12 @@ public static class OcrFlag
     // ASF0021438/EGO/UTA PL class). Information only — not in HasReviewFlag's list, and not in ManualEditOwnedFlags,
     // so it is carried over unchanged by an edit (same default-carry-over rule as any other document-derived flag).
     public const string LinesRepairedFromTable   = "LINES_REPAIRED_FROM_TABLE"; // "Eilutės pataisytos pagal lentelę"
+
+    // Etapas 3 S4 (PLAN-ETAPAS3 §5, D-046 OQ-4/OQ-5): a 0% VAT invoice whose supplier's country has a CONFIRMED
+    // legal-basis formulation list (ZeroVatFormulationExtractor), and no pattern from it matched the document text.
+    // REVIEW, and — the only Etapas 1/2 status-decision change this session makes (PLAN-ETAPAS3 §4's own carve-out) —
+    // added to HasReviewFlag's list. Not in ManualEditOwnedFlags: carried over unchanged by an edit, same as
+    // LINES_REPAIRED_FROM_TABLE above. Today (every country's list is UNCONFIRMED) this flag never fires — plain
+    // ZERO_VAT keeps doing the job it always did until a human confirms a country's list.
+    public const string ZeroVatNoBasis           = "ZERO_VAT_NO_BASIS"; // "PVM 0%, teisinio pagrindo formuluotė nerasta"
 }

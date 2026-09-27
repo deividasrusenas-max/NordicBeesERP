@@ -578,10 +578,6 @@ namespace NordicBeesERP.Services
                 if (string.IsNullOrEmpty(result.DueDate))
                     result.Flags.Add(OcrFlag.MissingDueDate);
 
-                // ZERO_VAT: result.VatRate == 0 && result.AmountInclVat > 0
-                if (result.VatRate == 0 && result.AmountInclVat > 0)
-                    result.Flags.Add(OcrFlag.ZeroVat);
-
                 // INVALID_VAT_RATE: raw OCR VAT-rate text was present but could not be parsed as 0..100
                 if (hasInvalidVatRate)
                     result.Flags.Add(OcrFlag.InvalidVatRate);
@@ -602,6 +598,27 @@ namespace NordicBeesERP.Services
                         .Select(b => b.CountryCode).FirstOrDefaultAsync();
                 }
                 DateTime? invoiceDate = DateTime.TryParse(result.InvoiceDate, out var parsedDate) && parsedDate != default ? parsedDate : null;
+
+                // ZERO_VAT / ZERO_VAT_NO_BASIS (D-026, PLAN-ETAPAS3 §5, D-046 OQ-4/OQ-5, Etapas 3 S4): same country
+                // resolution as the VAT-rate whitelist below — the assigned partner's stored country once a supplier
+                // exists, the document's own country otherwise (ExpenseService.ResolveRateCountry, not a second
+                // mechanism). CJEU C-247/21: the check runs at extraction time (create/re-OCR), not only at approval.
+                if (result.VatRate == 0 && result.AmountInclVat > 0)
+                {
+                    var rateCountry = ExpenseService.ResolveRateCountry(partnerCountry, result.SupplierCountryCode, supplierId.HasValue);
+                    var documentText = analyzeResult.TryGetProperty("content", out var contentEl) && contentEl.ValueKind == JsonValueKind.String
+                        ? contentEl.GetString() : null;
+                    var basis = ZeroVatFormulationExtractor.Check(documentText, rateCountry);
+                    // Confirmed-and-found closes the flag entirely (D-026 "vėliavėlė užsidaro"); confirmed-and-not-found
+                    // is a real, actionable review reason. Everything else (today: every country is UNCONFIRMED) keeps
+                    // TODAY'S behaviour byte-for-byte unchanged — plain ZERO_VAT, nothing gets looser before a human
+                    // confirms a country's list.
+                    if (basis.Outcome == ZeroVatCheckOutcome.ConfirmedNoBasisFound)
+                        result.Flags.Add(OcrFlag.ZeroVatNoBasis);
+                    else if (basis.Outcome != ZeroVatCheckOutcome.BasisConfirmedFound)
+                        result.Flags.Add(OcrFlag.ZeroVat);
+                }
+
                 ExpenseService.RecomputeValidationFlags(result.Flags, result.AmountExclVat, result.VatAmount,
                     result.AmountInclVat, ExpenseService.ToValidationLines(result.Lines), ExpenseService.ToDocumentInput(result),
                     ExpenseService.ToRateInput(result, partnerCountry, invoiceDate, "STANDARD"));
