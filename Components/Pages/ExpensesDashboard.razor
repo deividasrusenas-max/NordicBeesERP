@@ -11,6 +11,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
+@inject IReviewQueueAgingService ReviewQueueAgingService
 
 <PageTitle>Išlaidos</PageTitle>
 
@@ -191,6 +192,32 @@
             </MudPaper>
         }
 
+        @if (_agedInvoices.Count > 0)
+        {
+            <MudPaper Style="background:#fef2f2; border:1px solid #fca5a5; border-radius:12px; padding:16px; margin-bottom:16px">
+                <div class="d-flex justify-space-between align-center" style="cursor:pointer" @onclick="() => _showAgedList = !_showAgedList">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Style="color:#b91c1c" />
+                        <MudText Typo="Typo.subtitle2" Style="color:#991b1b; font-weight:600">
+                            @_agedInvoices.Count sąskaita(-os) neišspręsta ilgiau nei @_agingThresholdWorkingDays d.d.
+                        </MudText>
+                    </div>
+                    <MudIcon Icon="@(_showAgedList ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" />
+                </div>
+                @if (_showAgedList)
+                {
+                    <MudList T="string" Dense="true" Class="mt-2">
+                        @foreach (var inv in _agedInvoices)
+                        {
+                            <MudListItem T="string">
+                                @inv.InvoiceNumber (@ExpenseStatusHelper.GetLabel(inv.Status)) — @inv.WorkingDaysUnresolved d.d. (nuo @inv.SinceStatusEnteredAt.ToString("yyyy-MM-dd"))
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudPaper>
+        }
+
         <!-- Recent invoices -->
         <MudPaper Elevation="0" Class="pa-4" Style="background:#f8fafc; border-radius:12px">
             <div class="d-flex justify-space-between align-center mb-3">
@@ -265,6 +292,9 @@
     private List<ExpenseInvoice> _invoices = new();
     private List<ExpenseInvoice> _pendingSupplierInvoices = new();
     private List<ExpenseInvoice> _needsReviewInvoices = new();
+    private IReadOnlyList<AgedInvoice> _agedInvoices = Array.Empty<AgedInvoice>();
+    private int _agingThresholdWorkingDays = 5;
+    private bool _showAgedList = false;
     private Dictionary<int, string> _supplierNames = new();
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
@@ -365,6 +395,9 @@
                 await using var ctx = DbFactory.CreateDbContext();
                 _supplierNames = await ctx.BusinessPartners.Where(b => sids.Contains(b.Id)).ToDictionaryAsync(b => b.Id, b => b.Name);
             }
+
+            _agingThresholdWorkingDays = await ReviewQueueAgingService.GetThresholdWorkingDaysAsync();
+            _agedInvoices = await ReviewQueueAgingService.GetUnresolvedLongerThanThresholdAsync(_agingThresholdWorkingDays);
         }
         finally
         {
