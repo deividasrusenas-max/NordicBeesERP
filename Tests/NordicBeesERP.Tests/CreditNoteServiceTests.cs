@@ -500,8 +500,11 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             "INSERT INTO credit_note_lines (credit_note_id, invoice_line_id, line_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, created_at) VALUES ({0}, {1}, {2}, {3}, {4}, 'vnt', {5}, 21.0, {6}, {7}, {8}, {9})",
             creditNoteId, lineBId, 2, "Test line B", 1m, 20.00m, 20.00m, 4.20m, 24.20m, now);
 
-        var maxLineId = await setupContext.InvoiceLines.Select(l => (int?)l.Id).MaxAsync() ?? 0;
-        var missingId = maxLineId + 1;
+        // A fixed, guaranteed-invalid id — not derived from a live MAX(id), which races against
+        // other test classes inserting invoice_lines rows in parallel against the same real
+        // nordic_bees_erp_test database and can turn "non-existent" into a real id mid-test
+        // (D-047 A3: reproduced via `dotnet test --filter "Category!=E2E"`, "No exception was thrown").
+        const int missingId = int.MinValue;
 
         try
         {
