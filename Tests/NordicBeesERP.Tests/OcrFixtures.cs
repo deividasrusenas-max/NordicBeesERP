@@ -71,6 +71,49 @@ internal static class OcrFixtures
         Cur("934,22", 934.22), Cur("196,18", 196.18), Cur("1 130,40", 1130.40),
         Line("Kuras A", Num("3 888,000", 3), Cur("0,2066", 0.2066), Cur("972,00", 972.00)),
         Line("Kuras B", Num("9,000", 9000), Cur("14,5456", 14.5456), Cur("158,40", 158.40)));
+
+    /// <summary>
+    /// The supplier identifiers a golden-file snapshot (Etapas 3 S2, PLAN-ETAPAS3.md §7.2) reports alongside header
+    /// totals and lines: VendorName's printed text, VendorTaxId cleaned the same way <c>ExpenseOcrService</c> does
+    /// (spaces/dashes/dots stripped — the one place this test helper duplicates a private production helper rather
+    /// than calling it, because it is private), and the registration code via the same public
+    /// <see cref="ExpenseOcrService.ExtractSupplierCompanyCode"/> wrapper production uses.
+    /// </summary>
+    public static (string VatCode, string CompanyCode, string Name) SupplierIdentifiers(string response, CompanySettings? settings = null, string? customerVatCode = null)
+    {
+        var root = JsonDocument.Parse(response).RootElement;
+        var fields = Fields(response);
+        string Str(string field) => fields.TryGetProperty(field, out var f)
+            ? (f.TryGetProperty("valueString", out var vs) ? vs.GetString() : f.TryGetProperty("content", out var c) ? c.GetString() : "") ?? ""
+            : "";
+        var vatCode = Str("VendorTaxId").Replace(" ", "").Replace("-", "").Replace(".", "").Trim();
+        var name = Str("VendorName");
+        var extraction = ExpenseOcrService.ExtractSupplierCompanyCode(root, settings ?? new CompanySettings(), customerVatCode);
+        return (vatCode, extraction.Code, name);
+    }
+
+    /// <summary>
+    /// The normalised projection a golden-file test snapshots (Etapas 3 S2, PLAN-ETAPAS3.md §7.2): header totals, VAT
+    /// rate, per-line description/quantity/unit price/net/net-derived, supplier identifiers — never the raw Azure JSON
+    /// (a raw-response snapshot would only prove "Azure didn't change", not "the mapping is still correct").
+    /// </summary>
+    public static object Snapshot(OcrResultDto dto, (string VatCode, string CompanyCode, string Name) supplier) => new
+    {
+        Supplier = new { supplier.VatCode, supplier.CompanyCode, supplier.Name },
+        Header = new { dto.AmountExclVat, dto.VatRate, dto.VatAmount, dto.AmountInclVat },
+        Lines = dto.Lines.Select(l => new
+        {
+            l.Description,
+            l.Quantity,
+            l.UnitPrice,
+            l.AmountExclVat,
+            l.NetDerived
+        }).ToList()
+    };
+
+    /// <summary>The full golden-file snapshot for a stored Azure response: parses it exactly as <see cref="Dto"/> does, then adds supplier identifiers.</summary>
+    public static object SnapshotOf(string rawJson, CompanySettings? settings = null, string? customerVatCode = null) =>
+        Snapshot(Dto(rawJson), SupplierIdentifiers(rawJson, settings, customerVatCode));
 }
 
 /// <summary>An OCR service whose Azure call returns a recorded response, so <c>ProcessAsync</c> runs end to end.</summary>

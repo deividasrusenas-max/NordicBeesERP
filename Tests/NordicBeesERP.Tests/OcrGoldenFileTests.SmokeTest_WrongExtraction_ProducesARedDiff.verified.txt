@@ -1,0 +1,28 @@
+﻿{
+  Supplier: {
+    VatCode: ,
+    CompanyCode: ,
+    Name: Fixture Vendor
+  },
+  Header: {
+    AmountExclVat: 934.22,
+    VatAmount: 196.18,
+    AmountInclVat: 1130.4
+  },
+  Lines: [
+    {
+      Description: ,
+      Quantity: 3.0,
+      UnitPrice: 0.2066,
+      AmountExclVat: 972.0,
+      NetDerived: false
+    },
+    {
+      Description: ,
+      Quantity: 9000.0,
+      UnitPrice: 14.5456,
+      AmountExclVat: 158.4,
+      NetDerived: false
+    }
+  ]
+}

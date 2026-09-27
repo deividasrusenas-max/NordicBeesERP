@@ -54,3 +54,8 @@ Docs/Invoice pvz/
 # Deliberately untracked: a file that rewrites itself in the background
 # would leave the tree dirty and make bump-version.sh refuse to run.
 .opencode/db-schema.md
+
+# Verify.Xunit golden-file harness (Etapas 3 S2): .received.txt is always a throwaway
+# diff artifact (written on every mismatch, including the deliberate smoke-test one) —
+# only the accepted .verified.txt baselines are tracked.
+*.received.txt
