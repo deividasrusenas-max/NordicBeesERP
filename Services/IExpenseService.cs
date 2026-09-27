@@ -102,6 +102,11 @@ namespace NordicBeesERP.Services
         // Candidates for a PENDING_SUPPLIER invoice: the matcher run at display time on the stored pending identifiers (no schema)
         Task<List<SupplierCandidateView>> GetSupplierCandidatesAsync(int invoiceId);
 
+        // Known IBANs (Etapas 2 S4, D-044 Q5): the document IBAN the detail dialog may add to the invoice's supplier (null = nothing to offer),
+        // and the action itself („Pridėti IBAN prie tiekėjo"): inserts INVOICE_CONFIRMED, clears SUPPLIER_NEW_IBAN, audited
+        Task<string?> GetAddableIbanAsync(int invoiceId);
+        Task AddSupplierIbanAsync(int invoiceId, string performedBy);
+
         // Partner a re-OCR suggested instead of the human-assigned supplier (VENDOR_SUGGESTED), from the audit trail
         Task<int?> GetSuggestedSupplierIdAsync(int invoiceId);
     }

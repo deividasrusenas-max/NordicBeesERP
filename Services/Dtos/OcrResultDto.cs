@@ -189,4 +189,8 @@ public static class OcrFlag
     // Etapas 2 S3 (D-044): two or more partners tie at the deciding tier — nothing is assigned, the candidates are shown.
     // Information only; the invoice stays PENDING_SUPPLIER because there is no supplier.
     public const string VendorAmbiguous          = "VENDOR_AMBIGUOUS";
+
+    // Etapas 2 S4 (D-044 Q5): the supplier already has at least one known IBAN and the document's valid IBAN is not among them.
+    // REVIEW — and, unlike INVALID_IBAN, it stays review with a supplier (not covered by the D-039 item 2 exemption).
+    public const string SupplierNewIban          = "SUPPLIER_NEW_IBAN";
 }

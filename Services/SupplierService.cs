@@ -202,6 +202,7 @@ namespace NordicBeesERP.Services
             
             context.BusinessPartners.Add(partner);
             await context.SaveChangesAsync();
+            await SupplierBankAccounts.EnsureKnownAsync(context, partner.Id, partner.BankAccount, SupplierBankAccount.SourceManual, null, null);
             
             return partner;
         }
@@ -255,6 +256,9 @@ namespace NordicBeesERP.Services
                 DateTime.Now,
                 partner.Id,
                 partner.CompensationVatCode);
+
+            // a valid IBAN saved on the partner becomes a known account (Etapas 2 S4)
+            await SupplierBankAccounts.EnsureKnownAsync(context, partner.Id, partner.BankAccount, SupplierBankAccount.SourceManual, null, null);
 
             partner.UpdatedAt = DateTime.Now;
             return partner;
@@ -349,6 +353,7 @@ namespace NordicBeesERP.Services
                     supplier.InvoiceEmail ?? "",
                     DateTime.Now,
                     supplier.Id);
+                await SupplierBankAccounts.EnsureKnownAsync(context, supplier.Id, supplier.BankAccount, SupplierBankAccount.SourceManual, null, null);
                 return supplier;
             }
             else
@@ -400,6 +405,7 @@ namespace NordicBeesERP.Services
                 partner.CreatedAt = DateTime.Now;
                 await context.SaveChangesAsync();
                 supplier.Id = partner.Id;
+                await SupplierBankAccounts.EnsureKnownAsync(context, partner.Id, partner.BankAccount, SupplierBankAccount.SourceManual, null, null);
             }
             
             return supplier;

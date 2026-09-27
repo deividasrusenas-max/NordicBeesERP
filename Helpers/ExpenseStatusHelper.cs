@@ -92,6 +92,7 @@ public static class ExpenseStatusHelper
         "LINE_DUPLICATE_DESCRIPTION" => "Pasikartojantis aprašymas — eilutė palikta",
         "VENDOR_SUGGESTED"        => "Siūlomas kitas tiekėjas",
         "VENDOR_AMBIGUOUS"        => "Keli galimi tiekėjai",
+        "SUPPLIER_NEW_IBAN"       => "Naujas tiekėjo IBAN",
         _                    => flag
     };
 
@@ -131,6 +132,7 @@ public static class ExpenseStatusHelper
         "LINE_DUPLICATE_DESCRIPTION" => Color.Default,
         "VENDOR_SUGGESTED"        => Color.Info,
         "VENDOR_AMBIGUOUS"        => Color.Info,
+        "SUPPLIER_NEW_IBAN"       => Color.Warning,
         _                    => Color.Default
     };
 
@@ -151,7 +153,9 @@ public static class ExpenseStatusHelper
             or "FUTURE_DATE" or "STALE_DATE" or "MISSING_INV_DATE"
             // OCR Etapas 1 review flags (PLAN-ETAPAS1 §1.3); information flags are never critical
             or "TOTALS_OUT_OF_RANGE" or "INVALID_IBAN" or "INVALID_VAT_FORMAT"
-            or "VAT_RATE_NOT_ALLOWED" or "NUMBER_MISREAD" or "NUMBER_AMBIGUOUS";
+            or "VAT_RATE_NOT_ALLOWED" or "NUMBER_MISREAD" or "NUMBER_AMBIGUOUS"
+            // Etapas 2 S4: review flag (D-044 Q5)
+            or "SUPPLIER_NEW_IBAN";
 
     public static string Recalculate(decimal paidAmount, decimal invoiceAmount, DateTime? dueDate, string? currentStatus = null)
     {

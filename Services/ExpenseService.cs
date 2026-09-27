@@ -1397,6 +1397,7 @@ namespace NordicBeesERP.Services
             flags.Remove(OcrFlag.VendorSuggested);
             flags.Remove(OcrFlag.VendorAmbiguous);
             await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, supplierId);
+            await SetNewIbanFlagAsync(context, flags, supplierId, invoice.PendingSupplierBankAccount);
             var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
             var newStatus = StatusAfterSupplierAssigned(flags);
 
@@ -1462,6 +1463,7 @@ namespace NordicBeesERP.Services
             var flags = ExpenseStatusHelper.ParseFlags(invoice.OcrFlags);
             flags.RemoveAll(f => f == OcrFlag.VendorNotFound || f == OcrFlag.VendorSuggested || f == OcrFlag.VendorAmbiguous);
             await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, partnerId);
+            await SetNewIbanFlagAsync(context, flags, partnerId, invoice.PendingSupplierBankAccount);
             var newStatus = StatusAfterSupplierAssigned(flags);
             var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
             var approved = !string.IsNullOrEmpty(invoice.ApprovedBy);
@@ -1499,6 +1501,21 @@ namespace NordicBeesERP.Services
                 oldStatus, newStatus, performedBy, now);
 
             await transaction.CommitAsync();
+        }
+
+        /// <summary>
+        /// SUPPLIER_NEW_IBAN (D-044 Q5): set when the invoice's supplier has at least one known account and the document's valid
+        /// IBAN is not among them; otherwise removed. A supplier's first IBAN raises nothing (the detail dialog offers to add it),
+        /// and an invalid document IBAN is never used. Recomputed on every path that changes the supplier or re-reads the document.
+        /// </summary>
+        private static async Task SetNewIbanFlagAsync(NordicBeesERPContext context, List<string> flags, int? supplierId, string? documentIban)
+        {
+            flags.RemoveAll(f => f == OcrFlag.SupplierNewIban);
+            if (supplierId == null) return;
+            var iban = SupplierIdentityNormalizer.Iban(documentIban);
+            if (iban == null) return;
+            var known = await SupplierBankAccounts.KnownAsync(context, supplierId.Value);
+            if (known.Count >= 1 && !known.Contains(iban)) flags.Add(OcrFlag.SupplierNewIban);
         }
 
         private static async Task<string?> GetPartnerCountryAsync(NordicBeesERPContext context, int? supplierId) =>
@@ -1569,6 +1586,7 @@ namespace NordicBeesERP.Services
                 flags.Remove(OcrFlag.VendorSuggested);
                 flags.Remove(OcrFlag.VendorAmbiguous);
                 await RecomputeRateFlagsForSupplierAsync(context, invoice, flags, supplierId);
+                await SetNewIbanFlagAsync(context, flags, supplierId, invoice.PendingSupplierBankAccount);
                 var ocrFlagsJson = System.Text.Json.JsonSerializer.Serialize(flags);
                 var newStatus = StatusAfterSupplierAssigned(flags);
 
@@ -1818,6 +1836,62 @@ namespace NordicBeesERP.Services
                 .ToList();
         }
 
+        /// <summary>
+        /// The document's IBAN that may be added to the invoice's supplier (D-044 Q5): the invoice is NEEDS_REVIEW or PENDING, has a
+        /// supplier, the stored document IBAN is valid and not yet known for that supplier. Null otherwise — an invalid IBAN is never offered.
+        /// </summary>
+        public async Task<string?> GetAddableIbanAsync(int invoiceId)
+        {
+            await using var context = _dbFactory.CreateDbContext();
+            var invoice = await context.ExpenseInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoiceId);
+            return invoice == null ? null : await AddableIbanAsync(context, invoice);
+        }
+
+        private static async Task<string?> AddableIbanAsync(NordicBeesERPContext context, ExpenseInvoice invoice)
+        {
+            if (invoice.SupplierId == null || invoice.Status is not ("NEEDS_REVIEW" or "PENDING")) return null;
+            var iban = SupplierIdentityNormalizer.Iban(invoice.PendingSupplierBankAccount);
+            if (iban == null) return null;
+            var known = await SupplierBankAccounts.KnownAsync(context, invoice.SupplierId.Value);
+            return known.Contains(iban) ? null : iban;
+        }
+
+        /// <summary>
+        /// „Pridėti IBAN prie tiekėjo": the document's IBAN becomes a known account of the supplier (source INVOICE_CONFIRMED,
+        /// source_invoice_id), SUPPLIER_NEW_IBAN is removed and, when that flag was the only reason for NEEDS_REVIEW, the status
+        /// follows the shared rules. Audited as SUPPLIER_IBAN_ADDED (masked IBAN). PATVIRTINTI without this keeps the flag as a record.
+        /// </summary>
+        public async Task AddSupplierIbanAsync(int invoiceId, string performedBy)
+        {
+            await using var context = _dbFactory.CreateDbContext();
+            var invoice = await context.ExpenseInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoiceId)
+                ?? throw new InvalidOperationException($"Sąskaita #{invoiceId} nerasta");
+            var iban = await AddableIbanAsync(context, invoice)
+                ?? throw new InvalidOperationException("Šio IBAN pridėti prie tiekėjo negalima");
+
+            var flags = ExpenseStatusHelper.ParseFlags(invoice.OcrFlags);
+            flags.RemoveAll(f => f == OcrFlag.SupplierNewIban);
+            var oldStatus = invoice.Status;
+            var newStatus = oldStatus == "NEEDS_REVIEW" ? StatusAfterSupplierAssigned(flags) : oldStatus;
+            var ocrFlagsJson = flags.Any() ? System.Text.Json.JsonSerializer.Serialize(flags) : null;
+            var now = DateTime.Now;
+
+            // D-010: the account, the flag / status and the audit row are one transaction
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            await SupplierBankAccounts.EnsureKnownAsync(context, invoice.SupplierId!.Value, iban,
+                NordicBeesERP.Models.SupplierBankAccount.SourceInvoiceConfirmed, invoiceId, performedBy);
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_invoices SET ocr_flags = {0}, status = {1}, updated_at = {2} WHERE id = {3}",
+                ocrFlagsJson, newStatus, now, invoiceId);
+            await context.Database.ExecuteSqlRawAsync(@"
+                INSERT INTO expense_invoice_audit
+                    (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                invoiceId, invoice.InvoiceNumber, "SUPPLIER_IBAN_ADDED",
+                $"Tiekėjo ID: {invoice.SupplierId}; IBAN {SupplierBankAccounts.Mask(iban)}", oldStatus, newStatus, performedBy, now);
+            await transaction.CommitAsync();
+        }
+
         public const string SuggestedPartnerPrefix = "partner_id=";
 
         public static int? ParseSuggestedPartnerId(string? actionDetails)
@@ -1885,7 +1959,9 @@ namespace NordicBeesERP.Services
                            f == OcrFlag.FutureDate || f == OcrFlag.StaleDate || f == OcrFlag.MissingInvDate ||
                            f == OcrFlag.TotalsOutOfRange ||
                            (!hasSupplier && (f == OcrFlag.InvalidIban || f == OcrFlag.InvalidVatFormat)) ||
-                           f == OcrFlag.VatRateNotAllowed || f == OcrFlag.NumberMisread || f == OcrFlag.NumberAmbiguous);
+                           f == OcrFlag.VatRateNotAllowed || f == OcrFlag.NumberMisread || f == OcrFlag.NumberAmbiguous ||
+                           // D-044 Q5: review even with a supplier — NOT covered by the D-039 item 2 exemption above
+                           f == OcrFlag.SupplierNewIban);
 
         /// <summary>Status precedence for OCR ingestion: WRONG_RECIPIENT → supplier missing → review flags.</summary>
         private static string DecideOcrStatus(IEnumerable<string> flags, int? supplierId)
@@ -2309,6 +2385,8 @@ namespace NordicBeesERP.Services
                 ToRateInput(ocrResult, partnerCountry, hasInvoiceDate ? invoiceDate : null, "STANDARD"), _vatRateRows);
             RecomputeNumberReadFlags(ocrResult.Flags, ocrResult);
             RecomputeDateFlags(ocrResult.Flags, hasInvoiceDate ? invoiceDate : null, VilniusToday());
+            await using (var ibanContext = _dbFactory.CreateDbContext())
+                await SetNewIbanFlagAsync(ibanContext, ocrResult.Flags, ocrResult.SupplierId, ocrResult.SupplierBankAccount);
             var status = DecideOcrStatus(ocrResult.Flags, ocrResult.SupplierId);
 
             var duplicateId = await CheckDuplicateAsync(ocrResult.SupplierId, ocrResult.SupplierVatCode,
@@ -2344,7 +2422,8 @@ namespace NordicBeesERP.Services
                 PendingSupplierPostalCode = ocrResult.SupplierId == null ? ocrResult.SupplierPostalCode : null,
                 PendingSupplierCountryCode = ocrResult.SupplierId == null ? CountryCodeResolver.FromAddress(ocrResult.SupplierCountryCode) : null,
                 PendingSupplierCompanyCode = ocrResult.SupplierId == null ? ocrResult.SupplierCompanyCode : null,
-                PendingSupplierBankAccount = ocrResult.SupplierId == null ? ocrResult.SupplierBankAccount : null,
+                // kept with a supplier too (PLAN §1.5): the detail dialog needs the document's IBAN to offer „Pridėti IBAN prie tiekėjo"
+                PendingSupplierBankAccount = ocrResult.SupplierBankAccount,
                 InvoiceNumber = !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : null,
                 InvoiceDate = invoiceDate,
                 DueDate = dueDate,
@@ -2500,6 +2579,7 @@ namespace NordicBeesERP.Services
             RecomputeNumberReadFlags(flags, ocrResult);
             RecomputeDateFlags(flags, hasInvoiceDate ? invoiceDate : null,
                 invoice.CreatedAt != default ? invoice.CreatedAt : VilniusToday());
+            await SetNewIbanFlagAsync(ctx, flags, ocrResult.SupplierId, ocrResult.SupplierBankAccount);
 
             string newStatus;
             string? rejectedReason;
@@ -2559,7 +2639,7 @@ namespace NordicBeesERP.Services
                 ocrResult.SupplierId == null ? ocrResult.SupplierPostalCode : null,
                 ocrResult.SupplierId == null ? CountryCodeResolver.FromAddress(ocrResult.SupplierCountryCode) : null,
                 ocrResult.SupplierId == null ? ocrResult.SupplierCompanyCode : null,
-                ocrResult.SupplierId == null ? ocrResult.SupplierBankAccount : null,
+                ocrResult.SupplierBankAccount, // kept with a supplier too (PLAN §1.5)
                 !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : null,
                 invoiceDate,
                 dueDate,

@@ -752,13 +752,21 @@ namespace NordicBeesERP.Services
         /// <summary>
         /// The supplier flags of an OCR result without a supplier: VENDOR_NOT_FOUND always, plus VENDOR_AMBIGUOUS when two or
         /// more partners tied and VENDOR_SUGGESTED when the matcher only has a weaker or contradicted candidate (D-044).
-        /// Information flags — the invoice is PENDING_SUPPLIER because it has no supplier. Nothing for an assigned supplier.
+        /// Information flags — the invoice is PENDING_SUPPLIER because it has no supplier. For an assigned supplier only SUPPLIER_NEW_IBAN (review) can apply.
         /// </summary>
         public static void ApplySupplierFlags(OcrResultDto result)
         {
-            if (result.SupplierId != null) return;
-
             void Add(string flag) { if (!result.Flags.Contains(flag)) result.Flags.Add(flag); }
+
+            if (result.SupplierId != null)
+            {
+                // SUPPLIER_NEW_IBAN (D-044 Q5): only when the partner already has a known account and the document's valid IBAN
+                // is not among them. The save paths recompute it from the stored data (ExpenseService), this is the preview.
+                var match = result.SupplierMatch;
+                if (match is { Outcome: MatchOutcome.Assigned, DocumentIbanKnown: false, PartnerKnownIbanCount: >= 1 })
+                    Add(OcrFlag.SupplierNewIban);
+                return;
+            }
             Add(OcrFlag.VendorNotFound);
             switch (result.SupplierMatch?.Outcome)
             {

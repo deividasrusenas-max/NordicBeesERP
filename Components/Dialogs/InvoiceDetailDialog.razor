@@ -182,6 +182,14 @@
                                                     else
                                                     {
                                                         <MudText Typo="Typo.body2" Style="font-weight:600">@(_supplierName ?? "---")</MudText>
+                                                        @if (!string.IsNullOrEmpty(_addableIban))
+                                                        {
+                                                            <div class="d-flex align-center gap-2 mt-1">
+                                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Dokumento IBAN @_addableIban nėra tarp tiekėjo žinomų sąskaitų</MudText>
+                                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Margin="Margin.Dense"
+                                                                           OnClick="AddSupplierIbanAsync">Pridėti IBAN prie tiekėjo</MudButton>
+                                                            </div>
+                                                        }
                                                         @if (CanChangeSupplier)
                                                         {
                                                             @if (!_showChangeSupplier)
@@ -551,6 +559,8 @@
     private BusinessPartner? _selectedSupplier;
     // D-045: „Pakeisti tiekėją" — an unpaid invoice (NEEDS_REVIEW / PENDING, no payments) with a supplier
     private bool _showChangeSupplier = false;
+    // Etapas 2 S4: the document's valid IBAN that is not yet a known account of the supplier (null = nothing to offer)
+    private string? _addableIban;
     private bool CanChangeSupplier =>
         _invoice?.SupplierId != null && _invoice.Status is "NEEDS_REVIEW" or "PENDING" && _payments.Count == 0;
     private bool _isLoading = true;
@@ -767,6 +777,8 @@
             }
         }
 
+        _addableIban = await ExpenseService.GetAddableIbanAsync(InvoiceId);
+
         // Load payment history
         _payments = await ExpenseService.GetPaymentsAsync(InvoiceId);
 
@@ -951,6 +963,26 @@
         catch (Exception ex)
         {
             Snackbar.Add("Klaida priskiriant tiekėją: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task AddSupplierIbanAsync()
+    {
+        try
+        {
+            var actor = await AuthService.GetRequiredActorNameAsync();
+            await ExpenseService.AddSupplierIbanAsync(_loadedInvoiceId, actor);
+            _loadedInvoiceId = 0;
+            await OnParametersSetAsync();
+            Snackbar.Add("IBAN pridėtas prie tiekėjo", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Klaida pridedant IBAN: " + ex.Message, Severity.Error);
         }
     }
 

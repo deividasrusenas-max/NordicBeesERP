@@ -28,7 +28,7 @@ public static class SupplierMatching
 {
     /// <summary>
     /// Every partner, customers and inactive ones included — the matcher decides eligibility itself (D-044 Q7: only active
-    /// suppliers are assigned, the rest are only suggested). Known IBANs come from the single <c>bank_account</c> column.
+    /// suppliers are assigned, the rest are only suggested). Known IBANs: active supplier_bank_accounts rows plus the legacy <c>bank_account</c> column.
     /// </summary>
     public static async Task<SupplierSnapshot> LoadSnapshotAsync(NordicBeesERPContext context, CancellationToken ct = default)
     {
@@ -40,11 +40,18 @@ public static class SupplierMatching
             })
             .ToListAsync(ct);
 
+        var known = (await context.SupplierBankAccounts.Where(a => a.IsActive).Select(a => new { a.PartnerId, a.Iban }).ToListAsync(ct))
+            .GroupBy(a => a.PartnerId)
+            .ToDictionary(g => g.Key, g => g.Select(a => a.Iban).ToList());
+
         var candidates = rows
-            .Select(r => new SupplierCandidate(
-                r.Id, r.Name, r.VatCode, r.CompanyCode, r.CountryCode,
-                string.IsNullOrWhiteSpace(r.BankAccount) ? Array.Empty<string>() : new[] { r.BankAccount },
-                r.IsActive, r.IsSupplier || r.IsExpenseSupplier))
+            .Select(r =>
+            {
+                var ibans = known.TryGetValue(r.Id, out var list) ? new List<string>(list) : new List<string>();
+                if (!string.IsNullOrWhiteSpace(r.BankAccount)) ibans.Add(r.BankAccount);
+                return new SupplierCandidate(r.Id, r.Name, r.VatCode, r.CompanyCode, r.CountryCode, ibans,
+                    r.IsActive, r.IsSupplier || r.IsExpenseSupplier);
+            })
             .ToList();
 
         return new SupplierSnapshot(
