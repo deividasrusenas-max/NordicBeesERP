@@ -26,7 +26,11 @@ public class InvoiceDetailDialogPickerSourceTests
         Assert.Single(Regex.Matches(source, @"SupplierNameRanker\.Order\("));
         Assert.Contains("candidateIds.Contains(p.Id)", source);                       // matcher candidates are the priority group
         Assert.Contains("RankSuppliers(_suppliers.Where(x => x.Id != _invoice!.SupplierId))", source);   // „Pakeisti tiekėją"
-        Assert.Contains("_filteredSuppliers = RankSuppliers(_suppliers).ToList();", source);              // „Priskirti esamam", opened
+        // „Priskirti esamam": ranked when opened AND when the search box is empty — two places
+        Assert.Equal(2, Regex.Matches(source, Regex.Escape("_filteredSuppliers = RankSuppliers(_suppliers).ToList();")).Count);
+        Assert.Matches(@"else\s*\{\s*_filteredSuppliers = RankSuppliers\(_suppliers\)\.ToList\(\);\s*\}\s*StateHasChanged\(\);", source);
+        // the name the partners are compared with: the invoice's OCR supplier name, else the current supplier's name
+        Assert.Contains("!string.IsNullOrWhiteSpace(_invoice?.PendingSupplierName) ? _invoice!.PendingSupplierName : _supplierName", source);
         Assert.Contains("_filteredSuppliers = RankSuppliers(_suppliers.Where(s =>", source);              // „Priskirti esamam", searched
     }
 

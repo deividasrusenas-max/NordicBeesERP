@@ -18,6 +18,9 @@ public class SupplierNameRankerTests
     [InlineData("abc", "xyz", 0.0)]
     [InlineData("", "", 1.0)]
     [InlineData("abc", "", 0.0)]
+    [InlineData("ab", "ba", 0.0)]                 // Jaro window max(len)/2 - 1 = 0: nothing matches
+    [InlineData("abcdefgh", "abcdefgz", 0.95)]    // the prefix boost stops at 4 characters (would be 0.9667 at 6)
+    [InlineData("abcdxxxx", "abcdyyyy", 0.6667)]  // Jaro < 0.7: no prefix boost at all
     public void JaroWinkler_MatchesTheReferenceValues(string a, string b, double expected)
     {
         Assert.Equal(expected, SupplierNameRanker.JaroWinkler(a, b), 3);
@@ -72,6 +75,13 @@ public class SupplierNameRankerTests
     [InlineData("UAB Rotoma", null)]
     [InlineData("Ir", "Ir")]                   // a conjunction alone says nothing
     public void AnUnusableNameScoresZero(string? a, string? b) => Assert.Equal(0.0, SupplierNameRanker.Score(a, b));
+
+    [Fact]
+    public void DuplicateTokens_AreNotTheSameSetAsTheSingleToken_ButStayClose()
+    {
+        var score = SupplierNameRanker.Score("Rotoma Rotoma", "Rotoma");
+        Assert.True(score is > 0.5 and < 1, $"score = {score}");
+    }
 
     [Fact]
     public void ScoresStayInTheUnitInterval()
