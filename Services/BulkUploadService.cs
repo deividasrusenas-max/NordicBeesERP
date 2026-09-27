@@ -73,6 +73,17 @@ public sealed class BulkUploadService : IBulkUploadService
             return Refused(fileName, $"OCR nepavyko. Serverių būsena: {result.Diagnostics.AzureError}");
         }
 
+        // CreateFromOcrAsync (via EnsureInvoiceNumberPresent) throws if the invoice number is
+        // blank, regardless of whether amount/supplier were extracted fine — a real, ordinary
+        // partial-OCR outcome. That must be caught HERE, before FileStore.SaveAsync, not after:
+        // SaveAsync already persists a files row + blob, and FindLinkedEntityIdsAsync only matches
+        // rows with entity_id set, so a row saved just before an exception is an orphan that no
+        // later duplicate check will ever catch, on every re-upload of the same file.
+        if (string.IsNullOrWhiteSpace(result.InvoiceNumber))
+        {
+            return Refused(fileName, "Sąskaitos numeris neatpažintas. Reikalinga rankinė peržiūra.");
+        }
+
         var safeFileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{Path.GetFileNameWithoutExtension(fileName)}.pdf";
         var storedFile = await _fileStore.SaveAsync(
             new MemoryStream(pdfBytes),

@@ -195,6 +195,41 @@ public class BulkUploadServiceTests : IClassFixture<DbTestFixture>, IDisposable
         Assert.Equal(0, failedCount);
     }
 
+    /// <summary>Reviewer finding (Part B, first review): a partial-OCR outcome — amount and
+    /// supplier extracted fine, invoice number not — used to sail past the OCR-failure gate,
+    /// reach <see cref="IFileStore.SaveAsync"/> (persisting a real, unlinked <c>files</c> row +
+    /// blob), and only then have <c>ExpenseService.CreateFromOcrAsync</c> throw on the blank
+    /// invoice number — orphaning that row/blob forever, since <c>FindLinkedEntityIdsAsync</c>
+    /// only matches rows with <c>entity_id</c> set. This proves the fix: refused before any file
+    /// is ever saved, and no <c>files</c> row exists afterward.</summary>
+    [Fact]
+    public async Task ProcessFileAsync_ValidAmountAndSupplier_ButNoInvoiceNumber_RefusesBeforeSavingAnyFile()
+    {
+        var partialResult = new OcrResultDto
+        {
+            InvoiceNumber = "",
+            InvoiceDate = DateTime.Today.ToString("yyyy-MM-dd"),
+            AmountExclVat = 100.00m,
+            VatAmount = 21.00m,
+            AmountInclVat = 121.00m,
+            SupplierName = "Test Bulk Supplier Ltd"
+        };
+        var ocr = new FakeOcrService(partialResult);
+        var service = NewService(ocr);
+        var fileName = $"{_marker}-NOINVNO.pdf";
+
+        var result = await service.ProcessFileAsync(ValidDigitalPdf($"{_marker}-NOINVNO"), fileName, Guid.NewGuid());
+
+        Assert.False(result.Accepted);
+        Assert.Contains("numeris neatpažintas", result.RefusalReason);
+        Assert.Null(result.InvoiceId);
+
+        await using var verify = await _fixture.Factory.CreateDbContextAsync();
+        var orphanedFileCount = await verify.Database.SqlQueryRaw<int>(
+            "SELECT COUNT(*) AS Value FROM files WHERE original_filename LIKE {0}", "%" + _marker + "-NOINVNO%").FirstAsync();
+        Assert.Equal(0, orphanedFileCount);
+    }
+
     [Fact]
     public void BulkUploadPage_RequiresAdminRole()
     {
