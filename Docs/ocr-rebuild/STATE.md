@@ -331,9 +331,10 @@ peržiūrėti/patvirtinti.** Pilnas `dotnet test --filter "Category!=E2E"`: **14
 2. Naršyklės patikros: A1 (drag & drop po failo pašalinimo), A2 (klaidos paantraštė), masinio
    įkėlimo puslapis (`/expenses/bulk-upload`) su keliais realiais PDF, `ExpenseBudgetDialog` su
    skirtingu „Metai" nei einamieji.
-3. Staginge: `clean-start-expenses.sql` DRY RUN patikra prieš `nordic_bees_erp_staging` (Part C
-   §7 žingsnis 2), tada pati švari pradžia (D-045/D-047), tada pakartotinis įkėlimas per
-   `/expenses/bulk-upload`.
+3. Staginge: `clean-start-expenses.sql` DRY RUN patikra prieš `nordic_bees_erp_staging` (ta pati
+   procedūra kaip Part C runbook §7 žingsnis 2, kuris pats aprašo TIK prodo švarią pradžią —
+   staginge naudojama pagal analogiją, ne kaip runbook'o eilutė), tada pati švari pradžia
+   (D-045/D-047), tada pakartotinis įkėlimas per `/expenses/bulk-upload`.
 4. Etapo 4 kriterijų 3–4 matavimas su tais duomenimis (D-047 punktas 1).
 5. Atsakyti PLAN-ETAPAS4.md OQ-6 (ar `TOTALS_OUT_OF_RANGE` priklauso „arithmetic" grupei).
 6. Kai pasiruošę galutiniam deploy'ui — `Docs/ocr-rebuild/RUNBOOK-FINAL-PROD-DEPLOY.md`, jos
