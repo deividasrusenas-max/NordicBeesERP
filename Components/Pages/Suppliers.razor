@@ -187,6 +187,12 @@
                     <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
+                            @if (supplier.IsExpenseSupplier)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Default"
+                                               Title="Išlaidų istorija"
+                                               OnClick="@(() => OpenExpenseHistoryAsync(supplier))" />
+                            }
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
                                            OnClick="@(() => OpenEditDialog(supplier))" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
@@ -245,6 +251,12 @@
                     <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
+                            @if (supplier.IsExpenseSupplier)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Default"
+                                               Title="Išlaidų istorija"
+                                               OnClick="@(() => OpenExpenseHistoryAsync(supplier))" />
+                            }
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
                                            OnClick="@(() => OpenEditDialog(supplier))" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
@@ -303,6 +315,12 @@
                     <MudTd>@(_categories.FirstOrDefault(c => c.Id == supplier.DefaultExpenseCategoryId)?.Name ?? "—")</MudTd>
                     <MudTd>
                         <div @onclick:stopPropagation="true">
+                            @if (supplier.IsExpenseSupplier)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Default"
+                                               Title="Išlaidų istorija"
+                                               OnClick="@(() => OpenExpenseHistoryAsync(supplier))" />
+                            }
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
                                            OnClick="@(() => OpenEditDialog(supplier))" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
@@ -547,6 +565,18 @@
             Snackbar.Add("Tiekėjas sėkmingai sukurtas!", Severity.Success);
             await LoadSuppliers();
         }
+    }
+
+    /// <summary>D-047 A4: entry point for the previously-unreachable ExpenseSupplierHistory dialog.</summary>
+    private async Task OpenExpenseHistoryAsync(Supplier supplier)
+    {
+        var parameters = new DialogParameters
+        {
+            { "SupplierId", supplier.Id },
+            { "SupplierName", supplier.Name }
+        };
+
+        await DialogService.ShowAsync<ExpenseSupplierHistory>(supplier.Name, parameters, new DialogOptions { CloseOnEscapeKey = true, BackdropClick = true, MaxWidth = MaxWidth.Large, FullWidth = true });
     }
 
     private async Task OpenEditDialog(Supplier supplier)

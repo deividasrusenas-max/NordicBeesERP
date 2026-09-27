@@ -15,7 +15,19 @@
 <PageTitle>Išlaidos</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h5" Class="mb-4">Išlaidų suvestinė</MudText>
+    <div class="d-flex justify-space-between align-center flex-wrap gap-2 mb-4">
+        <MudText Typo="Typo.h5">Išlaidų suvestinė</MudText>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PieChart"
+                       OnClick="OpenBudgetDialogAsync">
+                Biudžetas
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Timeline"
+                       OnClick="OpenCashFlowDialogAsync">
+                Pinigų srautai
+            </MudButton>
+        </div>
+    </div>
 
     @if (_loading) { <MudProgressCircular Indeterminate="true" /> }
     else {
@@ -384,6 +396,19 @@
         var p = new DialogParameters { ["InvoiceId"] = invoice.Id };
         await DialogService.ShowAsync<InvoiceDetailDialog>("Sąskaita", p, new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
         await LoadDataAsync();
+    }
+
+    /// <summary>D-047 A4: entry point for the previously-unreachable ExpenseBudgetDialog.</summary>
+    private async Task OpenBudgetDialogAsync()
+    {
+        var p = new DialogParameters { ["Year"] = DateTime.Today.Year };
+        await DialogService.ShowAsync<ExpenseBudgetDialog>("Biudžetas", p, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
+    }
+
+    /// <summary>D-047 A4: entry point for the previously-unreachable ExpenseCashFlow dialog.</summary>
+    private async Task OpenCashFlowDialogAsync()
+    {
+        await DialogService.ShowAsync<ExpenseCashFlow>("Pinigų srautai", new DialogParameters(), new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
     }
 
     protected override async Task OnInitializedAsync()
