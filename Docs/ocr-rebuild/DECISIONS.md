@@ -647,6 +647,41 @@ ir 11 žalių Azure atsakymų perskaityta (korpusas, D-041). Ekstrakcijos archit
 
 ---
 
+## D-047 — Švarios pradžios laikas, išlaidų tiekėjai, leidimai užšaldytam įkėlimo dialogui (2026-09-27)
+
+**Kontekstas.** Savininko autorizuotas ilgas autonominis paleidimas (Claude Code): D-047 open
+fixes (Part A), Etapo 4 planas (Part B), trys Etapo 4 komponentai (Part C).
+
+**Sprendimai.**
+
+1. **Švarios pradžios laikas.** Pilnas D-045 švarios pradžios ištrynimas + pakartotinis
+   įkėlimas vyksta VIENĄ KARTĄ, pačioje pabaigoje, kai Etapų 3–4 kodas baigtas — pirma staginge,
+   tada prode po galutinio deploy'o. Staginge šiuo metu 0 išlaidų sąskaitų (savininkas ištrynė
+   2026-09-27 po atsarginių kopijų `~/backup/staging-before-clean-start.sql.gz` ir
+   `staging-blobs-before-clean-start.tgz`); 2026-09-27 pagrindinių duomenų valymas (11 šiukšlinių
+   dubliuotų partnerių ištrinti: 381, 377, 386, 396, 79, 92, 89, 78, 333, 85, 378; `bank_account`
+   išvalytas 326, 328; asmens kodas pašalintas iš 185 `company_code`; šalis LT priskirta 371, 406
+   ir EE 374; PVM kodai pašalinti iš `company_code` 373, 375, 376, 379, 380, 406, 419) pritaikytas
+   tik staginge.
+2. **Išlaidų tiekėjai.** Švarios pradžios metu kiekvienas partneris su `is_expense_supplier = 1`,
+   kurio nenurodo joks kitas įrašas (`honey_deliveries`, `supplier_payments`, `containers` įsk.
+   `reservation_customer_id`, `deliveries`, `invoices`, `credit_notes`, `orders`, `payments`,
+   `lots`), ištrinamas kartu su savo `supplier_bank_accounts` / aliasų įrašais; tiekėjai
+   atkuriami iš pakartotinio įkėlimo. Bitininkai ir klientai šia taisykle niekada netrinami.
+3. **Užšaldytas `ExpenseUploadDialog` (FROZEN §3),** pagal savininko 2026-09-26 leidimą
+   („visa kita darom profesionaliai"):
+   a. klaidos fazės paantraštė „Patikrinkite ar visi serveriai veikia…" nerodoma po ne-OCR
+      atsisakymų (skenavimo atsisakymas, to paties failo atsisakymas, ne-PDF) — pratęsia D-034
+      punktą 2 (item A2).
+   b. drag & drop turi veikti toliau ir po to, kai pasirinktas failas pašalinamas (drop zona
+      sujungiama tik pirmo render'io metu) — minimalus pakeitimas
+      `OnAfterRenderAsync`/`DisposeAsync` persujungimo logikoje leidžiamas; `wwwroot/js/dropzone.js`
+      keičiamas tik jei taisymas neįmanomas be jo (item A1; nereikėjo — žr. FROZEN §3).
+   c. `FROZEN.md` §3 atnaujinamas, kad atspindėtų realų rezultatą.
+4. **`OcrQueueWorker` (§5) lieka nepaliestas** (D-044 K10: atidėta, kol modulis baigtas).
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
