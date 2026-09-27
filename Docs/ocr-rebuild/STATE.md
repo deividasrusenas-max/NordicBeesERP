@@ -1,6 +1,6 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`)
+Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`); Etapas 3 — **S1–S4 baigtos `main`**, laukia S5 (Etapo 2 švarios pradžios) ir S6
 
 ## Dabartinė fazė
 
@@ -155,6 +155,34 @@ Tikslūs sakiniai — S4 / S5 raportuose. Staging ir prodo DDL — **savininko**
 
 **Kitas:** S7 paleidimas (savininkas), tada Etapo 3 planavimas (ekstrakcija; D-016 žalių JSON korpusas gaunamas iš švarios pradžios).
 
+## Etapas 3 — būsena (2026-09-27; kodas `main`, ne prode, ne staginge)
+
+D-046 priimtas (PLAN-ETAPAS3 OQ-1…OQ-6, D-016 formaliai uždarytas). Sesijos S1–S4 baigtos šioje sesijoje (Claude
+Code, autonominis paleidimas su savininko išankstiniu leidimu). Kiekvienas kodo commit'as praėjo nepriklausomą
+peržiūrą (peržiūrėtojas vykdo testus, tikrina, kad kodas realiai yra sukompiliuotoje versijoje, bando sulaužyti
+kiekvieną naują taisyklę scratch kopijoje); vienas commit'as (S2, `97e28be`) pirmą kartą atmestas (nepilnas laukų
+padengimas golden-file momentinėje nuotraukoje), gavo taisymo commit'ą, visi galutiniai verdiktai APPROVED. Pilnas
+`dotnet test --filter "Category!=E2E"`: **1399 žali** (prieš šią sesiją — 1357; S1 nekeitė kodo).
+
+| Sesija | Commit'ai | Ką daro | Raportas |
+|---|---|---|---|
+| Commit 0 (D-046) | `c6b20bf` | Etapo 3 sprendimai (OQ-1…OQ-6), D-016 uždarymas | — |
+| S1 (korpuso `tables[]` patikra) | `2723dd2` | 10/11 korpuso dok. turi lentelę atitinkančią žodyną (LT/DE/RO/LV/EE/PL + EN); 5/11 lentelė susiveda su antrašte griežta taisykle, 6-as (EGO) rankiniu būdu patvirtintas per antraštinę eilutę | `etapas3-s1-20260927-1220.md` |
+| S2 (golden-file karkasas) | `97e28be` (ATMESTA) → `8880013` (taisymas, PATVIRTINTA) | `Verify.Xunit`; momentinė nuotrauka (antraštės sumos, PVM tarifas praleistas — žinoma riba, eilutės aprašymas/kiekis/kaina/neto/netoIšvestas, tiekėjo identifikatoriai); sintetinis pagrindas repo viduje, korpuso 11 dokumentų — už git ribų | `etapas3-s2-20260927-1316.md` |
+| S3 (parinktis (c): deterministinis lentelės taisymas) | `a583bde` + `f44a537` (semgrep taisymas) | `TableLineRepair`; nauja vėliavėlė `LINES_REPAIRED_FROM_TABLE`; UTA PL realiai pataisytas (AMOUNT_MISMATCH dingsta), Rabenas ir EGO teisingai nepaliesti | `etapas3-s3-20260927-1316.md` |
+| S4 (ZERO_VAT teisinio pagrindo patikra) | `2950b84` | `ZeroVatFormulationExtractor` (tas pats NEPATVIRTINTA/PATVIRTINTA modelis kaip `VatRateTable`); nauja vėliavėlė `ZERO_VAT_NO_BASIS` (vienintelis šios sesijos Etapo 1/2 statuso logikos pakeitimas, aiškiai leistas įgaliojime); šiandien (viskas NEPATVIRTINTA) elgsena identiška ankstesnei | `etapas3-s4-20260927-1316.md` |
+
+**Kas laukia buhalterės / savininko prieš S5/S6:**
+
+1. Realios LT formuluotės (be Q-009 vienintelio pavyzdžio) — ar „PVM įstatymo N straipsnis" / bare `PVMx` kodas yra
+   bendras raštas, ar specifinis vienam tiekėjui.
+2. PL/RO/CZ/ES atvirkštinio apmokestinimo frazės — bendros žinios, niekada nepatvirtintos prieš realų dokumentą.
+3. S5 žymėjimo grafikas (40 dev + 20 hold-out) — laukia Etapo 2 švarios pradžios (D-045).
+4. Q-006 (LT e-sąskaitų datos), Q-007 (Veryfi) — S6 darbas, dar nepradėtas.
+
+**Kitas:** S5 (matavimas ant realaus korpuso) laukia Etapo 2 švarios pradžios rezultatų; S6 (Q-006/Q-007, parinkties
+(a)/(b) persvarstymas) — po S5.
+
 ## Atviri klausimai ir tęsiniai (savininko sprendimai / follow-up)
 
 - **Drag & drop neveikia** (patikra 9). Kodas — užšaldytas `FROZEN.md` §3; priežastis dar
@@ -221,11 +249,16 @@ Tikslūs sakiniai — S4 / S5 raportuose. Staging ir prodo DDL — **savininko**
 
 **Etapas 2:** kodas baigtas (S1–S6), dokumentas `STAGING-CHECKS-ETAPAS2.md` parašytas. Savininkas: staging DDL →
 deploy → pagrindinių duomenų valymas → švari pradžia ir pakartotinis įkėlimas → taisyklių patikros → go / no-go.
-Po to — Etapo 3 planavimas. **Deploy politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4 nebaigti ir
-nepatikrinti staginge; dalinių deploy'ų į prodą nėra. Prieš galutinį deploy'ą — atvirų punktų sąrašas skyriuje
-„Etapas 1 — staging patikrų rezultatai", `STAGING-CHECKS-ETAPAS1.md` „Must be finished…" ir
-`STAGING-CHECKS-ETAPAS2.md` „What remains before the Etapai 1–4 production deploy" (prodo DDL: `unit_price`,
-`supplier_bank_accounts`, `supplier_aliases`, `supplier_alias_events`; prodo švari pradžia).
+**Deploy politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4 nebaigti ir nepatikrinti staginge; dalinių
+deploy'ų į prodą nėra. Prieš galutinį deploy'ą — atvirų punktų sąrašas skyriuje „Etapas 1 — staging patikrų
+rezultatai", `STAGING-CHECKS-ETAPAS1.md` „Must be finished…" ir `STAGING-CHECKS-ETAPAS2.md` „What remains before the
+Etapai 1–4 production deploy" (prodo DDL: `unit_price`, `supplier_bank_accounts`, `supplier_aliases`,
+`supplier_alias_events`; prodo švari pradžia).
+
+**Etapas 3:** S1–S4 baigtos `main` (žr. skyrių aukščiau); S5 (matavimas ant realaus korpuso, 40 dev + 20 hold-out)
+laukia Etapo 2 švarios pradžios rezultatų — tai jos šaltinis, ne 11 dokumentų korpusas; S6 (Q-006/Q-007, parinkties
+(a)/(b) persvarstymas pagal S5 skaičius) — po S5. Buhalterė turi patvirtinti bent LT formuluotes prieš S4's kodas
+ims ką nors realiai keisti (šiandien elgsena nepakitusi).
 
 ## Padaryta
 
@@ -244,6 +277,11 @@ nepatikrinti staginge; dalinių deploy'ų į prodą nėra. Prieš galutinį depl
 - 2026-09-26 (Claude Code): Etapas 1 S1–S7 (+ Azure korpusas už git ribų, D-038…D-041), 853 testai; S8 — `STAGING-CHECKS-ETAPAS1.md`.
 - 2026-09-26/27: Etapas 1 staging patikros (savininkas) — uždarytas staginge (D-043); šalies kodo taisymas (D-042, `073c299`).
 - 2026-09-27 (Claude Code): STATE/D-043 — Etapo 1 uždarymas; `PLAN-ETAPAS2.md` (tik planas).
+- 2026-09-27 (Claude Code, autonominis paleidimas): Etapo 2 fix-up'ai (A1/A2) ir `PLAN-ETAPAS3.md`.
+- 2026-09-27 (Claude Code, autonominis paleidimas): D-046 + Etapo 3 S1–S4 — korpuso `tables[]` patikra, golden-file
+  karkasas (`Verify.Xunit`), deterministinis lentelės taisymas (`TableLineRepair`, UTA PL realiai pataisytas),
+  ZERO_VAT teisinio pagrindo patikra (`ZeroVatFormulationExtractor`, elgsena nepakitusi kol viskas NEPATVIRTINTA).
+  1399 testai žali. `main` `c6b20bf`..`2950b84`.
 
 ## Storage gate — įrodymai (2026-09-25, staging)
 
@@ -285,6 +323,6 @@ nepatikrinti staginge; dalinių deploy'ų į prodą nėra. Prieš galutinį depl
 | Etapas 0c (redagavimas, įvestis, biudžetas) | **baigta, prode v0.17.91**; drag & drop FAILED, biudžetas nepatikrintas |
 | Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai, re-OCR) | **uždarytas staginge 2026-09-26/27** (D-043; `main` v0.17.94); prode nėra (D-037) |
 | Etapas 2 (tiekėjo kaskada) | planas parašytas (`PLAN-ETAPAS2.md`), laukia savininko atsakymų |
-| Etapas 3 (ekstrakcija — D-023 kryptis, D-016 UŽDARYTAS) | pradėta 2026-09-27; D-046 priimtas; S1 baigta (10/11 korpuso dok. turi tinkamą lentelę) — `etapas3-s1-20260927-1220.md`; S2–S4 vykdomos |
+| Etapas 3 (ekstrakcija — D-023 kryptis, D-016 UŽDARYTAS) | D-046 priimtas; **S1–S4 baigtos `main`** (`c6b20bf`..`2950b84`), ne staginge, ne prode; S5 (matavimas) laukia Etapo 2 švarios pradžios, S6 (Q-006/Q-007) nepradėtas |
 | Etapas 4 (matavimas) | laukia |
 | Saugykla, 2 žingsnis (PDF į IFileStore) | nepradėta |
