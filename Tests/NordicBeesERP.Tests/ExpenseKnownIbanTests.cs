@@ -414,7 +414,9 @@ public class ExpenseKnownIbanTests : IClassFixture<DbTestFixture>
             "GB82WEST12345698765432", "GB82 WEST 1234 5698 7654 32",   // valid, with spaces
             "NO9386011117947", "NO9386011117948",                       // unknown-length country (15 chars): mod-97 only
             "NO93860111179", "XX", "12", "  ", "LT12-1000-0111-0100-1000", // too short / no letters / blank / bad characters
-            "EE382200221020145685", "PL61109010140000071219812874"
+            "EE382200221020145685", "PL61109010140000071219812874",
+            "LT8319458073021573681", "DE8193036426212997220",           // correct check digits but 21 chars: wrong length for LT and DE
+            "XX325-9832468203"                                          // a stray character inside an otherwise digit-shaped code
         };
         var partners = new List<int>();
         try
@@ -450,6 +452,153 @@ public class ExpenseKnownIbanTests : IClassFixture<DbTestFixture>
             }
         }
         finally { await CleanupAsync(Array.Empty<int>(), partners.ToArray()); }
+    }
+
+    // ---------------------------------------------------------------- guards from the S4 review
+
+    [Theory]
+    [InlineData("PAID")]
+    [InlineData("PARTIAL")]
+    [InlineData("OVERDUE")]
+    [InlineData("REJECTED")]
+    [InlineData("DUPLICATE_PENDING")]
+    public async Task AddIban_IsOnlyOfferedForNeedsReviewAndPending(string status)
+    {
+        var partner = await InsertPartnerAsync();
+        var invoice = await InsertInvoiceAsync(status, partner, IbanB);
+        try
+        {
+            Assert.Null(await CreateService().GetAddableIbanAsync(invoice));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService().AddSupplierIbanAsync(invoice, "Test User"));
+            Assert.Empty(await KnownRowsAsync(partner));
+        }
+        finally { await CleanupAsync(new[] { invoice }, partner); }
+    }
+
+    [Fact]
+    public async Task AddIban_LeavesAPendingInvoiceStatusAlone_EvenWithAReviewFlagPresent()
+    {
+        var partner = await InsertPartnerAsync();
+        await AddKnownAsync(partner, IbanA);
+        // PENDING (e.g. approved) with another review flag stored: adding the IBAN is not a re-review of the invoice
+        var invoice = await InsertInvoiceAsync("PENDING", partner, IbanB, new[] { OcrFlag.SupplierNewIban, OcrFlag.ZeroVat }, approvedBy: "Approver");
+        try
+        {
+            await CreateService().AddSupplierIbanAsync(invoice, "Test User");
+            var after = await ReloadAsync(invoice);
+            Assert.Equal("PENDING", after.Status);
+            Assert.Equal("Approver", after.ApprovedBy);
+            Assert.DoesNotContain(OcrFlag.SupplierNewIban, FlagsOf(after));
+        }
+        finally { await CleanupAsync(new[] { invoice }, partner); }
+    }
+
+    [Fact]
+    public async Task LegacyBankAccountColumn_CountsAsAKnownAccount()
+    {
+        var partner = await InsertPartnerAsync(bankAccount: IbanA);       // no supplier_bank_accounts row at all
+        var invoice = await InsertInvoiceAsync("PENDING_SUPPLIER", null, IbanB, new[] { OcrFlag.VendorNotFound });
+        try
+        {
+            await CreateService().AssignSupplierAsync(invoice, partner, "Test User");
+            Assert.Contains(OcrFlag.SupplierNewIban, FlagsOf(await ReloadAsync(invoice)));
+        }
+        finally { await CleanupAsync(new[] { invoice }, partner); }
+    }
+
+    [Fact]
+    public async Task InactiveKnownAccount_IsNotKnown_ForTheFlag_NorForTheMatcherSnapshot()
+    {
+        var vat = UniqueVat();
+        var partner = await InsertPartnerAsync(vat);
+        await using (var context = await _fixture.Factory.CreateDbContextAsync())
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO supplier_bank_accounts (partner_id, iban, source, is_active, created_at) VALUES ({0}, {1}, 'MANUAL', 0, NOW())", partner, IbanA);
+        var invoice = await InsertInvoiceAsync("PENDING_SUPPLIER", null, IbanB, new[] { OcrFlag.VendorNotFound });
+        try
+        {
+            // the only account is inactive: the supplier has no known account, so nothing is "new"
+            await CreateService().AssignSupplierAsync(invoice, partner, "Test User");
+            Assert.DoesNotContain(OcrFlag.SupplierNewIban, FlagsOf(await ReloadAsync(invoice)));
+
+            var result = await ResolveAsync(Doc(vat, IbanA));
+            Assert.Equal(partner, result.SupplierId);
+            Assert.Equal(0, result.SupplierMatch!.PartnerKnownIbanCount);
+            Assert.False(result.SupplierMatch.DocumentIbanKnown);
+        }
+        finally { await CleanupAsync(new[] { invoice }, partner); }
+    }
+
+    [Fact]
+    public async Task CreateSupplierSweep_RaisesTheNewIbanFlag_ForAnInvoiceItAssigns()
+    {
+        var vat = UniqueVat();
+        var partner = await InsertPartnerAsync();
+        await AddKnownAsync(partner, IbanA);
+        var invoice = await InsertInvoiceAsync("PENDING_SUPPLIER", null, IbanB, new[] { OcrFlag.VendorNotFound });
+        try
+        {
+            await using (var context = await _fixture.Factory.CreateDbContextAsync())
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE expense_invoices SET pending_supplier_vat = {0}, pending_supplier_country_code = 'LT' WHERE id = {1}", vat, invoice);
+
+            Assert.Equal(1, await CreateService().AutoAssignSupplierAsync(vat, null, partner));
+
+            var after = await ReloadAsync(invoice);
+            Assert.Contains(OcrFlag.SupplierNewIban, FlagsOf(after));
+            Assert.Equal("NEEDS_REVIEW", after.Status);
+        }
+        finally { await CleanupAsync(new[] { invoice }, partner); }
+    }
+
+    [Fact]
+    public async Task Create_RecomputesTheFlagFromTheStoredData_IgnoringStaleOrMissingPreviewFlags()
+    {
+        var partner = await InsertPartnerAsync();
+        await AddKnownAsync(partner, IbanA);
+
+        var missing = Doc("", IbanB);            // no preview at all: a supplier set by hand, no match, no flag
+        missing.SupplierId = partner;
+        var stale = Doc("", IbanA);              // the IBAN is known, but a stale preview flag is present
+        stale.SupplierId = partner;
+        stale.Flags.Add(OcrFlag.SupplierNewIban);
+
+        var service = CreateService();
+        var invoiceMissing = await service.CreateFromOcrAsync(missing);
+        var invoiceStale = await service.CreateFromOcrAsync(stale);
+        try
+        {
+            var a = await ReloadAsync(invoiceMissing.Id);
+            Assert.Contains(OcrFlag.SupplierNewIban, FlagsOf(a));
+            Assert.Equal("NEEDS_REVIEW", a.Status);
+            var b = await ReloadAsync(invoiceStale.Id);
+            Assert.DoesNotContain(OcrFlag.SupplierNewIban, FlagsOf(b));
+            Assert.Equal("PENDING", b.Status);
+        }
+        finally { await CleanupAsync(new[] { invoiceMissing.Id, invoiceStale.Id }, partner); }
+    }
+
+    [Fact]
+    public async Task ReOcr_IgnoresTheFreshMatchesKnownIbans_UsesTheKeptSupplier()
+    {
+        var kept = await InsertPartnerAsync();
+        await AddKnownAsync(kept, IbanA);
+        var other = await InsertPartnerAsync();
+        await AddKnownAsync(other, IbanB);       // the fresh match would have found IbanB known
+        var invoice = await InsertInvoiceAsync("PENDING", kept, null);
+        try
+        {
+            var fresh = Doc("", IbanB);
+            fresh.InvoiceNumber = (await ReloadAsync(invoice)).InvoiceNumber!;
+            fresh.SupplierId = other;
+            fresh.SupplierMatch = new SupplierMatch(MatchOutcome.Assigned, other, MatchTier.Vat, MatchReason.None, new[] { other }, true, 1);
+            await CreateService().UpdateFromOcrAsync(invoice, fresh);
+
+            var after = await ReloadAsync(invoice);
+            Assert.Equal(kept, after.SupplierId);
+            Assert.Contains(OcrFlag.SupplierNewIban, FlagsOf(after));   // IbanB is new for the KEPT supplier
+        }
+        finally { await CleanupAsync(new[] { invoice }, kept, other); }
     }
 
     private static string RepoRoot()
