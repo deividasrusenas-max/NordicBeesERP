@@ -2433,13 +2433,16 @@ namespace NordicBeesERP.Services
                 OriginalFilePath = ocrResult.OriginalFilePath,
                 OriginalFilename = ocrResult.OriginalFilename,
                 FileId = ocrResult.FileId,
-                PendingSupplierName = ocrResult.SupplierId == null ? ocrResult.SupplierName : null,
-                PendingSupplierVat = ocrResult.SupplierId == null ? ocrResult.SupplierVatCode : null,
+                // Name / VAT / company code kept with a supplier too (Etapas 2 fix-up A1): a matcher-assigned invoice must still
+                // carry its OCR supplier identity, or ChangeSupplierAsync has nothing to teach an alias with (D-017, D-044 Q4).
+                // Address / city / postal code / country stay pending-only (unaffected; not needed once a partner is assigned).
+                PendingSupplierName = ocrResult.SupplierName,
+                PendingSupplierVat = ocrResult.SupplierVatCode,
                 PendingSupplierAddress = ocrResult.SupplierId == null ? ocrResult.SupplierAddress : null,
                 PendingSupplierCity = ocrResult.SupplierId == null ? ocrResult.SupplierCity : null,
                 PendingSupplierPostalCode = ocrResult.SupplierId == null ? ocrResult.SupplierPostalCode : null,
                 PendingSupplierCountryCode = ocrResult.SupplierId == null ? CountryCodeResolver.FromAddress(ocrResult.SupplierCountryCode) : null,
-                PendingSupplierCompanyCode = ocrResult.SupplierId == null ? ocrResult.SupplierCompanyCode : null,
+                PendingSupplierCompanyCode = ocrResult.SupplierCompanyCode,
                 // kept with a supplier too (PLAN §1.5): the detail dialog needs the document's IBAN to offer „Pridėti IBAN prie tiekėjo"
                 PendingSupplierBankAccount = ocrResult.SupplierBankAccount,
                 InvoiceNumber = !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : null,
@@ -2651,13 +2654,13 @@ namespace NordicBeesERP.Services
                     updated_at = {28}
                 WHERE id = {29}",
                 ocrResult.SupplierId,
-                ocrResult.SupplierId == null ? ocrResult.SupplierName : null,
-                ocrResult.SupplierId == null ? ocrResult.SupplierVatCode : null,
+                ocrResult.SupplierName,       // kept with a supplier too (Etapas 2 fix-up A1) — ChangeSupplierAsync needs it for alias confirmation
+                ocrResult.SupplierVatCode,    // kept with a supplier too (A1)
                 ocrResult.SupplierId == null ? ocrResult.SupplierAddress : null,
                 ocrResult.SupplierId == null ? ocrResult.SupplierCity : null,
                 ocrResult.SupplierId == null ? ocrResult.SupplierPostalCode : null,
                 ocrResult.SupplierId == null ? CountryCodeResolver.FromAddress(ocrResult.SupplierCountryCode) : null,
-                ocrResult.SupplierId == null ? ocrResult.SupplierCompanyCode : null,
+                ocrResult.SupplierCompanyCode, // kept with a supplier too (A1)
                 ocrResult.SupplierBankAccount, // kept with a supplier too (PLAN §1.5)
                 !string.IsNullOrWhiteSpace(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : null,
                 invoiceDate,
