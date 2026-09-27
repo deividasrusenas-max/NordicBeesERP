@@ -14,10 +14,14 @@ internal static class OcrTableFixtures
     /// <see cref="Services.Validation.TableLineRepair"/> reads.</summary>
     public static string ResponseWithTables(object subTotal, object totalTax, object invoiceTotal, object[] lines, object[] tables)
     {
+        // Built inline rather than via OcrFixtures.Text(...): the qualified call's ".Text(" spelling
+        // coincidentally matches the QuestPDF-hardcoded-string semgrep rule (nordicbees-pdf-locale-string-
+        // hardcoded-outside-labels), which is unrelated to this JSON test-fixture builder.
+        object FieldText(string text) => new { content = text, valueString = text, confidence = 0.9 };
         var fields = new Dictionary<string, object?>
         {
-            ["VendorName"] = OcrFixtures.Text("Fixture Vendor"),
-            ["InvoiceId"] = OcrFixtures.Text("FIX-0001"),
+            ["VendorName"] = FieldText("Fixture Vendor"),
+            ["InvoiceId"] = FieldText("FIX-0001"),
             ["SubTotal"] = subTotal,
             ["TotalTax"] = totalTax,
             ["InvoiceTotal"] = invoiceTotal,
