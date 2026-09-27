@@ -96,6 +96,8 @@ namespace NordicBeesERP.Data
 
         // Supplier recognition (Etapas 2)
         public DbSet<NordicBeesERP.Models.SupplierBankAccount> SupplierBankAccounts { get; set; }
+        public DbSet<NordicBeesERP.Models.SupplierAlias> SupplierAliases { get; set; }
+        public DbSet<NordicBeesERP.Models.SupplierAliasEvent> SupplierAliasEvents { get; set; }
          
          public DbSet<NordicBeesERP.Models.InvoiceAudit> InvoiceAudits { get; set; }
 
