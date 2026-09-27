@@ -1402,6 +1402,12 @@ namespace NordicBeesERP.Services
             var newStatus = StatusAfterSupplierAssigned(flags);
 
             var now = DateTime.Now;
+
+            // D-010 (Etapas 2 fix-up A2): the assignment and the alias confirmation are one transaction — either both
+            // commit or neither, so a failure in SupplierAliases.ConfirmAsync never leaves a silently-committed assignment
+            // behind an error the user sees.
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
             await context.Database.ExecuteSqlRawAsync(@"
                 UPDATE expense_invoices SET
                     supplier_id = {0},
@@ -1423,6 +1429,8 @@ namespace NordicBeesERP.Services
 
             // an explicit human choice: it counts towards an alias of the invoice's OCR supplier name (S5, D-044 Q4)
             await SupplierAliases.ConfirmAsync(context, invoiceId, supplierId, invoice.PendingSupplierName, performedBy);
+
+            await transaction.CommitAsync();
         }
 
         /// <summary>
@@ -1515,10 +1523,12 @@ namespace NordicBeesERP.Services
                 invoiceId, invoice.InvoiceNumber, "SUPPLIER_CHANGED", $"Tiekėjo ID: {oldSupplierId} → {partnerId}",
                 oldStatus, newStatus, performedBy, now);
 
-            await transaction.CommitAsync();
-
-            // an explicit human choice (D-045): it counts towards an alias of the invoice's OCR supplier name — when the invoice still holds it
+            // D-010 (Etapas 2 fix-up A2): the change and the alias confirmation are one transaction — either both commit
+            // or neither. Previously this ran after transaction.CommitAsync(), so an alias-step failure (e.g. a missing
+            // table) left the change committed behind the exception the user saw.
             await SupplierAliases.ConfirmAsync(context, invoiceId, partnerId, invoice.PendingSupplierName, performedBy);
+
+            await transaction.CommitAsync();
         }
 
         /// <summary>
