@@ -613,6 +613,40 @@ aliasams). Šiandien UI negali ištaisyti neteisingo tiekėjo (S1 raportas).
 
 ---
 
+## D-046 — Etapo 3 sprendimai (PLAN-ETAPAS3 OQ-1…OQ-6) (2026-09-27)
+
+**Kontekstas.** `PLAN-ETAPAS3.md` §8.5 kėlė šešis klausimus savininkui prieš pradedant Etapą 3.
+Atsakymai žemiau; taip pat formaliai uždaroma D-016.
+
+**D-016 UŽDAROMA.** Abi sąlygos įvykdytos: saugykla veikia (`ocr_raw_json` kiekvienoje sąskaitoje)
+ir 11 žalių Azure atsakymų perskaityta (korpusas, D-041). Ekstrakcijos architektūros sprendimas —
+žemiau, OQ-1.
+
+**Sprendimai.**
+
+- **OQ-1 (kurią parinktį statyti pirma).** (c) — deterministinis `tables[]` taisymas — statomas
+  pirmas. (a)/(b) svarstomi iš naujo tik jei S5 matavimas parodys, kad (c) nepakankamas.
+- **OQ-2 (vietinis LLM stendas).** `100.110.26.80` stendas NENAUDOJAMAS produkcinei OCR
+  ekstrakcijai šiuo metu — buvo neprieinamas du kartus (2026-09-25/26), tai savininko darbo
+  mašina. Peržiūrėti, kai atsiras dedikuotas visada veikiantis serveris; privatumo požiūriu (b)
+  tuomet taps pageidaujama LLM parinktis.
+- **OQ-3 (Veryfi testo leidimas).** Atidėtas; jei kada testuojamas, tik įmonė-įmonei sąskaitoms,
+  niekada dokumentams su fizinių asmenų duomenimis.
+- **OQ-4 (ZERO_VAT uždarymo mechanizmas).** Nauja peržiūros vėliavėlė `ZERO_VAT_NO_BASIS`;
+  `ZERO_VAT` tampa informacija radus teisinį pagrindą.
+- **OQ-5 (formuluočių kalbų prioritetas).** Pagal realią tiekėjų bazę: pirma LT (įsk. i.SAF
+  PVMx kodus), tada PL, RO, CZ, ES; DE/LV/EE/UA — kai atsiras realių dokumentų. Paieškos sąrašai
+  lieka NEPATVIRTINTI, kol nepatvirtina buhalterė (tas pats modelis kaip PVM tarifų lentelė,
+  D-039).
+- **OQ-6 (žymėjimo pajėgumas S5).** Žymi savininkas ir buhalterė po švarios pradžios; agentas
+  sugeneruoja CSV su ištrauktomis reikšmėmis kiekvienai sąskaitai; žmonės pažymi tik tai, kas
+  neteisinga, šalia PDF.
+
+**„Union Tank" atvejis (sąskaita 370)** patvirtintas savininko staging duomenimis: eilučių
+„Be PVM" suma 506,06 = antraštės bruto; antraštės neto 418,24 — ta pati klasė kaip EGO/UTA PL.
+
+---
+
 ## D-014 — F0.5 „triukšmo mažinimas" atmestas kaip simptomų lopymas (2026-09-15)
 
 **Kontekstas.** Po produkcijos audito siūlyta F0.5 fazė: atskiri A7, A8, dublikatų
