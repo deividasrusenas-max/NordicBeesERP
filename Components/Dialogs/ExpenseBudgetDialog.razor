@@ -143,6 +143,11 @@
     private decimal _totalActual = 0m;
     private decimal _totalVariance = 0m;
     
+    protected override void OnInitialized()
+    {
+        _year = Year;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         await LoadBudgets();

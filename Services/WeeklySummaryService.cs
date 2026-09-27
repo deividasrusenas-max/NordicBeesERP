@@ -55,7 +55,17 @@ public sealed class WeeklySummaryService : IWeeklySummaryService
 
         var hardGateCounts = new Dictionary<string, int>
         {
-            ["arithmetic"] = windowInvoices.Count(i => HasFlag(i.OcrFlags, OcrFlag.AmountMismatch) || HasFlag(i.OcrFlags, OcrFlag.TotalsOutOfRange)),
+            // D-048 Part D2: "arithmetic" must include BR-CO-15 (AmountArithmeticMismatch /
+            // MissingMoneyField, D-028's header-arithmetic gate) alongside BR-CO-10
+            // (AmountMismatch, D-040) — omitting BR-CO-15 here silently undercounted the exact
+            // gate D-028 promoted to Etapas 0 for catching the largest known production error.
+            // Whether TotalsOutOfRange (an amount-plausibility bound, not EN 16931 arithmetic)
+            // belongs in this bucket is open — see PLAN-ETAPAS4.md OQ-6.
+            ["arithmetic"] = windowInvoices.Count(i =>
+                HasFlag(i.OcrFlags, OcrFlag.AmountMismatch) ||
+                HasFlag(i.OcrFlags, OcrFlag.AmountArithmeticMismatch) ||
+                HasFlag(i.OcrFlags, OcrFlag.MissingMoneyField) ||
+                HasFlag(i.OcrFlags, OcrFlag.TotalsOutOfRange)),
             ["duplicate"] = windowInvoices.Count(i => string.Equals(i.Status, "DUPLICATE_PENDING", StringComparison.OrdinalIgnoreCase)),
             ["supplier"] = windowInvoices.Count(i => string.Equals(i.Status, "PENDING_SUPPLIER", StringComparison.OrdinalIgnoreCase)),
             ["date"] = windowInvoices.Count(i => HasFlag(i.OcrFlags, OcrFlag.StaleDate) || HasFlag(i.OcrFlags, OcrFlag.FutureDate))

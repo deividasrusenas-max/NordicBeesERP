@@ -80,6 +80,45 @@ public class WeeklySummaryServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    /// <summary>D-048 Part D2: the "arithmetic" bucket used to only count `AMOUNT_MISMATCH` (BR-CO-10)
+    /// and `TOTALS_OUT_OF_RANGE`, silently missing `AMOUNT_ARITHMETIC_MISMATCH`/`MISSING_MONEY_FIELD`
+    /// — BR-CO-15, D-028's header-arithmetic gate. This proves both now count, using ONLY those two
+    /// flags (no `AMOUNT_MISMATCH` in either seeded row) so the assertion can't pass by accident via
+    /// the bucket's pre-existing flags.</summary>
+    [Fact]
+    public async Task GetSummaryAsync_HeaderArithmeticFlags_CountTowardArithmeticBucket()
+    {
+        var weekStart = new DateTime(2027, 3, 1); // a Monday
+        var tag = DateTime.UtcNow.Ticks;
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+
+        var arithmeticMismatchNumber = $"INV-WS-BRCO15A-{tag}";
+        var missingMoneyFieldNumber = $"INV-WS-BRCO15B-{tag}";
+        var withinWeek = weekStart.AddDays(2);
+
+        await InsertInvoiceAsync(setupContext, arithmeticMismatchNumber, "NEEDS_REVIEW", withinWeek, "[\"AMOUNT_ARITHMETIC_MISMATCH\"]");
+        await InsertInvoiceAsync(setupContext, missingMoneyFieldNumber, "NEEDS_REVIEW", withinWeek, "[\"MISSING_MONEY_FIELD\"]");
+
+        try
+        {
+            var reviewQueueService = new ReviewQueueAgingService(_fixture.Factory);
+            var service = new WeeklySummaryService(_fixture.Factory, reviewQueueService,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<WeeklySummaryService>.Instance);
+
+            var summary = await service.GetSummaryAsync(weekStart);
+
+            Assert.True(summary.HardGateTriggerCounts["arithmetic"] >= 2);
+        }
+        finally
+        {
+            foreach (var number in new[] { arithmeticMismatchNumber, missingMoneyFieldNumber })
+            {
+                await CleanupAsync(number);
+            }
+        }
+    }
+
     [Fact]
     public async Task GetSummaryAsync_NoInvoicesInWindow_ReturnsZeroesNotDivideByZeroError()
     {

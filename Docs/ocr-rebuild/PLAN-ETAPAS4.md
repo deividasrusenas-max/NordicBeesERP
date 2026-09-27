@@ -229,7 +229,7 @@ RESEARCH §7's own five, with each one's concrete source query against this sche
 | # | Number | Definition | Source |
 |---|---|---|---|
 | 1 | Processed / % auto-accepted with zero human edits | Invoices created in the window ÷ those reaching a confirmed status with no `EDITED` audit row (same predicate as §3's sampling query) | `expense_invoices` + `expense_invoice_audit` |
-| 2 | Hard-gate trigger count, by gate | Count of invoices where `ocr_flags` contains each of the four hard-gate flags this week (arithmetic/`AMOUNT_MISMATCH`+`TOTALS_OUT_OF_RANGE`; duplicate/`DUPLICATE_PENDING` status; supplier/`PENDING_SUPPLIER` status; date/`STALE_DATE`+`FUTURE_DATE`) | `expense_invoices.ocr_flags` (JSON column) |
+| 2 | Hard-gate trigger count, by gate | Count of invoices where `ocr_flags` contains each of the four hard-gate flags this week (arithmetic/`AMOUNT_MISMATCH`+`AMOUNT_ARITHMETIC_MISMATCH`+`MISSING_MONEY_FIELD`+`TOTALS_OUT_OF_RANGE`; duplicate/`DUPLICATE_PENDING` status; supplier/`PENDING_SUPPLIER` status; date/`STALE_DATE`+`FUTURE_DATE`) — **D-048 Part D2 fix:** the original definition here counted only `AMOUNT_MISMATCH` (BR-CO-10, D-040) and `TOTALS_OUT_OF_RANGE` under "arithmetic", silently missing `AMOUNT_ARITHMETIC_MISMATCH`/`MISSING_MONEY_FIELD` — BR-CO-15, the exact header-arithmetic gate D-028 promoted to Etapas 0 specifically because it caught the single biggest known production error. `LINE_SUM_ROUNDING` (D-040) stays excluded — it is explicitly informational and never changes status, so it is not a hard gate. See OQ-6 for whether `TOTALS_OUT_OF_RANGE` (an amount-plausibility bound, not an EN 16931 Schematron rule — never mentioned in D-040) belongs under "arithmetic" at all. | `expense_invoices.ocr_flags` (JSON column) |
 | 3 | Count unresolved longer than N working days | Exactly C2's service method (§4) | `expense_invoice_audit` + the working-day calculator |
 | 4 | Field correction rate | Count of `EDITED` audit rows this week ÷ total invoices processed this week (an approximation at the invoice level, not the field level — the audit row does not currently record *which* field changed, only that an edit happened; a precise per-field rate would need `ActionDetails` (`ExpenseInvoiceAudit.ActionDetails`, free text today) to carry a structured field list, which is a follow-up, not built in this plan) | `expense_invoice_audit` |
 | 5 | Rolling 12-month silent-error confidence bound | The rule-of-three bound from the last 4 quarterly audits' combined sample (§3) | `expense_audit_samples` (proposed table, owner DDL) |
@@ -334,3 +334,16 @@ production go-live respectively — not buildable as code today.
   exact `CREATE TABLE` statement can be written on request once OQ-1's storage location is confirmed
   (the table itself has no personal data — it stores ids and computed booleans — so it can live in the
   regular schema, unlike the CSVs/snapshots).
+- **OQ-6 — Does `TOTALS_OUT_OF_RANGE` belong in the "arithmetic" hard-gate bucket (§5, #2)?**
+  Raised by the C3 reviewer (D-048 Part D2), fixed only in part: `AMOUNT_ARITHMETIC_MISMATCH` and
+  `MISSING_MONEY_FIELD` (BR-CO-15, D-028) were added to "arithmetic" since D-028's own name
+  ("antraštės aritmetikos vartas") makes that omission an unambiguous bug. `TOTALS_OUT_OF_RANGE` is
+  different: it is an amount-plausibility bound (flags implausibly large sums), not an EN 16931
+  Schematron rule — D-040, which specifically enumerates every EN 16931 threshold in force, never
+  mentions it. Options: **(a)** leave it under "arithmetic" as shorthand for "amount problems in
+  general" (current code, simplest, keeps the summary at 4 buckets); **(b)** give it its own 5th
+  bucket (e.g. "sumos ribos" / amount-bounds) so "arithmetic" means only BR-CO-10/BR-CO-15; **(c)**
+  drop it from the weekly summary entirely on the grounds that it is already visible elsewhere (it is
+  a `IsCriticalFlag` per `ExpenseStatusHelper.cs`, so it already surfaces on the invoice itself and in
+  `NeedsAttention`). Not resolved in this session — no silent choice made either way; the code still
+  does (a) until the owner picks.
