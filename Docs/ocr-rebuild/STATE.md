@@ -285,6 +285,6 @@ nepatikrinti staginge; dalinių deploy'ų į prodą nėra. Prieš galutinį depl
 | Etapas 0c (redagavimas, įvestis, biudžetas) | **baigta, prode v0.17.91**; drag & drop FAILED, biudžetas nepatikrintas |
 | Etapas 1 (EN 16931, lokalės, IBAN, PVM tarifai, re-OCR) | **uždarytas staginge 2026-09-26/27** (D-043; `main` v0.17.94); prode nėra (D-037) |
 | Etapas 2 (tiekėjo kaskada) | planas parašytas (`PLAN-ETAPAS2.md`), laukia savininko atsakymų |
-| Etapas 3 (ekstrakcija — D-023 kryptis, D-016 UŽDARYTAS) | pradėta 2026-09-27; D-046 (OQ-1…OQ-6) priimtas; sesijos S1–S4 vykdomos |
+| Etapas 3 (ekstrakcija — D-023 kryptis, D-016 UŽDARYTAS) | pradėta 2026-09-27; D-046 priimtas; S1 baigta (10/11 korpuso dok. turi tinkamą lentelę) — `etapas3-s1-20260927-1220.md`; S2–S4 vykdomos |
 | Etapas 4 (matavimas) | laukia |
 | Saugykla, 2 žingsnis (PDF į IFileStore) | nepradėta |
