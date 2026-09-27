@@ -54,11 +54,22 @@ internal static class OcrFixtures
         foreach (var item in fields.GetProperty("Items").GetProperty("valueArray").EnumerateArray())
         {
             var line = new OcrLineDto();
-            OcrNumberReads.ReadLineNumbers(item.GetProperty("valueObject"), line);
+            var lineFields = item.GetProperty("valueObject");
+            line.Description = FieldText(lineFields, "Description");
+            if (string.IsNullOrEmpty(line.Description)) line.Description = FieldText(lineFields, "ProductCode");
+            if (string.IsNullOrEmpty(line.Description)) line.Description = FieldText(lineFields, "ProductDescription");
+            OcrNumberReads.ReadLineNumbers(lineFields, line);
             result.Lines.Add(line);
         }
         return result;
     }
+
+    // Same "valueString or content" fallback ExpenseOcrService.ProcessAsync's field readers use for text fields
+    // (D-045's own pattern, e.g. SupplierIdentifiers above).
+    private static string FieldText(JsonElement fields, string name) =>
+        fields.TryGetProperty(name, out var f)
+            ? (f.TryGetProperty("valueString", out var vs) ? vs.GetString() : f.TryGetProperty("content", out var c) ? c.GetString() : "") ?? ""
+            : "";
 
     public static JsonElement Fields(string response)
     {

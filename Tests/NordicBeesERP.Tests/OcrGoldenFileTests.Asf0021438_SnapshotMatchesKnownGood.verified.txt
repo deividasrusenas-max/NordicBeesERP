@@ -11,14 +11,14 @@
   },
   Lines: [
     {
-      Description: ,
+      Description: Kuras A,
       Quantity: 3.0,
       UnitPrice: 0.2066,
       AmountExclVat: 972.0,
       NetDerived: false
     },
     {
-      Description: ,
+      Description: Kuras B,
       Quantity: 9000.0,
       UnitPrice: 14.5456,
       AmountExclVat: 158.4,
