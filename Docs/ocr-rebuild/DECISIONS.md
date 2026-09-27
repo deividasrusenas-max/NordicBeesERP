@@ -663,6 +663,20 @@ fixes (Part A), Etapo 4 planas (Part B), trys Etapo 4 komponentai (Part C).
    išvalytas 326, 328; asmens kodas pašalintas iš 185 `company_code`; šalis LT priskirta 371, 406
    ir EE 374; PVM kodai pašalinti iš `company_code` 373, 375, 376, 379, 380, 406, 419) pritaikytas
    tik staginge.
+
+   **Pakeičia D-045 2 žingsnį — neuždarytas prieštaravimas, atviras klausimas savininkui.** D-045
+   sakė: staginge švari pradžia „**po Etapo 2**" ir kad ji „yra... Etapų 3–4 žalių JSON korpusas"
+   — t. y. pakartotinis įkėlimas turėjo įvykti PRIEŠ Etapo 3 S5 (matavimas ant realaus korpuso),
+   nes S5 yra jos vartotojas (`STATE.md`: „S5... laukia Etapo 2 švarios pradžios rezultatų — tai
+   jos šaltinis"). Ištrynimas staginge jau įvyko 2026-09-27 (aukščiau), **bet pakartotinis
+   įkėlimas** šia D-047 versija atidedamas iki Etapų 3–4 kodo pabaigos. Jei S5 (Etapo 3 dalis)
+   tikrai reikalauja korpuso PRIEŠ save, o korpusas atsiranda tik po Etapų 3–4 kodo — žiedas:
+   Etapas 3 negali užsidaryti be S5, S5 negali įvykti be korpuso, korpusas — tik po Etapo 3–4.
+   Šia sesija (Part B, Etapo 4 planas) daroma prielaida, kad S5 stiliaus matavimas ant realaus
+   korpuso pilnai perkeliamas į Etapo 4 kriterijų 3 (žr. PLAN-ETAPAS4.md), t. y. Etapo 3 „baigtas
+   kode" nebelaukia savo S5 punkto atskirai — tai savininko sprendimas, o ne šio dokumento
+   nutarimas; jei savininkas nesutinka, D-045 2 žingsnio tvarka lieka galioti ir pakartotinis
+   įkėlimas turi įvykti anksčiau, ne „pačioje pabaigoje".
 2. **Išlaidų tiekėjai.** Švarios pradžios metu kiekvienas partneris su `is_expense_supplier = 1`,
    kurio nenurodo joks kitas įrašas (`honey_deliveries`, `supplier_payments`, `containers` įsk.
    `reservation_customer_id`, `deliveries`, `invoices`, `credit_notes`, `orders`, `payments`,
