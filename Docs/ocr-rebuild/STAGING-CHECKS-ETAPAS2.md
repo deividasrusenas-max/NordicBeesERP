@@ -13,7 +13,7 @@ Order of the document (D-045): **1** owner DDL → **2** deploy check → **3** 
 ## How to read this document
 
 - SQL is `SELECT`-only unless a step says **CHANGES STAGING DATA**; it is run as
-  `sudo mariadb nordic_bees_erp_staging -e "…"` on `lakstena-dev`. Queries use no double quotes, `!`, `$` or backticks, so
+  `sudo mariadb nordic_bees_erp_staging -e "…"` on `lakstena-dev`. Queries contain no double quotes, `!` or backticks and (apart from the harmless `'…+$'` regex anchor of 1.5) no `$`, so
   they paste safely inside `-e "…"`.
 - `ocr_flags` is a JSON array stored as text: test a flag with `JSON_CONTAINS(ocr_flags, JSON_QUOTE('FLAG'))`.
 - Table and column names come from the model and migrations. If a query fails with "Unknown column", run `DESCRIBE <table>`
@@ -40,6 +40,15 @@ New audit actions: `SUPPLIER_MATCHED` (create and re-OCR; `outcome=…; tier=…
 New UI: detail dialog — „Galimi tiekėjai" (candidates with tier / reason and „Priskirti"), „Pakeisti tiekėją",
 „Pridėti IBAN prie tiekėjo", ranked pickers; partner edit dialog — „Išmokti pavadinimai (aliasai)" with „Atblokuoti" /
 „Atšaukti aliasą".
+
+## Warnings (read before starting)
+
+1. **Order matters.** DDL (1) before the new code runs; master-data cleanup (3) before the clean start (4); nobody uploads while the deletes of 4.2 run.
+2. **After step 4 a re-upload of an already uploaded PDF is a duplicate** (`Failas jau įkeltas` / DUPLICATE_PENDING). The rule checks of step 5 therefore use re-OCR
+   (PAKARTOTI OCR), the edit form and manual assignment on the invoices of step 4 — the *create* path is measured by step 4 itself (the `SUPPLIER_MATCHED` distribution).
+3. **`VAT_RATE_NOT_ALLOWED` cannot fire** (all rate rows UNCONFIRMED) and `TOTALS_OUT_OF_RANGE` cannot be produced on staging — automated tests only.
+4. **Every upload and re-OCR calls Azure** on the production key (D-029). Data created in step 5 stays on staging; step 5.10 cleans the throw-away data.
+5. Unit-level guards (e.g. the service refusing `AssignSupplierAsync` on a non-PENDING_SUPPLIER invoice) are covered by automated tests; on staging you can only observe what the UI offers.
 
 ---
 
@@ -128,13 +137,29 @@ sudo mariadb nordic_bees_erp_staging -e "SELECT table_name, index_name, non_uniq
 sudo mariadb nordic_bees_erp_staging -e "SELECT MigrationId FROM __EFMigrationsHistory WHERE MigrationId LIKE '%SupplierBankAccounts' OR MigrationId LIKE '%SupplierAliases';"
 ```
 
+```bash
+sudo mariadb nordic_bees_erp_staging -e "SELECT table_name, constraint_name, referenced_table_name FROM information_schema.key_column_usage WHERE table_schema = DATABASE() AND table_name IN ('supplier_bank_accounts', 'supplier_aliases', 'supplier_alias_events') AND referenced_table_name IS NOT NULL;"
+```
+
 Expected: 8 / 9 / 7 columns; indexes `PRIMARY`, `uq_partner_iban` (unique), `idx_iban`, `PRIMARY`, `idx_alias_key`, `uq_alias_partner` (unique), `PRIMARY`,
-`idx_alias_events_alias`, `idx_alias_events_invoice`; two history rows. No foreign keys anywhere.
+`idx_alias_events_alias`, `idx_alias_events_invoice`; two history rows. The foreign-key query above returns **no rows** (no foreign keys, D-044 Q11).
 
 1.5 **IBAN backfill** (CHANGES STAGING DATA — inserts rows into the new table only). The file
 `Migrations/Scripts/20260927_backfill_supplier_bank_accounts.sql` in the repo holds two statements: a **dry-run SELECT**
-(which partners would get a row) and the **INSERT**. Run them one at a time — copy each block from the file (they are marked
-`-- ---- dry run` and `-- ---- backfill`). The `/*SCOPE*/` token is a comment; leave it. Rules: whitespace stripped, upper-cased,
+(which partners would get a row) and the **INSERT**. Run them one at a time. Copy the file to `lakstena-dev` first
+(`scp Migrations/Scripts/20260927_backfill_supplier_bank_accounts.sql lakstena-dev:~/backfill.sql`); the blocks are marked `-- ---- dry run` and `-- ---- backfill`:
+
+```bash
+sed '/^-- ---- backfill/,$d' ~/backfill.sql | sudo mariadb nordic_bees_erp_staging
+```
+
+(the dry run — prints `partner_id`, `iban` for every value that would get a row; nothing is written), then, after you compared it with the expectation below:
+
+```bash
+sed -n '/^-- ---- backfill/,$p' ~/backfill.sql | sudo mariadb nordic_bees_erp_staging
+```
+
+The `/*SCOPE*/` token is a comment; leave it. Rules: whitespace stripped, upper-cased,
 only A–Z0–9, the per-country length table of `IbanValidator`, ISO 13616 mod-97 = 1; the row is `source = 'MIGRATED'`. Values that
 fail stay only in the legacy `bank_account` column. Idempotent (skips existing pairs).
 
@@ -173,7 +198,7 @@ sudo docker logs nordicbees_staging 2>&1 | grep -E 'Kritinė klaida|Pending EF m
 Expected: no `Kritinė klaida`, no `Unhandled exception`, **no pending-migrations warning** (both new migrations are already in
 `__EFMigrationsHistory` from step 1).
 
-2.2 **Baselines** — write them down (used by the measurements in step 4 and the checks in step 5):
+2.2 **Baselines** — write them down. `BP0` / `INV0` / `AUD0` / `FILE0` here are only the *before-everything* picture; the ids used by the step 4 measurements are taken again at 4.4 (after the master-data cleanup and the deletes), so partners the accountant creates or merges in step 3 are not counted as "suppliers the owner had to create":
 
 ```bash
 sudo mariadb nordic_bees_erp_staging -e "SELECT (SELECT MAX(id) FROM business_partners) AS BP0, (SELECT MAX(id) FROM expense_invoices) AS INV0, (SELECT MAX(id) FROM expense_invoice_audit) AS AUD0, (SELECT MAX(id) FROM files) AS FILE0;"
@@ -336,15 +361,18 @@ sudo mariadb nordic_bees_erp_staging -e "DELETE FROM files WHERE module = 'expen
 sudo mariadb nordic_bees_erp_staging -e "SELECT COUNT(*) AS expense_files_left FROM files WHERE module = 'expenses';"
 ```
 
-Expected: every `*_left` = 0. Alias history that was written by earlier tests of Etapas 2 refers to deleted invoices — on a fresh staging
-the alias tables are empty; **if step 5 was already run once**, also clear them so the measurement starts clean:
+Expected: every `*_left` = 0. Alias rows and events refer to the deleted invoices. On a fresh staging the alias tables are empty; **if step 5 was already run once** (test data only), clear them so the
+measurement starts clean:
 
 ```bash
 sudo mariadb nordic_bees_erp_staging -e "SELECT (SELECT COUNT(*) FROM supplier_aliases) AS aliases, (SELECT COUNT(*) FROM supplier_alias_events) AS events;"
+sudo mariadb nordic_bees_erp_staging -e "DELETE FROM supplier_alias_events;"
+sudo mariadb nordic_bees_erp_staging -e "DELETE FROM supplier_aliases;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT (SELECT COUNT(*) FROM supplier_aliases) AS aliases_left, (SELECT COUNT(*) FROM supplier_alias_events) AS events_left;"
 ```
 
-(Only if both are test data: `DELETE FROM supplier_alias_events;` then `DELETE FROM supplier_aliases;` — a clean measurement wants none
-left. `supplier_bank_accounts` stays: the backfill and partner-saved IBANs are master data.)
+`supplier_bank_accounts` stays (the backfill and partner-saved IBANs are master data); its `source_invoice_id` values of `INVOICE_CONFIRMED` rows now point at deleted invoices — harmless.
+The ids of the deleted audit rows are not reused: `AUTO_INCREMENT` is persisted in MariaDB ≥ 10.2.4 (staging is 11.8), so a *new* baseline `MAX(id)` is taken below anyway.
 
 ## 4.3 Blobs on disk
 
@@ -361,6 +389,12 @@ PDF is already stored, that is the `files` dedupe working — not an error.
 
 ## 4.4 Re-upload
 
+**First take the ids the measurements use** (after step 3 and after the deletes; write them down as `BP1`, `INV1`, `AUD1`):
+
+```bash
+sudo mariadb nordic_bees_erp_staging -e "SELECT (SELECT COALESCE(MAX(id), 0) FROM business_partners) AS BP1, (SELECT COALESCE(MAX(id), 0) FROM expense_invoices) AS INV1, (SELECT COALESCE(MAX(id), 0) FROM expense_invoice_audit) AS AUD1;"
+```
+
 The owner uploads **all originals** through Išlaidų sąskaitos → Įkelti (one at a time; ≈ 247 Azure calls on the production key, D-029;
 scanned PDFs are refused by D-032 before Azure — list those, they need a digital copy). Uploads now create partners on demand:
 **for every `PENDING_SUPPLIER` invoice, either create the supplier (Sukurti tiekėją) or assign an existing one (Priskirti)** and
@@ -376,26 +410,26 @@ sudo mariadb nordic_bees_erp_staging -e "SELECT status, COUNT(*) AS n, ROUND(SUM
 Status distribution (clean = PENDING / stopped = NEEDS_REVIEW, PENDING_SUPPLIER, DUPLICATE_PENDING, REJECTED). Compare with the
 2.2 baseline.
 
-Flags — review vs information (one query, one column per flag; a flag is counted once per invoice):
+Flags — review vs information (one query, one column per flag; a flag is counted once per invoice). Review flags — the ones that hold an invoice in NEEDS_REVIEW
+(`HasReviewFlag`): `SUPPLIER_NEW_IBAN`, `MISSING_AMOUNT`, `AMOUNT_MISMATCH`, `LOW_CONFIDENCE`, `ZERO_VAT`, `MISSING_INV_NUMBER`, `AMOUNT_ARITHMETIC_MISMATCH`, `MISSING_MONEY_FIELD`,
+`FUTURE_DATE`, `STALE_DATE`, `MISSING_INV_DATE`, `TOTALS_OUT_OF_RANGE`, `VAT_RATE_NOT_ALLOWED`, `NUMBER_MISREAD`, `NUMBER_AMBIGUOUS`, and — **only while there is no supplier** — `INVALID_IBAN`,
+`INVALID_VAT_FORMAT`. Everything else is information or quarantine (`VENDOR_*`, `DUPLICATE`, `WRONG_RECIPIENT`, `VAT_RATE_UNCHECKED`, `VAT_COUNTRY_MISMATCH`, `LINE_*`, …).
 
 ```bash
-sudo mariadb nordic_bees_erp_staging -e "SELECT COUNT(*) AS invoices, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('SUPPLIER_NEW_IBAN'))) AS SUPPLIER_NEW_IBAN, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VENDOR_NOT_FOUND'))) AS VENDOR_NOT_FOUND, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VENDOR_AMBIGUOUS'))) AS VENDOR_AMBIGUOUS, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VENDOR_SUGGESTED'))) AS VENDOR_SUGGESTED, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('AMOUNT_MISMATCH'))) AS AMOUNT_MISMATCH, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('AMOUNT_ARITHMETIC_MISMATCH'))) AS AMOUNT_ARITHMETIC_MISMATCH, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('MISSING_MONEY_FIELD'))) AS MISSING_MONEY_FIELD, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('NUMBER_MISREAD'))) AS NUMBER_MISREAD, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('NUMBER_AMBIGUOUS'))) AS NUMBER_AMBIGUOUS, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('INVALID_IBAN'))) AS INVALID_IBAN, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('INVALID_VAT_FORMAT'))) AS INVALID_VAT_FORMAT, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('DUPLICATE'))) AS DUPLICATE, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('WRONG_RECIPIENT'))) AS WRONG_RECIPIENT, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VAT_RATE_UNCHECKED'))) AS VAT_RATE_UNCHECKED, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VAT_COUNTRY_MISMATCH'))) AS VAT_COUNTRY_MISMATCH, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('LINE_AMOUNT_IMPLAUSIBLE'))) AS LINE_AMOUNT_IMPLAUSIBLE FROM expense_invoices WHERE ocr_flags IS NOT NULL;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT COUNT(*) AS invoices, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('SUPPLIER_NEW_IBAN'))) AS SUPPLIER_NEW_IBAN, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('MISSING_AMOUNT'))) AS MISSING_AMOUNT, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('AMOUNT_MISMATCH'))) AS AMOUNT_MISMATCH, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('LOW_CONFIDENCE'))) AS LOW_CONFIDENCE, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('ZERO_VAT'))) AS ZERO_VAT, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('MISSING_INV_NUMBER'))) AS MISSING_INV_NUMBER, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('AMOUNT_ARITHMETIC_MISMATCH'))) AS AMOUNT_ARITHMETIC_MISMATCH, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('MISSING_MONEY_FIELD'))) AS MISSING_MONEY_FIELD, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('FUTURE_DATE'))) AS FUTURE_DATE, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('STALE_DATE'))) AS STALE_DATE, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('MISSING_INV_DATE'))) AS MISSING_INV_DATE, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('TOTALS_OUT_OF_RANGE'))) AS TOTALS_OUT_OF_RANGE, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VAT_RATE_NOT_ALLOWED'))) AS VAT_RATE_NOT_ALLOWED, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('NUMBER_MISREAD'))) AS NUMBER_MISREAD, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('NUMBER_AMBIGUOUS'))) AS NUMBER_AMBIGUOUS, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('INVALID_IBAN'))) AS INVALID_IBAN, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('INVALID_VAT_FORMAT'))) AS INVALID_VAT_FORMAT, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VENDOR_NOT_FOUND'))) AS VENDOR_NOT_FOUND, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VENDOR_AMBIGUOUS'))) AS VENDOR_AMBIGUOUS, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VENDOR_SUGGESTED'))) AS VENDOR_SUGGESTED, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('DUPLICATE'))) AS DUPLICATE, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('WRONG_RECIPIENT'))) AS WRONG_RECIPIENT, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VAT_RATE_UNCHECKED'))) AS VAT_RATE_UNCHECKED, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('VAT_COUNTRY_MISMATCH'))) AS VAT_COUNTRY_MISMATCH, SUM(JSON_CONTAINS(ocr_flags, JSON_QUOTE('LINE_AMOUNT_IMPLAUSIBLE'))) AS LINE_AMOUNT_IMPLAUSIBLE FROM expense_invoices WHERE ocr_flags IS NOT NULL AND ocr_flags <> '';"
 ```
-
-Review flags are: `SUPPLIER_NEW_IBAN`, `AMOUNT_MISMATCH`, `AMOUNT_ARITHMETIC_MISMATCH`, `MISSING_MONEY_FIELD`, `NUMBER_MISREAD`, `NUMBER_AMBIGUOUS`
-(and `INVALID_IBAN` / `INVALID_VAT_FORMAT` only while there is no supplier); the rest above are information / quarantine.
 
 The cascade itself — every create wrote one `SUPPLIER_MATCHED` row (`outcome=…; tier=…; reason=…; candidates=…; supplier=…`):
 
 ```bash
-sudo mariadb nordic_bees_erp_staging -e "SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(action_details, 'outcome=', -1), ';', 1) AS outcome, SUBSTRING_INDEX(SUBSTRING_INDEX(action_details, 'tier=', -1), ';', 1) AS tier, SUBSTRING_INDEX(SUBSTRING_INDEX(action_details, 'reason=', -1), ';', 1) AS reason, COUNT(*) AS n FROM expense_invoice_audit WHERE action = 'SUPPLIER_MATCHED' AND id > <AUD0> GROUP BY outcome, tier, reason ORDER BY n DESC;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(action_details, 'outcome=', -1), ';', 1) AS outcome, SUBSTRING_INDEX(SUBSTRING_INDEX(action_details, 'tier=', -1), ';', 1) AS tier, SUBSTRING_INDEX(SUBSTRING_INDEX(action_details, 'reason=', -1), ';', 1) AS reason, COUNT(*) AS n FROM expense_invoice_audit WHERE action = 'SUPPLIER_MATCHED' AND id > <AUD1> GROUP BY outcome, tier, reason ORDER BY n DESC;"
 ```
 
 How the workload split — assigned by the matcher vs by a human vs suppliers created:
 
 ```bash
-sudo mariadb nordic_bees_erp_staging -e "SELECT action, COUNT(*) AS n FROM expense_invoice_audit WHERE action IN ('SUPPLIER_ASSIGNED', 'SUPPLIER_AUTO_ASSIGNED', 'SUPPLIER_CHANGED', 'SUPPLIER_IBAN_ADDED', 'SUPPLIER_SUGGESTED', 'APPROVAL_VOIDED') AND id > <AUD0> GROUP BY action;"
-sudo mariadb nordic_bees_erp_staging -e "SELECT COUNT(*) AS suppliers_created FROM business_partners WHERE id > <BP0>;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT action, COUNT(*) AS n FROM expense_invoice_audit WHERE action IN ('SUPPLIER_ASSIGNED', 'SUPPLIER_AUTO_ASSIGNED', 'SUPPLIER_CHANGED', 'SUPPLIER_IBAN_ADDED', 'SUPPLIER_SUGGESTED', 'APPROVAL_VOIDED') AND id > <AUD1> GROUP BY action;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT COUNT(*) AS suppliers_created FROM business_partners WHERE id > <BP1>;"
 sudo mariadb nordic_bees_erp_staging -e "SELECT COUNT(*) AS still_waiting_for_a_supplier FROM expense_invoices WHERE status = 'PENDING_SUPPLIER';"
 sudo mariadb nordic_bees_erp_staging -e "SELECT status, COUNT(*) AS n, SUM(approved_by IS NOT NULL) AS approved FROM expense_invoices WHERE supplier_id IS NULL GROUP BY status;"
 ```
@@ -435,12 +469,12 @@ Name what you picked: `<PS>` (PENDING_SUPPLIER with a VAT code), `<PS2>`, `<PS3>
 ## 5.1 VAT variants match exactly one partner (tier 1)
 
 **Must pass — create:** in step 4 the `SUPPLIER_MATCHED` distribution has `outcome=Assigned; tier=Vat` rows.
-**Must pass — re-OCR:** pick `<PS>`'s twin: a PENDING_SUPPLIER invoice whose VAT the partner already stores in another spelling (spaces,
-dashes, lower case): edit that partner's VAT in the partner dialog to `lt 123-456-789`-style spelling (keep the digits!), press
-PAKARTOTI OCR on an invoice of that partner that is not yet assigned, expect it to be assigned again (status PENDING / NEEDS_REVIEW, audit
-`SUPPLIER_MATCHED … tier=Vat`). Put the VAT back.
-**Must stop — no LT assumption (D-045 Q8):** a document VAT with the digits only and no address country must **not** match a partner stored
-as `LT`+digits. Record the case if you find one (`VENDOR_NOT_FOUND` / `VENDOR_SUGGESTED`).
+**Must pass — re-OCR:** take `<PS>` (PENDING_SUPPLIER with a VAT code) and the partner that *should* match it (create it in the partner list with `<PS>`'s VAT if it does not exist).
+Edit that partner's stored VAT to another spelling of the same code (spaces, dashes, lower case, e.g. `lt 123-456-789`-style — if the dialog refuses the spelling, record that and use spaces only),
+save, press PAKARTOTI OCR on `<PS>`: expect it assigned (status PENDING / NEEDS_REVIEW, audit `SUPPLIER_MATCHED … outcome=Assigned; tier=Vat`). **Edit path:** save an edit on the assigned invoice — supplier and
+status stay. Put the VAT back.
+**Must stop — no LT assumption (D-045 Q8):** a document VAT with the digits only and no address country must **not** match a partner stored as `LT`+digits (re-OCR: `VENDOR_NOT_FOUND` /
+`VENDOR_SUGGESTED`). Record it if you meet such a document; otherwise it stays covered by automated tests.
 
 ## 5.2 Same VAT on two partners → nothing assigned, both shown (VENDOR_AMBIGUOUS)
 
@@ -449,19 +483,18 @@ both „Tiekėjas", active).
 **Must stop — re-OCR:** PAKARTOTI OCR on `<PS>`. Expect: status PENDING_SUPPLIER, chips „Nežinomas tiekėjas" (hidden while pending) and
 **„Keli galimi tiekėjai"**, the detail dialog lists **both** partners under „Galimi tiekėjai" with tier „PVM kodas" and reason „keli tiekėjai su tais
 pačiais duomenimis"; audit `SUPPLIER_MATCHED outcome=Ambiguous`. **Edit path:** save an edit on `<PS>` — the flag stays, the status stays.
-**Must pass:** click „Priskirti" next to one candidate → assigned, `VENDOR_AMBIGUOUS` gone, audit `SUPPLIER_ASSIGNED`. Then delete the two
-throw-away partners' duplicate (leave one, or none) afterwards.
+**Must pass:** click „Priskirti" next to one candidate → assigned, `VENDOR_AMBIGUOUS` gone, audit `SUPPLIER_ASSIGNED`. The throw-away partners are cleaned up in 5.10.
 
 ## 5.3 Same name, different VAT → not assigned (VENDOR_SUGGESTED)
 
 **Setup:** create a partner whose name equals `<PS2>`'s `pending_supplier_name` exactly but with a **different** VAT.
 **Must stop — re-OCR:** PAKARTOTI OCR on `<PS2>`: PENDING_SUPPLIER, chip **„Siūlomas kitas tiekėjas"**, the candidate shown with reason
 **„kodai nesutampa"**; `SUPPLIER_MATCHED outcome=Suggested; reason=ConflictingIdentifier`. **Must pass:** the same partner without a VAT of its own and a
-document without a VAT → assigned by name (tier Name). (Today's silent wrong assignment is exactly what this replaces.)
+document without a VAT → assigned by name (tier Name). **Edit path:** save an edit on `<PS2>` while it is still PENDING_SUPPLIER — `VENDOR_SUGGESTED` and the status stay. (Today's silent wrong assignment is exactly what this replaces.)
 
 ## 5.4 Inactive / customer-only partner → suggestion only (Q7)
 
-Deactivate the throw-away partner of 5.3 (or make it customer-only) and re-OCR: the outcome must be `Suggested; reason=PartnerNotEligible`, never `Assigned`.
+Deactivate the throw-away partner of 5.3 (or make it customer-only) and re-OCR: the outcome must be `Suggested; reason=PartnerNotEligible`, never `Assigned`. **Must pass:** re-activate it (active, „Tiekėjas") and re-OCR again → `Assigned` (if nothing else contradicts). **Edit path:** an edit of the still-unassigned invoice keeps the flag and the status.
 
 ## 5.5 Known supplier + new IBAN → NEEDS_REVIEW; „Pridėti IBAN prie tiekėjo"; PATVIRTINTI keeps it
 
@@ -490,36 +523,38 @@ sudo mariadb nordic_bees_erp_staging -e "SELECT action, action_details, old_stat
 ```
 
 **Must stop:** the button is **not shown** for PAID / PARTIAL / OVERDUE / REJECTED / DUPLICATE_PENDING / PENDING_SUPPLIER invoices, and the service refuses in
-Lithuanian („Tiekėjo keisti negalima: …") — there are no payments in staging after step 4, so to see the payment refusal register one payment on a
+Lithuanian („Tiekėjo keisti negalima: …“ for paid / rejected / duplicate invoices; „Sąskaitai dar nepriskirtas tiekėjas — naudokite „Priskirti esamam“ for PENDING_SUPPLIER) — there are no payments in staging after step 4, so to see the payment refusal register one payment on a
 PENDING invoice first (Etapas 0 flow), then the button disappears.
 The picker is ranked: the partners most like the OCR name are on top (5.9).
 
-## 5.7 Aliases: promotion at two confirmations, conflict freeze, revoke / unfreeze
+## 5.7 Aliases: promotion at two confirmations, application, conflict freeze, revoke / unfreeze
 
-**Promotion:** take `<N1>` and `<N2>` (same OCR name, different invoices). Assign **both** to the same partner whose own name is **different** from
-that OCR name („Priskirti esamam"):
+**What you need:** one OCR supplier name that occurs on **at least five** PENDING_SUPPLIER invoices (query 2 of 5.0 — call them `<N1>` … `<N5>`; if you have fewer, do the steps in order and write
+down where you stopped), and two partners `<A>` and `<B>` whose own names are **different** from that OCR name (an alias of a partner's own name is never created; also: when you use „Sukurti tiekėją"
+below, change the proposed name in the dialog so it differs from the OCR name, otherwise no alias is created and the check proves nothing).
+
+1. **Candidate → active.** Assign `<N1>` to `<A>` („Priskirti esamam"): alias `CANDIDATE`, `confirmations = 1` — candidates are **never** applied. Assign `<N2>` to `<A>`: **`ACTIVE`, `confirmations = 2`**,
+   events `CONFIRMED`, `CONFIRMED`, `PROMOTED`:
 
 ```bash
 sudo mariadb nordic_bees_erp_staging -e "SELECT id, partner_id, alias_key, raw_example, state, confirmations, frozen_reason FROM supplier_aliases ORDER BY id DESC LIMIT 10;"
 sudo mariadb nordic_bees_erp_staging -e "SELECT alias_id, invoice_id, event, actor FROM supplier_alias_events ORDER BY id DESC LIMIT 10;"
 ```
 
-Expected after the first: `CANDIDATE`, `confirmations = 1` (candidates are **never** applied); after the second: **`ACTIVE`, `confirmations = 2`**, events `CONFIRMED`, `CONFIRMED`,
-`PROMOTED`. Repeating „Priskirti" on the same invoice does not exist (it is no longer PENDING_SUPPLIER); a re-OCR of an assigned invoice does not count.
-**Applied:** upload — or re-OCR a still-unassigned invoice with — the same OCR name: it is assigned by tier **Alias** (`SUPPLIER_MATCHED … tier=Alias`) and an `APPLIED` event appears.
-**Never over a contradicting code:** an invoice with that name but a **different VAT** than the partner's is only suggested (`reason=ConflictingIdentifier`).
-**Conflict freeze:** assign a third invoice with the **same OCR name** to a **different** partner: both aliases become **FROZEN** (`frozen_reason` „Konfliktas: …",
-events `CONFLICT_FROZEN`); a further invoice with that name is **not** assigned by alias.
-**Revoke / unfreeze:** open the partner in the partner dialog: „Išmokti pavadinimai (aliasai)" lists the alias with state, confirmations and the raw example.
-„Atblokuoti" on one → `UNFROZEN` (ACTIVE if it has ≥ 2 confirmations); on the second it is **refused** while the first is ACTIVE („Kitas tiekėjas jau turi aktyvų …");
-„Atšaukti aliasą" → `REVOKED` (event), never applied again.
-**Not a confirmation:** „Sukurti tiekėją" on an invoice assigns its siblings by the sweep — only the invoice you clicked on gets an alias confirmation:
+2. **No retroactive sweep.** `<N3>` … `<N5>` are still PENDING_SUPPLIER after the promotion (nothing was reassigned).
+3. **Applied.** PAKARTOTI OCR on `<N3>`: it is assigned to `<A>` by tier **Alias** (`SUPPLIER_MATCHED … tier=Alias`), an `APPLIED` event appears, and `confirmations` is still 2 (applying is not a confirmation).
+   An invoice with that name but a **different VAT** than `<A>`'s is only suggested (`reason=ConflictingIdentifier`) — an alias never overrides a contradicting code.
+4. **Conflict freeze.** Assign `<N4>` (still unassigned) to `<B>`: both aliases become **FROZEN** (`frozen_reason` „Konfliktas: …", events `CONFLICT_FROZEN` on both). PAKARTOTI OCR on `<N5>`: **not** assigned by alias.
+5. **Unfreeze / revoke.** Open `<A>` in the partner dialog: „Išmokti pavadinimai (aliasai)" lists the alias with state, confirmations and the raw example. „Atblokuoti" `<A>`'s alias (2 confirmations) →
+   `UNFROZEN`, back to **ACTIVE**. Now „Atblokuoti" on `<B>`'s alias (1 confirmation) is **refused** („Kitas tiekėjas jau turi aktyvų šio pavadinimo aliasą — pirmiausia jį atšaukite"). „Atšaukti aliasą" on `<A>`'s → `REVOKED`
+   (event), never applied again; then `<B>`'s can be unfrozen (→ `CANDIDATE`). (If you unfreeze `<B>`'s first, `<A>`'s unfreezes without refusal — the rule only looks for an *active* rival.)
+6. **Not a confirmation.** „Sukurti tiekėją" on an invoice assigns its siblings by the sweep, but only the invoice you clicked on gets one alias confirmation (other assignments in this step were by hand):
 
 ```bash
-sudo mariadb nordic_bees_erp_staging -e "SELECT a.alias_key, a.confirmations, COUNT(DISTINCT e.invoice_id) AS confirming_invoices FROM supplier_aliases a JOIN supplier_alias_events e ON e.alias_id = a.id AND e.event = 'CONFIRMED' GROUP BY a.id, a.alias_key, a.confirmations;"
+sudo mariadb nordic_bees_erp_staging -e "SELECT a.alias_key, a.state, a.confirmations, COUNT(DISTINCT e.invoice_id) AS confirming_invoices FROM supplier_aliases a LEFT JOIN supplier_alias_events e ON e.alias_id = a.id AND e.event = 'CONFIRMED' GROUP BY a.id, a.alias_key, a.state, a.confirmations;"
 ```
 
-`confirmations` must equal `confirming_invoices` on every row. **No retroactive sweep:** after a promotion, other PENDING_SUPPLIER invoices with that name stay PENDING_SUPPLIER.
+`confirmations` must equal `confirming_invoices` on every row **except an alias you revoked and confirmed again** (confirmations restart at 0 after a revocation, the old events stay).
 
 ## 5.8 Gate 3 — no invoice leaves PENDING_SUPPLIER without a supplier (S1)
 
@@ -541,8 +576,25 @@ to the OCR name (`UAB Rotoma` before `UAB Rotoma Plius` for the query `Rotoma`, 
 
 ## 5.10 Cleanup of the test data
 
-Delete the throw-away partners of 5.2–5.5 (partner list), and if you want a clean alias table again: `DELETE FROM supplier_alias_events; DELETE FROM supplier_aliases;`
-(test data only). Record what you left.
+The partner delete removes only the `business_partners` row — the new tables have no foreign keys, so **first move the invoices off the throw-away partners, then delete their rows**:
+
+1. Re-assign the invoices you assigned to throw-away partners in 5.2–5.7 (use „Pakeisti tiekėją" where allowed, or reject them) so that no invoice keeps a throw-away `supplier_id`.
+2. Check nothing points at a throw-away partner (`<T1>, <T2>, …` = their ids):
+
+```bash
+sudo mariadb nordic_bees_erp_staging -e "SELECT (SELECT COUNT(*) FROM expense_invoices WHERE supplier_id IN (<T1>, <T2>)) AS invoices, (SELECT COUNT(*) FROM supplier_bank_accounts WHERE partner_id IN (<T1>, <T2>)) AS ibans, (SELECT COUNT(*) FROM supplier_aliases WHERE partner_id IN (<T1>, <T2>)) AS aliases;"
+```
+
+3. **CHANGES STAGING DATA** — delete the test rows of the new tables, then the partners (partner list, or SQL):
+
+```bash
+sudo mariadb nordic_bees_erp_staging -e "DELETE FROM supplier_alias_events WHERE alias_id IN (SELECT id FROM supplier_aliases WHERE partner_id IN (<T1>, <T2>));"
+sudo mariadb nordic_bees_erp_staging -e "DELETE FROM supplier_aliases WHERE partner_id IN (<T1>, <T2>);"
+sudo mariadb nordic_bees_erp_staging -e "DELETE FROM supplier_bank_accounts WHERE partner_id IN (<T1>, <T2>);"
+sudo mariadb nordic_bees_erp_staging -e "SELECT (SELECT COUNT(*) FROM supplier_aliases WHERE partner_id IN (<T1>, <T2>)) AS aliases_left, (SELECT COUNT(*) FROM supplier_bank_accounts WHERE partner_id IN (<T1>, <T2>)) AS ibans_left;"
+```
+
+Aliases created on the **real** partners (step 4 and 5.7 with `<A>` / `<B>`) are data too: revoke them in the partner dialog, or — if staging is only a test bed — re-clone it. Record what you left.
 
 ---
 
@@ -556,7 +608,7 @@ All must be true:
 - [ ] 4: backups made; the stop conditions were clear; every `*_left` = 0; re-upload complete; the measurements are recorded (status split, review vs information flags,
       `SUPPLIER_MATCHED` outcome / tier distribution, `VENDOR_AMBIGUOUS` / `VENDOR_SUGGESTED` / `SUPPLIER_NEW_IBAN` counts, suppliers created).
 - [ ] 4: gate 3 query — supplier-less invoices only PENDING_SUPPLIER / REJECTED / DUPLICATE_PENDING and **approved = 0**.
-- [ ] 5.1–5.4: VAT variants match; the same VAT twice → ambiguous; same name + other VAT → suggested; ineligible partner → suggested — on create, re-OCR and edit.
+- [ ] 5.1–5.4: VAT variants match; the same VAT twice → ambiguous; same name + other VAT → suggested; ineligible partner → suggested, then eligible → assigned — on re-OCR and edit (the create path is the step 4 distribution).
 - [ ] 5.5: new IBAN → NEEDS_REVIEW (with a supplier), „Pridėti IBAN" clears it and stores `INVOICE_CONFIRMED`, PATVIRTINTI keeps it, invalid IBAN never offered.
 - [ ] 5.6: „Pakeisti tiekėją" allowed / refused matrix, approval voided, audited.
 - [ ] 5.7: alias promotion at 2, conflict freeze, revoke / unfreeze, sweep ≠ confirmation (`confirmations = confirming_invoices`).
