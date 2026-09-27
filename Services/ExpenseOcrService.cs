@@ -499,6 +499,13 @@ namespace NordicBeesERP.Services
                     }
                 }
 
+                // Etapas 3 S3 (PLAN-ETAPAS3 §1 option (c), §8.1 S3, D-023): repair a line's net from
+                // analyzeResult.tables[] when the table's rows reconcile against the header and the Items-derived
+                // lines do not — before the locale-number detection below, so it judges the corrected value.
+                var tableRepair = TableLineRepair.Repair(analyzeResult, result);
+                if (tableRepair.Outcome == TableRepairOutcome.Repaired)
+                    result.Flags.Add(OcrFlag.LinesRepairedFromTable);
+
                 // Locale-number detection (D-041) reads the lines as Azure returned them, so it runs BEFORE the
                 // reconcile step below can drop anything (PLAN-ETAPAS1 §3.1). Detection only: no value is replaced.
                 ExpenseService.RecomputeNumberReadFlags(result.Flags, result);

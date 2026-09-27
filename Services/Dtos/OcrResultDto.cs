@@ -193,4 +193,10 @@ public static class OcrFlag
     // Etapas 2 S4 (D-044 Q5): the supplier already has at least one known IBAN and the document's valid IBAN is not among them.
     // REVIEW — and, unlike INVALID_IBAN, it stays review with a supplier (not covered by the D-039 item 2 exemption).
     public const string SupplierNewIban          = "SUPPLIER_NEW_IBAN";
+
+    // Etapas 3 S3 (PLAN-ETAPAS3 §1 option (c), §8.1 S3): TableLineRepair replaced one or more lines' net amount from
+    // analyzeResult.tables[] because the table's rows reconciled against the header where Items did not (D-023's
+    // ASF0021438/EGO/UTA PL class). Information only — not in HasReviewFlag's list, and not in ManualEditOwnedFlags,
+    // so it is carried over unchanged by an edit (same default-carry-over rule as any other document-derived flag).
+    public const string LinesRepairedFromTable   = "LINES_REPAIRED_FROM_TABLE"; // "Eilutės pataisytos pagal lentelę"
 }
