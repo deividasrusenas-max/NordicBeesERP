@@ -34,8 +34,12 @@ shows it never existed in this file, so drag & drop in the expense dialog never 
 Owner staging check 9 (2026-09-26) found it not working even on first use — root cause was
 `OnAfterRenderAsync` only calling `setupDropZone` when `firstRender == true`; after the file is
 removed (`RemoveFile`), the `@if (_file == null)` block re-renders a brand-new `#expense-drop-zone`
-div with no listeners, and nothing ever re-ran `setupDropZone` on it. Browser verification (Chrome
-+ Firefox) of the fix is still pending — see the D-047 Part A report.
+div with no listeners, and nothing ever re-ran `setupDropZone` on it. Covered by a real bUnit
+interop-level test (`Tests/NordicBeesERP.Tests/ExpenseUploadDialogDragDropTests.cs`,
+`RemoveFile_ThenDropAgain_ReWiresTheDropZone`) — asserts on bUnit's mocked JS runtime that
+`setupDropZone` is invoked again after `RemoveFile()`, and was adversarially confirmed to go red
+against the pre-fix `if (firstRender)` condition. Browser verification (Chrome + Firefox) of the
+fix is still pending — see the D-047 fix report.
 **Do not touch these methods (their JS/DOM contract, not their exact statements):**
 - `OnAfterRenderAsync` — now re-runs `setupDropZone` (retry loop unchanged) whenever the drop-zone
   div is on screen and unwired, tracked by `_dropZoneNeedsSetup` (set on first render and again by
