@@ -80,9 +80,12 @@
                             <div>@_errorMessage</div>
                         }
                     </MudAlert>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                        Patikrinkite ar visi serveriai veikia ir bandykite dar kartą.
-                    </MudText>
+                    @if (_errorTitle == "OCR nepavyko")
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                            Patikrinkite ar visi serveriai veikia ir bandykite dar kartą.
+                        </MudText>
+                    }
                 </div>
             }
 
