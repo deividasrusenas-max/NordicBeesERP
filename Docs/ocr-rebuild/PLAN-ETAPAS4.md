@@ -158,15 +158,15 @@ WHERE ei.status IN ('PENDING','PARTIAL','PAID','OVERDUE')
   AND ei.created_at >= '<quarter start>' AND ei.created_at < '<quarter end>'
   AND NOT EXISTS (
     SELECT 1 FROM expense_invoice_audit a
-    WHERE a.invoice_id = ei.id AND a.action = 'MANUAL_EDIT'
+    WHERE a.invoice_id = ei.id AND a.action = 'EDITED'
   )
 ORDER BY RAND()
 LIMIT 20;
 ```
 
-(The exact `action` string used for a manual field edit needs confirming against `ExpenseService.cs`'s
-actual audit-write call sites before this query is run for real — sketched here as the query's *shape*,
-not verified against the live code in this planning pass; see §7's "what could not be verified".)
+(Confirmed against the live code during Part C, C3: `ExpenseService.cs:424` writes `Action = "EDITED"`
+for a manual field edit — this was flagged unverified when this plan was first written; it is now
+confirmed, not a guess.)
 
 **The audit record.** Each quarterly run produces one row per invoice in a table this plan proposes as
 `expense_audit_samples` (owner DDL, not created by this session per AGENTS.md's no-DDL-from-an-agent
@@ -228,10 +228,10 @@ RESEARCH §7's own five, with each one's concrete source query against this sche
 
 | # | Number | Definition | Source |
 |---|---|---|---|
-| 1 | Processed / % auto-accepted with zero human edits | Invoices created in the window ÷ those reaching a confirmed status with no `MANUAL_EDIT` audit row (same predicate as §3's sampling query) | `expense_invoices` + `expense_invoice_audit` |
+| 1 | Processed / % auto-accepted with zero human edits | Invoices created in the window ÷ those reaching a confirmed status with no `EDITED` audit row (same predicate as §3's sampling query) | `expense_invoices` + `expense_invoice_audit` |
 | 2 | Hard-gate trigger count, by gate | Count of invoices where `ocr_flags` contains each of the four hard-gate flags this week (arithmetic/`AMOUNT_MISMATCH`+`TOTALS_OUT_OF_RANGE`; duplicate/`DUPLICATE_PENDING` status; supplier/`PENDING_SUPPLIER` status; date/`STALE_DATE`+`FUTURE_DATE`) | `expense_invoices.ocr_flags` (JSON column) |
 | 3 | Count unresolved longer than N working days | Exactly C2's service method (§4) | `expense_invoice_audit` + the working-day calculator |
-| 4 | Field correction rate | Count of `MANUAL_EDIT` audit rows this week ÷ total fields extracted this week (an approximation — the audit row does not currently record *which* field changed, only that an edit happened; a precise per-field rate would need `ActionDetails` (`ExpenseInvoiceAudit.ActionDetails`, free text today) to carry a structured field list, which is a follow-up, not built in this plan) | `expense_invoice_audit` |
+| 4 | Field correction rate | Count of `EDITED` audit rows this week ÷ total invoices processed this week (an approximation at the invoice level, not the field level — the audit row does not currently record *which* field changed, only that an edit happened; a precise per-field rate would need `ActionDetails` (`ExpenseInvoiceAudit.ActionDetails`, free text today) to carry a structured field list, which is a follow-up, not built in this plan) | `expense_invoice_audit` |
 | 5 | Rolling 12-month silent-error confidence bound | The rule-of-three bound from the last 4 quarterly audits' combined sample (§3) | `expense_audit_samples` (proposed table, owner DDL) |
 
 **Where it is shown.** A dashboard card (Part C, C3) on `/expenses`, next to the existing KPI row
@@ -302,10 +302,6 @@ production go-live respectively — not buildable as code today.
 
 ### 7.3 What could not be verified in this planning pass
 
-- **The exact `action` string `ExpenseService.cs` writes to `expense_invoice_audit` for a manual field
-  edit** — §3's sampling query and §5's number 4 both assume `'MANUAL_EDIT'`; this needs confirming
-  against the actual write call sites before the query is run for real, not assumed correct from this
-  plan alone.
 - **The Lithuanian public holiday list** (§4) — written from general knowledge, not checked against an
   official source in this session.
 - **Whether `expense_invoice_audit` rows exist for *every* status transition or only some** (e.g. does

@@ -12,6 +12,7 @@
 @inject ISnackbar Snackbar
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject IReviewQueueAgingService ReviewQueueAgingService
+@inject IWeeklySummaryService WeeklySummaryService
 
 <PageTitle>Išlaidos</PageTitle>
 
@@ -78,6 +79,51 @@
                 </MudPaper>
             </MudItem>
         </MudGrid>
+
+        <!-- Savaitinė suvestinė (PLAN-ETAPAS4.md §5) -->
+        @if (_weeklySummary is { } summary)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Savaitinė suvestinė</MudText>
+            <MudText Typo="Typo.caption" Class="mb-2 ml-1" Style="color:#6b7280;">
+                @summary.WeekStart.ToString("yyyy-MM-dd") – @summary.WeekEnd.ToString("yyyy-MM-dd")
+            </MudText>
+            <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background:#f8fafc; border-radius:12px">
+                <MudGrid>
+                    <MudItem xs="12" sm="6" md="4" lg="2">
+                        <MudText Typo="Typo.caption">Apdorota / auto-priimta</MudText>
+                        <MudText Typo="Typo.h6" Class="lakstena-mono">@summary.AutoAcceptedCount / @summary.ProcessedCount</MudText>
+                        <MudText Typo="Typo.caption" Class="lakstena-mono">@summary.AutoAcceptedPercent.ToString("0.0") %</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4" lg="2">
+                        <MudText Typo="Typo.caption">Kietų vartų suveikimai</MudText>
+                        @foreach (var gate in summary.HardGateTriggerCounts)
+                        {
+                            <MudText Typo="Typo.caption" Class="lakstena-mono">@gate.Key: @gate.Value</MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4" lg="2">
+                        <MudText Typo="Typo.caption">Neišspręsta > slenksčio</MudText>
+                        <MudText Typo="Typo.h6" Class="lakstena-mono">@summary.UnresolvedLongerThanThresholdCount</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4" lg="2">
+                        <MudText Typo="Typo.caption">Laukų korekcijos dažnis</MudText>
+                        <MudText Typo="Typo.h6" Class="lakstena-mono">@((summary.FieldCorrectionRate * 100).ToString("0.0")) %</MudText>
+                        <MudText Typo="Typo.caption" Class="lakstena-mono">@summary.EditedInvoiceCount taisyta(-os)</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4" lg="2">
+                        <MudText Typo="Typo.caption">Tylių klaidų riba (12 mėn.)</MudText>
+                        @if (summary.RollingSilentErrorConfidenceBoundPercent is { } bound)
+                        {
+                            <MudText Typo="Typo.h6" Class="lakstena-mono">&lt; @bound.ToString("0.0") %</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="lakstena-mono">Nėra duomenų (auditas neatliktas)</MudText>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
 
         <!-- Įsiskolinimų analizė -->
         <MudText Typo="Typo.subtitle1" Class="mb-2">Įsiskolinimų analizė</MudText>
@@ -295,6 +341,7 @@
     private IReadOnlyList<AgedInvoice> _agedInvoices = Array.Empty<AgedInvoice>();
     private int _agingThresholdWorkingDays = 5;
     private bool _showAgedList = false;
+    private WeeklySummary? _weeklySummary;
     private Dictionary<int, string> _supplierNames = new();
     private DateTime _lastClickTime = DateTime.MinValue;
     private object? _lastClickItem;
@@ -398,6 +445,7 @@
 
             _agingThresholdWorkingDays = await ReviewQueueAgingService.GetThresholdWorkingDaysAsync();
             _agedInvoices = await ReviewQueueAgingService.GetUnresolvedLongerThanThresholdAsync(_agingThresholdWorkingDays);
+            _weeklySummary = await WeeklySummaryService.GetSummaryAsync();
         }
         finally
         {
