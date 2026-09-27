@@ -1,6 +1,6 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — planas parašytas (`PLAN-ETAPAS2.md`), laukia savininko atsakymų
+Atnaujinta: 2026-09-27 | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`)
 
 ## Dabartinė fazė
 
@@ -121,6 +121,40 @@ Ireland → IR) — D-042, `073c299`, deploy'inta į staging.
   dar priskiria žalią šalies kodą — šalies kodo taisymo raporto peržiūrėtojo pastaba).
 - Data Protection raktai; `lakstena-dev` RAM.
 
+## Etapas 2 — būsena (2026-09-27; kodas `main`, ne prode, ne staginge)
+
+Sprendimai — D-044 (Q1–Q16), D-045 (duomenys, Q8/Q9, švari pradžia). Kiekvienas commit'as praėjo nepriklausomą
+peržiūrą (peržiūrėtojas vykdo testus, laužo taisykles scratch kopijoje); pirmą kartą atmesti commit'ai gavo
+„tik testai" taisymo commit'ą ir pakartotinę peržiūrą (visi galutiniai verdiktai APPROVED). Pilnas
+`dotnet test --filter "Category!=E2E"`: **1349 žali** (prieš S1 — 972, po S1 — 999).
+
+| Sesija | Commit'ai | Ką daro | Raportas |
+|---|---|---|---|
+| S1 (vartai 3) | `fe7e72d` (+ D-044 `45494e2`) | `ApproveAsync` be tiekėjo atsisako, PATVIRTINTI paslėptas, atstatymas pagal bendras taisykles, `AssignSupplierAsync` tik iš PENDING_SUPPLIER, re-OCR palieka žmogaus tiekėją, `AssignSupplierDialog` pašalintas | `etapas2-s1-20260927-0230.md` |
+| S2 (grynas atitikmuo) | D-045 `51c98e5`; `61bd1ee`, `4d307b6`, `097ef43`, `3d0980e` | `SupplierIdentityNormalizer`, `SupplierMatcher`, įmonės kodo ištraukimas | `etapas2-s2-20260927-0400.md` |
+| S3 (prijungimas) | `25cad87`, `57548d8`, `55bb777`, `1bc0259` | vienas atitikmuo per įkėlimą, `VENDOR_AMBIGUOUS` / `VENDOR_SUGGESTED`, `SUPPLIER_MATCHED`, kandidatai detalėje, sweep su normalizatoriais, „Pakeisti tiekėją" | `etapas2-s3-20260927-0246.md` |
+| S4 (žinomi IBAN) | `55f27bc`, `e924c52`, `7329de6` | `supplier_bank_accounts`, `SUPPLIER_NEW_IBAN` (peržiūra), „Pridėti IBAN prie tiekėjo", partnerio išsaugojimas įrašo IBAN, backfill skriptas | `etapas2-s4-20260927-0416.md` |
+| S5 (aliasai) | `1313c42`, `1148b28`, `0000f1c`, `3c8d87e` | `supplier_aliases` + `supplier_alias_events`, patvirtinimai tik iš žmogaus veiksmų, N = 2, konfliktas → abu FROZEN, taikymas matcher'yje, sąrašas / atšaukimas / atblokavimas | `etapas2-s5-20260927-0530.md` |
+| S6 (reitingavimas) | `d93d11d`, `b8e87a2`, `9feddc2` | `SupplierNameRanker` (token-sort Jaro-Winkler), išrikiuoti „Priskirti esamam" / „Pakeisti tiekėją" | `etapas2-s6-20260927-0545.md` |
+| S7 | dokumentas + šis įrašas | `STAGING-CHECKS-ETAPAS2.md` | `etapas2-s7-20260927-0545.md` |
+
+**Dev DDL (savininko vienkartinė išimtis, tik `nordic_bees_erp` ir `nordic_bees_erp_test`):** S4 `supplier_bank_accounts`
++ istorijos įrašas, DEV backfill 57 eilutės `MIGRATED`; S5 `supplier_aliases`, `supplier_alias_events` + istorijos įrašas.
+Tikslūs sakiniai — S4 / S5 raportuose. Staging ir prodo DDL — **savininko** (`STAGING-CHECKS-ETAPAS2.md` §1).
+
+**Kas laukia savininko:**
+
+1. **Staging DDL** (`STAGING-CHECKS-ETAPAS2.md` §1) ir IBAN backfill — prieš deploy'ą; be lentelių nauji keliai meta klaidą.
+   Versijos pakėlimas + push (autonominis paleidimas `bump-version.sh` nevykdė).
+2. **Pagrindinių duomenų valymas** su buhaltere (§3): dublikatai (Rotoma 369/381, Rokiškio vandenys 370/377, HONEYMARK PL 36/386,
+   Deltamark 396/399, 6 bitininkų poros), D-042 šalių sąrašas (RABEN LIETUVA, Xirgo Global, OÜ Nordic Hotels, 386, 8 be šalies;
+   KONICK RETAIL HUB lieka CZ), vienas PVM be prefikso.
+3. **Švari pradžia staginge** (§4): atsarginė kopija, ištrynimas, pakartotinis įkėlimas, matavimai.
+4. **PVM tarifų patvirtinimas** (buhalterė, EK TEDB; visos eilutės vis dar NEPATVIRTINTOS; EE 22 → 24 % data).
+5. Taisyklių patikros (§5) ir go / no-go (§6).
+
+**Kitas:** S7 paleidimas (savininkas), tada Etapo 3 planavimas (ekstrakcija; D-016 žalių JSON korpusas gaunamas iš švarios pradžios).
+
 ## Atviri klausimai ir tęsiniai (savininko sprendimai / follow-up)
 
 - **Drag & drop neveikia** (patikra 9). Kodas — užšaldytas `FROZEN.md` §3; priežastis dar
@@ -185,12 +219,13 @@ Ireland → IR) — D-042, `073c299`, deploy'inta į staging.
 
 ## Kitas žingsnis
 
-**Etapas 2 (tiekėjo kaskada):** `PLAN-ETAPAS2.md` parašytas (tik dokumentas, nieko neįgyvendinta);
-savininkas atsako į atvirų klausimų sąrašą ir paleidžia jo staging SELECT užklausas, tada — S1. **Deploy
-politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4 nebaigti ir nepatikrinti staginge; dalinių deploy'ų
-į prodą nėra. Prieš galutinį deploy'ą — atvirų punktų sąrašas skyriuje „Etapas 1 — staging patikrų
-rezultatai" ir `STAGING-CHECKS-ETAPAS1.md` „Must be finished…" (PVM tarifai, EE data, šalių valymas,
-drag & drop, našlaičiai dialogai, flaky testas, prodo duomenų valymas, `unit_price` DDL prode).
+**Etapas 2:** kodas baigtas (S1–S6), dokumentas `STAGING-CHECKS-ETAPAS2.md` parašytas. Savininkas: staging DDL →
+deploy → pagrindinių duomenų valymas → švari pradžia ir pakartotinis įkėlimas → taisyklių patikros → go / no-go.
+Po to — Etapo 3 planavimas. **Deploy politika (D-037):** prodas lieka v0.17.91, kol Etapai 1–4 nebaigti ir
+nepatikrinti staginge; dalinių deploy'ų į prodą nėra. Prieš galutinį deploy'ą — atvirų punktų sąrašas skyriuje
+„Etapas 1 — staging patikrų rezultatai", `STAGING-CHECKS-ETAPAS1.md` „Must be finished…" ir
+`STAGING-CHECKS-ETAPAS2.md` „What remains before the Etapai 1–4 production deploy" (prodo DDL: `unit_price`,
+`supplier_bank_accounts`, `supplier_aliases`, `supplier_alias_events`; prodo švari pradžia).
 
 ## Padaryta
 
