@@ -1,6 +1,6 @@
 # OCR rebuild — būsena
 
-Atnaujinta: 2026-09-27 (vakaras) | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`); Etapas 3 — **S1–S4 baigtos `main`**, laukia S5 (Etapo 2 švarios pradžios) ir S6; Etapas 4 — **planas parašytas ir dalis kodo baigta `main`** (`PLAN-ETAPAS4.md`, C1–C3), laukia D-045/D-047 švarios pradžios laiko sprendimo prieš realius skaičius; D-047 — **A1–A4 baigti ir peržiūrėti `main`**
+Atnaujinta: 2026-09-27 (naktis) | Fazė: Etapas 0 + 0c **prode (v0.17.91)**; Etapas 1 — **UŽDARYTAS STAGINGE 2026-09-26/27** (prodas lieka v0.17.91, D-037); Etapas 2 — **kodas baigtas `main` (S1–S6), laukia savininko staging darbo** (`STAGING-CHECKS-ETAPAS2.md`); Etapas 3 — **S1–S4 baigtos `main`**, laukia S5 (Etapo 2 švarios pradžios) ir S6; Etapas 4 — **planas parašytas ir dalis kodo baigta `main`** (`PLAN-ETAPAS4.md`, C1–C3); D-047 — **PATAISYTAS** (švari pradžia dabar KITAS žingsnis, ne atidėta) ir A1/A2 dabar turi tikrus bUnit testus; test-DB deadlock flake (Part D) sutvarkytas
 
 ## Dabartinė fazė
 
@@ -225,7 +225,30 @@ o realų antraštės kietą vartą (D-028/BR-CO-15) varo `AMOUNT_ARITHMETIC_MISM
 `MISSING_MONEY_FIELD` — paveldėta iš pačio plano (jau peržiūrėto/patvirtinto) kategorizavimo, ne šio
 commit'o kodo defektas; verta patikslinti `PLAN-ETAPAS4.md` §5, kai bus grįžtama prie šio komponento.
 
-## Atviri klausimai ir tęsiniai (savininko sprendimai / follow-up)
+## D-047 pataisymas, A1/A2 testai, Part D (deadlock) — 2026-09-27 naktis, antra sesija
+
+Owner autorizuotas tolesnis paleidimas: pataisyti D-047 (abu ankstesni bandymai atmesti — žr.
+aukščiau), pridėti tikrus testus A1/A2 (kurie anksčiau buvo pažymėti „neįmanoma" dėl bUnit
+trūkumo), ir sutvarkyti sesijos metu 3 kartus pastebėtą tikrą MySQL deadlock nestabilumą testų
+rinkinyje (Part D). Pilnas `dotnet test --filter "Category!=E2E"`: **1453 žali** (visos 5
+pakartotos pilno rinkinio patikros po Part D taisymo — žalios; laikas pakito nuo ~30–32 s iki
+~2 min 39–43 s, žr. žemiau).
+
+| Dalis | Commit'ai | Ką daro | Verdiktas |
+|---|---|---|---|
+| Part 0 (D-047 pataisytas) | `8f6edd2` | Pakeičia `def21df`/`22b5a99` turinį (naujas commit'as, ne istorijos perrašymas): švari pradžia — KITAS žingsnis po šios sesijos, ne atidėta iki Etapų 3–4 pabaigos; pašalina D-045/D-047 žiedą; atsako OQ-2 (LT šventės — sutapo su jau esančiu C2 sąrašu, pridėtas 2028 m. testas) ir OQ-3 (tik prietaisų skydelis) | PATVIRTINTA (pirmą kartą) |
+| A1+A2 testai | `5a5506b` | Tikri bUnit/interop testai abiem jau anksčiau patvirtintiems taisymams (`d419386`, `916688e`); `bunit` paketas pridėtas pirmą kartą šiam projektui; abu testai priešpriešiškai patikrinti (laikinai grąžinta sena elgsena scratch pakeitimu → testas raudonas → atstatyta → žalias) | PATVIRTINTA |
+| Part D (deadlock) | `c77139b` | Visos 52 realios DB testų klasės pažymėtos `[Collection("RealDatabase")]` — standartinis xUnit būdas serializuoti testus, kurie dalinasi bendru ištekliumi | **ATMESTA** — trūko `ExpenseUploadDialogDragDropTests` (pridėtas `5a5506b` po šio commit'o sąrašo sudarymo) |
+| Part D taisymas | `7d179bb` | Pridėta trūkstama žymė; 53/53 realios DB klasės dabar padengtos | PATVIRTINTA |
+
+**Part D kaina, sąžiningai užfiksuota:** pilno rinkinio laikas ~5× ilgesnis (nuo ~30–32 s iki
+~2 min 39–43 s), nes visos 53 realios DB klasės dabar vykdomos nuosekliai, ne lygiagrečiai.
+Priimta kaip teisingas kompromisas: pilnas serializavimas yra matematiškai tikras taisymas (deadlock
+fiziškai neįmanomas, kai 53 klasės niekada nesivykdo lygiagrečiai viena su kita), o siauresnis
+(greitesnis) taisymas reikalautų tiksliai žinoti, kurios lentelės susikerta tarp visų 53 klasių —
+klaida čia tyliai atkurtų tą patį nestabilumą.
+
+
 
 - **Drag & drop neveikia** (patikra 9). Kodas — užšaldytas `FROZEN.md` §3; priežastis dar
   nediagnozuota naršyklėje. Hipotezė iš 0c raporto §5: `setupDropZone` kviečiamas tik pirmo
