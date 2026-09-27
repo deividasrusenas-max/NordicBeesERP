@@ -28,6 +28,7 @@ namespace NordicBeesERP.Tests;
 /// implementations — if a future test needs to exercise OCR analysis or saving, those stubs will
 /// need to become real fakes at that point.
 /// </summary>
+[Collection("RealDatabase")]
 public class ExpenseUploadDialogDragDropTests : IClassFixture<DbTestFixture>, IDisposable
 {
     private readonly DbTestFixture _fixture;
