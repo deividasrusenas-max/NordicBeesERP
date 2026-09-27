@@ -468,6 +468,142 @@ public class ExpenseSupplierAliasTests : IClassFixture<DbTestFixture>
         finally { await CleanupAsync(); }
     }
 
+    // ---------------------------------------------------------------- guards from the S5 review
+
+    [Fact]
+    public async Task AfterARevocation_TheSameInvoiceCountsAgain_AndTheConfirmedEventCarriesTheActor()
+    {
+        try
+        {
+            var raw = RawName();
+            var partner = await InsertPartnerAsync();
+            var invoice = await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw);
+            await AssignAsync(invoice, partner);
+            var alias = (await AliasAsync(raw, partner))!;
+            Assert.Equal("Test User", Assert.Single(await EventsAsync(alias.Id), e => e.Event == "CONFIRMED").Actor);
+
+            await using (var context = await _fixture.Factory.CreateDbContextAsync())
+                await SupplierAliases.RevokeAsync(context, alias.Id, "Test User");
+            await CreateService().ConfirmSupplierAliasAsync(invoice, partner, "Test User");    // the same invoice, after the revocation
+
+            var revived = (await AliasAsync(raw, partner))!;
+            Assert.Equal("CANDIDATE", revived.State);
+            Assert.Equal(1, revived.Confirmations);
+            Assert.Equal(2, (await EventsAsync(alias.Id)).Count(e => e.Event == "CONFIRMED"));
+        }
+        finally { await CleanupAsync(); }
+    }
+
+    [Fact]
+    public async Task AFrozenAlias_NeverPromotes_EvenWithMoreThanNConfirmationsAndNoLiveRival()
+    {
+        try
+        {
+            var raw = RawName();
+            var a = await InsertPartnerAsync();
+            var b = await InsertPartnerAsync();
+            var aliasA = await PromoteAsync(raw, a);
+            await AssignAsync(await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw), b);      // both frozen
+            await using (var context = await _fixture.Factory.CreateDbContextAsync())
+                await SupplierAliases.RevokeAsync(context, aliasA, "Test User");                // the rival is gone
+
+            await AssignAsync(await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw), b);
+            await AssignAsync(await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw), b);
+
+            var aliasB = (await AliasAsync(raw, b))!;
+            Assert.Equal(3, aliasB.Confirmations);
+            Assert.Equal("FROZEN", aliasB.State);                                               // only a human unfreezes
+            Assert.DoesNotContain(await EventsAsync(aliasB.Id), e => e.Event == "PROMOTED");
+            Assert.Null((await ResolveAsync(raw)).SupplierId);
+        }
+        finally { await CleanupAsync(); }
+    }
+
+    [Fact]
+    public async Task ARevokedRival_IsNotAConflict()
+    {
+        try
+        {
+            var raw = RawName();
+            var a = await InsertPartnerAsync();
+            var b = await InsertPartnerAsync();
+            await AssignAsync(await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw), a);
+            await using (var context = await _fixture.Factory.CreateDbContextAsync())
+                await SupplierAliases.RevokeAsync(context, (await AliasAsync(raw, a))!.Id, "Test User");
+
+            await AssignAsync(await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw), b);
+
+            Assert.Equal("CANDIDATE", (await AliasAsync(raw, b))!.State);
+            Assert.Equal("REVOKED", (await AliasAsync(raw, a))!.State);
+        }
+        finally { await CleanupAsync(); }
+    }
+
+    [Fact]
+    public async Task AThirdPartnerOnTheSameKey_FreezesEveryone()
+    {
+        try
+        {
+            var raw = RawName();
+            var a = await InsertPartnerAsync();
+            var b = await InsertPartnerAsync();
+            var c = await InsertPartnerAsync();
+            await PromoteAsync(raw, a);
+            await AssignAsync(await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw), b);       // a and b frozen
+            await AssignAsync(await InsertInvoiceAsync("PENDING_SUPPLIER", null, raw), c);       // c joins: all three
+
+            var rows = await AliasesAsync(raw);
+            Assert.Equal(3, rows.Count);
+            Assert.All(rows, r => Assert.Equal("FROZEN", r.State));
+            Assert.All(rows, r => Assert.Contains($"{a}", r.FrozenReason));
+        }
+        finally { await CleanupAsync(); }
+    }
+
+    [Fact]
+    public async Task ReOcr_IsNotAConfirmation()
+    {
+        try
+        {
+            var raw = RawName();
+            var partner = await InsertPartnerAsync();
+            var invoice = await InsertInvoiceAsync("PENDING", partner, raw);
+            var fresh = new OcrResultDto
+            {
+                InvoiceNumber = $"S5-{Guid.NewGuid():N}", SupplierName = raw, SupplierId = partner, SupplierCountryCode = "LT",
+                InvoiceDate = DateTime.Today.ToString("yyyy-MM-dd"), DueDate = DateTime.Today.AddDays(30).ToString("yyyy-MM-dd"),
+                Currency = "EUR", AmountExclVat = 100m, VatRate = 21m, VatAmount = 21m, AmountInclVat = 121m,
+                Confidence = new OcrConfidenceDto { Amounts = 90, InvoiceNumber = 90, SupplierName = 90, InvoiceDate = 90 }
+            };
+            fresh.SupplierMatch = new SupplierMatch(MatchOutcome.Assigned, partner, MatchTier.Vat, MatchReason.None, new[] { partner }, null, 0);
+
+            await CreateService().UpdateFromOcrAsync(invoice, fresh);
+
+            Assert.Empty(await AliasesAsync(raw));
+        }
+        finally { await CleanupAsync(); }
+    }
+
+    [Fact]
+    public async Task AnOverLongNameKey_IsNeverCreated()
+    {
+        try
+        {
+            var partner = await InsertPartnerAsync();
+            var invoice = await InsertInvoiceAsync("PENDING_SUPPLIER", null, null);
+            var longName = "Ilgas pavadinimas " + string.Join(" ", Enumerable.Range(0, 60).Select(i => $"zodis{i:D3}"));   // > 255 normalised characters
+            Assert.True(SupplierIdentityNormalizer.NameNormalized(longName).Length > 255);
+            Assert.Null(SupplierAliases.KeyFor(longName));
+
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+            await SupplierAliases.ConfirmAsync(context, invoice, partner, longName, "Test User");
+
+            await using var check = await _fixture.Factory.CreateDbContextAsync();
+            Assert.False(await check.SupplierAliases.AnyAsync(a => a.PartnerId == partner));
+        }
+        finally { await CleanupAsync(); }
+    }
+
     // a tiny reader so the tests do not reload invoices through the service under test
     private sealed class ExpenseServiceReader
     {
