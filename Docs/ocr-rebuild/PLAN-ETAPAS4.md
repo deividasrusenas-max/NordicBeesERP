@@ -62,7 +62,7 @@ Part C, C1):
 | Column | Source | Notes |
 |---|---|---|
 | `invoice_id` | `expense_invoices.id` | join key back to the PDF via `files`/`IFileStore` |
-| `file_name` | `files.original_filename` (via `expense_invoices.file_id`) | so the labeller can open the right PDF without a DB query |
+| `file_name` | `expense_invoices.original_filename` (direct column, `ExpenseInvoice.cs:145-147` — no join needed) | so the labeller can open the right PDF without a DB query |
 | `field` | a fixed enum: header fields (`invoice_number`, `invoice_date`, `due_date`, `amount_excl_vat`, `vat_rate`, `vat_amount`, `amount_incl_vat`, `supplier_name`, `supplier_vat_code`) + one row per line (`line_1_description`, `line_1_amount_excl_vat`, `line_1_vat_rate`, `line_1_amount_incl_vat`, `line_1_quantity`, `line_1_unit_price`, …) | matches `ExpenseInvoice`/`ExpenseInvoiceLine` (`Models/Expenses/ExpenseInvoice.cs:183-223`) column-for-column so the compare step (below) needs no translation layer |
 | `extracted_value` | the current stored value for that field | what the pipeline actually saved |
 | `printed_content` | the corresponding Azure DI field's raw `content` string, read from `expense_invoices.ocr_raw_json`, if that field exists in the response | not always present — Azure's field structure does not guarantee a `content` string for every derived value (e.g. a computed VAT amount); the column is blank rather than invented when absent, and this is called out in the CSV's own header row |
@@ -184,8 +184,9 @@ what this invoice is" count: `PENDING_SUPPLIER`, `NEEDS_REVIEW`, `DUPLICATE_PEND
 `ExpenseStatusHelper.NeedsAttention` already treats as attention-worthy (`Helpers/ExpenseStatusHelper.cs:144`).
 `REJECTED` is excluded — it is a human decision already made (quarantined, D-027), not something still
 "unresolved." Confirmed statuses (`PENDING`, `PARTIAL`, `PAID`, `OVERDUE`) are excluded for the same
-reason: overdue-payment aging is a different, already-existing metric (the dashboard's aging buckets,
-`Components/Pages/ExpensesDashboard.razor:273-278`), not this one.
+reason: overdue-payment aging is a different, already-existing metric (the dashboard's aging buckets —
+display at `Components/Pages/ExpensesDashboard.razor:81-131`, computed via `CalculateBucket`,
+`ExpensesDashboard.razor:356-360` calling the method at `:383`), not this one.
 
 **Since when.** Not `invoice_date` (that is business-document age, not queue age) and not blindly
 `created_at` either, because an invoice can cycle back into an unresolved status after a re-OCR or a
