@@ -20,6 +20,9 @@ public sealed record SupplierCandidate(
 /// <summary>The identifiers read from the document. <see cref="CountryHint"/> is the country known from the address / resolver, or null.</summary>
 public sealed record SupplierDocument(string? Name, string? VatCode, string? CompanyCode, string? Iban, string? CountryHint);
 
+/// <summary>An ACTIVE alias as the matcher sees it: the normalised OCR supplier name (<see cref="SupplierIdentityNormalizer.NameNormalized"/>) and the partner it stands for.</summary>
+public sealed record ActiveAlias(string Key, int PartnerId);
+
 public enum MatchOutcome
 {
     /// <summary>One eligible partner, strong evidence, nothing contradicts — safe to assign.</summary>
@@ -39,7 +42,7 @@ public enum MatchTier
     Name,
     NormalizedName,
     Iban,
-    /// <summary>Extension point for S5 (learned aliases); the matcher never produces it in S2.</summary>
+    /// <summary>A learned alias (S5, D-044 Q4): an ACTIVE, human-confirmed "this normalised name means that partner". Never overrides a contradicting VAT / company code.</summary>
     Alias
 }
 
@@ -78,13 +81,15 @@ public sealed record SupplierMatch(
 /// <summary>
 /// The supplier cascade as one pure function (PLAN-ETAPAS2 §1, D-017, D-044, D-045). Automatic assignment only when
 /// the strongest evidence points at exactly one eligible partner and no identifier both sides carry contradicts it;
-/// everything else is loud (Suggested / Ambiguous / NotFound). An empty identifier never matches anything.
+/// everything else is loud (Suggested / Ambiguous / NotFound). An empty identifier never matches anything. A learned alias
+/// (tier 8, ACTIVE only) is applied after tiers 1, 2 and 4 and never overrides a document VAT / company code that contradicts the partner's.
 /// <para>Tiers: 1 VAT code, 2 company code, 4 exact name, 4b normalised name (suggest only), 3 IBAN (suggest only, and a check
 /// on the assigned partner). Alias (tier 8) is an extension point for S5.</para>
 /// </summary>
 public static class SupplierMatcher
 {
-    public static SupplierMatch Match(SupplierDocument doc, IReadOnlyList<SupplierCandidate> candidates)
+    public static SupplierMatch Match(SupplierDocument doc, IReadOnlyList<SupplierCandidate> candidates,
+        IReadOnlyList<ActiveAlias>? aliases = null)
     {
         var docVat = SupplierIdentityNormalizer.Vat(doc.VatCode, doc.CountryHint).Normalized;
         var docCode = SupplierIdentityNormalizer.CompanyCode(doc.CompanyCode);
@@ -111,6 +116,31 @@ public static class SupplierMatcher
             var exact = candidates.Where(c => SupplierIdentityNormalizer.NameExact(c.Name) == docNameExact).ToList();
             var result = DecideByName(exact, docVat, docCode, StoredVat, StoredCode, docIban);
             if (result != null) return result;
+        }
+
+        // ---- tier 8: learned alias (S5, D-044 Q4) — after the strong identifiers and the exact name, subject to the contradiction rule
+        if (docNameNorm.Length > 0 && aliases is { Count: > 0 })
+        {
+            var aliasPartnerIds = aliases.Where(a => a.Key == docNameNorm).Select(a => a.PartnerId).Distinct().ToList();
+            if (aliasPartnerIds.Count > 0)
+            {
+                var aliasCandidates = candidates.Where(c => aliasPartnerIds.Contains(c.Id)).ToList();
+                // two ACTIVE aliases of one key for different partners should not exist (a conflict freezes both) — if it
+                // happens anyway it is a tie, never a pick
+                if (aliasPartnerIds.Count > 1)
+                    return new SupplierMatch(MatchOutcome.Ambiguous, null, MatchTier.Alias, MatchReason.DuplicatePartners, Ids(aliasCandidates), null, 0);
+                if (aliasCandidates.Count == 1)
+                {
+                    var partner = aliasCandidates[0];
+                    if (!partner.IsEligible)
+                        return Suggested(MatchTier.Alias, MatchReason.PartnerNotEligible, aliasCandidates);
+                    var partnerVat = StoredVat(partner);
+                    var partnerCode = StoredCode(partner);
+                    if ((docVat != null && partnerVat != null && docVat != partnerVat) || (docCode != null && partnerCode != null && docCode != partnerCode))
+                        return Suggested(MatchTier.Alias, MatchReason.ConflictingIdentifier, aliasCandidates);
+                    return Assigned(MatchTier.Alias, partner, docIban);
+                }
+            }
         }
 
         // ---- tier 4b: normalised name — suggestion only
