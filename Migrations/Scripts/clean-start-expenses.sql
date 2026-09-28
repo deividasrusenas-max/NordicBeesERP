@@ -37,9 +37,24 @@
 -- COMPATIBILITY
 -- Written once, portable across MariaDB (staging/prod, 11.8) and MySQL 8.0.46
 -- (dev, 100.110.26.80) — every construct used here (stored procedures,
--- SIGNAL, transactions, information_schema.KEY_COLUMN_USAGE) is standard
+-- SIGNAL, transactions, information_schema.KEY_COLUMN_USAGE,
+-- information_schema.TABLES, PREPARE/EXECUTE dynamic SQL) is standard
 -- SQL/PSM supported identically by both engines at the versions in use in
 -- this project. No MariaDB-only or MySQL-only branch was needed.
+--
+-- SCHEMA DRIFT: supplier_approvals (dev-only table, optional everywhere else)
+-- `supplier_approvals` exists on DEV (nordic_bees_erp / nordic_bees_erp_test
+-- on 100.110.26.80) but NOT on staging or production. It is not created by
+-- any EF Core migration or Model in this codebase (confirmed 2026-09-28: no
+-- `Migrations/*.cs` or `Models/**/*.cs` references it) — it is a dev-only
+-- leftover, not a pending/undeployed migration. Every reference to it below
+-- is therefore guarded with an information_schema.TABLES existence check plus
+-- PREPARE/EXECUTE dynamic SQL, so the same file runs unchanged on DEV (with
+-- the table, predicate included) and on staging/production (without it,
+-- predicate omitted). The separate "NEW/UNKNOWN REFERENCES" check further
+-- below is unaffected by this — it only inspects information_schema and never
+-- queries the table itself, so it fails loudly the same way everywhere if a
+-- genuinely new, unhandled table starts referencing business_partners.
 --
 -- HOW TO RUN
 --   1. Section 1 (DRY RUN) is SELECT-only — always safe, run it first, on
@@ -159,22 +174,46 @@ FROM files
 WHERE module = 'expenses'
 ORDER BY id;
 
+-- supplier_approvals is a dev-only leftover table (see header's SCHEMA DRIFT
+-- note) — absent on staging/production. Guard it with an information_schema
+-- existence check + dynamic SQL so this preview runs unchanged everywhere.
+SET @has_supplier_approvals = (
+    SELECT COUNT(*) FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'supplier_approvals'
+);
+SELECT @has_supplier_approvals AS supplier_approvals_table_present;
+
+SET @sa_clause_bp = IF(@has_supplier_approvals = 1,
+    'AND NOT EXISTS (SELECT 1 FROM supplier_approvals sa WHERE sa.supplier_id = bp.id) ',
+    '');
+
 SELECT 'EXPENSE-ONLY SUPPLIERS THAT WOULD BE DELETED (is_expense_supplier=1, unreferenced elsewhere)' AS _;
 
-SELECT bp.id, bp.name, bp.vat_code, bp.company_code
-FROM business_partners bp
-WHERE bp.is_expense_supplier = 1
-  AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = bp.id OR c.reservation_customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_approvals sa WHERE sa.supplier_id = bp.id)
-ORDER BY bp.id;
+SET @sql_preview_suppliers = CONCAT(
+    'SELECT bp.id, bp.name, bp.vat_code, bp.company_code ',
+    'FROM business_partners bp ',
+    'WHERE bp.is_expense_supplier = 1 ',
+    'AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = bp.id OR c.reservation_customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = bp.id) ',
+    @sa_clause_bp,
+    'ORDER BY bp.id'
+);
+
+-- Print the exact statement text about to run — building it via CONCAT means
+-- this is no longer literal SQL a reviewer can eyeball directly in the file,
+-- so surface it in the run output instead, here and before every other
+-- PREPARE below.
+SELECT @sql_preview_suppliers AS generated_sql_about_to_run;
+PREPARE _cs_stmt FROM @sql_preview_suppliers;
+EXECUTE _cs_stmt;
+DEALLOCATE PREPARE _cs_stmt;
 
 -- =============================================================================
 -- SECTION 2 — GUARD (aborts the whole script if any stop condition is non-zero)
@@ -299,48 +338,84 @@ SELECT COUNT(*) AS files_remaining FROM files WHERE module = 'expenses';
 --    unless something else changed business_partners between Section 1 and
 --    here (which the re-run guard above would only catch for the four
 --    specific stop-counts, not this — if that risk matters for a given run,
---    re-run Section 1's preview SELECT immediately before Section 3 in the
---    same session and compare row-for-row).
-DELETE sba FROM supplier_bank_accounts sba
-INNER JOIN business_partners bp ON bp.id = sba.partner_id
-WHERE bp.is_expense_supplier = 1
-  AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = bp.id OR c.reservation_customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = bp.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_approvals sa WHERE sa.supplier_id = bp.id);
+--    re-run Section 1's preview IN FULL — the whole SET/PREPARE/EXECUTE
+--    sequence at lines ~177-210, not just its final EXECUTE, since
+--    @sql_preview_suppliers only reflects the schema/state at the moment its
+--    own SET ran — immediately before Section 3, in the same session, and
+--    compare row-for-row).
+-- supplier_approvals is a dev-only leftover table (see header's SCHEMA DRIFT
+-- note) — re-check its existence here too (rather than trust the Section 1
+-- session variable), so Section 3 stays correct even if a client only sources
+-- the file from Section 2 down.
+SET @has_supplier_approvals = (
+    SELECT COUNT(*) FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'supplier_approvals'
+);
+SET @sa_clause_bp = IF(@has_supplier_approvals = 1,
+    'AND NOT EXISTS (SELECT 1 FROM supplier_approvals sa WHERE sa.supplier_id = bp.id) ',
+    '');
+SET @sa_clause_unaliased = IF(@has_supplier_approvals = 1,
+    'AND NOT EXISTS (SELECT 1 FROM supplier_approvals sa WHERE sa.supplier_id = business_partners.id) ',
+    '');
 
-DELETE FROM business_partners
-WHERE is_expense_supplier = 1
-  AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = business_partners.id OR c.reservation_customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_approvals sa WHERE sa.supplier_id = business_partners.id);
+SET @sql_delete_bank_accounts = CONCAT(
+    'DELETE sba FROM supplier_bank_accounts sba ',
+    'INNER JOIN business_partners bp ON bp.id = sba.partner_id ',
+    'WHERE bp.is_expense_supplier = 1 ',
+    'AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = bp.id OR c.reservation_customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = bp.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = bp.id) ',
+    @sa_clause_bp
+);
+SELECT @sql_delete_bank_accounts AS generated_sql_about_to_run;
+PREPARE _cs_stmt FROM @sql_delete_bank_accounts;
+EXECUTE _cs_stmt;
+DEALLOCATE PREPARE _cs_stmt;
 
-SELECT COUNT(*) AS expense_only_suppliers_remaining
-FROM business_partners
-WHERE is_expense_supplier = 1
-  AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = business_partners.id OR c.reservation_customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = business_partners.id)
-  AND NOT EXISTS (SELECT 1 FROM supplier_approvals sa WHERE sa.supplier_id = business_partners.id);
+SET @sql_delete_suppliers = CONCAT(
+    'DELETE FROM business_partners ',
+    'WHERE is_expense_supplier = 1 ',
+    'AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = business_partners.id OR c.reservation_customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = business_partners.id) ',
+    @sa_clause_unaliased
+);
+SELECT @sql_delete_suppliers AS generated_sql_about_to_run;
+PREPARE _cs_stmt FROM @sql_delete_suppliers;
+EXECUTE _cs_stmt;
+DEALLOCATE PREPARE _cs_stmt;
+
+SET @sql_count_suppliers = CONCAT(
+    'SELECT COUNT(*) AS expense_only_suppliers_remaining ',
+    'FROM business_partners ',
+    'WHERE is_expense_supplier = 1 ',
+    'AND NOT EXISTS (SELECT 1 FROM honey_deliveries hd WHERE hd.supplier_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM supplier_payments sp WHERE sp.supplier_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM containers c WHERE c.supplier_id = business_partners.id OR c.reservation_customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.supplier_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM credit_notes cn WHERE cn.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = business_partners.id) ',
+    'AND NOT EXISTS (SELECT 1 FROM lots l WHERE l.customer_id = business_partners.id) ',
+    @sa_clause_unaliased
+);
+SELECT @sql_count_suppliers AS generated_sql_about_to_run;
+PREPARE _cs_stmt FROM @sql_count_suppliers;
+EXECUTE _cs_stmt;
+DEALLOCATE PREPARE _cs_stmt;
 
 COMMIT;
 

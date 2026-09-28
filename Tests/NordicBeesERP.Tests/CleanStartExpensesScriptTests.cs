@@ -10,7 +10,14 @@ namespace NordicBeesERP.Tests;
 /// database. The statements here are SCOPED to this test's own seeded ids (the real script's
 /// statements are deliberately unscoped, since a real clean start wipes the whole module in one
 /// go against a dedicated staging/production database); scoping is the only difference — the
-/// dependency order and the supplier NOT-EXISTS predicate are copied verbatim from the script.
+/// dependency order and the supplier NOT-EXISTS predicate are copied verbatim from the script's
+/// "table present" case (this DB, like DEV, actually has supplier_approvals — see the
+/// SCHEMA DRIFT note at the top of the script). Since the schema-drift fix, the script no longer
+/// has one static literal predicate; it builds the supplier_approvals clause conditionally via
+/// dynamic SQL (present here, omitted on staging/production). That conditional
+/// present/absent branching itself — not exercised by this test — is covered separately by
+/// <see cref="CleanStartExpensesSupplierApprovalsOptionalTests"/>, which forces both branches
+/// against this same database without relying on which schema happens to be running the test.
 ///
 /// Adversarially verified (scratch mutations, never committed): with the honey_deliveries
 /// NOT-EXISTS clause removed AND the beekeeper flagged is_expense_supplier=1 (the genuine edge

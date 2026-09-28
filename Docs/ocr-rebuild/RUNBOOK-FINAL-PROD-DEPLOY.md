@@ -302,6 +302,18 @@ patikrinti, kad sąskaita sukuriama su teisingu statusu.
 2. `Migrations/Scripts/clean-start-expenses.sql` Section 1 (DRY RUN) paleista prieš
    `nordic_bees_erp` — patikrinti, kad visi stop-count'ai (mokėjimai, apmokėtos sąskaitos,
    susieti el. pašto importai) yra 0. Jei ne — **STOP**, netęsti, kol priežastis aiški.
+
+   **Schemos nuokrypa (patikrinta 2026-09-28, ištaisyta šiame skripte):** DEV turi
+   `supplier_approvals` lentelę (nesukurta jokios EF Core migracijos ar Modelio šiame
+   kode — tai DEV-only likutis, ne laukianti migracija); prodas ir stagingas — kurie yra
+   prodo klonai — jos neturi. Iki šio fix'o skriptas ją kietai referencino keturiose
+   vietose (preview užklausoje ir Section 3 DELETE'uose), todėl DRY RUN staginge nukrito
+   su `ERROR 1146 Table 'nordic_bees_erp_staging.supplier_approvals' doesn't exist` —
+   tas pats būtų nutikę ir prode. Skriptas dabar patikrina lentelės buvimą per
+   `information_schema.TABLES` ir sąlygiškai įtraukia/praleidžia predikatą per
+   PREPARE/EXECUTE dinaminę SQL, tad Section 1 ir Section 3 veikia nepakeisti tiek DEV
+   (su lentele), tiek stagingo/prodo (be jos) schemose — jokio papildomo veiksmo šiame
+   žingsnyje nebereikia.
 3. Ta pati atsarginė kopija kaip §4, jei dar nepadaryta šiai konkrečiai dienai.
 4. `clean-start-expenses.sql` Section 3 (DELETE) paleista prieš `nordic_bees_erp` — **žmogaus
    veiksmas**, `sudo mariadb nordic_bees_erp < clean-start-expenses.sql` atitinkama sekcija,
