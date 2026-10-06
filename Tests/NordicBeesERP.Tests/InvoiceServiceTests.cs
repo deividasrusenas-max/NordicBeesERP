@@ -1177,6 +1177,65 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task UpdateInvoiceAsync_ExistingLines_ChangedQuantityAndNewLine_PersistsAllLines()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer($"Update Lines Test {Guid.NewGuid():N}");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        var invoice = NewTestInvoice(partnerId, $"INV-UPL-{Guid.NewGuid():N}");
+        invoice.InvoiceType = InvoiceTypes.Standard;
+        invoice.Lines.Add(new InvoiceLine { Description = "Line A", Quantity = 2m, PriceExclVat = 10m, VatRate = 21m });
+        invoice.Lines.Add(new InvoiceLine { Description = "Line B", Quantity = 1m, PriceExclVat = 5m, VatRate = 21m });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        try
+        {
+            var loaded = await service.GetInvoiceWithDetailsAsync(invoiceId);
+            Assert.NotNull(loaded);
+            Assert.Equal(2, loaded!.Lines.Count);
+            Assert.All(loaded.Lines, l => Assert.True(l.Id > 0, "loaded lines must have Id > 0"));
+
+            // Change quantity on an existing line and append a brand-new line (Id == 0)
+            var lineA = loaded.Lines.First(l => l.Description == "Line A");
+            lineA.Quantity = 3m;
+            loaded.Lines.Add(new InvoiceLine { Description = "Line C", Quantity = 4m, PriceExclVat = 2m, VatRate = 21m });
+
+            Exception? thrown = await Record.ExceptionAsync(() => service.UpdateInvoiceAsync(loaded));
+            Assert.Null(thrown);
+
+            var rows = await verifyContext.InvoiceLines
+                .AsNoTracking()
+                .Where(l => l.InvoiceId == invoiceId)
+                .OrderBy(l => l.LineNumber)
+                .ToListAsync();
+
+            Assert.Equal(3, rows.Count);
+            Assert.Equal(3m, rows.Single(r => r.Description == "Line A").Quantity);
+            Assert.Equal(1m, rows.Single(r => r.Description == "Line B").Quantity);
+            Assert.Equal(4m, rows.Single(r => r.Description == "Line C").Quantity);
+
+            var stored = await verifyContext.Invoices.AsNoTracking().FirstAsync(i => i.Id == invoiceId);
+            Assert.Equal(43m, stored.SubtotalExclVat); // 30 + 5 + 8
+        }
+        finally
+        {
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", partnerId);
+        }
+    }
+
+    [Fact]
     public async Task UpdateInvoiceAsync_SwitchingToReverseCharge96_ZeroesVat()
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
