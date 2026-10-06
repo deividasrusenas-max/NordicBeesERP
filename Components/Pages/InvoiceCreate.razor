@@ -665,6 +665,13 @@
 
     private bool _isBusy;
 
+    // Auto-numbered invoices: re-generate right before saving so two open windows never get the same number
+    private async Task RefreshLockedInvoiceNumberAsync()
+    {
+        if (_invoiceNumberLocked)
+            _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? DateTime.Today, _invoiceType);
+    }
+
     private async Task SaveInvoice()
     {
         if (_isBusy) return;
@@ -675,10 +682,15 @@
         {
             if (!await ValidateInvoice()) return;
 
+            await RefreshLockedInvoiceNumberAsync();
             var invoice = BuildInvoice();
             await _invoiceService.CreateInvoiceAsync(invoice);
             navigating = true;
             Navigation.NavigateTo("/invoices");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
         }
         finally
         {
@@ -700,10 +712,15 @@
         {
             if (!await ValidateInvoice()) return;
 
+            await RefreshLockedInvoiceNumberAsync();
             var invoice = BuildInvoice();
             var invoiceId = await _invoiceService.CreateInvoiceAsync(invoice);
             navigating = true;
             Navigation.NavigateTo($"/invoices/pdf/{invoiceId}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
         }
         finally
         {

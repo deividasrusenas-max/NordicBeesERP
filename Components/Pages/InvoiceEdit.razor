@@ -504,6 +504,14 @@
             navigating = true;
             await InvokeAsync(() => Navigation.NavigateTo($"/invoices/{_invoiceId}"));
         }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko išsaugoti sąskaitos: {ex.Message}", Severity.Error);
+        }
         finally
         {
             if (!navigating)
