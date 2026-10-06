@@ -237,9 +237,9 @@ namespace NordicBeesERP.Services
                 
 
                 // Calculate line totals (SaskaitosApp logic)
-                line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2);
-                line.VatAmount = isRc96 ? 0m : Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
-                line.LineTotal = Math.Round(line.LineSubtotal + line.VatAmount, 2);
+                line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2, MidpointRounding.AwayFromZero);
+                line.VatAmount = isRc96 ? 0m : Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2, MidpointRounding.AwayFromZero);
+                line.LineTotal = Math.Round(line.LineSubtotal + line.VatAmount, 2, MidpointRounding.AwayFromZero);
             }
 
             // Calculate invoice totals
@@ -298,9 +298,9 @@ namespace NordicBeesERP.Services
                 
 
                 // Recalculate line totals (SaskaitosApp logic)
-                line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2);
-                line.VatAmount = isRc96 ? 0m : Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2);
-                line.LineTotal = Math.Round(line.LineSubtotal + line.VatAmount, 2);
+                line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2, MidpointRounding.AwayFromZero);
+                line.VatAmount = isRc96 ? 0m : Math.Round(line.LineSubtotal * (line.VatRate / 100m), 2, MidpointRounding.AwayFromZero);
+                line.LineTotal = Math.Round(line.LineSubtotal + line.VatAmount, 2, MidpointRounding.AwayFromZero);
             }
 
             // Recalculate invoice totals

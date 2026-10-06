@@ -90,6 +90,55 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             "DELETE FROM business_partners WHERE id = {0}", partnerId);
     }
 
+    [Theory]
+    [InlineData(1792, 0.53, 21, 949.76, 199.45, 1149.21)] // 199.4496 -> 199.45
+    [InlineData(1, 0.50, 1, 0.50, 0.01, 0.51)]            // VAT 0.005 -> away from zero (banker's would give 0.00)
+    public async Task CreateInvoiceAsync_RoundsLineAmountsAwayFromZero(
+        double qty, double price, double vatRate, double subtotal, double vat, double total)
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+
+        var partner = NewTestCustomer($"Test Customer {Guid.NewGuid():N}");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+        var partnerId = partner.Id;
+
+        var invoice = NewTestInvoice(partnerId, $"INV-{Guid.NewGuid():N}");
+        invoice.Lines.Add(new InvoiceLine
+        {
+            Description = "Rounding line",
+            Quantity = (decimal)qty,
+            PriceExclVat = (decimal)price,
+            VatRate = (decimal)vatRate
+        });
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+
+        await using var verifyContext = await _fixture.Factory.CreateDbContextAsync();
+        try
+        {
+            var stored = await verifyContext.Invoices
+                .AsNoTracking()
+                .Where(i => i.Id == invoiceId)
+                .Select(i => new { i.SubtotalExclVat, i.TotalVat, i.TotalInclVat })
+                .FirstAsync();
+
+            Assert.Equal((decimal)subtotal, stored.SubtotalExclVat);
+            Assert.Equal((decimal)vat, stored.TotalVat);
+            Assert.Equal((decimal)total, stored.TotalInclVat);
+        }
+        finally
+        {
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await verifyContext.Database.ExecuteSqlRawAsync(
+                "DELETE FROM business_partners WHERE id = {0}", partnerId);
+        }
+    }
+
     [Fact]
     public async Task CreateInvoiceAsync_SnapshotsCustomerVatCode()
     {

@@ -337,10 +337,10 @@
 
     private void CalculateLine(InvoiceLineInput line)
     {
-        var subtotal = line.Quantity * line.PriceExclVat;
+        var subtotal = Math.Round(line.Quantity * line.PriceExclVat, 2, MidpointRounding.AwayFromZero);
         var vatAmount = _invoiceType == InvoiceTypes.ReverseCharge96
             ? 0m
-            : subtotal * (line.VatRate / 100m);
+            : Math.Round(subtotal * (line.VatRate / 100m), 2, MidpointRounding.AwayFromZero);
         line.LineTotal = subtotal + vatAmount;
         
         CalculateTotals();
@@ -353,10 +353,10 @@
         
         foreach (var line in _lines)
         {
-            var subtotal = line.Quantity * line.PriceExclVat;
+            var subtotal = Math.Round(line.Quantity * line.PriceExclVat, 2, MidpointRounding.AwayFromZero);
             var vat = _invoiceType == InvoiceTypes.ReverseCharge96
                 ? 0m
-                : subtotal * (line.VatRate / 100m);
+                : Math.Round(subtotal * (line.VatRate / 100m), 2, MidpointRounding.AwayFromZero);
             
             _totalExclVat += subtotal;
             _totalVat += vat;
