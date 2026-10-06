@@ -298,6 +298,10 @@ namespace NordicBeesERP.Data
 
                 // Relationships - navigation properties that are NOT mapped
                 entity.Property(e => e.DueDate).HasColumnName("due_date");
+                // NOTE: this Ignore is effectively dead — InvoiceLine's HasOne(Invoice).WithMany(e => e.Lines) below
+                // re-introduces the navigation (verified by InvoiceServiceTests.Model_InvoiceLinesNavigation_Exists).
+                // Removing it would be schema-neutral, but `ef migrations add` then emits unrelated HasData timestamp
+                // noise (DateTime.Now seeds), so the line is left in place rather than shipping a noisy migration.
                 entity.Ignore(e => e.Lines);
                 entity.Ignore(e => e.Payments);
 
