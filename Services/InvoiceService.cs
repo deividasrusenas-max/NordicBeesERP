@@ -366,13 +366,24 @@ namespace NordicBeesERP.Services
                     line.LineTotal, line.Notes, now, now);
             }
 
-            // Header: copy scalar values onto a fresh entity so the Lines/Customer/Delivery graph is never attached
-            var header = new Invoice();
-            context.Entry(header).CurrentValues.SetValues(invoice);
-            context.Entry(header).State = EntityState.Modified;
-            // Entry.State=Modified explicitly attaches this one entity, so SaveChangesAsync does persist it (covered by InvoiceServiceTests).
-            // nosemgrep: agent-guardrails.nordicbees-notracking-savechanges
-            await context.SaveChangesAsync();
+            // Header: update ONLY the user-editable columns. paid_amount, payment_status, last_payment_date, pdf_path,
+            // delivery_id, currency_id, due_date, created_at, status and invoice_number are deliberately left untouched.
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE invoices SET invoice_date = {0}, customer_id = {1}, payment_term_days = {2}, payment_due_date = {3}, language = {4}, invoice_type = {5}, reverse_charge = {6}, subtotal_excl_vat = {7}, total_vat = {8}, total_incl_vat = {9}, notes = {10}, updated_at = {11} WHERE id = {12}",
+                invoice.InvoiceDate, invoice.CustomerId, invoice.PaymentTermDays, invoice.PaymentDueDate, invoice.Language,
+                invoice.InvoiceType, invoice.ReverseCharge, invoice.SubtotalExclVat, invoice.TotalVat, invoice.TotalInclVat,
+                invoice.Notes, invoice.UpdatedAt, invoice.Id);
+
+            // The VAT-code snapshot is re-taken only when the customer actually changed
+            if (invoice.CustomerId != existingInvoice.CustomerId)
+            {
+                var vatCode = await context.BusinessPartners.AsNoTracking()
+                    .Where(bp => bp.Id == invoice.CustomerId)
+                    .Select(bp => bp.VatCode)
+                    .FirstOrDefaultAsync();
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE invoices SET customer_vat_code = {0} WHERE id = {1}", vatCode, invoice.Id);
+            }
 
             await transaction.CommitAsync();
             return invoice.Id;

@@ -1391,6 +1391,82 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task UpdateInvoiceAsync_PreservesPaymentAndSnapshotFields_RecalculatesTotals()
+    {
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "KEEPFLD");
+        try
+        {
+            await using (var c = await _fixture.Factory.CreateDbContextAsync())
+            {
+                await c.Database.ExecuteSqlRawAsync(
+                    "UPDATE invoices SET paid_amount = {0}, payment_status = {1}, customer_vat_code = {2}, pdf_path = {3}, delivery_id = {4} WHERE id = {5}",
+                    50m, "partial", "LT123", "/tmp/keep.pdf", 987654, invoiceId);
+            }
+
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            loaded.Lines.Single(l => l.Description == "Line 1").Quantity = 4m; // 4 x 10 = 40 (was 10)
+            await service.UpdateInvoiceAsync(loaded);
+
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            var row = (await v.Database.SqlQueryRaw<PreservedInvoiceRow>(
+                "SELECT paid_amount AS PaidAmount, payment_status AS PaymentStatus, customer_vat_code AS CustomerVatCode, pdf_path AS PdfPath, delivery_id AS DeliveryId, subtotal_excl_vat AS Subtotal FROM invoices WHERE id = {0}",
+                invoiceId).ToListAsync()).Single();
+
+            Assert.Equal(50m, row.PaidAmount);
+            Assert.Equal("partial", row.PaymentStatus);
+            Assert.Equal("LT123", row.CustomerVatCode);
+            Assert.Equal("/tmp/keep.pdf", row.PdfPath);
+            Assert.Equal(987654, row.DeliveryId);
+            Assert.Equal(40m + 40m + 90m, row.Subtotal);
+        }
+        finally { await CleanupInvoiceAsync(partnerId, invoiceId, null); }
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_ChangedCustomer_RefreshesCustomerVatCode()
+    {
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "VATCHG");
+        int newPartnerId;
+        await using (var c = await _fixture.Factory.CreateDbContextAsync())
+        {
+            var other = NewTestCustomer($"VAT Change Other {Guid.NewGuid():N}");
+            other.VatCode = "LT999";
+            c.BusinessPartners.Add(other);
+            await c.SaveChangesAsync();
+            newPartnerId = other.Id;
+        }
+        try
+        {
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            loaded.CustomerId = newPartnerId;
+            await service.UpdateInvoiceAsync(loaded);
+
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await v.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoiceId);
+            Assert.Equal(newPartnerId, stored.CustomerId);
+            Assert.Equal("LT999", stored.CustomerVatCode);
+        }
+        finally
+        {
+            await CleanupInvoiceAsync(partnerId, invoiceId, null);
+            await using var c = await _fixture.Factory.CreateDbContextAsync();
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", newPartnerId);
+        }
+    }
+
+    private sealed class PreservedInvoiceRow
+    {
+        public decimal PaidAmount { get; set; }
+        public string PaymentStatus { get; set; } = "";
+        public string? CustomerVatCode { get; set; }
+        public string? PdfPath { get; set; }
+        public int? DeliveryId { get; set; }
+        public decimal Subtotal { get; set; }
+    }
+
+    [Fact]
     public async Task UpdateInvoiceAsync_SwitchingToReverseCharge96_ZeroesVat()
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
