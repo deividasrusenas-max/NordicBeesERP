@@ -1236,6 +1236,161 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task Model_InvoiceLinesNavigation_Exists()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        var nav = context.Model.FindEntityType(typeof(Invoice))!.FindNavigation("Lines");
+        Assert.NotNull(nav);
+    }
+
+    private async Task<(int partnerId, int invoiceId)> CreateThreeLineInvoiceAsync(InvoiceService service, string prefix)
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        var partner = NewTestCustomer($"{prefix} {Guid.NewGuid():N}");
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+
+        var invoice = NewTestInvoice(partner.Id, $"INV-{prefix}-{Guid.NewGuid():N}");
+        invoice.InvoiceType = InvoiceTypes.Standard;
+        invoice.Lines.Add(new InvoiceLine { Description = "Line 1", Quantity = 1m, PriceExclVat = 10m, VatRate = 21m });
+        invoice.Lines.Add(new InvoiceLine { Description = "Line 2", Quantity = 2m, PriceExclVat = 20m, VatRate = 21m });
+        invoice.Lines.Add(new InvoiceLine { Description = "Line 3", Quantity = 3m, PriceExclVat = 30m, VatRate = 21m });
+        var invoiceId = await service.CreateInvoiceAsync(invoice);
+        return (partner.Id, invoiceId);
+    }
+
+    private async Task<int> InsertCreditNoteForLineAsync(int partnerId, int invoiceId, int invoiceLineId)
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        var number = $"CN-{Guid.NewGuid():N}".Substring(0, 30);
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_notes (credit_note_number, credit_date, original_invoice_id, applied_invoice_id, customer_id) VALUES ({0}, {1}, {2}, {3}, {4})",
+            number, DateTime.UtcNow.Date, invoiceId, invoiceId, partnerId);
+        var cnId = await context.Database.SqlQueryRaw<int>(
+            "SELECT id AS Value FROM credit_notes WHERE credit_note_number = {0}", number).FirstAsync();
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO credit_note_lines (credit_note_id, invoice_line_id, line_number, description, quantity, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total) VALUES ({0}, {1}, 1, 'cn', 1, 20, 21, 20, 4.2, 24.2)",
+            cnId, invoiceLineId);
+        return cnId;
+    }
+
+    private async Task CleanupInvoiceAsync(int partnerId, int invoiceId, int? creditNoteId)
+    {
+        await using var c = await _fixture.Factory.CreateDbContextAsync();
+        if (creditNoteId.HasValue)
+        {
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id = {0}", creditNoteId.Value);
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE id = {0}", creditNoteId.Value);
+        }
+        await c.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+        await c.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", invoiceId);
+        await c.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", partnerId);
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_ExistingLinesKeepIds_ChangedAndNewLine()
+    {
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "KEEPID");
+        try
+        {
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            var before = loaded.Lines.ToDictionary(l => l.Description!, l => l.Id);
+            loaded.Lines.Remove(loaded.Lines.First(l => l.Description == "Line 3"));
+            loaded.Lines.First(l => l.Description == "Line 1").Quantity = 5m;
+            loaded.Lines.Add(new InvoiceLine { Description = "Line N", Quantity = 1m, PriceExclVat = 1m, VatRate = 21m });
+            await service.UpdateInvoiceAsync(loaded);
+
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            var rows = await v.InvoiceLines.AsNoTracking().Where(l => l.InvoiceId == invoiceId).ToListAsync();
+            Assert.Equal(3, rows.Count);
+            Assert.Equal(before["Line 1"], rows.Single(r => r.Description == "Line 1").Id);
+            Assert.Equal(5m, rows.Single(r => r.Description == "Line 1").Quantity);
+            Assert.Equal(before["Line 2"], rows.Single(r => r.Description == "Line 2").Id);
+            Assert.DoesNotContain(rows, r => r.Description == "Line 3");
+            Assert.Contains(rows, r => r.Description == "Line N" && r.Id > 0);
+        }
+        finally { await CleanupInvoiceAsync(partnerId, invoiceId, null); }
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_DeletingUnreferencedLine_KeepsCreditNoteLinkedLineIntact()
+    {
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "CNKEEP");
+        int? cnId = null;
+        try
+        {
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            var line2 = loaded.Lines.Single(l => l.Description == "Line 2");
+            cnId = await InsertCreditNoteForLineAsync(partnerId, invoiceId, line2.Id);
+
+            loaded.Lines.Remove(loaded.Lines.Single(l => l.Description == "Line 1"));
+            await service.UpdateInvoiceAsync(loaded);
+
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            var kept = await v.InvoiceLines.AsNoTracking().SingleAsync(l => l.Id == line2.Id);
+            Assert.Equal("Line 2", kept.Description);
+            Assert.Equal(2m, kept.Quantity);
+            var linked = await v.CreditNoteLines.AsNoTracking().CountAsync(c => c.InvoiceLineId == line2.Id);
+            Assert.Equal(1, linked);
+            Assert.Equal(2, await v.InvoiceLines.AsNoTracking().CountAsync(l => l.InvoiceId == invoiceId));
+        }
+        finally { await CleanupInvoiceAsync(partnerId, invoiceId, cnId); }
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_DeletingCreditNoteLinkedLine_ThrowsAndRollsBack()
+    {
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "CNDEL");
+        int? cnId = null;
+        try
+        {
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            var totalBefore = loaded.TotalInclVat;
+            cnId = await InsertCreditNoteForLineAsync(partnerId, invoiceId, loaded.Lines.Single(l => l.Description == "Line 2").Id);
+
+            // Edit Line 1 (would be written first), then drop the credit-note-linked Line 2 -> must roll back everything
+            loaded.Lines.Single(l => l.Description == "Line 1").Quantity = 99m;
+            loaded.Lines.Remove(loaded.Lines.Single(l => l.Description == "Line 2"));
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateInvoiceAsync(loaded));
+            Assert.Contains("Line 2", ex.Message);
+
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            var rows = await v.InvoiceLines.AsNoTracking().Where(l => l.InvoiceId == invoiceId).ToListAsync();
+            Assert.Equal(3, rows.Count);
+            Assert.Equal(1m, rows.Single(r => r.Description == "Line 1").Quantity);
+            Assert.Equal(totalBefore, (await v.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoiceId)).TotalInclVat);
+        }
+        finally { await CleanupInvoiceAsync(partnerId, invoiceId, cnId); }
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_LineFromAnotherInvoice_Throws()
+    {
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var (p1, inv1) = await CreateThreeLineInvoiceAsync(service, "OWN1");
+        var (p2, inv2) = await CreateThreeLineInvoiceAsync(service, "OWN2");
+        try
+        {
+            var a = (await service.GetInvoiceWithDetailsAsync(inv1))!;
+            var b = (await service.GetInvoiceWithDetailsAsync(inv2))!;
+            a.Lines.Add(new InvoiceLine { Id = b.Lines.First().Id, Description = "stolen", Quantity = 1m, PriceExclVat = 1m, VatRate = 21m });
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateInvoiceAsync(a));
+
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            Assert.Equal(3, await v.InvoiceLines.AsNoTracking().CountAsync(l => l.InvoiceId == inv2));
+            Assert.DoesNotContain(await v.InvoiceLines.AsNoTracking().Where(l => l.InvoiceId == inv2).ToListAsync(), l => l.Description == "stolen");
+        }
+        finally
+        {
+            await CleanupInvoiceAsync(p1, inv1, null);
+            await CleanupInvoiceAsync(p2, inv2, null);
+        }
+    }
+
+    [Fact]
     public async Task UpdateInvoiceAsync_SwitchingToReverseCharge96_ZeroesVat()
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();

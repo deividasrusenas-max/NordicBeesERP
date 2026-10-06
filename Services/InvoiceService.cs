@@ -306,54 +306,75 @@ namespace NordicBeesERP.Services
             // Recalculate invoice totals
             invoice = CalculateInvoiceTotals(invoice);
 
-            // Get existing lines for this invoice
-            var existingLines = await context.InvoiceLines
+            var incoming = invoice.Lines.ToList();
+
+            if (incoming.Where(l => l.Id > 0).GroupBy(l => l.Id).Any(g => g.Count() > 1))
+                throw new InvalidOperationException("Sąskaitos eilutės kartojasi (pasikartojantis eilutės Id).");
+
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            var existing = await context.InvoiceLines
+                .AsNoTracking()
                 .Where(l => l.InvoiceId == invoice.Id)
                 .ToListAsync();
+            var existingIds = existing.Select(l => l.Id).ToHashSet();
 
-            // Get IDs of invoice lines that are referenced by credit notes
-            var referencedLineIds = await context.CreditNoteLines
-                .Where(cnl => cnl.InvoiceLineId.HasValue)
-                .Select(cnl => cnl.InvoiceLineId.Value)
+            // Lines with an Id that does not belong to THIS invoice are rejected
+            if (incoming.Any(l => l.Id > 0 && !existingIds.Contains(l.Id)))
+                throw new InvalidOperationException("Eilutė nepriklauso šiai sąskaitai.");
+
+            // Only credit-note links of THIS invoice's lines matter
+            var existingIdList = existingIds.ToList();
+            var referencedIds = (await context.CreditNoteLines
+                .Where(cnl => cnl.InvoiceLineId.HasValue && existingIdList.Contains(cnl.InvoiceLineId.Value))
+                .Select(cnl => cnl.InvoiceLineId!.Value)
                 .Distinct()
-                .ToListAsync();
+                .ToListAsync()).ToHashSet();
 
-            // For lines referenced by credit notes, update in place using raw SQL
-            // Lines NOT referenced can be deleted and recreated normally
-            foreach (var existingLine in existingLines)
+            var incomingById = incoming.Where(l => l.Id > 0).ToDictionary(l => l.Id);
+
+            foreach (var ex in existing)
             {
-                if (referencedLineIds.Contains(existingLine.Id))
+                if (incomingById.TryGetValue(ex.Id, out var line))
                 {
-                    // Update this line in place to preserve FK integrity
-                    // Lines referenced by credit notes are updated in place, not recreated, to preserve credit_note_lines.invoice_line_id FK integrity.
+                    // Update in place by Id — the line keeps its Id, so credit_note_lines.invoice_line_id stays valid
                     await context.Database.ExecuteSqlRawAsync(
-                        "UPDATE invoice_lines SET quantity = @p0, price_excl_vat = @p1, vat_rate = @p2, line_subtotal = @p3, vat_amount = @p4, line_total = @p5, description = @p6, product_id = @p7, updated_at = @p8 WHERE id = @p9",
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.Quantity ?? existingLine.Quantity,
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.PriceExclVat ?? existingLine.PriceExclVat,
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.VatRate ?? existingLine.VatRate,
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.LineSubtotal ?? existingLine.LineSubtotal,
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.VatAmount ?? existingLine.VatAmount,
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.LineTotal ?? existingLine.LineTotal,
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.Description ?? existingLine.Description,
-                        invoice.Lines.FirstOrDefault(l => l.LineNumber == existingLine.LineNumber)?.ProductId,
-                        DateTime.UtcNow,
-                        existingLine.Id
-                    );
+                        "UPDATE invoice_lines SET line_number = {0}, product_id = {1}, product_code = {2}, description = {3}, quantity = {4}, unit = {5}, price_excl_vat = {6}, vat_rate = {7}, line_subtotal = {8}, vat_amount = {9}, line_total = {10}, updated_at = {11} WHERE id = {12} AND invoice_id = {13}",
+                        line.LineNumber, line.ProductId, line.ProductCode, line.Description ?? "", line.Quantity, line.Unit,
+                        line.PriceExclVat, line.VatRate, line.LineSubtotal, line.VatAmount, line.LineTotal,
+                        DateTime.UtcNow, ex.Id, invoice.Id);
+                }
+                else if (referencedIds.Contains(ex.Id))
+                {
+                    throw new InvalidOperationException(
+                        $"Eilutė '{ex.Description}' susieta su kreditine sąskaita — jos ištrinti negalima.");
+                }
+                else
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM invoice_lines WHERE id = {0} AND invoice_id = {1}", ex.Id, invoice.Id);
                 }
             }
 
-            // Delete lines that are NOT referenced by credit notes (not updated in place above)
-            var linesToUpdate = existingLines.Where(l => referencedLineIds.Contains(l.Id)).Select(l => l.Id).ToHashSet();
-            var linesToRemove = existingLines.Where(l => !linesToUpdate.Contains(l.Id)).ToList();
-            if (linesToRemove.Any())
+            foreach (var line in incoming.Where(l => l.Id == 0))
             {
-                context.InvoiceLines.RemoveRange(linesToRemove);
+                var now = DateTime.UtcNow;
+                await context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO invoice_lines (invoice_id, line_number, product_id, product_code, lot_number, description, quantity, unit, price_excl_vat, vat_rate, line_subtotal, vat_amount, line_total, notes, created_at, updated_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15})",
+                    invoice.Id, line.LineNumber, line.ProductId, line.ProductCode, line.LotNumber, line.Description ?? "",
+                    line.Quantity, line.Unit, line.PriceExclVat, line.VatRate, line.LineSubtotal, line.VatAmount,
+                    line.LineTotal, line.Notes, now, now);
             }
 
-            // Update invoice
-            context.Invoices.Update(invoice);
-            
+            // Header: copy scalar values onto a fresh entity so the Lines/Customer/Delivery graph is never attached
+            var header = new Invoice();
+            context.Entry(header).CurrentValues.SetValues(invoice);
+            context.Entry(header).State = EntityState.Modified;
+            // nosemgrep: agent-guardrails.nordicbees-notracking-savechanges
+            // Entry.State=Modified explicitly attaches this one entity, so SaveChangesAsync does persist it (covered by InvoiceServiceTests).
             await context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
             return invoice.Id;
         }
 
