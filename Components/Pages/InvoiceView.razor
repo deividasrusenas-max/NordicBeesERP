@@ -57,7 +57,7 @@
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandlePrint" Style="text-transform:none">
                 Spausdinti
             </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" Style="text-transform:none">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" Disabled="@_isBusy" Style="text-transform:none">
                 Kopijuoti
             </MudButton>
 
@@ -710,8 +710,13 @@
         }
     }
 
+    private bool _isBusy;
+
     private async Task HandleCopy()
     {
+        if (_isBusy) return;
+        _isBusy = true;
+        StateHasChanged();
         try
         {
             var source = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
@@ -749,6 +754,10 @@
         catch (Exception ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
         }
     }
 

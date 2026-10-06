@@ -44,7 +44,7 @@
 
             <!-- Action buttons row -->
             <div class="d-flex flex-wrap gap-2 align-center">
-                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@SaveInvoice" Style="text-transform:none">Išsaugoti</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@SaveInvoice" Disabled="@_isBusy" Style="text-transform:none">Išsaugoti</MudButton>
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@Cancel" Style="text-transform:none">Atšaukti</MudButton>
             </div>
         </div>
@@ -487,13 +487,25 @@
         }
     }
 
+    private bool _isBusy;
+
     private async Task SaveInvoice()
     {
-        if (!ValidateInvoice()) return;
-        
-        var invoice = BuildInvoice();
-        await _invoiceService.UpdateInvoiceAsync(invoice);
-        await InvokeAsync(() => Navigation.NavigateTo($"/invoices/{_invoiceId}"));
+        if (_isBusy) return;
+        _isBusy = true;
+        StateHasChanged();
+        try
+        {
+            if (!ValidateInvoice()) return;
+
+            var invoice = BuildInvoice();
+            await _invoiceService.UpdateInvoiceAsync(invoice);
+            await InvokeAsync(() => Navigation.NavigateTo($"/invoices/{_invoiceId}"));
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
     private bool ValidateInvoice()
