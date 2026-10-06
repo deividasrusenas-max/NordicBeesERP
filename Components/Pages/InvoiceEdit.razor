@@ -494,17 +494,23 @@
         if (_isBusy) return;
         _isBusy = true;
         StateHasChanged();
+        var navigating = false;
         try
         {
             if (!ValidateInvoice()) return;
 
             var invoice = BuildInvoice();
             await _invoiceService.UpdateInvoiceAsync(invoice);
+            navigating = true;
             await InvokeAsync(() => Navigation.NavigateTo($"/invoices/{_invoiceId}"));
         }
         finally
         {
-            _isBusy = false;
+            if (!navigating)
+            {
+                _isBusy = false;
+                StateHasChanged();
+            }
         }
     }
 

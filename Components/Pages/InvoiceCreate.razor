@@ -670,17 +670,23 @@
         if (_isBusy) return;
         _isBusy = true;
         StateHasChanged();
+        var navigating = false;
         try
         {
             if (!await ValidateInvoice()) return;
 
             var invoice = BuildInvoice();
             await _invoiceService.CreateInvoiceAsync(invoice);
+            navigating = true;
             Navigation.NavigateTo("/invoices");
         }
         finally
         {
-            _isBusy = false;
+            if (!navigating)
+            {
+                _isBusy = false;
+                StateHasChanged();
+            }
         }
     }
 
@@ -689,17 +695,23 @@
         if (_isBusy) return;
         _isBusy = true;
         StateHasChanged();
+        var navigating = false;
         try
         {
             if (!await ValidateInvoice()) return;
 
             var invoice = BuildInvoice();
             var invoiceId = await _invoiceService.CreateInvoiceAsync(invoice);
+            navigating = true;
             Navigation.NavigateTo($"/invoices/pdf/{invoiceId}");
         }
         finally
         {
-            _isBusy = false;
+            if (!navigating)
+            {
+                _isBusy = false;
+                StateHasChanged();
+            }
         }
     }
 

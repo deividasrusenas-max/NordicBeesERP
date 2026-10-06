@@ -717,6 +717,7 @@
         if (_isBusy) return;
         _isBusy = true;
         StateHasChanged();
+        var navigating = false;
         try
         {
             var source = await InvoiceService.GetInvoiceWithDetailsAsync(Id);
@@ -749,6 +750,7 @@
             };
             
             var newId = await InvoiceService.CreateInvoiceAsync(newInvoice);
+            navigating = true;
             Navigation.NavigateTo($"/invoices/edit/{newId}");
         }
         catch (Exception ex)
@@ -757,7 +759,11 @@
         }
         finally
         {
-            _isBusy = false;
+            if (!navigating)
+            {
+                _isBusy = false;
+                StateHasChanged();
+            }
         }
     }
 
