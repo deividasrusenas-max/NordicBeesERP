@@ -1766,3 +1766,13 @@ re-labeling the symptom.
 - **Category**: harness
 - **Error class**: `llm-overrides-red-gate` (provisional new tag — an LLM supervisor treats executed test/gate output as disputable, substitutes its own re-derivation, and records the resulting false conclusion in the compaction summary, producing a self-sustaining diagnostic loop). Related: `auto-resume-continue-into-human-gate` (shared sub-mechanism: interpretation → summary → "fact").
 - **Status**: open, HIGH — unguarded; recurs on any task where the orchestrator's mental model of the code disagrees with the test. Cost this incident: ~40+ min wall time, 5 compactions, one main-repo scope violation.
+
+### 2026-10-06 — `Invoice.Lines` `entity.Ignore(...)` (NordicBeesErpContext.cs:301) is dead config
+- **Symptom**: semgrep/audit of `InvoiceService.UpdateInvoiceAsync` assumed `Invoice.Lines` was unmapped because the context calls `entity.Ignore(e => e.Lines)`, but the navigation exists in the EF model.
+- **Root cause**: `InvoiceLine`'s configuration (`HasOne(e => e.Invoice).WithMany(e => e.Lines)`, ~:337) re-introduces the navigation, so the `Ignore` has no effect. Verified by test `InvoiceServiceTests.Model_InvoiceLinesNavigation_Exists` (`Model.FindEntityType(typeof(Invoice)).FindNavigation("Lines") != null`).
+- **Why not fixed now**: removing the `Ignore` is schema-neutral, but `dotnet ef migrations add` then emits only unrelated `HasData` noise (`DateTime.Now` seeds in `artwork_brands` / `raw_material_types`), so the removal was reverted and no migration was added.
+- **To do**: remove the `Ignore` line once the `HasData` `DateTime.Now` noise in migrations is cleaned up (use fixed seed dates); then re-run `ef migrations add` and confirm Up/Down are empty.
+- **Category**: db-config
+- **Error class**: `ef-ignore-contradicts-relationship` (provisional)
+- **Guardrail added**: none (evidence entry; `Data/NordicBeesErpContext.cs` is a guardrails-protected area, so no explanatory comment is kept in code).
+- **Status**: open, LOW — no functional impact.
