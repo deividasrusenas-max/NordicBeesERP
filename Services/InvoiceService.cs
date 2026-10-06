@@ -370,8 +370,8 @@ namespace NordicBeesERP.Services
             var header = new Invoice();
             context.Entry(header).CurrentValues.SetValues(invoice);
             context.Entry(header).State = EntityState.Modified;
-            // nosemgrep: agent-guardrails.nordicbees-notracking-savechanges
             // Entry.State=Modified explicitly attaches this one entity, so SaveChangesAsync does persist it (covered by InvoiceServiceTests).
+            // nosemgrep: agent-guardrails.nordicbees-notracking-savechanges
             await context.SaveChangesAsync();
 
             await transaction.CommitAsync();
