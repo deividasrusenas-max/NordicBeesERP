@@ -69,6 +69,8 @@ builder.Services.AddScoped<IDeliveryReceiptPdfService, DeliveryReceiptPdfService
 builder.Services.AddScoped<ICompanySettingsService, CompanySettingsService>();
 builder.Services.AddScoped<IHoneyTypeService, HoneyTypeService>();
 builder.Services.AddScoped<IContainerService, ContainerService>();
+builder.Services.AddSingleton<BucketTareCalculator>();
+builder.Services.AddScoped<IBucketTareService, BucketTareService>();
 builder.Services.AddScoped<IDeliveryService, DeliveryService>();
 builder.Services.AddScoped<IStockMovementService, StockMovementService>();
 builder.Services.AddScoped<ISupplierPaymentService, SupplierPaymentService>();
