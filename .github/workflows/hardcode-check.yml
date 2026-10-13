@@ -55,7 +55,8 @@ jobs:
           BAD_FILES=""
           for f in $(grep -rl "FindAsync(" --include="*.cs" \
             --exclude-dir=bin --exclude-dir=obj \
-            --exclude-dir=.kilo --exclude-dir=Migrations .); do
+            --exclude-dir=.kilo --exclude-dir=Migrations \
+            --exclude-dir=.agent-guardrails --exclude-dir=.opencode .); do
             if grep -q "SaveChangesAsync()" "$f"; then
               BAD_FILES="${BAD_FILES}${f}"
             fi
