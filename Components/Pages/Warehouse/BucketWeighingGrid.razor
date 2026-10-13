@@ -1,0 +1,213 @@
+@inject IBucketTareService TareService
+@inject BucketTareCalculator Calculator
+
+<div data-testid="bucket-grid">
+    @foreach (var row in _rows.Select((r, i) => (r, i)))
+    {
+        var r = row.r;
+        var netto = NettoOf(r);
+        var error = ErrorOf(r);
+        <MudGrid @key="r.Key" Spacing="2" Class="align-center mb-1" data-testid="bucket-row">
+            <MudItem xs="2" sm="1">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@(row.i + 1)</MudText>
+            </MudItem>
+            <MudItem xs="5" sm="3">
+                <MudNumericField T="decimal?" @ref="r.BruttoRef" Value="r.Brutto"
+                    ValueChanged="@((decimal? v) => OnBruttoChanged(r, v))"
+                    OnKeyDown="@((KeyboardEventArgs e) => OnBruttoKeyDown(e, r))"
+                    Label="Brutto (kg)" Variant="Variant.Outlined" Format="F2" Immediate="true"
+                    HideSpinButtons="true" Margin="Margin.Dense" Error="@(error != null)"
+                    Style="font-size:1.3rem" />
+            </MudItem>
+            <MudItem xs="5" sm="3">
+                <MudNumericField T="decimal?" Value="r.Tare"
+                    ValueChanged="@((decimal? v) => OnTareChanged(r, v))"
+                    Label="Tara (kg)" Variant="Variant.Outlined" Format="F2" Immediate="true"
+                    HideSpinButtons="true" Margin="Margin.Dense"
+                    UserAttributes="@TareAttributes" />
+            </MudItem>
+            <MudItem xs="8" sm="3">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Typo="Typo.h6" data-testid="bucket-netto">
+                        @(netto.HasValue ? $"{netto.Value:0.00} kg" : "—")
+                    </MudText>
+                    @if (r.TareManual)
+                    {
+                        <MudTooltip Text="Tara pakeista ranka">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small"
+                                data-testid="tare-manual-marker" />
+                        </MudTooltip>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ResetTare(r))"
+                            data-testid="tare-reset">Grąžinti auto</MudButton>
+                    }
+                </MudStack>
+            </MudItem>
+            <MudItem xs="4" sm="2" Class="d-flex justify-end">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                    OnClick="@(() => RemoveRow(r))" aria-label="Šalinti eilutę" tabindex="-1" />
+            </MudItem>
+            @if (error != null)
+            {
+                <MudItem xs="12" Class="pt-0">
+                    <MudText Typo="Typo.caption" Color="Color.Error" data-testid="bucket-error">@error</MudText>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    <MudDivider Class="my-3" />
+    <MudText Typo="Typo.body1" data-testid="bucket-totals">
+        Kibirų: <strong>@Count</strong> |
+        Σ brutto: <strong>@SumBrutto.ToString("0.00")</strong> kg |
+        Σ tara: <strong>@SumTara.ToString("0.00")</strong> kg |
+        Σ netto: <strong>@SumNetto.ToString("0.00")</strong> kg
+    </MudText>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" FullWidth="true"
+        Style="min-height:56px" OnClick="CommitAsync" Disabled="@(!CanCommit)" data-testid="bucket-add">
+        Pridėti @Count @(IsHoney ? "kibirų" : "pakuočių")
+    </MudButton>
+</div>
+
+@code {
+    private sealed class Row
+    {
+        public Guid Key { get; } = Guid.NewGuid();
+        public decimal? Brutto { get; set; }
+        public decimal? Tare { get; set; }
+        public bool TareManual { get; set; }
+        public bool OutOfRange { get; set; }
+        public MudNumericField<decimal?>? BruttoRef { get; set; }
+    }
+
+    private static readonly Dictionary<string, object> TareAttributes = new() { ["tabindex"] = "-1" };
+
+    private readonly List<Row> _rows = new();
+    private IReadOnlyList<BucketTareRange> _ranges = Array.Empty<BucketTareRange>();
+    private Guid? _focusKey;
+
+    /// <summary>Honey buckets get the interval tare; other packages start from <see cref="PackageTare"/>.</summary>
+    [Parameter] public bool IsHoney { get; set; } = true;
+
+    [Parameter] public decimal PackageTare { get; set; } = 0.05m;
+
+    [Parameter] public EventCallback<List<BucketEntry>> OnAdd { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsHoney)
+            _ranges = await TareService.GetRangesAsync(includeInactive: true);
+        AddRow(focus: true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusKey is { } key)
+        {
+            _focusKey = null;
+            var row = _rows.FirstOrDefault(r => r.Key == key);
+            if (row?.BruttoRef != null)
+                await row.BruttoRef.FocusAsync();
+        }
+    }
+
+    private Row AddRow(bool focus)
+    {
+        var row = new Row { Tare = IsHoney ? null : PackageTare };
+        _rows.Add(row);
+        if (focus) _focusKey = row.Key;
+        return row;
+    }
+
+    private void OnBruttoChanged(Row row, decimal? value)
+    {
+        row.Brutto = value;
+        Recalculate(row);
+    }
+
+    private void Recalculate(Row row)
+    {
+        if (!IsHoney || row.TareManual) return;
+
+        if (row.Brutto is not > 0)
+        {
+            row.Tare = null;
+            row.OutOfRange = false;
+            return;
+        }
+
+        var result = Calculator.GetTare(row.Brutto.Value, _ranges);
+        row.Tare = result.Tare;
+        row.OutOfRange = result.IsOutOfRange;
+    }
+
+    private void OnTareChanged(Row row, decimal? value)
+    {
+        row.Tare = value;
+        if (IsHoney) row.TareManual = true;
+    }
+
+    private void ResetTare(Row row)
+    {
+        row.TareManual = false;
+        row.Tare = null;
+        Recalculate(row);
+    }
+
+    private void OnBruttoKeyDown(KeyboardEventArgs e, Row row)
+    {
+        if (e.Key != "Enter") return;
+
+        var index = _rows.IndexOf(row);
+        var next = index + 1 < _rows.Count ? _rows[index + 1] : AddRow(focus: false);
+        _focusKey = next.Key;
+    }
+
+    private void RemoveRow(Row row)
+    {
+        _rows.Remove(row);
+        if (_rows.Count == 0) AddRow(focus: true);
+    }
+
+    private static bool IsBlank(Row r) => r.Brutto is null or 0;
+
+    private decimal? NettoOf(Row r)
+        => r.Brutto is > 0 && r.Tare is > 0 ? BucketTareCalculator.Netto(r.Brutto.Value, r.Tare.Value) : null;
+
+    private string? ErrorOf(Row r)
+    {
+        if (IsBlank(r)) return null;
+        if (r.Brutto < 0) return "Brutto negali būti neigiamas";
+        if (IsHoney && !r.TareManual && r.OutOfRange)
+        {
+            var active = _ranges.Where(x => x.IsActive).ToList();
+            var range = active.Count == 0
+                ? ""
+                : $" ({active.Min(x => x.MinBruttoKg):0.##}–{active.Max(x => x.MaxBruttoKg):0.##} kg)";
+            return $"Brutto už intervalų ribų{range}, įveskite tarą ranka";
+        }
+        if (r.Tare is null or <= 0) return "Įveskite tarą";
+        if (r.Tare >= r.Brutto) return "Tara turi būti mažesnė už brutto";
+        return null;
+    }
+
+    private IEnumerable<Row> FilledRows => _rows.Where(r => !IsBlank(r));
+    private int Count => FilledRows.Count();
+    private decimal SumBrutto => FilledRows.Sum(r => r.Brutto ?? 0);
+    private decimal SumTara => FilledRows.Where(r => r.Tare is > 0).Sum(r => r.Tare ?? 0);
+    private decimal SumNetto => FilledRows.Sum(r => NettoOf(r) ?? 0);
+    private bool CanCommit => Count > 0 && FilledRows.All(r => ErrorOf(r) == null);
+
+    private async Task CommitAsync()
+    {
+        if (!CanCommit) return;
+
+        var entries = FilledRows
+            .Select(r => new BucketEntry(r.Brutto!.Value, r.Tare!.Value, IsHoney && r.TareManual))
+            .ToList();
+        await OnAdd.InvokeAsync(entries);
+
+        _rows.Clear();
+        AddRow(focus: true);
+    }
+}

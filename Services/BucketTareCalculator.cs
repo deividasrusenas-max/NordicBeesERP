@@ -74,3 +74,6 @@ public static class BucketTareRangeValidator
         return errors;
     }
 }
+
+/// <summary>One operator-entered bucket: brutto, the tare shown/used, and whether the tare was overridden by hand.</summary>
+public sealed record BucketEntry(decimal Gross, decimal Tare, bool TareManual);

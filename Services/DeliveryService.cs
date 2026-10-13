@@ -8,10 +8,12 @@ namespace NordicBeesERP.Services;
 public class DeliveryService : IDeliveryService
 {
     private readonly IDbContextFactory<NordicBeesERPContext> _contextFactory;
+    private readonly IBucketTareService _bucketTare;
 
-    public DeliveryService(IDbContextFactory<NordicBeesERPContext> contextFactory)
+    public DeliveryService(IDbContextFactory<NordicBeesERPContext> contextFactory, IBucketTareService? bucketTare = null)
     {
         _contextFactory = contextFactory;
+        _bucketTare = bucketTare ?? new BucketTareService(contextFactory);
     }
 
     public async Task<List<Delivery>> GetAllAsync()
@@ -110,8 +112,69 @@ public class DeliveryService : IDeliveryService
             .ToListAsync();
     }
 
+    private static bool IsBucket(string? containerType) => containerType is "BUCKET" or "BUCKET_GROUP";
+
+    /// <summary>
+    /// Server-side truth for bucket weights: honey buckets get their tare from the configured intervals unless the
+    /// operator overrode it (TareManual); netto is always recomputed from brutto and tare. Never trusts client values.
+    /// </summary>
+    private async Task ApplyBucketWeightsAsync(IDbContextFactory<NordicBeesERPContext> factory, Delivery delivery, List<Container> containers)
+    {
+        foreach (var c in containers)
+            c.NetWeight = c.GrossWeight - c.TareWeight;
+
+        var buckets = containers.Where(c => IsBucket(c.ContainerType)).ToList();
+        if (buckets.Count == 0) return;
+
+        var isHoney = true;
+        if (delivery.RawMaterialTypeId.HasValue)
+        {
+            using var ctx = await factory.CreateDbContextAsync();
+            isHoney = await ctx.RawMaterialTypes
+                .Where(r => r.Id == delivery.RawMaterialTypeId.Value)
+                .Select(r => r.IsHoney)
+                .FirstOrDefaultAsync();
+        }
+        // Non-honey packages (bee bread, propolis, ...) keep the operator-entered tare.
+        if (!isHoney) return;
+
+        foreach (var c in buckets)
+        {
+            if (c.GrossWeight <= 0)
+                throw new BucketTareException($"Kibiras {c.ContainerCode}: brutto svoris turi būti didesnis už 0.");
+
+            if (c.TareManual)
+            {
+                if (c.TareWeight <= 0 || c.TareWeight >= c.GrossWeight)
+                    throw new BucketTareException($"Kibiras {c.ContainerCode}: rankinė tara turi būti didesnė už 0 ir mažesnė už brutto.");
+            }
+            else
+            {
+                var result = await _bucketTare.GetTareAsync(c.GrossWeight);
+                if (result.IsOutOfRange)
+                    throw new BucketTareException($"Kibiras {c.ContainerCode}: brutto {c.GrossWeight:0.##} kg už intervalų ribų, įveskite tarą ranka.");
+                c.TareWeight = result.Tare!.Value;
+            }
+            c.NetWeight = BucketTareCalculator.Netto(c.GrossWeight, c.TareWeight);
+        }
+    }
+
+    // NetWeight is always set by ApplyBucketWeightsAsync (never taken from the client).
+    private static decimal NetOf(Container c) => c.NetWeight;
+
     public async Task<int> CreateDeliveryWithContainersAsync(Delivery delivery, List<DeliveryLine> lines, List<Container> containers)
     {
+        await ApplyBucketWeightsAsync(_contextFactory, delivery, containers);
+        foreach (var line in lines)
+        {
+            var lineContainers = containers.Where(c =>
+                c.ContainerType == line.ContainerType &&
+                c.HoneyTypeId == line.HoneyTypeId &&
+                c.ProductId == line.ProductId).ToList();
+            if (lineContainers.Count > 0)
+                line.TotalNetWeight = lineContainers.Sum(NetOf);
+        }
+
         using var context = await _contextFactory.CreateDbContextAsync();
         using var transaction = await context.Database.BeginTransactionAsync();
         try
@@ -144,7 +207,7 @@ public class DeliveryService : IDeliveryService
                         container.DeliveryLineId = line.Id;
                         container.SupplierId = delivery.SupplierId;
                         container.WarehouseId = delivery.WarehouseId;
-                        container.NetWeight = container.GrossWeight - container.TareWeight;
+                        container.NetWeight = NetOf(container);
                         container.CreatedAt = DateTime.Now;
                         container.UpdatedAt = DateTime.Now;
                         context.Containers.Add(container);
@@ -161,7 +224,7 @@ public class DeliveryService : IDeliveryService
                     ContainerId = container.Id,
                     MovementType = "IN",
                     ToWarehouseId = delivery.WarehouseId,
-                    Quantity = container.GrossWeight - container.TareWeight,
+                    Quantity = NetOf(container),
                     ReferenceType = "Delivery",
                     ReferenceId = delivery.Id,
                     CreatedBy = null,

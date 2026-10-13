@@ -266,7 +266,7 @@
 
     @if (_step == 3 && _containerType == "BUCKET_GROUP")
     {
-        <!-- STEP 3b: Buckets entry -->
+        <!-- STEP 3b: Buckets entry (brutto only; tare + netto are calculated) -->
         <MudPaper Class="pa-4 mb-4" Elevation="1">
             <MudText Typo="Typo.h6" Class="mb-3">
                 @(_selectedRawMaterial?.IsHoney == true ? "Kibirų įvedimas" : "Pakuočių įvedimas")
@@ -286,78 +286,9 @@
                 </MudSelect>
             }
 
-            <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3">
-                @(_selectedRawMaterial?.IsHoney == true ? "Kibiro svoris" : "Pakuotės svoris")
-            </MudText>
-            <MudNumericField T="decimal" @bind-Value="_customBucketTare" Label="Taros svoris (kg)"
-                Variant="Variant.Outlined" Min="0m" Max="50" Step="0.05m" Format="F2"
-                Class="mb-3" Style="max-width:200px" HelperText="Žingsnis: 0,05 kg (50 g)" />
-
-            <MudRadioGroup T="string" @bind-Value="_bucketEntryMode" Class="mt-3 mb-3">
-                <MudRadio T="string" Value="@("uniform")" Color="Color.Primary">Vienodi svoriai</MudRadio>
-                <MudRadio T="string" Value="@("different")" Color="Color.Primary">Skirtingi svoriai</MudRadio>
-            </MudRadioGroup>
-
-            @if (_bucketEntryMode == "uniform")
-            {
-                <MudGrid>
-                    <MudItem xs="12">
-                        <MudNumericField T="int" @bind-Value="_bucketCount" Label="Kiekis"
-                            Variant="Variant.Outlined" Min="1" Max="500" />
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudNumericField T="decimal" @bind-Value="_bucketUniformGross" Label="Brutto (kg)"
-                            Variant="Variant.Outlined" Format="F2" />
-                    </MudItem>
-                </MudGrid>
-                <MudText Typo="Typo.body1" Class="mt-2">
-                    Netto: <strong>@FormatAmountHelper.Trim(Math.Max(0, _bucketUniformGross - _customBucketTare), 1) kg</strong> × @_bucketCount =
-                    <strong>@FormatAmountHelper.Trim(Math.Max(0, _bucketUniformGross - _customBucketTare) * _bucketCount, 1) kg</strong>
-                </MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
-                    OnClick="async () => await AddUniformBuckets()" FullWidth="@true" Style="min-height:56px"
-                    Disabled="@(_bucketCount < 1 || _bucketUniformGross <= 0)">
-                    Įvesti @_bucketCount vnt.
-                </MudButton>
-            }
-
-            @if (_bucketEntryMode == "different")
-            {
-                <MudGrid>
-                    <MudItem xs="12">
-                        <MudNumericField T="int" @bind-Value="_bucketCount" Label="Kiekis"
-                            Variant="Variant.Outlined" Min="1" Max="500" />
-                    </MudItem>
-                </MudGrid>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
-                    OnClick="async () => await StartBucketWeighingWizard()" FullWidth="@true" Style="min-height:56px"
-                    Disabled="@(_bucketCount < 1)">
-                    Pradėti svėrimą
-                </MudButton>
-            }
+            <BucketWeighingGrid IsHoney="@(_selectedRawMaterial?.IsHoney == true)" OnAdd="AddBuckets" />
 
             <MudButton Variant="Variant.Text" OnClick="@(() => _step = 2)" Class="mt-2">← Atgal</MudButton>
-        </MudPaper>
-    }
-
-    @if (_step == 3 && _containerType == "BUCKET_GROUP" && _bucketEntryMode == "different" && _bucketWeighingActive)
-    {
-        <MudPaper Class="pa-4 mb-4" Elevation="1" Style="border: 3px solid var(--mud-palette-primary)">
-            <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-2">@_currentBucketCode</MudText>
-            <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-3" Color="Color.Primary">
-                @(_currentBucketIndex + 1) / @_bucketCount
-            </MudText>
-            <MudProgressLinear Value="@((double)_currentBucketIndex / _bucketCount * 100)" Color="Color.Primary" Class="mb-3" />
-            <MudNumericField T="decimal" @bind-Value="_currentBucketGross" Label="Brutto (kg)" Variant="Variant.Outlined"
-                Style="font-size:1.5rem; font-weight:bold" Format="F2" Immediate="true" />
-            <MudText Typo="Typo.h6" Align="Align.Center" Class="mt-2">
-                Netto: @FormatAmountHelper.Trim(Math.Max(0, _currentBucketGross - _customBucketTare), 1) kg
-            </MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
-                OnClick="SaveCurrentBucketAndNext" FullWidth="@true" Style="min-height:64px; font-size:1.3rem"
-                Disabled="@(_currentBucketGross <= 0)">
-                @(_currentBucketIndex + 1 < _bucketCount ? "Kitas →" : "Baigti ✓")
-            </MudButton>
         </MudPaper>
     }
 
@@ -377,9 +308,17 @@
                 <RowTemplate Context="container">
                     <MudTd>@container.ContainerCode</MudTd>
                     <MudTd>@(container.ContainerType == "BARREL" ? "Statinė" : "Kibirai")</MudTd>
-                    <MudTd>@container.GrossWeight.ToString("F1")</MudTd>
-                    <MudTd>@container.TareWeight.ToString("F1")</MudTd>
-                    <MudTd><strong>@((container.GrossWeight - container.TareWeight).ToString("F1"))</strong></MudTd>
+                    <MudTd>@container.GrossWeight.ToString(WeightFormat(container))</MudTd>
+                    <MudTd>
+                        @container.TareWeight.ToString(WeightFormat(container))
+                        @if (container.TareManual)
+                        {
+                            <MudTooltip Text="Tara pakeista ranka">
+                                <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small" />
+                            </MudTooltip>
+                        }
+                    </MudTd>
+                    <MudTd><strong>@((container.GrossWeight - container.TareWeight).ToString(WeightFormat(container)))</strong></MudTd>
                 </RowTemplate>
             </MudTable>
             <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-3">
@@ -433,18 +372,6 @@
     private string _tareMode = "19";
     private decimal _customTare = 16;
     private decimal _currentTare = 0;
-
-    // Bucket entry mode
-    private string _bucketEntryMode = "uniform";
-    private decimal _bucketUniformGross = 29;
-    private int _bucketCount = 1;
-    private bool _bucketWeighingActive;
-    private int _currentBucketIndex;
-    private string _currentBucketCode = "";
-    private decimal _currentBucketGross = 29;
-
-    // Bucket tare weight
-    private decimal _customBucketTare = 0.8m;
 
     // Pending containers
     private List<Container> _pendingContainers = new();
@@ -511,9 +438,6 @@
             if (!mat.IsHoney)
             {
                 _containerType = "BUCKET_GROUP";
-                _customBucketTare = 0.05m;
-                _bucketUniformGross = 0;
-                _currentBucketGross = 0;
                 _step = 3;
             }
             
@@ -529,9 +453,6 @@
     {
         // For non-MEDUS materials, set container type to BUCKET_GROUP and go to step 3
         _containerType = "BUCKET_GROUP";
-        _customBucketTare = 0.05m;
-        _bucketUniformGross = 0;
-        _currentBucketGross = 0;
         _step = 3;
     }
 
@@ -668,21 +589,22 @@
         return $"TP{num.ToString(new string('0', match.Groups[2].Value.Length))}";
     }
 
-    // === BUCKET UNIFORM ===
-    private async Task AddUniformBuckets()
+    // === BUCKETS (brutto entered; tare and netto come from BucketWeighingGrid) ===
+    private async Task AddBuckets(List<BucketEntry> entries)
     {
         var duplicates = new List<string>();
-        for (int i = 0; i < _bucketCount; i++)
+        var added = 0;
+        foreach (var entry in entries)
         {
             var code = await GetNextSessionContainerCodeAsync();
-            
+
             // Tikrinti duplikatą šiame pristatyme
             if (_pendingContainers.Any(c => c.ContainerCode == code))
             {
                 duplicates.Add(code);
                 continue;
             }
-            
+
             // Tikrinti duplikatą DB
             var existing = await ContainerService.GetByCodeAsync(code);
             if (existing != null)
@@ -697,78 +619,28 @@
                 ContainerType = "BUCKET_GROUP",
                 ProductId = null,
                 HoneyTypeId = _honeyTypeId,
-                GrossWeight = _bucketUniformGross,
-                TareWeight = _customBucketTare,
+                GrossWeight = entry.Gross,
+                TareWeight = entry.Tare,
+                TareManual = entry.TareManual,
+                NetWeight = BucketTareCalculator.Netto(entry.Gross, entry.Tare),
                 Quantity = 1,
                 RemainingQuantity = 1,
                 Status = "IN_STOCK"
             });
+            added++;
         }
 
         if (duplicates.Any())
         {
             Snackbar.Add($"Jau registruoti: {string.Join(", ", duplicates)}", Severity.Error);
         }
-        
-        var added = _bucketCount - duplicates.Count;
         if (added > 0)
         {
             Snackbar.Add($"Pridėta {added} vnt.", Severity.Success);
         }
     }
 
-    private async Task StartBucketWeighingWizard()
-    {
-        _currentBucketIndex = 0;
-        _currentBucketCode = await GetNextSessionContainerCodeAsync();
-        _currentBucketGross = _customBucketTare <= 0.4m ? 15 : 29;
-        _bucketWeighingActive = true;
-    }
-
-    private async Task SaveCurrentBucketAndNext()
-    {
-        var code = _currentBucketCode;
-        
-        // Tikrinti duplikatą šiame pristatyme
-        if (_pendingContainers.Any(c => c.ContainerCode == code))
-        {
-            Snackbar.Add($"{code} jau pridėtas", Severity.Error);
-            return;
-        }
-        
-        // Tikrinti duplikatą DB
-        var existing = await ContainerService.GetByCodeAsync(code);
-        if (existing != null)
-        {
-            Snackbar.Add($"{code} jau registruotas sistemoje", Severity.Error);
-            return;
-        }
-
-        _pendingContainers.Add(new Container
-        {
-            ContainerCode = code,
-            ContainerType = "BUCKET_GROUP",
-            ProductId = null,
-            HoneyTypeId = _honeyTypeId,
-            GrossWeight = _currentBucketGross,
-            TareWeight = _customBucketTare,
-            Quantity = 1,
-            RemainingQuantity = 1,
-            Status = "IN_STOCK"
-        });
-
-        _currentBucketIndex++;
-        if (_currentBucketIndex < _bucketCount)
-        {
-            _currentBucketCode = await GetNextSessionContainerCodeAsync();
-            _currentBucketGross = _customBucketTare <= 0.4m ? 15 : 29;
-        }
-        else
-        {
-            _bucketWeighingActive = false;
-            Snackbar.Add($"Pridėta {_bucketCount} vnt.", Severity.Success);
-        }
-    }
+    private static string WeightFormat(Container c) => c.ContainerType == "BARREL" ? "F1" : "F2";
 
     // === SUBMIT ===
     private async Task SubmitDelivery()
