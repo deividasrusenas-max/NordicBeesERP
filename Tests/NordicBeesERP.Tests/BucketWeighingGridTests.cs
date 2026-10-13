@@ -42,10 +42,10 @@ public class BucketWeighingGridTests : IDisposable
         public Task<IReadOnlyList<string>> SaveRangesAsync(IReadOnlyList<BucketTareRange> ranges) => throw new NotSupportedException();
     }
 
-    private IRenderedComponent<BucketWeighingGrid> Render(List<List<BucketEntry>>? received = null, bool isHoney = true)
+    private IRenderedComponent<BucketWeighingGrid> Render(List<List<BucketEntry>>? received = null, bool isHoney = true, bool acceptAdd = true)
         => _ctx.RenderComponent<BucketWeighingGrid>(p => p
             .Add(c => c.IsHoney, isHoney)
-            .Add(c => c.OnAdd, Microsoft.AspNetCore.Components.EventCallback.Factory.Create<List<BucketEntry>>(this, e => received?.Add(e))));
+            .Add(c => c.OnAdd, (Func<List<BucketEntry>, Task<bool>>)(e => { received?.Add(e); return Task.FromResult(acceptAdd); })));
 
     private static AngleSharp.Dom.IElement Brutto(IRenderedComponent<BucketWeighingGrid> cut, int row)
         => cut.FindAll("[data-testid=bucket-row]")[row].QuerySelectorAll("input")[0];
@@ -194,6 +194,29 @@ public class BucketWeighingGridTests : IDisposable
         Assert.All(entries, e => Assert.False(e.TareManual));
         Assert.Single(cut.FindAll("[data-testid=bucket-row]"));
         Assert.Equal("", Value(Brutto(cut, 0)));
+    }
+
+    [Fact]
+    public void Commit_RejectedByParent_KeepsRows()
+    {
+        var received = new List<List<BucketEntry>>();
+        var cut = Render(received, acceptAdd: false);
+        Brutto(cut, 0).Input("25");
+
+        cut.Find("[data-testid=bucket-add]").Click();
+
+        Assert.Single(received);
+        Assert.Equal("0.80", Value(Tare(cut, 0)));
+        Assert.Equal("24.20 kg", Netto(cut));
+    }
+
+    [Fact]
+    public void Disabled_BlocksAdd()
+    {
+        var cut = _ctx.RenderComponent<BucketWeighingGrid>(p => p.Add(c => c.Disabled, true));
+        Brutto(cut, 0).Input("25");
+
+        Assert.True(cut.Find("[data-testid=bucket-add]").HasAttribute("disabled"));
     }
 
     [Fact]

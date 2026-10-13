@@ -17,6 +17,10 @@ public interface IContainerService
     Task<string?> GetLastContainerCodeAsync();
     Task<string?> GetLastBucketCodeAsync();
     Task<string> GenerateNextContainerCodeAsync();
+    /// <summary>app_settings 'AutoBarrelNumbering' (default false = operator enters a start ID).</summary>
+    Task<bool> IsAutoNumberingEnabledAsync();
+    /// <summary>Codes from <paramref name="codes"/> that already exist in containers.</summary>
+    Task<List<string>> FindExistingCodesAsync(IEnumerable<string> codes);
     Task<List<Container>> GetByIdsAsync(List<int> ids);
     Task UpdateHoneyTypeAsync(List<int> containerIds, int honeyTypeId);
 }

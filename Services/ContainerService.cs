@@ -65,6 +65,27 @@ public class ContainerService : IContainerService
         return "TP" + (maxSeq + 1).ToString("D6");
     }
 
+    public async Task<bool> IsAutoNumberingEnabledAsync()
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var raw = await context.AppSettings
+            .Where(s => s.SettingKey == "AutoBarrelNumbering")
+            .Select(s => s.SettingValue)
+            .FirstOrDefaultAsync();
+        return bool.TryParse(raw, out var enabled) ? enabled : raw == "1";
+    }
+
+    public async Task<List<string>> FindExistingCodesAsync(IEnumerable<string> codes)
+    {
+        var list = codes.Distinct().ToList();
+        if (list.Count == 0) return new List<string>();
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Containers
+            .Where(c => list.Contains(c.ContainerCode))
+            .Select(c => c.ContainerCode)
+            .ToListAsync();
+    }
+
     public async Task<Container?> GetByIdAsync(int id)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
@@ -201,7 +222,7 @@ public class ContainerService : IContainerService
     {
         using var context = await _contextFactory.CreateDbContextAsync();
         var last = await context.Containers
-            .Where(c => c.ContainerType == "BUCKET_GROUP")
+            .Where(c => c.ContainerType == "BUCKET_GROUP" || c.ContainerType == "BUCKET")
             .OrderByDescending(c => c.Id)
             .Select(c => c.ContainerCode)
             .FirstOrDefaultAsync();

@@ -91,7 +91,11 @@
 
     [Parameter] public decimal PackageTare { get; set; } = 0.05m;
 
-    [Parameter] public EventCallback<List<BucketEntry>> OnAdd { get; set; }
+    /// <summary>Called with the filled rows; return false to keep the rows (e.g. duplicate codes) so nothing is lost.</summary>
+    [Parameter] public Func<List<BucketEntry>, Task<bool>>? OnAdd { get; set; }
+
+    /// <summary>Blocks adding (e.g. the start ID is still empty).</summary>
+    [Parameter] public bool Disabled { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,7 +200,7 @@
     private decimal SumBrutto => FilledRows.Sum(r => r.Brutto ?? 0);
     private decimal SumTara => FilledRows.Where(r => r.Tare is > 0).Sum(r => r.Tare ?? 0);
     private decimal SumNetto => FilledRows.Sum(r => NettoOf(r) ?? 0);
-    private bool CanCommit => Count > 0 && FilledRows.All(r => ErrorOf(r) == null);
+    private bool CanCommit => !Disabled && Count > 0 && FilledRows.All(r => ErrorOf(r) == null);
 
     private async Task CommitAsync()
     {
@@ -205,7 +209,7 @@
         var entries = FilledRows
             .Select(r => new BucketEntry(r.Brutto!.Value, r.Tare!.Value, IsHoney && r.TareManual))
             .ToList();
-        await OnAdd.InvokeAsync(entries);
+        if (OnAdd != null && !await OnAdd(entries)) return;
 
         _rows.Clear();
         AddRow(focus: true);

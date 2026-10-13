@@ -197,6 +197,13 @@
             @if (_barrelMode == "uniform")
             {
                 <MudGrid>
+                    @if (!_autoNumbering)
+                    {
+                        <MudItem xs="6" md="3">
+                            <MudTextField T="string" @bind-Value="_startId" Label="Pradinis ID" Variant="Variant.Outlined"
+                                Style="font-size:1.2rem" Required="true" Placeholder="pvz. 150 arba A-150" />
+                        </MudItem>
+                    }
                     <MudItem xs="6" md="3">
                         <MudNumericField T="int" @bind-Value="_barrelCount" Label="Kiekis" Variant="Variant.Outlined"
                             Min="1" Max="500" Style="font-size:1.2rem" />
@@ -212,7 +219,7 @@
                 </MudText>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
                     OnClick="async () => await AddUniformBarrels()" FullWidth="@true" Style="min-height:56px; font-size:1.1rem"
-                    Disabled="@(_barrelCount < 1 || _uniformGross <= 0)">
+                    Disabled="@(_barrelCount < 1 || _uniformGross <= 0 || StartIdMissing(_startId))">
                     Įvesti @_barrelCount statinių
                 </MudButton>
             }
@@ -220,14 +227,21 @@
             @if (_barrelMode == "different")
             {
                 <MudGrid>
-                <MudItem xs="12">
+                @if (!_autoNumbering)
+                {
+                    <MudItem xs="6">
+                        <MudTextField T="string" @bind-Value="_startId" Label="Pradinis ID" Variant="Variant.Outlined"
+                            Style="font-size:1.2rem" Required="true" Placeholder="pvz. 150 arba A-150" />
+                    </MudItem>
+                }
+                <MudItem xs="@(_autoNumbering ? 12 : 6)">
                     <MudNumericField T="int" @bind-Value="_barrelCount" Label="Kiekis" Variant="Variant.Outlined"
                         Min="1" Max="500" Style="font-size:1.2rem" Immediate="true" />
                 </MudItem>
                 </MudGrid>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
                     OnClick="StartDifferentWeightsWizard" FullWidth="@true" Style="min-height:56px"
-                    Disabled="@(_barrelCount < 1)">
+                    Disabled="@(_barrelCount < 1 || StartIdMissing(_startId))">
                     Pradėti svėrimą
                 </MudButton>
             }
@@ -286,7 +300,14 @@
                 </MudSelect>
             }
 
-            <BucketWeighingGrid IsHoney="@(_selectedRawMaterial?.IsHoney == true)" OnAdd="AddBuckets" />
+            @if (!_autoNumbering)
+            {
+                <MudTextField T="string" @bind-Value="_bucketStartId" Label="Pradinis ID" Variant="Variant.Outlined"
+                    Required="true" Placeholder="pvz. K-001" Class="mb-3" Style="max-width:240px" />
+            }
+
+            <BucketWeighingGrid IsHoney="@(_selectedRawMaterial?.IsHoney == true)" OnAdd="AddBuckets"
+                Disabled="@StartIdMissing(_bucketStartId)" />
 
             <MudButton Variant="Variant.Text" OnClick="@(() => _step = 2)" Class="mt-2">← Atgal</MudButton>
         </MudPaper>
@@ -359,6 +380,12 @@
     private List<RawMaterialType> _rawMaterialTypes = new();
     private RawMaterialType? _selectedRawMaterial;
 
+    // Numbering: false (default) = operator enters "Pradinis ID" and codes run +1 from it;
+    // true (app_settings AutoBarrelNumbering) = TP codes from ContainerService.GenerateNextContainerCodeAsync.
+    private bool _autoNumbering;
+    private string _startId = "";
+    private string _bucketStartId = "";
+
     // Barrel fields
     private int _barrelCount = 1;
     private decimal _uniformGross = 305;
@@ -385,6 +412,13 @@
         _products = await ProductService.GetAllProductsAsync();
         _honeyTypes = await HoneyTypeService.GetActiveAsync();
         _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
+
+        _autoNumbering = await ContainerService.IsAutoNumberingEnabledAsync();
+        if (!_autoNumbering)
+        {
+            _startId = ContainerCodeSequence.SuggestStart(await ContainerService.GetLastContainerCodeAsync());
+            _bucketStartId = ContainerCodeSequence.SuggestStart(await ContainerService.GetLastBucketCodeAsync());
+        }
     }
 
     private void GoToStep2()
@@ -459,27 +493,12 @@
     // === BARREL: Uniform weights ===
     private async Task AddUniformBarrels()
     {
-        var duplicates = new List<string>();
-        for (int i = 0; i < _barrelCount; i++)
-        {
-            var code = await GetNextSessionContainerCodeAsync();
-            
-            // Tikrinti duplikatą šiame pristatyme
-            if (_pendingContainers.Any(c => c.ContainerCode == code))
-            {
-                duplicates.Add(code);
-                continue;
-            }
-            
-            // Tikrinti duplikatą DB
-            var existing = await ContainerService.GetByCodeAsync(code);
-            if (existing != null)
-            {
-                duplicates.Add(code);
-                continue;
-            }
+        var codes = await AllocateCodesAsync(_startId, _barrelCount);
+        if (!await CodesAreFreeAsync(codes)) return;
 
-                _pendingContainers.Add(new Container
+        foreach (var code in codes)
+        {
+            _pendingContainers.Add(new Container
             {
                 ContainerCode = code,
                 ContainerType = "BARREL",
@@ -493,23 +512,16 @@
             });
         }
 
-        if (duplicates.Any())
-        {
-            Snackbar.Add($"Statinės jau registruotos: {string.Join(", ", duplicates)}", Severity.Error);
-        }
-        
-        var added = _barrelCount - duplicates.Count;
-        if (added > 0)
-        {
-            Snackbar.Add($"Pridėta {added} statinių", Severity.Success);
-        }
+        // The next batch continues the sequence.
+        if (!_autoNumbering) _startId = ContainerCodeSequence.Generate(_startId, _barrelCount);
+        Snackbar.Add($"Pridėta {codes.Count} statinių", Severity.Success);
     }
 
     // === BARREL: Different weights wizard ===
     private async Task StartDifferentWeightsWizard()
     {
         _currentBarrelIndex = 0;
-        _currentBarrelCode = await GetNextSessionContainerCodeAsync();
+        _currentBarrelCode = _autoNumbering ? await GetNextSessionContainerCodeAsync() : ContainerCodeSequence.Generate(_startId, 0);
         _currentGross = 0;
         _currentTare = GetTareWeight();
         _weighingActive = true;
@@ -548,12 +560,15 @@
         _currentBarrelIndex++;
         if (_currentBarrelIndex < _barrelCount)
         {
-            _currentBarrelCode = await GetNextSessionContainerCodeAsync();
+            _currentBarrelCode = _autoNumbering
+                ? await GetNextSessionContainerCodeAsync()
+                : ContainerCodeSequence.Generate(_startId, _currentBarrelIndex);
             _currentGross = 305;
         }
         else
         {
             _weighingActive = false;
+            if (!_autoNumbering) _startId = ContainerCodeSequence.Generate(_startId, _barrelCount);
             Snackbar.Add($"Pridėta {_barrelCount} statinių", Severity.Success);
         }
     }
@@ -567,6 +582,45 @@
             "custom" => _customTare,
             _ => 16m
         };
+    }
+
+    // === CODE ALLOCATION ===
+    private bool StartIdMissing(string startId) => !_autoNumbering && string.IsNullOrWhiteSpace(startId);
+
+    // Codes for a whole batch: start ID +1 each (default), or consecutive TP codes when AutoBarrelNumbering is on.
+    private async Task<List<string>> AllocateCodesAsync(string startId, int count)
+    {
+        var codes = new List<string>(count);
+        if (_autoNumbering)
+        {
+            var code = await GetNextSessionContainerCodeAsync();
+            for (var i = 0; i < count; i++)
+            {
+                codes.Add(code);
+                code = IncrementTpCode(code);
+                while (_pendingContainers.Any(c => c.ContainerCode == code)) code = IncrementTpCode(code);
+            }
+        }
+        else
+        {
+            for (var i = 0; i < count; i++) codes.Add(ContainerCodeSequence.Generate(startId, i));
+        }
+        return codes;
+    }
+
+    // Whole-batch duplicate check (this delivery + DB); shows a clear message and adds nothing on conflict.
+    private async Task<bool> CodesAreFreeAsync(List<string> codes)
+    {
+        var conflicts = codes.GroupBy(c => c).Where(g => g.Count() > 1).Select(g => g.Key)
+            .Union(codes.Where(c => _pendingContainers.Any(p => p.ContainerCode == c)))
+            .Union(await ContainerService.FindExistingCodesAsync(codes))
+            .Distinct().ToList();
+        if (conflicts.Count == 0) return true;
+
+        Snackbar.Add(conflicts.Count == 1
+            ? $"Kodas {conflicts[0]} jau egzistuoja"
+            : $"Kodai {string.Join(", ", conflicts)} jau egzistuoja", Severity.Error);
+        return false;
     }
 
     // === ID GENERATION ===
@@ -590,32 +644,17 @@
     }
 
     // === BUCKETS (brutto entered; tare and netto come from BucketWeighingGrid) ===
-    private async Task AddBuckets(List<BucketEntry> entries)
+    private async Task<bool> AddBuckets(List<BucketEntry> entries)
     {
-        var duplicates = new List<string>();
-        var added = 0;
-        foreach (var entry in entries)
+        var codes = await AllocateCodesAsync(_bucketStartId, entries.Count);
+        if (!await CodesAreFreeAsync(codes)) return false;
+
+        for (var i = 0; i < entries.Count; i++)
         {
-            var code = await GetNextSessionContainerCodeAsync();
-
-            // Tikrinti duplikatą šiame pristatyme
-            if (_pendingContainers.Any(c => c.ContainerCode == code))
-            {
-                duplicates.Add(code);
-                continue;
-            }
-
-            // Tikrinti duplikatą DB
-            var existing = await ContainerService.GetByCodeAsync(code);
-            if (existing != null)
-            {
-                duplicates.Add(code);
-                continue;
-            }
-
+            var entry = entries[i];
             _pendingContainers.Add(new Container
             {
-                ContainerCode = code,
+                ContainerCode = codes[i],
                 ContainerType = "BUCKET_GROUP",
                 ProductId = null,
                 HoneyTypeId = _honeyTypeId,
@@ -627,17 +666,13 @@
                 RemainingQuantity = 1,
                 Status = "IN_STOCK"
             });
-            added++;
         }
 
-        if (duplicates.Any())
-        {
-            Snackbar.Add($"Jau registruoti: {string.Join(", ", duplicates)}", Severity.Error);
-        }
-        if (added > 0)
-        {
-            Snackbar.Add($"Pridėta {added} vnt.", Severity.Success);
-        }
+        if (!_autoNumbering) _bucketStartId = ContainerCodeSequence.Generate(_bucketStartId, entries.Count);
+        Snackbar.Add($"Pridėta {entries.Count} vnt.", Severity.Success);
+        // Called back as a plain Func (not an EventCallback), so this page must re-render itself.
+        await InvokeAsync(StateHasChanged);
+        return true;
     }
 
     private static string WeightFormat(Container c) => c.ContainerType == "BARREL" ? "F1" : "F2";

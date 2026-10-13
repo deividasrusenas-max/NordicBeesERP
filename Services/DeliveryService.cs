@@ -162,8 +162,25 @@ public class DeliveryService : IDeliveryService
     // NetWeight is always set by ApplyBucketWeightsAsync (never taken from the client).
     private static decimal NetOf(Container c) => c.NetWeight;
 
+    /// <summary>Rejects the whole batch (before anything is written) when a code repeats or already exists.</summary>
+    private async Task EnsureCodesAreFreeAsync(List<Container> containers)
+    {
+        var codes = containers.Select(c => c.ContainerCode).ToList();
+        var duplicates = codes.GroupBy(c => c).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var existing = await context.Containers
+            .Where(c => codes.Contains(c.ContainerCode))
+            .Select(c => c.ContainerCode)
+            .ToListAsync();
+
+        var conflicts = duplicates.Union(existing).OrderBy(c => c, StringComparer.Ordinal).ToList();
+        if (conflicts.Count > 0) throw new ContainerCodeConflictException(conflicts);
+    }
+
     public async Task<int> CreateDeliveryWithContainersAsync(Delivery delivery, List<DeliveryLine> lines, List<Container> containers)
     {
+        await EnsureCodesAreFreeAsync(containers);
         await ApplyBucketWeightsAsync(_contextFactory, delivery, containers);
         foreach (var line in lines)
         {
