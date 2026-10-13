@@ -7,8 +7,9 @@ namespace NordicBeesERP.Tests;
 
 /// <summary>
 /// Guards the UI container-type value ("BUCKET_GROUP") against the DB enum
-/// (containers/delivery_lines.container_type). The dev/test DB enum is
-/// ('BARREL','BUCKET'); InitialCreate declared ('BARREL','BUCKET_GROUP').
+/// (containers/delivery_lines.container_type). The DB enum is now
+/// ('BARREL','BUCKET','BUCKET_GROUP') after 20261014_container_type_enum_superset.sql;
+/// this test ensures the bucket delivery INSERT no longer breaks and stores "BUCKET_GROUP".
 /// </summary>
 [Collection("RealDatabase")]
 public class DeliveryContainerTypeTests : IClassFixture<DbTestFixture>
@@ -48,7 +49,8 @@ public class DeliveryContainerTypeTests : IClassFixture<DbTestFixture>
             .ToListAsync();
 
         Assert.Equal(2, stored.Count);
-        Assert.All(stored, t => Assert.Contains(t, new[] { "BARREL", "BUCKET" }));
-        Assert.All(storedLine, t => Assert.Contains(t, new[] { "BARREL", "BUCKET" }));
+        Assert.All(stored, t => Assert.Equal("BUCKET_GROUP", t));
+        Assert.Single(storedLine);
+        Assert.All(storedLine, t => Assert.Equal("BUCKET_GROUP", t));
     }
 }
