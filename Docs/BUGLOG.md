@@ -1776,3 +1776,12 @@ re-labeling the symptom.
 - **Error class**: `ef-ignore-contradicts-relationship` (provisional)
 - **Guardrail added**: none (evidence entry; `Data/NordicBeesErpContext.cs` is a guardrails-protected area, so no explanatory comment is kept in code).
 - **Status**: open, LOW — no functional impact.
+
+### 2026-10-14 — Bucket deliveries fail: code writes `BUCKET_GROUP`, dev/test DB enum is `('BARREL','BUCKET')`
+- **Symptom**: `DeliveryService.CreateDeliveryWithContainersAsync` with `ContainerType = "BUCKET_GROUP"` throws `MySqlException: Data truncated for column 'container_type' at row 1` (strict mode) on `nordic_bees_erp` and `nordic_bees_erp_test`. Reproduced by `DeliveryContainerTypeTests`.
+- **Root cause**: schema drift. `InitialCreate` declares `ENUM('BARREL','BUCKET_GROUP')` on `containers` and `delivery_lines`; the dev/test DB was altered by hand to `('BARREL','BUCKET')` (planned rename in `Docs/LABELING_PLAN*.md`, never shipped as a migration, code never renamed). Display code accepts both values; writers and counters (`DeliveryCreate`, `Home`, `StockOverview` counts) use only `BUCKET_GROUP`. Prod schema is NOT verified.
+- **Fix**: migration `20261014090000_ContainerTypeEnumAcceptsBucketGroup` widens both enums to `('BARREL','BUCKET','BUCKET_GROUP')` (valid for either schema). Code keeps writing `BUCKET_GROUP`. SQL in `Migrations/Scripts/20261014_container_type_enum_superset.sql`; human applies it (agents never run DDL).
+- **Category**: db-schema-drift
+- **Error class**: `enum-drift-code-vs-db` (provisional)
+- **Guardrail added**: `DeliveryContainerTypeTests` (integration, fails while the DB enum lacks the written value).
+- **Status**: fixed in code; open until the SQL is applied to dev/test and prod is verified.
