@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.DataProtection;
 using NordicBeesERP.Components;
 using NordicBeesERP.Data;
 using NordicBeesERP.Helpers;
@@ -141,6 +142,21 @@ builder.Services.AddAuthentication("Cookies")
         options.ExpireTimeSpan = TimeSpan.FromDays(30);
         options.AccessDeniedPath = "/";
     });
+// DataProtection keys must live outside the container filesystem, otherwise every redeploy
+// invalidates antiforgery tokens and auth cookies ("key not found in the key ring").
+// Prod and Staging mount SEPARATE host directories at this path (see deploy.yml).
+// Dev/Test use the framework default unless DataProtection:KeysPath is set explicitly.
+var dpKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (string.IsNullOrWhiteSpace(dpKeysPath) && (builder.Environment.IsProduction() || builder.Environment.IsStaging()))
+{
+    dpKeysPath = "/app/keys";
+}
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("NordicBeesERP");
+if (!string.IsNullOrWhiteSpace(dpKeysPath))
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath));
+}
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("ArtworkAccess", policy =>

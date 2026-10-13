@@ -40,6 +40,7 @@ jobs:
               -v /var/lib/nordicbees/invoices:/var/lib/nordicbees/invoices \
               -v /var/lib/nordicbees/credit-notes:/var/lib/nordicbees/credit-notes \
               -v /var/lib/nordicbees/prod:/var/lib/nordicbees/data \
+              -v /var/lib/nordicbees/dpkeys-prod:/app/keys \
               -p 8080:8080 \
               nordicbees-erp:latest
           else
@@ -56,6 +57,7 @@ jobs:
               -v /var/lib/nordicbees/invoices-staging:/var/lib/nordicbees/invoices \
               -v /var/lib/nordicbees/credit-notes-staging:/var/lib/nordicbees/credit-notes \
               -v /var/lib/nordicbees/staging:/var/lib/nordicbees/data \
+              -v /var/lib/nordicbees/dpkeys-staging:/app/keys \
               -p 8081:8080 \
               nordicbees-erp:staging
           fi
