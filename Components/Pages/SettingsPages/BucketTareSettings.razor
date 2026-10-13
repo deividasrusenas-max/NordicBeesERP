@@ -1,0 +1,139 @@
+@page "/settings/bucket-tare"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Warehouse")]
+@rendermode InteractiveServer
+@using NordicBeesERP.Models.WarehouseModule
+@inject IBucketTareService TareService
+@inject ISnackbar Snackbar
+
+<PageTitle>Kibirų taros intervalai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h5">Kibirų taros intervalai</MudText>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.Add" OnClick="AddRow" data-testid="tare-add">
+                Pridėti intervalą
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync"
+                Disabled="@(_saving || Errors.Count > 0)" data-testid="tare-save">
+                Išsaugoti
+            </MudButton>
+        </div>
+    </div>
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+        Brutto svorio intervalai (imtinai) ir kiekvieno jų kibiro tara. Intervalai negali persidengti; tarpai tarp
+        intervalų priskiriami žemesniam intervalui iki jo viršutinės ribos. Jau išsaugoti įrašai nėra perskaičiuojami.
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+    }
+    else
+    {
+        @if (Errors.Count > 0)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3" data-testid="tare-errors">
+                @foreach (var e in Errors)
+                {
+                    <div>@e</div>
+                }
+            </MudAlert>
+        }
+
+        <MudPaper Elevation="0" Class="pa-3">
+            <MudTable T="BucketTareRange" Items="_rows" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Brutto nuo (kg)</MudTh>
+                    <MudTh>Brutto iki (kg)</MudTh>
+                    <MudTh>Tara (kg)</MudTh>
+                    <MudTh>Būsena</MudTh>
+                    <MudTh Style="width:60px"></MudTh>
+                </HeaderContent>
+                <RowTemplate Context="item">
+                    <MudTd>
+                        <MudNumericField T="decimal" @bind-Value="item.MinBruttoKg" Format="F2" Immediate="true"
+                            Variant="Variant.Text" HideSpinButtons="true" Style="max-width:120px" />
+                    </MudTd>
+                    <MudTd>
+                        <MudNumericField T="decimal" @bind-Value="item.MaxBruttoKg" Format="F2" Immediate="true"
+                            Variant="Variant.Text" HideSpinButtons="true" Style="max-width:120px" />
+                    </MudTd>
+                    <MudTd>
+                        <MudNumericField T="decimal" @bind-Value="item.TareKg" Format="F2" Immediate="true"
+                            Variant="Variant.Text" HideSpinButtons="true" Style="max-width:120px" />
+                    </MudTd>
+                    <MudTd>
+                        <MudSwitch T="bool" @bind-Value="item.IsActive" Color="Color.Primary"
+                            Label="@(item.IsActive ? "Aktyvus" : "Išjungtas")" />
+                    </MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                            aria-label="Šalinti (išjungti)" OnClick="@(() => Remove(item))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<BucketTareRange> _rows = new();
+    private bool _loading = true;
+    private bool _saving;
+
+    private List<string> Errors => BucketTareRangeValidator.Validate(_rows);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _rows = (await TareService.GetRangesAsync(includeInactive: true)).ToList();
+        _loading = false;
+    }
+
+    private void AddRow()
+    {
+        var last = _rows.Where(r => r.IsActive).OrderBy(r => r.MaxBruttoKg).LastOrDefault();
+        var min = last is null ? 1.00m : last.MaxBruttoKg + 0.01m;
+        _rows.Add(new BucketTareRange { MinBruttoKg = min, MaxBruttoKg = min + 10m, TareKg = 0.10m, IsActive = true });
+    }
+
+    // Saved rows are soft-deleted (is_active = 0, kept for history); unsaved rows are simply dropped.
+    private void Remove(BucketTareRange item)
+    {
+        if (item.Id == 0) _rows.Remove(item);
+        else item.IsActive = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var errors = await TareService.SaveRangesAsync(_rows);
+            if (errors.Count > 0)
+            {
+                Snackbar.Add(string.Join(" ", errors), Severity.Error);
+                return;
+            }
+            await LoadAsync();
+            Snackbar.Add("Intervalai išsaugoti", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}
