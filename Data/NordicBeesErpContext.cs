@@ -56,6 +56,7 @@ namespace NordicBeesERP.Data
 
         // Warehouse Module
         public DbSet<Container> Containers { get; set; }
+        public DbSet<BucketTareRange> BucketTareRanges { get; set; }
         public DbSet<Delivery> Deliveries { get; set; }
         public DbSet<DeliveryLine> DeliveryLines { get; set; }
         public DbSet<StockMovement> StockMovements { get; set; }

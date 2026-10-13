@@ -43,6 +43,10 @@ public class Container
     [Column("net_weight")]
     public decimal NetWeight { get; set; }
 
+    /// <summary>True when the operator overrode the auto-calculated bucket tare.</summary>
+    [Column("tare_manual")]
+    public bool TareManual { get; set; }
+
     [Column("quantity")]
     public int Quantity { get; set; } = 1;
 

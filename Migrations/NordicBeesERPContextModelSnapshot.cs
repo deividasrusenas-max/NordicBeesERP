@@ -3024,6 +3024,46 @@ namespace NordicBeesERP.Migrations
                     b.ToTable("warehouses");
                 });
 
+            modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.BucketTareRange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_active");
+
+                    b.Property<decimal>("MaxBruttoKg")
+                        .HasColumnType("decimal(6,2)")
+                        .HasColumnName("max_brutto_kg");
+
+                    b.Property<decimal>("MinBruttoKg")
+                        .HasColumnType("decimal(6,2)")
+                        .HasColumnName("min_brutto_kg");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int")
+                        .HasColumnName("sort_order");
+
+                    b.Property<decimal>("TareKg")
+                        .HasColumnType("decimal(6,2)")
+                        .HasColumnName("tare_kg");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("bucket_tare_ranges");
+                });
+
             modelBuilder.Entity("NordicBeesERP.Models.WarehouseModule.Container", b =>
                 {
                     b.Property<int>("Id")
@@ -3106,6 +3146,10 @@ namespace NordicBeesERP.Migrations
                     b.Property<int>("SupplierId")
                         .HasColumnType("int")
                         .HasColumnName("supplier_id");
+
+                    b.Property<bool>("TareManual")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("tare_manual");
 
                     b.Property<decimal>("TareWeight")
                         .HasColumnType("decimal(65,30)")
