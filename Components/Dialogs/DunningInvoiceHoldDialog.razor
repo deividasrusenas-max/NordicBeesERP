@@ -1,0 +1,81 @@
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@inject DunningRepository Repo
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Pristabdyti priminimus – @InvoiceNumber</MudText></TitleContent>
+    <DialogContent>
+        @if (_existing)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">Šios sąskaitos priminimai jau pristabdyti. Galite pakeisti sąlygas arba juos atnaujinti.</MudAlert>
+        }
+        <MudSwitch T="bool" @bind-Value="_indefinite" Color="Color.Primary" Label="Neribotam laikui" Class="mb-2" />
+        @if (!_indefinite)
+        {
+            <MudDatePicker @bind-Date="_until" Label="Pristabdyti iki (imtinai)" Variant="Variant.Outlined" Class="mb-3" />
+        }
+        <MudTextField @bind-Value="_reason" Label="Priežastis" Variant="Variant.Outlined" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="Cancel">Atšaukti</MudButton>
+        @if (_existing)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" Style="text-transform:none" OnClick="RemoveAsync">Atnaujinti priminimus</MudButton>
+        }
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="SaveAsync">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int InvoiceId { get; set; }
+    [Parameter] public string InvoiceNumber { get; set; } = string.Empty;
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool _existing;
+    private bool _indefinite = true;
+    private DateTime? _until;
+    private string _reason = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var h = (await Repo.LoadHoldsAsync()).FirstOrDefault(x => x.InvoiceId == InvoiceId);
+            if (h is null) return;
+            _existing = true;
+            _indefinite = h.PausedUntil is null;
+            _until = h.PausedUntil?.ToDateTime(TimeOnly.MinValue);
+            _reason = h.Reason ?? string.Empty;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_reason)) { Snackbar.Add("Nurodykite priežastį", Severity.Warning); return; }
+        if (!_indefinite && _until is null) { Snackbar.Add("Nurodykite datą arba pasirinkite neribotam laikui", Severity.Warning); return; }
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            await Repo.SaveHoldAsync(InvoiceId, _indefinite ? null : DateOnly.FromDateTime(_until!.Value), _reason, auth.User.Identity?.Name);
+            Snackbar.Add("Išsaugota", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task RemoveAsync()
+    {
+        try
+        {
+            await Repo.RemoveHoldAsync(InvoiceId);
+            Snackbar.Add("Priminimai atnaujinti", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

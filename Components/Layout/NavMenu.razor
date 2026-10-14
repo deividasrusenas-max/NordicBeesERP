@@ -1,6 +1,7 @@
 @using MudBlazor
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IPaymentService PaymentService
+@inject NordicBeesERP.Services.Dunning.DunningService DunningSvc
 @inject NavigationManager Navigation
 @using NordicBeesERP.Services
 @using NordicBeesERP.Services.Dtos
@@ -157,6 +158,7 @@ else
     private bool _settingsOpen = true;
 
     private NavBadgeCounts _badgeCounts = new();
+    private int _dunningCount;
     private string _currentPath = "/";
 
     private sealed class NavItem
@@ -195,6 +197,12 @@ else
 
         try { _badgeCounts = await PaymentService.GetNavBadgeCountsAsync(); }
         catch { _badgeCounts = new NavBadgeCounts(); }
+
+        if (_isAdmin || _isManager)
+        {
+            try { _dunningCount = await DunningSvc.GetBadgeCountAsync(); }
+            catch { _dunningCount = 0; }
+        }
 
         BuildNav();
 
@@ -289,6 +297,7 @@ else
                 {
                     new() { Href = "/invoices/sales", Label = "Pardavimų sąskaitos", Count = _badgeCounts.OverdueInvoices, Danger = true },
                     new() { Href = "/payments", Label = "Skolų valdymas" },
+                    new() { Href = "/dunning", Label = "Skolų priminimai", Count = _dunningCount > 0 ? _dunningCount : null },
                     new() { Href = "/payments/forecast", Label = "Įplaukų prognozė" },
                     new() { Href = "/payments/history", Label = "Įplaukų istorija" },
                     new() { Href = "/bank-import?type=income", Label = "Banko importas" }

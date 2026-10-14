@@ -1,0 +1,73 @@
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@inject DunningRepository Repo
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Priminimų nustatymai – @PartnerName</MudText></TitleContent>
+    <DialogContent>
+        <MudSwitch T="bool" @bind-Value="_excluded" Color="Color.Error" Label="Nesiųsti šiam klientui priminimų" Class="mb-2" />
+        <MudDatePicker @bind-Date="_pausedUntil" Label="Pristabdyti iki (imtinai)" Variant="Variant.Outlined" Clearable="true" Class="mb-3" />
+        <MudTextField @bind-Value="_emailOverride" Label="Kitas el. paštas priminimams (kabliataškiu atskirti)" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_note" Label="Pastaba" Variant="Variant.Outlined" Lines="3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="Cancel">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="SaveAsync">Išsaugoti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int PartnerId { get; set; }
+    [Parameter] public string PartnerName { get; set; } = string.Empty;
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool _excluded;
+    private DateTime? _pausedUntil;
+    private string? _emailOverride;
+    private string? _note;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var s = (await Repo.LoadPartnerSettingsAsync()).FirstOrDefault(x => x.PartnerId == PartnerId);
+            if (s is null) return;
+            _excluded = s.Excluded;
+            _pausedUntil = s.PausedUntil?.ToDateTime(TimeOnly.MinValue);
+            _emailOverride = s.EmailOverride;
+            _note = s.Note;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            var addresses = DunningEngine.SplitAddresses(_emailOverride);
+            if (addresses.Count > 0)
+            {
+                NordicBeesERP.Services.Email.EmailQueue.NormalizeAddressList(addresses, "To", required: true);
+            }
+
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            await Repo.SavePartnerSettingAsync(
+                new DunningPartnerSetting(PartnerId, _excluded, _pausedUntil is null ? null : DateOnly.FromDateTime(_pausedUntil.Value), _emailOverride, _note),
+                auth.User.Identity?.Name);
+            Snackbar.Add("Išsaugota", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (ArgumentException)
+        {
+            Snackbar.Add("Neteisingas el. pašto adresas", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,65 @@
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@inject DunningService Dunning
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Laiško peržiūra – @Proposal.PartnerName</MudText></TitleContent>
+    <DialogContent>
+        @if (_mail is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudGrid Spacing="1">
+                <MudItem xs="12"><MudText Typo="Typo.caption">Kam</MudText><MudText>@_mail.To</MudText></MudItem>
+                @if (!string.IsNullOrWhiteSpace(_mail.Cc))
+                {
+                    <MudItem xs="12"><MudText Typo="Typo.caption">Kopija</MudText><MudText>@_mail.Cc</MudText></MudItem>
+                }
+                <MudItem xs="12"><MudText Typo="Typo.caption">Tema</MudText><MudText>@_mail.Subject</MudText></MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.caption">Priedai</MudText>
+                    @if (_mail.AttachmentNames.Count == 0)
+                    {
+                        <MudText>—</MudText>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var n in _mail.AttachmentNames)
+                            {
+                                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.PictureAsPdf">@n</MudChip>
+                            }
+                        </div>
+                    }
+                </MudItem>
+                <MudItem xs="12">
+                    <iframe sandbox srcdoc="@_mail.BodyHtml" style="width:100%;height:420px;border:1px solid #cbd5e1;border-radius:4px;background:#fff"></iframe>
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="Close">Uždaryti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public DunningPartnerProposal Proposal { get; set; } = default!;
+    [Parameter] public DunningConfig Config { get; set; } = new();
+    [Parameter] public int? Year { get; set; }
+    [Parameter] public DateOnly AsOf { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private DunningMail? _mail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _mail = await Dunning.BuildMailAsync(Proposal, Config, Year, AsOf, includeAttachments: false); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); MudDialog.Cancel(); }
+    }
+
+    private void Close() => MudDialog.Close();
+}

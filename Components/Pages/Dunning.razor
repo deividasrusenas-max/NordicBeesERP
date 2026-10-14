@@ -1,0 +1,325 @@
+@page "/dunning"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
+@rendermode InteractiveServer
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@using NordicBeesERP.Services.Email
+@using NordicBeesERP.Components.Dialogs
+@inject DunningService DunningSvc
+@inject DunningRepository Repo
+@inject EmailOutboxAdminService OutboxAdmin
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Skolų priminimai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
+        <MudText Typo="Typo.h5">Skolų priminimai</MudText>
+        @if (_isAdmin)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Settings" Style="text-transform:none" Href="/dunning/settings">Nustatymai</MudButton>
+        }
+    </div>
+
+    @{ var mode = OutboxAdmin.GetModeInfo(); }
+    @if (mode.Mode == EmailMode.Live)
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Class="mb-2">Tikras siuntimas</MudAlert>
+    }
+    else if (mode.Mode == EmailMode.Redirect)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">Peradresuojama į @mode.RedirectTo</MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">Siuntimas išjungtas</MudAlert>
+    }
+
+    @if (_overview is { SchemaApplied: false })
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Skolų priminimų lentelės dar nesukurtos duomenų bazėje.</MudAlert>
+    }
+    else if (_overview is not null)
+    {
+        var f = _overview.Freshness;
+        <MudAlert Severity="@(f.IsStale ? Severity.Error : Severity.Info)" Dense="true" Class="mb-2">
+            Paskutinis banko importas: @(f.LastBankImportUtc is { } b ? VilniusTime.ToLocal(b).ToString("yyyy-MM-dd HH:mm") : "niekada")
+            · Paskutinis mokėjimas: @(f.LastPaymentUtc is { } p ? p.ToString("yyyy-MM-dd") : "—")
+            @if (f.IsStale)
+            {
+                <span> · Mokėjimų duomenys gali būti pasenę – prieš siųsdami įkelkite banko išrašą.</span>
+            }
+        </MudAlert>
+        @if (!_overview.Config.Enabled)
+        {
+            <MudAlert Severity="Severity.Normal" Dense="true" Class="mb-2">Automatinis planavimas išjungtas (nustatymuose). Rankinis siuntimas galimas.</MudAlert>
+        }
+    }
+
+    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border:1px solid #e2e8f0; border-radius:8px;">
+        <div class="d-flex flex-wrap gap-3 align-center">
+            <MudSelect T="int" Value="_year" ValueChanged="OnYearChanged" Label="Metai" Variant="Variant.Outlined" Dense="true" Style="max-width:160px">
+                <MudSelectItem T="int" Value="0">Visi metai</MudSelectItem>
+                @for (var y = DunningService.Today().Year; y >= DunningService.Today().Year - 4; y--)
+                {
+                    <MudSelectItem T="int" Value="@y">@y</MudSelectItem>
+                }
+            </MudSelect>
+            <MudDatePicker Date="_asOf" DateChanged="OnAsOfChanged" Label="Data" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px" />
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Style="text-transform:none" OnClick="LoadAsync">Perskaičiuoti</MudButton>
+        </div>
+    </MudPaper>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Class="mb-3" />
+    }
+
+    @if (_overview is { SchemaApplied: true })
+    {
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-3">
+            <MudTabPanel Text="@($"Priminimai ({_overview.Plan.Proposals.Count})")">
+                @if (_overview.Plan.Proposals.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success">Šiuo metu nėra siunčiamų priminimų.</MudAlert>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap align-center gap-3 mb-2">
+                        <MudCheckBox T="bool" Value="AllSelected" ValueChanged="ToggleAll" Label="Pažymėti visus" />
+                        <MudText>Pažymėta: @_selected.Count klientų · @FormatMoney(SelectedTotal)</MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Send"
+                                   Disabled="@(_selected.Count == 0 || _overview.AsOf != _overview.Today || _sending)" OnClick="SendSelectedAsync">Siųsti pažymėtus</MudButton>
+                        @if (_overview.AsOf != _overview.Today)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Warning">Siųsti galima tik šiandienos datai.</MudText>
+                        }
+                    </div>
+                    <MudSimpleTable Dense="true" Hover="true" Bordered="true">
+                        <thead>
+                            <tr><th></th><th>Klientas</th><th>El. paštas</th><th>Lygis</th><th>Sąskaitų</th><th style="text-align:right">Pradelsta suma</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var p in _overview.Plan.Proposals)
+                        {
+                            var open = _expanded.Contains(p.PartnerId);
+                            <tr>
+                                <td><MudCheckBox T="bool" Value="_selected.Contains(p.PartnerId)" ValueChanged="v => ToggleSelect(p.PartnerId, v)" Dense="true" /></td>
+                                <td>
+                                    <MudIconButton Icon="@(open ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" OnClick="() => ToggleExpand(p.PartnerId)" />
+                                    @p.PartnerName
+                                </td>
+                                <td>@p.Recipient</td>
+                                <td>@LevelName(p.LevelNo)</td>
+                                <td>@p.Invoices.Count</td>
+                                <td style="text-align:right">@FormatMoney(p.TotalOverdue)</td>
+                                <td>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Style="text-transform:none" OnClick="() => PreviewAsync(p)">Peržiūra</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Style="text-transform:none" OnClick="() => PartnerSettingsAsync(p.PartnerId, p.PartnerName)">Kliento nustatymai</MudButton>
+                                </td>
+                            </tr>
+                            @if (open)
+                            {
+                                @foreach (var i in p.Invoices)
+                                {
+                                    <tr style="background:#f8fafc">
+                                        <td></td>
+                                        <td colspan="2" style="padding-left:48px"><MudLink Href="@($"/invoices/{i.InvoiceId}")">@i.InvoiceNumber</MudLink> · @i.InvoiceDate.ToString("yyyy-MM-dd") · terminas @i.DueDate.ToString("yyyy-MM-dd")</td>
+                                        <td>@LevelName(i.ProposedLevelNo)</td>
+                                        <td>@i.DaysOverdue d.</td>
+                                        <td style="text-align:right">@FormatMoney(i.Remaining)</td>
+                                        <td><MudButton Size="Size.Small" Variant="Variant.Text" Style="text-transform:none" OnClick="() => HoldAsync(i.InvoiceId, i.InvoiceNumber)">Pristabdyti</MudButton></td>
+                                    </tr>
+                                }
+                            }
+                        }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Nesiunčiama ({_overview.Plan.Skipped.Count})")">
+                @if (_overview.Plan.Skipped.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">Nėra praleistų sąskaitų.</MudAlert>
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Hover="true" Bordered="true">
+                        <thead><tr><th>Klientas</th><th>Sąskaita</th><th>Pradelsta dienų</th><th>Priežastis</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach (var s in _overview.Plan.Skipped.OrderBy(x => x.PartnerName).ThenByDescending(x => x.DaysOverdue))
+                        {
+                            <tr>
+                                <td>@s.PartnerName</td>
+                                <td>@s.InvoiceNumber</td>
+                                <td>@s.DaysOverdue</td>
+                                <td>@DunningLabels.Reason(s.Reason)</td>
+                                <td><MudButton Size="Size.Small" Variant="Variant.Text" Style="text-transform:none" OnClick="() => PartnerSettingsAsync(s.PartnerId, s.PartnerName)">Kliento nustatymai</MudButton></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="Istorija" OnClick="LoadHistoryAsync">
+                @if (_history is null)
+                {
+                    <MudProgressCircular Indeterminate="true" />
+                }
+                else if (_history.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">Priminimų dar nebuvo siųsta.</MudAlert>
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Hover="true" Bordered="true">
+                        <thead><tr><th>Data</th><th>Klientas</th><th>Sąskaita</th><th>Lygis</th><th>Būdas</th><th>Laiško būsena</th><th>Siuntėjas</th></tr></thead>
+                        <tbody>
+                        @foreach (var h in _history)
+                        {
+                            <tr>
+                                <td>@h.SentOn.ToString("yyyy-MM-dd")</td>
+                                <td>@h.PartnerName</td>
+                                <td><MudLink Href="@($"/invoices/{h.InvoiceId}")">@h.InvoiceNumber</MudLink></td>
+                                <td>@LevelName(h.LevelNo)</td>
+                                <td>@DunningLabels.Mode(h.Mode)</td>
+                                <td>@DunningLabels.OutboxStatus(h.OutboxStatus)</td>
+                                <td>@h.CreatedBy</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    private DunningOverview? _overview;
+    private List<DunningLogRow>? _history;
+    private readonly HashSet<int> _selected = new();
+    private readonly HashSet<int> _expanded = new();
+    private int _year;
+    private DateTime? _asOf;
+    private bool _loading;
+    private bool _sending;
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAdmin = auth.User.IsInRole("Admin");
+        _year = DunningService.Today().Year;
+        _asOf = DunningService.Today().ToDateTime(TimeOnly.MinValue);
+        await LoadAsync();
+    }
+
+    private static string FormatMoney(decimal v) => EmailFormat.Money(v);
+
+    private string LevelName(int levelNo) => _overview?.Levels.FirstOrDefault(l => l.LevelNo == levelNo)?.Name ?? $"#{levelNo}";
+
+    private bool AllSelected => _overview is not null && _overview.Plan.Proposals.Count > 0 && _selected.Count == _overview.Plan.Proposals.Count;
+
+    private decimal SelectedTotal => _overview?.Plan.Proposals.Where(p => _selected.Contains(p.PartnerId)).Sum(p => p.TotalOverdue) ?? 0m;
+
+    private async Task OnYearChanged(int year) { _year = year; await LoadAsync(); }
+
+    private async Task OnAsOfChanged(DateTime? date) { _asOf = date; await LoadAsync(); }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var asOf = _asOf is null ? (DateOnly?)null : DateOnly.FromDateTime(_asOf.Value);
+            _overview = await DunningSvc.GetOverviewAsync(_year == 0 ? null : _year, asOf);
+            _selected.RemoveWhere(id => _overview.Plan.Proposals.All(p => p.PartnerId != id));
+            _history = null;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        try { _history = await Repo.LoadLogHistoryAsync(300); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); _history = new(); }
+    }
+
+    private void ToggleSelect(int partnerId, bool on) { if (on) _selected.Add(partnerId); else _selected.Remove(partnerId); }
+
+    private void ToggleAll(bool on)
+    {
+        _selected.Clear();
+        if (on && _overview is not null) foreach (var p in _overview.Plan.Proposals) _selected.Add(p.PartnerId);
+    }
+
+    private void ToggleExpand(int partnerId) { if (!_expanded.Add(partnerId)) _expanded.Remove(partnerId); }
+
+    private async Task PreviewAsync(DunningPartnerProposal p)
+    {
+        if (_overview is null) return;
+        var parameters = new DialogParameters
+        {
+            ["Proposal"] = p, ["Config"] = _overview.Config, ["Year"] = _overview.Year, ["AsOf"] = _overview.AsOf
+        };
+        await DialogService.ShowAsync<DunningPreviewDialog>("Laiško peržiūra", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true });
+    }
+
+    private async Task PartnerSettingsAsync(int partnerId, string name)
+    {
+        var dialog = await DialogService.ShowAsync<DunningPartnerSettingsDialog>("Priminimų nustatymai",
+            new DialogParameters { ["PartnerId"] = partnerId, ["PartnerName"] = name },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        if (await dialog.Result is { Canceled: false }) await LoadAsync();
+    }
+
+    private async Task HoldAsync(int invoiceId, string number)
+    {
+        var dialog = await DialogService.ShowAsync<DunningInvoiceHoldDialog>("Pristabdyti priminimus",
+            new DialogParameters { ["InvoiceId"] = invoiceId, ["InvoiceNumber"] = number },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        if (await dialog.Result is { Canceled: false }) await LoadAsync();
+    }
+
+    private async Task SendSelectedAsync()
+    {
+        if (_overview is null || _selected.Count == 0) return;
+        var chosen = _overview.Plan.Proposals.Where(p => _selected.Contains(p.PartnerId)).ToList();
+        var message = $"Bus išsiųsta {chosen.Count} laiškų (klientų), bendra pradelsta suma {FormatMoney(chosen.Sum(p => p.TotalOverdue))}. Tęsti?";
+        if (!await ConfirmDialog.ShowAsync(DialogService, "Siųsti priminimus", message, "Siųsti", Color.Primary, Icons.Material.Filled.Send)) return;
+
+        _sending = true;
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var result = await DunningSvc.SendAsync(_selected.ToList(), "manual", auth.User.Identity?.Name, _overview.Year, _overview.AsOf);
+            if (result.PartnersSent > 0)
+                Snackbar.Add($"Į siuntimo eilę įdėta laiškų: {result.PartnersSent} ({FormatMoney(result.TotalRemaining)})", Severity.Success);
+            foreach (var e in result.Errors)
+                Snackbar.Add(string.IsNullOrEmpty(e.PartnerName) ? e.Message : $"{e.PartnerName}: {e.Message}", Severity.Warning);
+            _selected.Clear();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+}
