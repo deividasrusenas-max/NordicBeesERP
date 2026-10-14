@@ -1,0 +1,267 @@
+@page "/dunning/settings"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@using NordicBeesERP.Services.Email
+@using NordicBeesERP.Components.Dialogs
+@inject DunningRepository Repo
+@inject IEmailTemplateService Templates
+@inject EmailOutboxAdminService OutboxAdmin
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Skolų priminimų nustatymai</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.h5">Skolų priminimų nustatymai</MudText>
+        <MudButton Variant="Variant.Outlined" Style="text-transform:none" Href="/dunning">Atgal į priminimus</MudButton>
+    </div>
+
+    @if (_schemaMissing)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Skolų priminimų lentelės dar nesukurtos duomenų bazėje.</MudAlert>
+    }
+
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-3">
+        <MudTabPanel Text="Bendri">
+            @if (_cfg is not null)
+            {
+                var mode = OutboxAdmin.GetModeInfo();
+                @if (_cfg.AutoSend && mode.Mode != EmailMode.Live)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mb-3">Automatinis siuntimas vyksta tik esant režimui „Tikras siuntimas“. Dabar režimas: @(mode.Mode == EmailMode.Redirect ? "peradresavimas" : "išjungta").</MudAlert>
+                }
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudSwitch T="bool" @bind-Value="_cfg.Enabled" Color="Color.Primary" Label="Įjungti kasdienį planavimą" />
+                        <MudSwitch T="bool" @bind-Value="_cfg.AutoSend" Color="Color.Warning" Label="Siųsti automatiškai (be patvirtinimo)" />
+                        <MudSwitch T="bool" @bind-Value="_cfg.IncludeIndividuals" Color="Color.Primary" Label="Įtraukti fizinius asmenis" />
+                        <MudSwitch T="bool" @bind-Value="_cfg.AttachInvoicePdfs" Color="Color.Primary" Label="Prisegti sąskaitų PDF" />
+                        <MudSwitch T="bool" @bind-Value="_cfg.AttachStatement" Color="Color.Primary" Label="Prisegti neapmokėtų sąskaitų suvestinę" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField T="int" @bind-Value="_cfg.RunHour" Label="Paleidimo valanda (Vilniaus laiku, 0–23)" Min="0" Max="23" Variant="Variant.Outlined" Class="mb-2" />
+                        <MudNumericField T="int" @bind-Value="_cfg.GraceDays" Label="Lengvatinis laikotarpis (dienos po termino)" Min="0" Variant="Variant.Outlined" Class="mb-2" />
+                        <MudNumericField T="int" @bind-Value="_cfg.MinDaysBetween" Label="Minimalus intervalas tarp priminimų klientui (dienos)" Min="0" Variant="Variant.Outlined" Class="mb-2" />
+                        <MudNumericField T="decimal" @bind-Value="_cfg.MinAmount" Label="Minimali skola (€, siunčiama jei didesnė)" Min="0m" Variant="Variant.Outlined" Class="mb-2" />
+                        <MudNumericField T="int" @bind-Value="_cfg.StaleImportDays" Label="Banko importas laikomas pasenusiu po (dienų)" Min="0" Variant="Variant.Outlined" Class="mb-2" />
+                        <MudTextField T="string" @bind-Value="_cfg.CcAddress" Label="Kopija (CC) adresas" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">Informacinės sumos laiške (tik paskutiniame lygyje, jei šablone yra {{InterestBlock}})</MudText>
+                        <MudSwitch T="bool" @bind-Value="_cfg.ShowInterest" Color="Color.Primary" Label="Rodyti palūkanas" />
+                        <MudNumericField T="decimal?" @bind-Value="_cfg.InterestRatePct" Label="Metinė palūkanų norma (%)" Min="0m" Variant="Variant.Outlined" Class="mb-2" Style="max-width:260px" />
+                        <MudSwitch T="bool" @bind-Value="_cfg.ShowFixedFee" Color="Color.Primary" Label="Rodyti fiksuotą kompensaciją" />
+                        <MudNumericField T="decimal" @bind-Value="_cfg.FixedFeeEur" Label="Fiksuota kompensacija už sąskaitą (€)" Min="0m" Variant="Variant.Outlined" Style="max-width:260px" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="SaveConfigAsync">Išsaugoti</MudButton>
+                    </MudItem>
+                </MudGrid>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Lygiai">
+            <MudSimpleTable Dense="true" Bordered="true">
+                <thead><tr><th>Nr.</th><th>Pavadinimas</th><th>Dienos po termino</th><th>Šablonas</th><th>Kartoti kas (dienos)</th><th>Aktyvus</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var l in _levels)
+                {
+                    <tr>
+                        <td style="width:70px"><MudNumericField T="int" @bind-Value="l.LevelNo" Min="1" Disabled="@(!l.IsNew)" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td><MudTextField T="string" @bind-Value="l.Name" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td style="width:120px"><MudNumericField T="int" @bind-Value="l.DaysAfterDue" Min="0" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td style="width:200px"><MudTextField T="string" @bind-Value="l.TemplateCode" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td style="width:120px"><MudNumericField T="int?" @bind-Value="l.RepeatEveryDays" Min="1" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td><MudCheckBox T="bool" @bind-Value="l.IsActive" Dense="true" /></td>
+                        <td>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Style="text-transform:none" OnClick="() => SaveLevelAsync(l)">Išsaugoti</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" Style="text-transform:none" OnClick="() => DeleteLevelAsync(l)">Naikinti</MudButton>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </MudSimpleTable>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Add" OnClick="AddLevel">Pridėti lygį</MudButton>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Šablonai">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="3">
+                    <MudSelect T="string" Value="_tplKey" ValueChanged="OnTemplateSelected" Label="Šablonas" Variant="Variant.Outlined">
+                        @foreach (var t in _templates)
+                        {
+                            <MudSelectItem T="string" Value="@($"{t.Code}|{t.Language}")">@t.Code · @t.Language@(t.IsBuiltIn ? " (numatytasis)" : "")</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudText Typo="Typo.caption" Class="mt-3">Galimi laukai:</MudText>
+                    <div class="d-flex flex-column">
+                        @foreach (var ph in EmailTemplateRenderer.Placeholders)
+                        {
+                            <code style="font-size:12px">{{@ph}}</code>
+                        }
+                    </div>
+                </MudItem>
+                <MudItem xs="12" md="9">
+                    @if (_tplKey is not null)
+                    {
+                        <MudTextField T="string" @bind-Value="_tplSubject" Label="Tema" Variant="Variant.Outlined" Class="mb-2" />
+                        <MudTextField T="string" @bind-Value="_tplBody" Label="Turinys (HTML)" Variant="Variant.Outlined" Lines="10" AutoGrow="true" MaxLines="24" Class="mb-2" />
+                        <MudSwitch T="bool" @bind-Value="_tplActive" Color="Color.Primary" Label="Aktyvus" />
+                        <div class="d-flex gap-2 mt-2 mb-3">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="SaveTemplateAsync">Išsaugoti</MudButton>
+                            <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="PreviewTemplate">Peržiūra</MudButton>
+                            <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="ResetTemplate">Atkurti numatytąjį</MudButton>
+                        </div>
+                        @if (_previewHtml is not null)
+                        {
+                            <MudText Typo="Typo.caption">Tema: @_previewSubject</MudText>
+                            <iframe sandbox srcdoc="@_previewHtml" style="width:100%;height:360px;border:1px solid #cbd5e1;border-radius:4px;background:#fff"></iframe>
+                        }
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private sealed class LevelEdit
+    {
+        public int LevelNo { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int DaysAfterDue { get; set; }
+        public string TemplateCode { get; set; } = string.Empty;
+        public int? RepeatEveryDays { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool IsNew { get; set; }
+    }
+
+    private DunningConfig? _cfg;
+    private List<LevelEdit> _levels = new();
+    private List<EmailTemplateRow> _templates = new();
+    private bool _schemaMissing;
+
+    private string? _tplKey;
+    private string _tplSubject = string.Empty;
+    private string _tplBody = string.Empty;
+    private bool _tplActive = true;
+    private string? _previewHtml;
+    private string? _previewSubject;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _cfg = await Repo.LoadConfigAsync();
+            _levels = (await Repo.LoadLevelsAsync()).Select(l => new LevelEdit
+            {
+                LevelNo = l.LevelNo, Name = l.Name, DaysAfterDue = l.DaysAfterDue, TemplateCode = l.TemplateCode,
+                RepeatEveryDays = l.RepeatEveryDays, IsActive = l.IsActive
+            }).ToList();
+        }
+        catch (Exception ex) when (DunningRepository.IsMissingTable(ex))
+        {
+            _schemaMissing = true;
+            _cfg = new DunningConfig();
+        }
+
+        _templates = await Templates.ListAsync();
+    }
+
+    private async Task SaveConfigAsync()
+    {
+        if (_cfg is null) return;
+        if (_cfg.RunHour is < 0 or > 23) { Snackbar.Add("Valanda turi būti nuo 0 iki 23", Severity.Warning); return; }
+        if (_cfg.ShowInterest && _cfg.InterestRatePct is null) { Snackbar.Add("Nurodykite palūkanų normą arba išjunkite palūkanų rodymą", Severity.Warning); return; }
+        try
+        {
+            var cc = DunningEngine.SplitAddresses(_cfg.CcAddress);
+            if (cc.Count > 0) EmailQueue.NormalizeAddressList(cc, "Cc", required: true);
+            await Repo.SaveConfigAsync(_cfg);
+            Snackbar.Add("Išsaugota", Severity.Success);
+        }
+        catch (ArgumentException) { Snackbar.Add("Neteisingas CC el. pašto adresas", Severity.Warning); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private void AddLevel()
+    {
+        var next = _levels.Count == 0 ? 1 : _levels.Max(l => l.LevelNo) + 1;
+        _levels.Add(new LevelEdit { LevelNo = next, Name = $"Lygis {next}", DaysAfterDue = 30, TemplateCode = "DUNNING_L1", IsNew = true });
+    }
+
+    private async Task SaveLevelAsync(LevelEdit l)
+    {
+        if (string.IsNullOrWhiteSpace(l.Name) || string.IsNullOrWhiteSpace(l.TemplateCode)) { Snackbar.Add("Užpildykite pavadinimą ir šabloną", Severity.Warning); return; }
+        try
+        {
+            await Repo.SaveLevelAsync(new DunningLevel(l.LevelNo, l.Name.Trim(), l.DaysAfterDue, l.TemplateCode.Trim(), l.RepeatEveryDays, l.IsActive));
+            l.IsNew = false;
+            Snackbar.Add("Išsaugota", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task DeleteLevelAsync(LevelEdit l)
+    {
+        if (!l.IsNew)
+        {
+            if (!await ConfirmDialog.ShowAsync(DialogService, "Naikinti lygį", $"Ar tikrai naikinti lygį „{l.Name}“?", "Naikinti")) return;
+            try { await Repo.DeleteLevelAsync(l.LevelNo); }
+            catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); return; }
+        }
+
+        _levels.Remove(l);
+    }
+
+    private void OnTemplateSelected(string key)
+    {
+        _tplKey = key;
+        var parts = key.Split('|');
+        var row = _templates.First(t => t.Code == parts[0] && t.Language == parts[1]);
+        _tplSubject = row.Subject;
+        _tplBody = row.BodyHtml;
+        _tplActive = row.IsActive;
+        _previewHtml = null;
+    }
+
+    private (string Code, string Lang) CurrentKey() { var p = _tplKey!.Split('|'); return (p[0], p[1]); }
+
+    private async Task SaveTemplateAsync()
+    {
+        if (_tplKey is null) return;
+        var (code, lang) = CurrentKey();
+        try
+        {
+            await Templates.SaveAsync(new EmailTemplateRow(code, lang, _tplSubject, _tplBody, _tplActive, false));
+            _templates = await Templates.ListAsync();
+            Snackbar.Add("Išsaugota", Severity.Success);
+        }
+        catch (ArgumentException) { Snackbar.Add("Tema ir turinys privalomi (tema iki 500 simbolių)", Severity.Warning); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private void PreviewTemplate()
+    {
+        if (_tplKey is null) return;
+        var (_, lang) = CurrentKey();
+        var (plain, html) = EmailTemplateRenderer.SampleData(lang);
+        var (subject, body) = EmailTemplateRenderer.Render(new EmailTemplate("", lang, _tplSubject, _tplBody), plain, html);
+        _previewSubject = subject;
+        _previewHtml = body;
+    }
+
+    private void ResetTemplate()
+    {
+        if (_tplKey is null) return;
+        var (code, lang) = CurrentKey();
+        var d = EmailTemplateDefaults.Find(code, lang);
+        if (d is null) { Snackbar.Add("Šiam šablonui numatytojo varianto nėra", Severity.Warning); return; }
+        _tplSubject = d.Subject;
+        _tplBody = d.BodyHtml;
+        _previewHtml = null;
+    }
+}
