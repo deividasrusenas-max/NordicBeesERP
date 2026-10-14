@@ -1,0 +1,80 @@
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@using NordicBeesERP.Services.Email
+@inject EmailOutboxAdminService Outbox
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_detail is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            var r = _detail.Row;
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">Gavėjas</MudText><MudText>@r.To</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">Originalus gavėjas</MudText><MudText>@(r.OriginalTo ?? "—")</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">Kopija</MudText><MudText>@(_detail.Cc ?? "—")</MudText></MudItem>
+                <MudItem xs="12" md="6"><MudText Typo="Typo.caption">Atsakyti į</MudText><MudText>@(_detail.ReplyTo ?? "—")</MudText></MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.caption">Tema</MudText><MudText>@r.Subject</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">Būsena</MudText><MudText>@Pages.Email.EmailOutbox.StatusLabelPublic(r.Status) (bandymai: @r.Attempts)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">Sukurta</MudText><MudText>@Local(r.CreatedAtUtc)</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudText Typo="Typo.caption">Išsiųsta</MudText><MudText>@(r.SentAtUtc is { } s ? Local(s) : "—")</MudText></MudItem>
+                @if (!string.IsNullOrWhiteSpace(r.LastError))
+                {
+                    <MudItem xs="12"><MudAlert Severity="Severity.Error" Dense="true">@r.LastError</MudAlert></MudItem>
+                }
+                @if (_detail.Attachments.Count > 0)
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption">Priedai</MudText>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var a in _detail.Attachments)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" Style="text-transform:none" OnClick="() => DownloadAsync(a.Id)">@a.FileName</MudButton>
+                            }
+                        </div>
+                    </MudItem>
+                }
+                <MudItem xs="12">
+                    <MudText Typo="Typo.caption">Turinys</MudText>
+                    @* sandbox with no allow-* tokens: no scripts, no navigation, no forms *@
+                    <iframe sandbox srcdoc="@_detail.BodyHtml" style="width:100%;height:420px;border:1px solid #cbd5e1;border-radius:4px;background:#fff"></iframe>
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="Close">Uždaryti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int OutboxId { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private OutboxDetail? _detail;
+
+    protected override async Task OnInitializedAsync() => _detail = await Outbox.GetDetailAsync(OutboxId);
+
+    private static string Local(DateTime utc) => VilniusTime.ToLocal(utc).ToString("yyyy-MM-dd HH:mm");
+
+    private void Close() => MudDialog.Close();
+
+    private async Task DownloadAsync(int attachmentId)
+    {
+        try
+        {
+            var file = await Outbox.DownloadAttachmentAsync(attachmentId);
+            if (file is null) { Snackbar.Add("Priedas nerastas", Severity.Warning); return; }
+            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Value.FileName, file.Value.ContentType, Convert.ToBase64String(file.Value.Bytes));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

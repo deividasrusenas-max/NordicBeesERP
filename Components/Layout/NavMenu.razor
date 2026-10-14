@@ -295,6 +295,10 @@ else
                 },
                 DefaultExpanded = true
             };
+            if (_isAdmin)
+            {
+                salesSection.Items.Add(new NavItem { Href = "/email/outbox", Label = "El. pašto žurnalas" });
+            }
             salesSection.Expanded = salesSection.DefaultExpanded;
             _groupedSections.Add(new NavGroup { GroupLabel = "Finansai", Icon = "€", Section = salesSection });
         }

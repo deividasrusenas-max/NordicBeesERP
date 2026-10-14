@@ -1,0 +1,206 @@
+@page "/email/outbox"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@using NordicBeesERP.Services.Email
+@using NordicBeesERP.Components.Dialogs
+@inject EmailOutboxAdminService Outbox
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>El. pašto žurnalas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-3">El. pašto žurnalas</MudText>
+
+    @{ var info = Outbox.GetModeInfo(); }
+    @if (info.Mode == EmailMode.Live)
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-3">Tikras siuntimas</MudAlert>
+    }
+    else if (info.Mode == EmailMode.Redirect)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-3">Peradresuojama į @info.RedirectTo</MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Siuntimas išjungtas</MudAlert>
+    }
+
+    @if (_schemaMissing)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">El. pašto lentelės dar nesukurtos duomenų bazėje.</MudAlert>
+    }
+
+    <div class="d-flex flex-wrap gap-3 align-center mb-3">
+        <MudSelect T="string" Value="_status" ValueChanged="OnStatusChanged" Label="Būsena" Variant="Variant.Outlined" Dense="true" Style="max-width:220px" Clearable="true">
+            @foreach (var s in _statuses)
+            {
+                <MudSelectItem T="string" Value="@s">@StatusLabel(s)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Style="text-transform:none" OnClick="ReloadAsync">Atnaujinti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Style="text-transform:none" OnClick="SendTestAsync">Siųsti testinį laišką</MudButton>
+    </div>
+
+    <MudTable T="OutboxListRow" @ref="_table" ServerData="LoadAsync" Dense="true" Hover="true" Bordered="true" RowsPerPage="25">
+        <HeaderContent>
+            <MudTh>#</MudTh>
+            <MudTh>Sukurta</MudTh>
+            <MudTh>Gavėjas</MudTh>
+            <MudTh>Tema</MudTh>
+            <MudTh>Būsena</MudTh>
+            <MudTh>Bandymai</MudTh>
+            <MudTh>Susiję</MudTh>
+            <MudTh>Klaida</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Id</MudTd>
+            <MudTd>@Local(context.CreatedAtUtc)</MudTd>
+            <MudTd>
+                @context.To
+                @if (!string.IsNullOrWhiteSpace(context.OriginalTo))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">(originalus: @context.OriginalTo)</MudText>
+                }
+            </MudTd>
+            <MudTd>@context.Subject</MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)" Variant="Variant.Outlined">@StatusLabel(context.Status)</MudChip></MudTd>
+            <MudTd>@context.Attempts</MudTd>
+            <MudTd>
+                @if (RelatedHref(context) is { } href)
+                {
+                    <MudLink Href="@href">@RelatedText(context)</MudLink>
+                }
+            </MudTd>
+            <MudTd><MudText Typo="Typo.caption" Color="Color.Error">@Truncate(context.LastError, 80)</MudText></MudTd>
+            <MudTd>
+                <MudButton Size="Size.Small" Variant="Variant.Text" Style="text-transform:none" OnClick="() => OpenDetailAsync(context.Id)">Peržiūrėti</MudButton>
+                @if (context.Status == "queued")
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" Style="text-transform:none" OnClick="() => CancelAsync(context.Id)">Atšaukti</MudButton>
+                }
+                @if (context.Status == "failed")
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Style="text-transform:none" OnClick="() => RetryAsync(context.Id)">Bandyti dar kartą</MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Laiškų nėra.</MudText></NoRecordsContent>
+        <PagerContent><MudTablePager PageSizeOptions="new[] { 10, 25, 50 }" /></PagerContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private static readonly string[] _statuses = { "queued", "sending", "sent", "failed", "cancelled" };
+    private MudTable<OutboxListRow>? _table;
+    private string? _status;
+    private bool _schemaMissing;
+
+    public static string StatusLabelPublic(string s) => StatusLabel(s);
+
+    internal static string StatusLabel(string s) => s switch
+    {
+        "queued" => "Eilėje",
+        "sending" => "Siunčiama",
+        "sent" => "Išsiųsta",
+        "failed" => "Nepavyko",
+        "cancelled" => "Atšaukta",
+        _ => s
+    };
+
+    private static Color StatusColor(string s) => s switch
+    {
+        "sent" => Color.Success,
+        "failed" => Color.Error,
+        "queued" => Color.Info,
+        "sending" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string Local(DateTime utc) => VilniusTime.ToLocal(utc).ToString("yyyy-MM-dd HH:mm");
+
+    private static string? Truncate(string? s, int n) => s is null ? null : (s.Length <= n ? s : s[..n] + "…");
+
+    internal static string? RelatedHref(OutboxListRow r) => (r.RelatedType, r.RelatedId) switch
+    {
+        ("invoice", { } id) => $"/invoices/{id}",
+        ("credit_note", { } id) => $"/credit-notes/{id}",
+        ("dunning", _) => "/dunning",
+        _ => null
+    };
+
+    private static string RelatedText(OutboxListRow r) => r.RelatedType switch
+    {
+        "invoice" => $"Sąskaita #{r.RelatedId}",
+        "credit_note" => $"Kreditinė #{r.RelatedId}",
+        "dunning" => "Skolų priminimas",
+        _ => r.RelatedType ?? string.Empty
+    };
+
+    private async Task<TableData<OutboxListRow>> LoadAsync(TableState state, CancellationToken ct)
+    {
+        try
+        {
+            var (total, rows) = await Outbox.PageAsync(_status, state.Page, state.PageSize, ct);
+            _schemaMissing = false;
+            return new TableData<OutboxListRow> { TotalItems = total, Items = rows };
+        }
+        catch (Exception ex) when (DunningRepository.IsMissingTable(ex))
+        {
+            _schemaMissing = true;
+            return new TableData<OutboxListRow> { TotalItems = 0, Items = Array.Empty<OutboxListRow>() };
+        }
+    }
+
+    private async Task OnStatusChanged(string? status)
+    {
+        _status = status;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_table is not null) await _table.ReloadServerData();
+    }
+
+    private async Task OpenDetailAsync(int id)
+    {
+        var parameters = new DialogParameters { ["OutboxId"] = id };
+        await DialogService.ShowAsync<EmailDetailDialog>($"Laiškas #{id}", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true });
+    }
+
+    private async Task CancelAsync(int id)
+    {
+        if (!await ConfirmDialog.ShowAsync(DialogService, "Atšaukti laišką", "Ar tikrai atšaukti šį laišką? Jis nebus išsiųstas.", "Atšaukti laišką")) return;
+        var ok = await Outbox.CancelAsync(id);
+        Snackbar.Add(ok ? "Laiškas atšauktas" : "Laiškas jau nebėra eilėje", ok ? Severity.Success : Severity.Warning);
+        await ReloadAsync();
+    }
+
+    private async Task RetryAsync(int id)
+    {
+        var ok = await Outbox.RetryAsync(id);
+        Snackbar.Add(ok ? "Laiškas grąžintas į eilę" : "Laiško būsena pasikeitė", ok ? Severity.Success : Severity.Warning);
+        await ReloadAsync();
+    }
+
+    private async Task SendTestAsync()
+    {
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var id = await Outbox.EnqueueTestAsync(auth.User.Identity?.Name);
+            Snackbar.Add($"Testinis laiškas įdėtas į eilę (#{id})", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}
