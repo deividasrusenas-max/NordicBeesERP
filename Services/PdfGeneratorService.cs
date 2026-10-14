@@ -147,7 +147,7 @@ namespace NordicBeesERP.Services
             
             // Tikriname, ar tai yra 6% atvirkštinio apmokestinimo sąskaita
             
-            // Abiejų atveju - kairėje įmonės duomenys (MB Lakštena), dešinėje kliento duomenys
+            // Abiejų atveju - kairėje savos įmonės duomenys, dešinėje kliento duomenys
             var seller = invoice.Customer != null ? new BusinessPartner { 
                 Name = invoice.Customer.Name,
                 CompanyCode = invoice.Customer.CompanyCode,

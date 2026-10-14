@@ -54,12 +54,12 @@ public static class ExpenseStatusHelper
     /// <summary>D-025: the due date was not on the document and was assumed (invoice date + 30 d.).</summary>
     public static bool IsDueDateAssumed(string? ocrFlags) => ParseFlags(ocrFlags).Contains("MISSING_DUE_DATE");
 
-    public static string GetFlagLabel(string flag) => GetFlagLabel(flag, "MB Lakštenai");
+    public static string GetFlagLabel(string flag) => GetFlagLabel(flag, null);
 
-    public static string GetFlagLabel(string flag, string companyName) => flag switch
+    public static string GetFlagLabel(string flag, string? companyName) => flag switch
     {
         "VENDOR_NOT_FOUND"   => "Nežinomas tiekėjas",
-        "WRONG_RECIPIENT"    => $"Ne {companyName}",
+        "WRONG_RECIPIENT"    => string.IsNullOrWhiteSpace(companyName) ? "Ne mūsų įmonės sąskaita" : $"Ne {companyName}",
         "OWN_COMPANY"        => "Savos įmonės sąskaita",
         "MISSING_AMOUNT"     => "Trūksta sumos",
         "MISSING_INV_NUMBER" => "Trūksta numerio",
