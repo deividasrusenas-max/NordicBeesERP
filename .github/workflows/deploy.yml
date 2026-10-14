@@ -34,6 +34,13 @@ jobs:
               --restart always \
               --add-host host.docker.internal:host-gateway \
               -e ASPNETCORE_ENVIRONMENT=Production \
+              -e "Email__Mode=${{ vars.EMAIL_MODE_PROD || 'Redirect' }}" \
+              -e "Email__RedirectTo=${{ vars.EMAIL_REDIRECT_TO }}" \
+              -e "Email__SmtpHost=${{ vars.EMAIL_SMTP_HOST }}" \
+              -e "Email__ImapHost=${{ vars.EMAIL_IMAP_HOST }}" \
+              -e "Email__Username=${{ vars.EMAIL_USERNAME }}" \
+              -e "Email__FromAddress=${{ vars.EMAIL_FROM_ADDRESS }}" \
+              -e "Email__Password=${{ secrets.EMAIL_SMTP_PASSWORD }}" \
               -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
               -v /var/lib/nordicbees/artwork:/var/lib/nordicbees/artwork \
               -v /var/lib/nordicbees/delivery-receipts:/var/lib/nordicbees/delivery-receipts \
@@ -51,6 +58,8 @@ jobs:
               --restart always \
               --add-host host.docker.internal:host-gateway \
               -e ASPNETCORE_ENVIRONMENT=Staging \
+              -e "Email__Mode=Redirect" \
+              -e "Email__RedirectTo=${{ vars.EMAIL_REDIRECT_TO }}" \
               -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp_staging;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
               -v /var/lib/nordicbees/artwork-staging:/var/lib/nordicbees/artwork \
               -v /var/lib/nordicbees/delivery-receipts-staging:/var/lib/nordicbees/delivery-receipts \

@@ -16,6 +16,7 @@ using MudBlazor.Services;
 using NordicBeesERP.Services.Artwork;
 using NordicBeesERP.Services.Storage;
 using NordicBeesERP.Services.Labeling;
+using NordicBeesERP.Services.Email;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -121,6 +122,11 @@ builder.Services.AddHostedService<ArtworkPreviewWorker>();
 builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
 builder.Services.AddScoped<IFileStore, FileStore>();
 builder.Services.AddHostedService<DashboardSnapshotWorker>();
+
+// Outbound e-mail (queue + worker). Config/secrets come only from IConfiguration (Email__* env vars), never app_settings.
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.AddScoped<IEmailQueue, EmailQueue>();
+builder.Services.AddHostedService<EmailOutboxWorker>();
 
 // Telegram notifications
 builder.Services.Configure<TelegramOptions>(builder.Configuration.GetSection("Telegram"));
