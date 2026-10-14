@@ -14,7 +14,7 @@
         <MudSwitch T="bool" @bind-Value="_indefinite" Color="Color.Primary" Label="Neribotam laikui" Class="mb-2" />
         @if (!_indefinite)
         {
-            <MudDatePicker @bind-Date="_until" Label="Pristabdyti iki (imtinai)" Variant="Variant.Outlined" Class="mb-3" />
+            <MudDatePicker DateFormat="@DunningDates.Format" Culture="@DunningDates.Culture" @bind-Date="_until" Label="Pristabdyti iki (imtinai)" Variant="Variant.Outlined" Class="mb-3" />
         }
         <MudTextField @bind-Value="_reason" Label="Priežastis" Variant="Variant.Outlined" Required="true" />
     </DialogContent>

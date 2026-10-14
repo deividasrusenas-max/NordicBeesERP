@@ -74,3 +74,17 @@ public static class DunningYears
 {
     public static IReadOnlyList<int> Options(int currentYear) => Enumerable.Range(0, 5).Select(i => currentYear - i).ToList();
 }
+
+/// <summary>Date display for the dunning UI: ISO yyyy-MM-dd with the lt-LT culture (invariant when the container has no ICU data for it).</summary>
+public static class DunningDates
+{
+    public const string Format = "yyyy-MM-dd";
+
+    public static readonly System.Globalization.CultureInfo Culture = Resolve();
+
+    private static System.Globalization.CultureInfo Resolve()
+    {
+        try { return System.Globalization.CultureInfo.GetCultureInfo("lt-LT"); }
+        catch (System.Globalization.CultureNotFoundException) { return System.Globalization.CultureInfo.InvariantCulture; }
+    }
+}

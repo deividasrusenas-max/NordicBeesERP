@@ -67,7 +67,7 @@
                     <MudSelectItem T="int" Value="@y">@y</MudSelectItem>
                 }
             </MudSelect>
-            <MudDatePicker Date="_asOf" DateChanged="OnAsOfChanged" Label="Data" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px" />
+            <MudDatePicker DateFormat="@DunningDates.Format" Culture="@DunningDates.Culture" Date="_asOf" DateChanged="OnAsOfChanged" Label="Data" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px" />
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Style="text-transform:none" OnClick="LoadAsync">Perskaičiuoti</MudButton>
         </div>
     </MudPaper>
