@@ -1515,14 +1515,10 @@ namespace NordicBeesERP.Services
                 .AsNoTracking()
                 .CountAsync(d => d.Status == "RECEIVED");
 
-            // 2. Overdue invoices (LAK invoices with DueDate < today and PaymentStatus != "paid")
+            // 2. Overdue invoices (LAK, COALESCE(due_date, payment_due_date) < today, not paid/disputed) — see OverdueInvoiceFilter
             counts.OverdueInvoices = await context.Invoices
                 .AsNoTracking()
-                .Where(i => EF.Functions.Like(i.InvoiceNumber, "LAK%")
-                    && !EF.Functions.Like(i.InvoiceNumber, "ULAK%")
-                    && i.DueDate.HasValue && i.DueDate.Value < DateTime.Today
-                    && i.PaymentStatus != "paid"
-                    && i.Status != InvoiceStatus.Disputed)
+                .Where(OverdueInvoiceFilter.Predicate(DateTime.Today))
                 .CountAsync();
 
             // 3. Unmatched bank import rows

@@ -1789,11 +1789,11 @@ re-labeling the symptom.
 ### 2026-10-14 — Nav overdue badge ignores sales invoices with `due_date` NULL (109 of 486 on prod)
 - **Symptom**: `NavBadgeCounts.OverdueInvoices` (`PaymentService.cs`, ~:1507-1537, `i.DueDate.HasValue && i.DueDate.Value < DateTime.Today`) silently skips every LAK invoice whose `due_date` is NULL — 109 of 486 on prod (dev: 70 of 449). Those invoices never raise the badge even when long overdue. Found during the e-mail/dunning investigation (`.opencode/reports/email-dunning-investigation-20261014-0932.md`, F1).
 - **Root cause**: two due-date columns on `invoices` (`due_date`, `payment_due_date`). `UpdateInvoiceStatusAsync` writes only `payment_due_date` on confirm, so `due_date` stays NULL for those rows. `UnpaidInvoicesService` already uses `DueDate ?? PaymentDueDate`; the badge (and `GetUnpaidInvoicesAsync` ordering) read `due_date` only.
-- **Fix (NOT done — out of scope of email-core-p1)**: use `COALESCE(due_date, payment_due_date)` (i.e. `i.DueDate ?? i.PaymentDueDate`) in the badge query and in any other overdue/due-date reader; EF translation must be checked. Do not touch bank import / PaymentService payment logic as part of it.
+- **Fix (2026-10-15, email-p4-hardening)**: the badge query now uses `OverdueInvoiceFilter.Predicate` (`Services/OverdueInvoiceFilter.cs`) = `(DueDate ?? PaymentDueDate) < today`, same rule as `UnpaidInvoicesService`. Only the badge query changed; no payment/bank-import logic touched. `GetUnpaidInvoicesAsync` ordering (mentioned above) was not changed in this step.
 - **Category**: other
 - **Error class**: `dual-column-source-of-truth` (provisional)
-- **Guardrail added**: none yet
-- **Status**: monitoring — open, MEDIUM (understated overdue count; any dunning built on `due_date` alone would miss the same rows).
+- **Guardrail added**: `OverdueInvoiceFilterTests` (pure predicate cases: due_date wins, fallback to payment_due_date, both NULL, due today, paid/disputed/non-LAK) + `NavBadgeOverdueQueryTests` (EF translation smoke test on the test DB).
+- **Status**: stable (fixed 2026-10-15, covered by tests).
 
 ### 2026-10-14 — C# `InvoiceStatus.Cancelled` is not in the prod/dev DB `invoices.status` enum — writing it would fail
 - **Symptom**: `InvoiceStatus.Cancelled = 4` exists in C# (`Models_Part2.cs:279`) but the `invoices.status` column is `ENUM('draft','confirmed','paid','disputed')` on dev (same on prod per the investigation). Persisting `Cancelled` (stored via `HasConversion<string>()`) would fail with `Data truncated for column 'status'` in strict mode. Currently latent: nothing in code writes it; readers (`UnpaidInvoicesService`, `NOT IN (..., 'cancelled', ...)`) compare against a value that cannot occur.
