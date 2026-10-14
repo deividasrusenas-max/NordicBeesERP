@@ -1,5 +1,6 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using MimeKit;
 using NordicBeesERP.Data;
 using NordicBeesERP.Services.Storage;
@@ -88,6 +89,7 @@ public class EmailQueue : IEmailQueue
             int outboxId;
             using (var idCmd = conn.CreateCommand())
             {
+                idCmd.Transaction = tx.GetDbTransaction();
                 idCmd.CommandText = "SELECT LAST_INSERT_ID()";
                 outboxId = Convert.ToInt32(await idCmd.ExecuteScalarAsync(ct));
             }

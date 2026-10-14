@@ -49,7 +49,9 @@ public static class EmailMessageBuilder
             message.Cc.AddRange(InternetAddressList.Parse(delivery.Cc));
         }
 
-        var replyTo = !string.IsNullOrWhiteSpace(row.ReplyTo) ? row.ReplyTo : options.ReplyTo;
+        // In Redirect mode a per-message Reply-To (possibly a customer) must not survive: replies would reach the real customer.
+        var rowReplyTo = delivery.EffectiveMode == EmailMode.Redirect ? null : row.ReplyTo;
+        var replyTo = !string.IsNullOrWhiteSpace(rowReplyTo) ? rowReplyTo : options.ReplyTo;
         if (!string.IsNullOrWhiteSpace(replyTo))
         {
             message.ReplyTo.Add(MailboxAddress.Parse(replyTo));

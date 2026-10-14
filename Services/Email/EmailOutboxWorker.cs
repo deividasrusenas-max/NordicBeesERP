@@ -52,19 +52,12 @@ public class EmailOutboxWorker : BackgroundService
         _logger.LogInformation("Email Outbox Worker starting at {Time} (environment {Env}, configured mode {Mode}, effective mode {Effective})",
             DateTimeOffset.Now, _env.EnvironmentName, _options.Mode, EmailSafetyGuard.ResolveEffectiveMode(_env.EnvironmentName, _options));
 
-        try
-        {
-            await ResetStuckSendingAsync(stoppingToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogError(ex, "Email outbox: failed to reset rows stuck in 'sending'");
-        }
-
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
+                // Every poll (not just startup): a row left in 'sending' by a restart mid-send becomes eligible 15 min later.
+                await ResetStuckSendingAsync(stoppingToken);
                 await ProcessQueueAsync(stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -206,11 +199,8 @@ public class EmailOutboxWorker : BackgroundService
                 }
             }
 
-            var sentAt = DateTime.UtcNow;
-            await db.Database.ExecuteSqlRawAsync(
-                "UPDATE email_outbox SET status = 'sent', sent_at = {1}, message_id = {2}, last_error = NULL, " +
-                "to_addresses = {3}, cc_addresses = {4}, subject = {5}, original_to = {6}, updated_at = {1} WHERE id = {0}",
-                new object?[] { id, sentAt, message.MessageId, delivery.To, delivery.Cc, delivery.Subject, delivery.OriginalTo });
+            // The mail has left. From here on a failure must NEVER requeue (that would send it again).
+            await MarkSentAsync(db, id, message.MessageId, delivery, ct);
             _logger.LogInformation("Email outbox {Id} sent (mode {Mode}, attempt {Attempt})", id, delivery.EffectiveMode, row.Attempts);
 
             await AppendToSentFolderAsync(id, message, ct);
@@ -221,7 +211,43 @@ public class EmailOutboxWorker : BackgroundService
         }
         catch (Exception ex)
         {
-            await RecordFailureAsync(db, id, row?.Attempts ?? 1, ex, ct);
+            try
+            {
+                var attempts = row?.Attempts ?? Convert.ToInt32(await ScalarAsync(db, "SELECT attempts FROM email_outbox WHERE id = @p0", ct, id));
+                await RecordFailureAsync(db, id, attempts, ex, ct);
+            }
+            catch (Exception recordEx) when (recordEx is not OperationCanceledException)
+            {
+                // Row stays 'sending'; ResetStuckSendingAsync returns it to 'queued' after 15 minutes.
+                _logger.LogError(recordEx, "Email outbox {Id}: could not record failure (original error: {Original})", id, ex.Message);
+            }
+        }
+    }
+
+    private async Task MarkSentAsync(NordicBeesERPContext db, int id, string? messageId, EmailDelivery delivery, CancellationToken ct)
+    {
+        var sentAt = DateTime.UtcNow;
+        var subject = delivery.Subject.Length > 500 ? delivery.Subject[..500] : delivery.Subject;
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE email_outbox SET status = 'sent', sent_at = {1}, message_id = {2}, last_error = NULL, " +
+                "to_addresses = {3}, cc_addresses = {4}, subject = {5}, original_to = {6}, updated_at = {1} WHERE id = {0}",
+                new object?[] { id, sentAt, messageId, delivery.To, delivery.Cc, subject, delivery.OriginalTo });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Email outbox {Id}: mail was sent but the full 'sent' update failed; falling back to minimal update", id);
+            try
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE email_outbox SET status = 'sent', sent_at = {1}, updated_at = {1} WHERE id = {0}", id, sentAt);
+            }
+            catch (Exception ex2) when (ex2 is not OperationCanceledException)
+            {
+                // Last resort: leave 'sending'. It is reset to 'queued' after 15 min (a duplicate is possible, but only if the DB is down this long).
+                _logger.LogError(ex2, "Email outbox {Id}: mail was sent but could not be marked 'sent'", id);
+            }
         }
     }
 

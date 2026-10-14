@@ -57,4 +57,16 @@ public class EmailMessageBuilderTests
 
         Assert.Equal("row@example.test", ((MailboxAddress)msg.ReplyTo[0]).Address);
     }
+
+    [Fact]
+    public void Redirect_mode_drops_row_reply_to_but_keeps_company_default()
+    {
+        var options = new EmailOptions { FromAddress = "erp@example.test", ReplyTo = "default@example.test" };
+        var row = new EmailOutbox { ToAddresses = "client@real.test", Subject = "S", BodyHtml = "x", ReplyTo = "customer@real.test" };
+        var delivery = new EmailDelivery(EmailMode.Redirect, "inbox@example.test", null, "[Staging → client@real.test] S", "client@real.test");
+
+        var msg = EmailMessageBuilder.Build(options, row, delivery, Array.Empty<EmailAttachmentContent>());
+
+        Assert.Equal("default@example.test", ((MailboxAddress)msg.ReplyTo[0]).Address);
+    }
 }
