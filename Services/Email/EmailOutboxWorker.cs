@@ -21,7 +21,7 @@ public class EmailOutboxWorker : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan StuckSendingAfter = TimeSpan.FromMinutes(15);
-    private static readonly TimeSpan NotSendingLogInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan NotSendingLogInterval = TimeSpan.FromHours(1);
     private const int BatchSize = 10;
     private const int LastErrorMaxLength = 2000;
     private const int NetworkTimeoutMs = 60_000;
@@ -31,7 +31,7 @@ public class EmailOutboxWorker : BackgroundService
     private readonly IDbContextFactory<NordicBeesERPContext> _dbFactory;
     private readonly IHostEnvironment _env;
     private readonly EmailOptions _options;
-    private DateTime _lastNotSendingLogUtc = DateTime.MinValue;
+    private readonly LogThrottle _notSendingThrottle = new(NotSendingLogInterval);
 
     public EmailOutboxWorker(
         ILogger<EmailOutboxWorker> logger,
@@ -90,9 +90,11 @@ public class EmailOutboxWorker : BackgroundService
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var now = DateTime.UtcNow;
-        var reset = await db.Database.ExecuteSqlRawAsync(
-            "UPDATE email_outbox SET status = 'queued', updated_at = {0} WHERE status = 'sending' AND updated_at < {1}",
-            now, now - StuckSendingAfter);
+        // Raw parameterized command (not ExecuteSqlRawAsync): EF logs every executed command at Information, which would
+        // print this housekeeping UPDATE on every 30 s poll. Only the rows-affected case is logged below.
+        var reset = await NonQueryAsync(db,
+            "UPDATE email_outbox SET status = 'queued', updated_at = @p0 WHERE status = 'sending' AND updated_at < @p1",
+            ct, now, now - StuckSendingAfter);
         if (reset > 0)
         {
             _logger.LogWarning("Email outbox: reset {Count} row(s) stuck in 'sending' for over {Minutes} minutes back to 'queued'",
@@ -105,13 +107,13 @@ public class EmailOutboxWorker : BackgroundService
         var mode = EmailSafetyGuard.ResolveEffectiveMode(_env.EnvironmentName, _options);
         if (mode == EmailMode.Disabled)
         {
-            LogNotSendingOncePerMinute("effective mode is Disabled (configured {Mode}, environment {Env}); rows stay queued", _options.Mode, _env.EnvironmentName);
+            LogNotSendingThrottled("effective mode is Disabled (configured {Mode}, environment {Env}); rows stay queued", _options.Mode, _env.EnvironmentName);
             return;
         }
 
         if (!IsSmtpConfigured())
         {
-            LogNotSendingOncePerMinute("SMTP is not fully configured (host/from address/username/password); rows stay queued");
+            LogNotSendingThrottled("SMTP is not fully configured (host/from address/username/password); rows stay queued");
             return;
         }
 
@@ -123,7 +125,7 @@ public class EmailOutboxWorker : BackgroundService
         var budget = _options.MaxPerHour - sentLastHour;
         if (budget <= 0)
         {
-            LogNotSendingOncePerMinute("hourly limit of {Max} reached; rows stay queued", _options.MaxPerHour);
+            LogNotSendingThrottled("hourly limit of {Max} reached; rows stay queued", _options.MaxPerHour);
             return;
         }
 
@@ -141,15 +143,14 @@ public class EmailOutboxWorker : BackgroundService
         && !string.IsNullOrWhiteSpace(_options.Username)
         && !string.IsNullOrWhiteSpace(_options.Password);
 
-    private void LogNotSendingOncePerMinute(string reason, params object?[] args)
+    private void LogNotSendingThrottled(string reason, params object?[] args)
     {
-        var now = DateTime.UtcNow;
-        if (now - _lastNotSendingLogUtc < NotSendingLogInterval)
+        // Name kept for the existing call sites; the interval is now once per process start, then once per hour (per reason).
+        if (!_notSendingThrottle.ShouldLog(reason, DateTime.UtcNow))
         {
             return;
         }
 
-        _lastNotSendingLogUtc = now;
         _logger.LogWarning("Email outbox not sending: " + reason, args);
     }
 
@@ -337,6 +338,24 @@ public class EmailOutboxWorker : BackgroundService
         p.ParameterName = name;
         p.Value = value ?? DBNull.Value;
         return p;
+    }
+
+    private static async Task<int> NonQueryAsync(NordicBeesERPContext db, string sql, CancellationToken ct, params object?[] args)
+    {
+        var conn = db.Database.GetDbConnection();
+        var openedByUs = conn.State != System.Data.ConnectionState.Open;
+        if (openedByUs) await conn.OpenAsync(ct);
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            for (var i = 0; i < args.Length; i++) cmd.Parameters.Add(Param(cmd, $"@p{i}", args[i]));
+            return await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            if (openedByUs) await conn.CloseAsync();
+        }
     }
 
     private static async Task<object?> ScalarAsync(NordicBeesERPContext db, string sql, CancellationToken ct, params object?[] args)
