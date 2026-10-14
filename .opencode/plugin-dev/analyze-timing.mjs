@@ -27,11 +27,26 @@
  * window for the same session; compaction wins over nothing, a user message
  * wins over everything (if the human was typing, the wall clock was theirs).
  *
+ * TOKENS PER STEP (--tps). Wall-clock seconds are not comparable across
+ * models: a slower model that thinks less can still win. The comparable
+ * quantity is how many tokens the orchestrator burns to decide one step.
+ * Given the server's measured decode rate, tokens/step = model gap seconds
+ * x tok/s / number of gaps, and that number is what a candidate model has
+ * to beat.
+ *
+ * Why the rate is passed in rather than read from harness-trace: that file's
+ * message_updated records carry no messageID, and opencode emits many
+ * updates per streaming message, so summing tokensOutput over them counts
+ * the same message repeatedly. An earlier estimate built that way was
+ * inflated roughly 2x. Measure the rate on the server (llama-server logs
+ * its tok/s per request) and pass it here.
+ *
  * Usage:
  *   node .opencode/plugin-dev/analyze-timing.mjs                 # last 14 days
  *   node .opencode/plugin-dev/analyze-timing.mjs --days 30
  *   node .opencode/plugin-dev/analyze-timing.mjs --day 2026-09-16
  *   node .opencode/plugin-dev/analyze-timing.mjs --gaps 20
+ *   node .opencode/plugin-dev/analyze-timing.mjs --tps 57
  *
  * Read-only. Never writes to the reports directory.
  */
@@ -60,6 +75,15 @@ const flag = (name, fallback) => {
 const DAYS = Number(flag("days", 14))
 const ONE_DAY = flag("day", null)
 const GAPS_N = Number(flag("gaps", 0))
+// Measured decode rate of the orchestrator's server, tokens/second.
+const TPS = Number(flag("tps", 57))
+// Candidate replacements: [name, expected tok/s at working context].
+const CANDIDATES = [
+  ["Qwen3.8-27B (current)", TPS],
+  ["Qwen3 235B-A22B, VRAM", 30],
+  ["GLM-5.3-Flash IQ2, VRAM", 30],
+  ["GLM-5.3-Flash, experts in RAM", 11],
+]
 
 async function* lines(path) {
   if (!existsSync(path)) return
@@ -284,6 +308,35 @@ console.log(
     ` ${fmt(tot.wait)} ${pct(tot.wait, tot.span)}` +
     ` ${fmt(tOther)} ${pct(tOther, tot.span)}`,
 )
+
+// --- tokens per step, and what a replacement model has to beat ---------------
+const totalGaps = shown.reduce((s, key) => s + days.get(key).modelN, 0)
+if (totalGaps > 0) {
+  const secPerStep = tot.model / 1000 / totalGaps
+  const tokPerStep = secPerStep * TPS
+  console.log("")
+  console.log(
+    `Orchestrator decision cost: ${totalGaps} steps, ${secPerStep.toFixed(1)}s/step` +
+      ` at ${TPS} tok/s = ~${Math.round(tokPerStep)} tokens per step.`,
+  )
+  console.log("")
+  console.log("A replacement model wins only if it decides a step in fewer tokens:")
+  console.log("  candidate                           tok/s   budget/step   vs now")
+  for (const [name, tps] of CANDIDATES) {
+    const budget = secPerStep * tps // tokens it may spend to match current s/step
+    const ratio = budget / tokPerStep
+    console.log(
+      `  ${name.padEnd(34)} ${String(tps).padStart(5)}` +
+        ` ${String(Math.round(budget)).padStart(10)}` +
+        ` ${(ratio >= 1 ? "+" : "") + Math.round((ratio - 1) * 100) + "%"}`.padStart(11),
+    )
+  }
+  console.log("")
+  console.log("  budget/step = tokens the candidate may spend and still match today's")
+  console.log("  wall clock. Measure a candidate's real tokens/step over one day before")
+  console.log("  committing: an API run through openrouter gives that number without a")
+  console.log("  download.")
+}
 
 const machine = tot.del + tot.tool + tot.model + tot.compact
 if (machine > 0) {
