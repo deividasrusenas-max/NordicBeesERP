@@ -68,7 +68,7 @@
     <MudTable T="PaymentRow" Items="@_payments" Hover="true" Dense="true" Striped="true"
               Loading="@_loading" LoadingProgressColor="Color.Info" RowsPerPage="50">
         <PagerContent>
-            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+            <MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new int[]{25, 50, 100}" />
         </PagerContent>
         <HeaderContent>
             <MudTh>Data</MudTh>

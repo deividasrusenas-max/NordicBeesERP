@@ -47,7 +47,7 @@
 
     <MudTable T="InvoiceWithPaymentInfo" Items="@_invoices" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" @bind-RowsPerPage="_rowsPerPage">
         <PagerContent>
-            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+            <MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new int[]{25, 50, 100}" />
         </PagerContent>
         <HeaderContent>
             <MudTh>Nr.</MudTh>

@@ -41,6 +41,7 @@ builder.Services.AddServerSideBlazor(options =>
 });
 
 builder.Services.AddMudServices();
+builder.Services.AddTransient<MudBlazor.MudLocalizer, NordicBeesERP.Helpers.LtMudLocalizer>();
 builder.Services.AddMudServices(config =>
 {
     config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;

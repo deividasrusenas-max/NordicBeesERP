@@ -229,7 +229,7 @@
                     <MudTd>@c.UpdatedAt.ToString("yyyy-MM-dd")</MudTd>
                 </RowTemplate>
                 <PagerContent>
-                    <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
+                    <MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new int[] { 25, 50, 100 }" />
                 </PagerContent>
             </MudTable>
         }
@@ -490,7 +490,7 @@
                 <MudTd>@container.CreatedAt.ToString("MM-dd")</MudTd>
             </RowTemplate>
             <PagerContent>
-                <MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" RowsPerPageString="Eilučių puslapyje:" />
+                <MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new int[] { 25, 50, 100 }" />
             </PagerContent>
         </MudTable>
     };

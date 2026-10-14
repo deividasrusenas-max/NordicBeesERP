@@ -91,7 +91,7 @@
             </MudTd>
         </RowTemplate>
         <NoRecordsContent><MudText>Laiškų nėra.</MudText></NoRecordsContent>
-        <PagerContent><MudTablePager PageSizeOptions="new[] { 10, 25, 50 }" /></PagerContent>
+        <PagerContent><MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new[] { 10, 25, 50 }" /></PagerContent>
     </MudTable>
 </MudContainer>
 

@@ -311,7 +311,7 @@
                     </MudTd>
                 </RowTemplate>
                 <PagerContent>
-                    <MudTablePager PageSizeOptions="new int[]{10, 25}" />
+                    <MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new int[]{10, 25}" />
                 </PagerContent>
                 <NoRecordsContent>
                     <MudText Class="text-center py-4">Įrašų nėra</MudText>

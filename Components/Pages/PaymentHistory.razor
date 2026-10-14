@@ -70,7 +70,7 @@
     
     <MudTable T="PaymentWithDetails" Items="@_payments" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info" @bind-RowsPerPage="_rowsPerPage" SortMode="SortMode.Serverbind" OnSort="HandleSortAsync">
         <PagerContent>
-            <MudTablePager PageSizeOptions="new int[]{25, 50, 100}" />
+            <MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new int[]{25, 50, 100}" />
         </PagerContent>
         <HeaderContent>
             <MudTh><MudTableSortLabel SortBy="@(new Func<PaymentWithDetails, object>(x => x.InvoiceNumber ?? ""))">Sąskaitos Nr.</MudTableSortLabel></MudTh>
