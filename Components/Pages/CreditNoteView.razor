@@ -4,6 +4,8 @@
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Helpers
 @using NordicBeesERP.Components.Dialogs
+@using NordicBeesERP.Components.Pages.Email
+@using NordicBeesERP.Services.Email
 
 @* =====================================================
    NORDIC BEES ERP - VIEW CREDIT NOTE PAGE
@@ -55,6 +57,12 @@
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@NavigateToPdf" StartIcon="@Icons.Material.Filled.Print" Style="text-transform:none">
                     Spausdinti
                 </MudButton>
+                @if (_creditNote is not null && _creditNote.Status != CreditNoteStatus.Draft)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@OpenSendEmailAsync" StartIcon="@Icons.Material.Filled.Email" Style="text-transform:none">
+                        Siųsti el. paštu
+                    </MudButton>
+                }
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" StartIcon="@Icons.Material.Filled.ContentCopy" Style="text-transform:none">
                     Kopijuoti
                 </MudButton>
@@ -195,6 +203,11 @@
                 </div>
             }
         </MudPaper>
+
+        @if (_creditNote is not null && _creditNote.Status != CreditNoteStatus.Draft)
+        {
+            <EmailHistoryPanel RelatedType="credit_note" RelatedId="@Id" RefreshToken="@_emailRefresh" />
+        }
     }
     else
     {
@@ -210,6 +223,17 @@
 </MudContainer>
 
 @code {
+    private int _emailRefresh;
+
+    private async Task OpenSendEmailAsync()
+    {
+        var parameters = new DialogParameters { ["Kind"] = DocumentMailKind.CreditNote, ["DocumentId"] = Id };
+        var dialog = await DialogService.ShowAsync<SendDocumentEmailDialog>("Siųsti el. paštu", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) _emailRefresh++;
+    }
+
     [Parameter]
     public int Id { get; set; }
 

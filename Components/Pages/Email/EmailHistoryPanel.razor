@@ -1,0 +1,65 @@
+@using MudBlazor
+@using NordicBeesERP.Services.Dunning
+@using NordicBeesERP.Services.Email
+@using NordicBeesERP.Components.Dialogs
+@inject EmailOutboxAdminService Outbox
+@inject IDialogService DialogService
+
+<MudPaper Elevation="0" Class="pa-4 mt-4" Style="border:1px solid #e2e8f0; border-radius:8px;">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:600" Class="mb-2">Siuntimų istorija</MudText>
+    @if (_unavailable)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Siuntimų istorija dar neprieinama.</MudText>
+    }
+    else if (_rows.Count == 0)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Laiškų nėra.</MudText>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true">
+            <thead><tr><th>Data</th><th>Gavėjas</th><th>Būsena</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var r in _rows)
+            {
+                <tr>
+                    <td>@VilniusTime.ToLocal(r.CreatedAtUtc).ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@r.To</td>
+                    <td>@NordicBeesERP.Components.Pages.Email.EmailOutbox.StatusLabelPublic(r.Status)</td>
+                    <td><MudButton Size="Size.Small" Variant="Variant.Text" Style="text-transform:none" OnClick="() => OpenAsync(r.Id)">Peržiūrėti</MudButton></td>
+                </tr>
+            }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public string RelatedType { get; set; } = string.Empty;
+    [Parameter] public int RelatedId { get; set; }
+    /// <summary>Change to force a reload after sending.</summary>
+    [Parameter] public int RefreshToken { get; set; }
+
+    private List<OutboxListRow> _rows = new();
+    private bool _unavailable;
+    private int _loadedToken = -1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedToken == RefreshToken && _rows.Count > 0) return;
+        _loadedToken = RefreshToken;
+        try
+        {
+            _rows = await Outbox.ListForRelatedAsync(RelatedType, RelatedId);
+            _unavailable = false;
+        }
+        catch (Exception ex) when (DunningRepository.IsMissingTable(ex))
+        {
+            _unavailable = true;
+        }
+    }
+
+    private Task OpenAsync(int id) =>
+        DialogService.ShowAsync<EmailDetailDialog>($"Laiškas #{id}", new DialogParameters { ["OutboxId"] = id },
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true });
+}

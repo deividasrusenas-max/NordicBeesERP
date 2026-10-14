@@ -16,6 +16,8 @@
 @using NordicBeesERP.Components.Dialogs
 @using NordicBeesERP.Helpers
 @using Microsoft.AspNetCore.Components.Web
+@using NordicBeesERP.Components.Pages.Email
+@using NordicBeesERP.Services.Email
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
@@ -57,6 +59,12 @@
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandlePrint" Style="text-transform:none">
                 Spausdinti
             </MudButton>
+            @if (CanEmail)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@OpenSendEmailAsync" StartIcon="@Icons.Material.Filled.Email" Style="text-transform:none">
+                    Siųsti el. paštu
+                </MudButton>
+            }
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandleCopy" Disabled="@_isBusy" Style="text-transform:none">
                 Kopijuoti
             </MudButton>
@@ -405,6 +413,11 @@
                 </MudTable>
             </MudPaper>
         }
+
+        @if (CanEmail)
+        {
+            <EmailHistoryPanel RelatedType="invoice" RelatedId="@Id" RefreshToken="@_emailRefresh" />
+        }
     }
     else
     {
@@ -427,6 +440,20 @@
     public string? ReturnUrl { get; set; }
 
     private Invoice? _invoice;
+    private int _emailRefresh;
+
+    private bool CanEmail => _invoice is { } inv
+        && inv.Status != InvoiceStatus.Draft
+        && inv.InvoiceNumber.StartsWith("LAK", StringComparison.OrdinalIgnoreCase);
+
+    private async Task OpenSendEmailAsync()
+    {
+        var parameters = new DialogParameters { ["Kind"] = DocumentMailKind.Invoice, ["DocumentId"] = Id };
+        var dialog = await DialogService.ShowAsync<SendDocumentEmailDialog>("Siųsti el. paštu", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) _emailRefresh++;
+    }
     private List<InvoiceLine> _invoiceLines = new List<InvoiceLine>();
     private List<CreditNoteListDto> _creditNotes = new();
     private Dictionary<int, decimal> _creditedQuantitiesByLine = new();

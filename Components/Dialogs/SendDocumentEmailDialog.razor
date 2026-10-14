@@ -1,0 +1,97 @@
+@using MudBlazor
+@using NordicBeesERP.Services.Email
+@inject DocumentMailService DocumentMail
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Siųsti el. paštu</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_draft is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            @if (_draft.IsDraftDocument)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">Juodraščio siųsti negalima.</MudAlert>
+            }
+            @if (_draft.NoAddress)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-3">Klientas neturi el. pašto adreso – įveskite adresą ranka.</MudAlert>
+            }
+            @if (_draft.NoEmailFlag)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-3">Klientas pažymėtas „nesiųsti el. laiškų“. Siųsti galite tik jei tikrai to norite.</MudAlert>
+            }
+            <MudTextField @bind-Value="_to" Label="Kam (adresai atskiriami kabliataškiu)" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_cc" Label="Kopija" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_subject" Label="Tema" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_body" Label="Turinys (HTML)" Variant="Variant.Outlined" Lines="8" AutoGrow="true" MaxLines="16" Class="mb-3" />
+            <MudText Typo="Typo.caption">Priedas</MudText>
+            <MudChip T="string" Icon="@Icons.Material.Filled.PictureAsPdf" Size="Size.Small">@_draft.AttachmentName</MudChip>
+            <MudText Typo="Typo.caption" Class="mt-3">Peržiūra</MudText>
+            <iframe sandbox srcdoc="@_body" style="width:100%;height:240px;border:1px solid #cbd5e1;border-radius:4px;background:#fff"></iframe>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="Cancel">Atšaukti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" Disabled="@(_draft is null || _draft.IsDraftDocument || _busy)" OnClick="SendAsync">Siųsti</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string Kind { get; set; } = DocumentMailKind.Invoice;
+    [Parameter] public int DocumentId { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private DocumentMailDraft? _draft;
+    private string _to = string.Empty;
+    private string _cc = string.Empty;
+    private string _subject = string.Empty;
+    private string _body = string.Empty;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _draft = await DocumentMail.PrepareAsync(Kind, DocumentId);
+            _to = _draft.To;
+            _subject = _draft.Subject;
+            _body = _draft.BodyHtml;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            MudDialog.Cancel();
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SendAsync()
+    {
+        _busy = true;
+        try
+        {
+            var id = await DocumentMail.SendAsync(Kind, DocumentId, _to, _cc, _subject, _body);
+            Snackbar.Add($"Laiškas įdėtas į siuntimo eilę (#{id})", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(id));
+        }
+        catch (ArgumentException)
+        {
+            Snackbar.Add("Neteisingas el. pašto adresas arba tuščias laukas", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
