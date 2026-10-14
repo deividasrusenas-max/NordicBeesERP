@@ -12,6 +12,7 @@
 @inject ICreditNoteService CreditNoteService
 @inject IDialogService DialogService
 @inject IAuthService AuthService
+@inject NordicBeesERP.Services.Dunning.DunningRepository DunningRepo
 @using NordicBeesERP.Services.Dtos
 @using NordicBeesERP.Components.Dialogs
 @using NordicBeesERP.Helpers
@@ -59,6 +60,12 @@
             <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@HandlePrint" Style="text-transform:none">
                 Spausdinti
             </MudButton>
+            @if (CanEmail && _invoice?.PaymentStatus != "paid")
+            {
+                <MudButton Variant="Variant.Outlined" Color="@(_dunningHeld ? Color.Warning : Color.Default)" OnClick="@OpenDunningHoldAsync" StartIcon="@Icons.Material.Filled.PauseCircle" Style="text-transform:none">
+                    @(_dunningHeld ? "Priminimai pristabdyti" : "Pristabdyti priminimus")
+                </MudButton>
+            }
             @if (CanEmail)
             {
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@OpenSendEmailAsync" StartIcon="@Icons.Material.Filled.Email" Style="text-transform:none">
@@ -441,6 +448,21 @@
 
     private Invoice? _invoice;
     private int _emailRefresh;
+    private bool _dunningHeld;
+
+    private async Task RefreshDunningHoldAsync()
+    {
+        try { _dunningHeld = (await DunningRepo.LoadHoldsAsync()).Any(h => h.InvoiceId == Id); }
+        catch { _dunningHeld = false; } // dunning tables may not be applied yet
+    }
+
+    private async Task OpenDunningHoldAsync()
+    {
+        var dialog = await DialogService.ShowAsync<DunningInvoiceHoldDialog>("Pristabdyti priminimus",
+            new DialogParameters { ["InvoiceId"] = Id, ["InvoiceNumber"] = _invoice?.InvoiceNumber ?? string.Empty },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        if (await dialog.Result is { Canceled: false }) await RefreshDunningHoldAsync();
+    }
 
     private bool CanEmail => _invoice is { } inv
         && inv.Status != InvoiceStatus.Draft
@@ -461,6 +483,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadInvoiceAsync();
+        await RefreshDunningHoldAsync();
         await LoadPaymentHistoryAsync();
         await LoadCreditNotesAsync();
     }
