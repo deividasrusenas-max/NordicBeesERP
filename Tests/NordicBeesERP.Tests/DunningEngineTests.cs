@@ -73,18 +73,50 @@ public class DunningEngineTests
 
     // ---- level selection ----
     [Theory]
-    [InlineData(3, 1)]
-    [InlineData(13, 1)]
-    [InlineData(14, 2)]   // boundary
-    [InlineData(29, 2)]
-    [InlineData(30, 3)]   // boundary
-    [InlineData(90, 3)]
-    public void Picks_highest_level_reached_when_nothing_sent_yet(int days, int expectedLevel)
+    [InlineData(3)]
+    [InlineData(14)]
+    [InlineData(30)]
+    [InlineData(90)]
+    [InlineData(400)]
+    public void Invoice_without_history_always_gets_L1_first_however_old(int days)
     {
         var plan = Run(new[] { Inv(1, days) });
         var p = Assert.Single(plan.Proposals);
-        Assert.Equal(expectedLevel, p.LevelNo);
-        Assert.Equal($"DUNNING_L{expectedLevel}", p.TemplateCode);
+        Assert.Equal(1, p.LevelNo);
+        Assert.Equal("DUNNING_L1", p.TemplateCode);
+    }
+
+    [Theory]
+    [InlineData(3, 40, false)]  // L1 sent 3 days ago -> nothing
+    [InlineData(6, 40, false)]
+    [InlineData(7, 40, true)]   // boundary: min_days_between = 7 -> L2
+    [InlineData(10, 40, true)]  // old invoice still gets L2, never L3
+    public void Escalation_never_skips_levels_and_respects_min_days_since_previous_reminder(int daysSinceL1, int overdue, bool proposed)
+    {
+        var log = new[] { new DunningLogEntry(1, 1, 1, AsOf.AddDays(-daysSinceL1)) };
+        var plan = Run(new[] { Inv(1, overdue) }, log: log);
+        Assert.Equal(proposed, plan.Proposals.Count == 1);
+        if (proposed) Assert.Equal(2, plan.Proposals[0].LevelNo);
+        else Assert.Equal(DunningSkipReason.WaitingForNextLevel, OnlySkip(plan));
+    }
+
+    [Fact]
+    public void Level_is_only_proposed_when_the_invoice_is_old_enough_for_it()
+    {
+        var log = new[] { new DunningLogEntry(1, 1, 1, AsOf.AddDays(-20)) };
+        var plan = Run(new[] { Inv(1, 13) }, log: log); // L2 needs 14 days
+        Assert.Empty(plan.Proposals);
+        Assert.Equal(DunningSkipReason.WaitingForNextLevel, OnlySkip(plan));
+        var plan14 = Run(new[] { Inv(1, 14) }, log: log);
+        Assert.Equal(2, Assert.Single(plan14.Proposals).LevelNo);
+    }
+
+    [Fact]
+    public void L2_then_L3_in_order()
+    {
+        var log = new[] { new DunningLogEntry(1, 1, 1, AsOf.AddDays(-30)), new DunningLogEntry(1, 1, 2, AsOf.AddDays(-8)) };
+        var plan = Run(new[] { Inv(1, 90) }, log: log);
+        Assert.Equal(3, Assert.Single(plan.Proposals).LevelNo);
     }
 
     [Fact]
@@ -283,7 +315,8 @@ public class DunningEngineTests
     [Fact]
     public void One_proposal_per_partner_uses_the_highest_level_among_its_invoices()
     {
-        var plan = Run(new[] { Inv(1, 5), Inv(2, 35), Inv(3, 20) });
+        var log = new[] { new DunningLogEntry(2, 1, 2, AsOf.AddDays(-10)) };
+        var plan = Run(new[] { Inv(1, 5), Inv(2, 35), Inv(3, 20) }, log: log);
         var p = Assert.Single(plan.Proposals);
         Assert.Equal(3, p.Invoices.Count);
         Assert.Equal(3, p.LevelNo);

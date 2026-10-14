@@ -120,7 +120,13 @@ public static class DunningEngine
                 var last = entries?.OrderByDescending(e => e.LevelNo).ThenByDescending(e => e.SentOn).FirstOrDefault();
                 var lastLevel = last?.LevelNo ?? 0;
 
-                var next = levels.LastOrDefault(l => l.DaysAfterDue <= days && l.LevelNo > lastLevel);
+                // Strictly sequential: the only candidate is the next active level above the last one sent (L1 when nothing was sent),
+                // and only once the invoice is old enough for it AND min_days_between has passed since this invoice's previous reminder.
+                var nextInLine = levels.FirstOrDefault(l => l.LevelNo > lastLevel);
+                var next = nextInLine is not null
+                    && nextInLine.DaysAfterDue <= days
+                    && (last is null || input.AsOf.DayNumber - last.SentOn.DayNumber >= cfg.MinDaysBetween)
+                    ? nextInLine : null;
                 if (next is null)
                 {
                     // Nothing new to send. Maybe the repeat cycle of the final level applies.
