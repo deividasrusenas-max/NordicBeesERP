@@ -152,7 +152,7 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 9, 26, 13, 19, 56, 290, DateTimeKind.Utc).AddTicks(8750),
+                            CreatedAt = new DateTime(2026, 10, 14, 6, 8, 9, 877, DateTimeKind.Utc).AddTicks(2810),
                             IsActive = true,
                             Name = "Nordic Bees",
                             Slug = "nordic-bees"
@@ -160,7 +160,7 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 9, 26, 13, 19, 56, 290, DateTimeKind.Utc).AddTicks(8750),
+                            CreatedAt = new DateTime(2026, 10, 14, 6, 8, 9, 877, DateTimeKind.Utc).AddTicks(2810),
                             IsActive = true,
                             Name = "Honeymark",
                             Slug = "honeymark"
@@ -168,7 +168,7 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 9, 26, 13, 19, 56, 290, DateTimeKind.Utc).AddTicks(8750),
+                            CreatedAt = new DateTime(2026, 10, 14, 6, 8, 9, 877, DateTimeKind.Utc).AddTicks(2810),
                             IsActive = true,
                             Name = "MEDŽIO",
                             Slug = "medzio"
@@ -3503,52 +3503,52 @@ namespace NordicBeesERP.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5220),
+                            CreatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8810),
                             IsActive = true,
                             IsHoney = true,
                             Name = "Medus",
                             SortOrder = 1,
-                            UpdatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5270)
+                            UpdatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8850)
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5270),
+                            CreatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8850),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Bičių duona",
                             SortOrder = 2,
-                            UpdatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5270)
+                            UpdatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8850)
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5270),
+                            CreatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8850),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Pikis",
                             SortOrder = 3,
-                            UpdatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5270)
+                            UpdatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8850)
                         },
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5280),
+                            CreatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8860),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Propolis",
                             SortOrder = 4,
-                            UpdatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5280)
+                            UpdatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8860)
                         },
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5280),
+                            CreatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8860),
                             IsActive = true,
                             IsHoney = false,
                             Name = "Vaškas",
                             SortOrder = 5,
-                            UpdatedAt = new DateTime(2026, 9, 26, 16, 19, 56, 290, DateTimeKind.Local).AddTicks(5280)
+                            UpdatedAt = new DateTime(2026, 10, 14, 9, 8, 9, 876, DateTimeKind.Local).AddTicks(8860)
                         });
                 });
 
@@ -3682,72 +3682,6 @@ namespace NordicBeesERP.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("warehouse_types");
-                });
-
-            modelBuilder.Entity("NordicBeesERP.Models.WarehouseStock", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    b.Property<decimal>("AvailableQuantity")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("available_quantity")
-                        .HasComputedColumnSql("(quantity - reserved_quantity)", true);
-
-                    b.Property<DateTime?>("ExpirationDate")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("expiration_date");
-
-                    b.Property<int>("HoneyBatchId")
-                        .HasColumnType("int")
-                        .HasColumnName("honey_batch_id");
-
-                    b.Property<DateTime?>("LastMovementDate")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("last_movement_date");
-
-                    b.Property<string>("LotNumber")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("lot_number");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int")
-                        .HasColumnName("product_id");
-
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(10, 3)
-                        .HasColumnType("decimal(10,3)")
-                        .HasColumnName("quantity");
-
-                    b.Property<decimal>("ReservedQuantity")
-                        .HasPrecision(10, 3)
-                        .HasColumnType("decimal(10,3)")
-                        .HasColumnName("reserved_quantity");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int>("WarehouseId")
-                        .HasColumnType("int")
-                        .HasColumnName("warehouse_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LotNumber");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("WarehouseId");
-
-                    b.HasIndex("WarehouseId", "ProductId", "LotNumber")
-                        .IsUnique();
-
-                    b.ToTable("warehouse_stocks");
                 });
 
             modelBuilder.Entity("NordicBeesERP.Models.BankImportRow", b =>

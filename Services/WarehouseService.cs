@@ -11,7 +11,6 @@ public interface IWarehouseService
     Task CreateAsync(Warehouse warehouse);
     Task UpdateAsync(Warehouse warehouse);
     Task DeleteAsync(int id);
-    Task<IEnumerable<WarehouseStock>> GetAllStocksAsync();
 }
 
 public class WarehouseService : IWarehouseService
@@ -74,14 +73,5 @@ public class WarehouseService : IWarehouseService
         {
             await context.Database.ExecuteSqlRawAsync("DELETE FROM warehouses WHERE id = {0}", id);
         }
-    }
-
-    public async Task<IEnumerable<WarehouseStock>> GetAllStocksAsync()
-    {
-        using var context = _dbContextFactory.CreateDbContext();
-        return await context.WarehouseStocks
-            .Include(ws => ws.Warehouse)
-            .Include(ws => ws.Product)
-            .ToListAsync();
     }
 }

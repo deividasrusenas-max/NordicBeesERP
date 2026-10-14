@@ -379,8 +379,6 @@ namespace NordicBeesERP.Models
 
         [NotMapped]
         public virtual ICollection<InvoiceLine> InvoiceLines { get; set; } = new List<InvoiceLine>();
-        [NotMapped]
-        public virtual ICollection<WarehouseStock> WarehouseStocks { get; set; } = new List<WarehouseStock>();
     }
 
     // =====================================================
@@ -436,8 +434,6 @@ namespace NordicBeesERP.Models
 
         // Navigation
         [NotMapped]
-        public virtual ICollection<WarehouseStock> Stocks { get; set; } = new List<WarehouseStock>();
-        [NotMapped]
         public virtual ICollection<HoneyDelivery> HoneyDeliveries { get; set; } = new List<HoneyDelivery>();
         [NotMapped]
         public virtual ICollection<ProductionBatch> ProductionBatches { get; set; } = new List<ProductionBatch>();
@@ -445,61 +441,6 @@ namespace NordicBeesERP.Models
         public virtual ICollection<HoneyBatch> HoneyBatches { get; set; } = new List<HoneyBatch>();
     }
 
-    [Table("warehouse_stocks")]
-public class WarehouseStock
-{
-    [Key]
-    [Column("id")]
-    public int Id { get; set; }
-
-    [Required]
-    [Column("warehouse_id")]
-    public int WarehouseId { get; set; }
-
-    [Required]
-    [Column("product_id")]
-    public int ProductId { get; set; }
-
-    [MaxLength(100)]
-    [Column("lot_number")]
-    public string? LotNumber { get; set; }
-
-    [Column("quantity")]
-    public decimal Quantity { get; set; } = 0;
-
-    [Column("reserved_quantity")]
-    public decimal ReservedQuantity { get; set; } = 0;
-
-    [Column("available_quantity")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-    public decimal AvailableQuantity { get; set; }
-
-    [Column("last_movement_date")]
-    public DateTime? LastMovementDate { get; set; }
-
-    [Column("updated_at")]
-    public DateTime UpdatedAt { get; set; }
-
-    [Required]
-    [Column("honey_batch_id")]
-    public int HoneyBatchId { get; set; }
-
-    [Column("expiration_date")]
-    public DateTime? ExpirationDate { get; set; }
-
-    // Navigation
-    [ForeignKey("WarehouseId")]
-    [NotMapped]
-    public virtual Warehouse Warehouse { get; set; } = null!;
-
-    [ForeignKey("ProductId")]
-    [NotMapped]
-    public virtual Product Product { get; set; } = null!;
-
-    [ForeignKey("HoneyBatchId")]
-    [NotMapped]
-    public virtual HoneyBatch HoneyBatch { get; set; } = null!;
-}
     // =====================================================
     // MEDAUS SUPIRKIMAS
     // =====================================================

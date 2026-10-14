@@ -40,7 +40,6 @@ namespace NordicBeesERP.Data
 
         // Warehouses
         public DbSet<Warehouse> Warehouses { get; set; }
-        public DbSet<WarehouseStock> WarehouseStocks { get; set; }
 
         // Honey Procurement
         public DbSet<HoneyType> HoneyTypes { get; set; }
@@ -187,24 +186,6 @@ namespace NordicBeesERP.Data
             modelBuilder.Entity<Warehouse>(entity =>
             {
                 entity.HasIndex(e => e.Code).IsUnique();
-            });
-
-            // ===== WAREHOUSE STOCKS =====
-            modelBuilder.Entity<WarehouseStock>(entity =>
-            {
-                entity.HasIndex(e => new { e.WarehouseId, e.ProductId, e.LotNumber })
-                    .IsUnique();
-                entity.HasIndex(e => e.WarehouseId);
-                entity.HasIndex(e => e.ProductId);
-                entity.HasIndex(e => e.LotNumber);
-
-                // Decimal precision
-                entity.Property(e => e.Quantity).HasPrecision(10, 3);
-                entity.Property(e => e.ReservedQuantity).HasPrecision(10, 3);
-
-                // Computed column - read-only
-                entity.Property(e => e.AvailableQuantity)
-                    .HasComputedColumnSql("(quantity - reserved_quantity)", stored: true);
             });
 
             // ===== HONEY TYPES =====
