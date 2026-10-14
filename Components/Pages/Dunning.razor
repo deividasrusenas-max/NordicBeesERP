@@ -62,7 +62,7 @@
         <div class="d-flex flex-wrap gap-3 align-center">
             <MudSelect T="int" Value="_year" ValueChanged="OnYearChanged" Label="Metai" Variant="Variant.Outlined" Dense="true" Style="max-width:160px">
                 <MudSelectItem T="int" Value="0">Visi metai</MudSelectItem>
-                @for (var y = DunningService.Today().Year; y >= DunningService.Today().Year - 4; y--)
+                @foreach (var y in DunningYears.Options(DunningService.Today().Year))
                 {
                     <MudSelectItem T="int" Value="@y">@y</MudSelectItem>
                 }

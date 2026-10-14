@@ -68,3 +68,9 @@ public static class VilniusTime
         return d;
     }
 }
+
+/// <summary>Year choices of the /dunning selector (newest first). Plain list so the Razor loop captures a per-item value, not a shared loop variable.</summary>
+public static class DunningYears
+{
+    public static IReadOnlyList<int> Options(int currentYear) => Enumerable.Range(0, 5).Select(i => currentYear - i).ToList();
+}
