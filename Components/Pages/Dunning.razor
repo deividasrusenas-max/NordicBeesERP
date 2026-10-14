@@ -240,7 +240,7 @@
             _overview = await DunningSvc.GetOverviewAsync(_year == 0 ? null : _year, asOf);
             _selected.RemoveWhere(id => _overview.Plan.Proposals.All(p => p.PartnerId != id));
             _history = null;
-            await LoadHistoryAsync();
+            if (_overview.SchemaApplied) await LoadHistoryAsync();
         }
         catch (Exception ex)
         {

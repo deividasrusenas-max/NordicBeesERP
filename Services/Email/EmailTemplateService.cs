@@ -7,7 +7,7 @@ public sealed record EmailTemplateRow(string Code, string Language, string Subje
 
 public interface IEmailTemplateService
 {
-    /// <summary>Active DB row for (code, language); else the built-in default; else the same code in EN. Never throws for known codes.</summary>
+    /// <summary>Active DB row for (code, language); else the built-in default; else the same code in EN. Throws InvalidOperationException when the (code, language) DB row exists but is inactive (the built-in text is then NOT used) or the code is unknown.</summary>
     Task<EmailTemplate> GetAsync(string code, string language, CancellationToken ct = default);
 
     /// <summary>All rows for the editor: DB rows plus built-in defaults that have no DB row yet (IsBuiltIn = true).</summary>
