@@ -1785,3 +1785,21 @@ re-labeling the symptom.
 - **Error class**: `enum-drift-code-vs-db` (provisional)
 - **Guardrail added**: `DeliveryContainerTypeTests` (integration, fails while the DB enum lacks the written value).
 - **Status**: fixed in code; open until the SQL is applied to dev/test and prod is verified.
+
+### 2026-10-14 — Nav overdue badge ignores sales invoices with `due_date` NULL (109 of 486 on prod)
+- **Symptom**: `NavBadgeCounts.OverdueInvoices` (`PaymentService.cs`, ~:1507-1537, `i.DueDate.HasValue && i.DueDate.Value < DateTime.Today`) silently skips every LAK invoice whose `due_date` is NULL — 109 of 486 on prod (dev: 70 of 449). Those invoices never raise the badge even when long overdue. Found during the e-mail/dunning investigation (`.opencode/reports/email-dunning-investigation-20261014-0932.md`, F1).
+- **Root cause**: two due-date columns on `invoices` (`due_date`, `payment_due_date`). `UpdateInvoiceStatusAsync` writes only `payment_due_date` on confirm, so `due_date` stays NULL for those rows. `UnpaidInvoicesService` already uses `DueDate ?? PaymentDueDate`; the badge (and `GetUnpaidInvoicesAsync` ordering) read `due_date` only.
+- **Fix (NOT done — out of scope of email-core-p1)**: use `COALESCE(due_date, payment_due_date)` (i.e. `i.DueDate ?? i.PaymentDueDate`) in the badge query and in any other overdue/due-date reader; EF translation must be checked. Do not touch bank import / PaymentService payment logic as part of it.
+- **Category**: other
+- **Error class**: `dual-column-source-of-truth` (provisional)
+- **Guardrail added**: none yet
+- **Status**: monitoring — open, MEDIUM (understated overdue count; any dunning built on `due_date` alone would miss the same rows).
+
+### 2026-10-14 — C# `InvoiceStatus.Cancelled` is not in the prod/dev DB `invoices.status` enum — writing it would fail
+- **Symptom**: `InvoiceStatus.Cancelled = 4` exists in C# (`Models_Part2.cs:279`) but the `invoices.status` column is `ENUM('draft','confirmed','paid','disputed')` on dev (same on prod per the investigation). Persisting `Cancelled` (stored via `HasConversion<string>()`) would fail with `Data truncated for column 'status'` in strict mode. Currently latent: nothing in code writes it; readers (`UnpaidInvoicesService`, `NOT IN (..., 'cancelled', ...)`) compare against a value that cannot occur.
+- **Root cause**: schema drift — the C# enum gained a member without a migration widening the DB enum. Same mechanism as the 2026-10-14 `container_type` entry (`BUCKET_GROUP` vs `('BARREL','BUCKET')`), on a different column, after that entry's regression test was added for `container_type` only.
+- **Fix (NOT done — out of scope of email-core-p1)**: either add a new migration widening `invoices.status` to include `'cancelled'` (human runs the DDL) or remove the member/its readers; verify the prod enum with `SHOW CREATE TABLE invoices` first.
+- **Category**: db-schema-drift
+- **Error class**: `enum-drift-code-vs-db` (reused verbatim from the 2026-10-14 `BUCKET_GROUP` entry)
+- **Guardrail added**: none yet (the earlier guardrail, `DeliveryContainerTypeTests`, covers only `containers.container_type`).
+- **Status**: escalated — this class recurred after the earlier entry (same day) already added a per-column test; a generic C#-enum vs `information_schema` COLUMN_TYPE check is the stronger mechanism needed. The email-core-p1 task brief asked for "monitoring"; escalated is what this log's own recurrence rule prescribes.
