@@ -134,6 +134,7 @@ builder.Services.AddScoped<EmailOutboxAdminService>();
 builder.Services.AddScoped<DocumentMailService>();
 builder.Services.AddScoped<DunningRepository>();
 builder.Services.AddScoped<DunningService>();
+builder.Services.AddHostedService<DunningWorker>();
 
 // Telegram notifications
 builder.Services.Configure<TelegramOptions>(builder.Configuration.GetSection("Telegram"));
