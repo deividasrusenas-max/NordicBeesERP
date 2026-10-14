@@ -12,7 +12,7 @@ public class ReportMailTests
         var t = EmailTemplateDefaults.Find("REPORT_SEND", "LT")!;
         var (subject, body) = ReportMailService.RenderTemplate(t, "LT", "UAB Test", "Skolų suderinimo aktas", "2026", "Bitės", "+370", "a@b.lt");
         Assert.Equal("Skolų suderinimo aktas 2026", subject);
-        Assert.Contains("Gerb. UAB Test,", body);
+        Assert.Contains("Gerbiamieji,", body);
         Assert.Contains("„Skolų suderinimo aktas“ (2026)", body);
         Assert.Contains("Pagarbiai,", body);
         Assert.DoesNotContain("{{", body);
@@ -31,7 +31,7 @@ public class ReportMailTests
     public void Missing_partner_falls_back_to_generic_salutation()
     {
         var lt = ReportMailService.RenderTemplate(EmailTemplateDefaults.Find("REPORT_SEND", "LT")!, "LT", "", "R", "", null, null, null);
-        Assert.Contains("Gerb. kliente,", lt.BodyHtml);
+        Assert.Contains("Gerbiamieji,", lt.BodyHtml);
         var en = ReportMailService.RenderTemplate(EmailTemplateDefaults.Find("REPORT_SEND", "EN")!, "EN", " ", "R", "", null, null, null);
         Assert.Contains("Dear customer,", en.BodyHtml);
     }
