@@ -57,7 +57,15 @@ public class EmailOutboxWorker : BackgroundService
             try
             {
                 // Every poll (not just startup): a row left in 'sending' by a restart mid-send becomes eligible 15 min later.
-                await ResetStuckSendingAsync(stoppingToken);
+                try
+                {
+                    await ResetStuckSendingAsync(stoppingToken);
+                }
+                catch (Exception resetEx) when (resetEx is not OperationCanceledException)
+                {
+                    _logger.LogError(resetEx, "Email outbox: failed to reset rows stuck in 'sending'");
+                }
+
                 await ProcessQueueAsync(stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -195,7 +203,7 @@ public class EmailOutboxWorker : BackgroundService
             {
                 foreach (var s in streams)
                 {
-                    await s.DisposeAsync();
+                    try { await s.DisposeAsync(); } catch { /* best effort: the mail may already be sent */ }
                 }
             }
 
@@ -259,7 +267,16 @@ public class EmailOutboxWorker : BackgroundService
             _options.SmtpSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, ct);
         await client.AuthenticateAsync(_options.Username, _options.Password, ct);
         await client.SendAsync(message, ct);
-        await client.DisconnectAsync(true, ct);
+
+        // The server has accepted the mail: closing the session is best-effort and must never turn into a retry (duplicate send).
+        try
+        {
+            await client.DisconnectAsync(true, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Email outbox: SMTP disconnect after a successful send failed (ignored)");
+        }
     }
 
     /// <summary>Copies the sent message to the IMAP Sent folder. Failure is a warning only — the mail stays 'sent'.</summary>
