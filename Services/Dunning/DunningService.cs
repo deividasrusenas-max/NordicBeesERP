@@ -127,7 +127,8 @@ public class DunningService
                 names.Add(name);
                 if (includeAttachments)
                 {
-                    var bytes = await _invoices.GenerateAndSavePdfAsync(inv.InvoiceId);
+                    // GeneratePdfAsync (not GenerateAndSavePdfAsync): the latter freezes pdf_path on the invoice; dunning must not write to invoices.
+                    var bytes = await _invoices.GeneratePdfAsync(inv.InvoiceId);
                     attachments.Add(new EmailAttachmentInput { Content = bytes, FileName = name, ContentType = "application/pdf" });
                 }
             }
@@ -204,10 +205,11 @@ public class DunningService
                 continue;
             }
 
+            int outboxId;
             try
             {
                 var mail = await BuildMailAsync(proposal, overview.Config, year, overview.AsOf, includeAttachments: true, ct);
-                var outboxId = await _queue.EnqueueAsync(new EmailRequest
+                outboxId = await _queue.EnqueueAsync(new EmailRequest
                 {
                     To = DunningEngine.SplitAddresses(mail.To),
                     Cc = mail.Cc is null ? null : DunningEngine.SplitAddresses(mail.Cc),
@@ -217,14 +219,10 @@ public class DunningService
                     RelatedType = "dunning",
                     RelatedId = proposal.PartnerId
                 }, ct);
-                await _repo.AttachOutboxAsync(proposal.Invoices.Select(i => i.InvoiceId).ToList(), overview.Today, outboxId, ct);
-                outboxIds.Add(outboxId);
-                partnersSent++;
-                invoicesSent += proposal.Invoices.Count;
-                total += proposal.TotalOverdue;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Nothing was queued: free the claim so the user can retry.
                 _logger.LogError(ex, "Dunning enqueue failed for partner {PartnerId}", proposal.PartnerId);
                 try
                 {
@@ -236,6 +234,21 @@ public class DunningService
                 }
 
                 errors.Add(new DunningSendError(proposal.PartnerName, "Nepavyko sukurti laiško: " + ex.Message));
+                continue;
+            }
+
+            // The e-mail IS queued from here on: never release the claim (that would allow a second send).
+            outboxIds.Add(outboxId);
+            partnersSent++;
+            invoicesSent += proposal.Invoices.Count;
+            total += proposal.TotalOverdue;
+            try
+            {
+                await _repo.AttachOutboxAsync(proposal.Invoices.Select(i => i.InvoiceId).ToList(), overview.Today, outboxId, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Dunning: e-mail {OutboxId} queued but dunning_log.outbox_id could not be set for partner {PartnerId}", outboxId, proposal.PartnerId);
             }
         }
 

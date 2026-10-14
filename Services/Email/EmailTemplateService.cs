@@ -37,6 +37,10 @@ public class EmailTemplateService : IEmailTemplateService
             return db is not null ? new EmailTemplate(db.Code, db.Language, db.Subject, db.BodyHtml) : EmailTemplateDefaults.Find(code, l);
         }
 
+        // A template switched off in the editor must not silently fall back to the built-in text: refuse to build the message.
+        if (rows?.Any(r => r.Code == code && r.Language == lang && !r.IsActive) == true)
+            throw new InvalidOperationException($"E-mail template '{code}' ({lang}) is inactive.");
+
         return Pick(lang) ?? Pick("EN") ?? throw new InvalidOperationException($"E-mail template '{code}' does not exist.");
     }
 

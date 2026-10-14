@@ -269,7 +269,7 @@ public class DunningRepository
     public async Task<(DateTime? BankImport, DateTime? Payment)> LoadFreshnessAsync(CancellationToken ct = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        var bank = await RawSql.ScalarAsync(db, "SELECT MAX(import_date) FROM bank_imports", ct);
+        var bank = await RawSql.ScalarAsync(db, "SELECT MAX(import_date) FROM bank_imports WHERE status = 'completed'", ct);
         var pay = await RawSql.ScalarAsync(db, "SELECT MAX(payment_date) FROM payments", ct);
         return (bank is null ? null : Convert.ToDateTime(bank), pay is null ? null : Convert.ToDateTime(pay));
     }
