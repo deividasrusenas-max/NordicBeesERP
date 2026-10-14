@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @inject ICompanySettingsService CompanySettingsService
+@inject NordicBeesERP.Services.Schema.SchemaDriftState SchemaDrift
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -23,6 +24,12 @@
             <TopHeader />
         </div>
         <div style="padding:0">
+            <AuthorizeView Roles="Admin">
+                @if (SchemaDrift.Missing.Count > 0)
+                {
+                    <div role="alert" style="background:#b3402f;color:#fff;padding:10px 32px;font-weight:600">Duomenų bazėje trūksta migracijų: @string.Join(", ", SchemaDrift.Missing)</div>
+                }
+            </AuthorizeView>
             @Body
             <MudPaper Elevation="0" Class="pa-3 mt-4" Style="background:var(--lakstena-surface); border-top:1px solid var(--lakstena-border); text-align:center;">
                 <MudText Typo="Typo.caption" Style="color:var(--lakstena-text-secondary)">© 2026 @_companyName · NordicBeesERP v@_version</MudText>

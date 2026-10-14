@@ -133,6 +133,8 @@ builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<EmailOutboxAdminService>();
 builder.Services.AddScoped<DocumentMailService>();
 builder.Services.AddScoped<ReportMailService>();
+builder.Services.AddSingleton<NordicBeesERP.Services.Schema.SchemaDriftState>();
+builder.Services.AddHostedService<NordicBeesERP.Services.Schema.SchemaDriftCheckService>();
 builder.Services.AddScoped<DunningRepository>();
 builder.Services.AddScoped<DunningService>();
 builder.Services.AddHostedService<DunningWorker>();

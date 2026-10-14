@@ -1803,3 +1803,12 @@ re-labeling the symptom.
 - **Error class**: `enum-drift-code-vs-db` (reused verbatim from the 2026-10-14 `BUCKET_GROUP` entry)
 - **Guardrail added**: none yet (the earlier guardrail, `DeliveryContainerTypeTests`, covers only `containers.container_type`).
 - **Status**: escalated — this class recurred after the earlier entry (same day) already added a per-column test; a generic C#-enum vs `information_schema` COLUMN_TYPE check is the stronger mechanism needed. The email-core-p1 task brief asked for "monitoring"; escalated is what this log's own recurrence rule prescribes.
+
+### 2026-10-15 — Staging DB lagged behind code by migrations (home page hang on `Unknown column 'c.tare_manual'`) — recurrence
+- **Symptom**: staging was deployed with code that expected 4 migrations the staging DB did not have; the home page hung/failed with `Unknown column 'c.tare_manual'`. Nothing at startup told anyone the schema was behind (Staging/Prod only log a warning for *EF-discoverable* pending migrations, and hand-written migration classes without `[Migration]` are never listed there).
+- **Root cause**: FROZEN #8 policy — outside Development migrations/scripts are applied by a human after deploy; there is no mechanical check that they were. Recurrence of the `db-schema-drift` family (`enum-drift-code-vs-db` is the value-level sibling; this is the migration-level one).
+- **Fix**: `SchemaDriftCheckService` (`Services/Schema/SchemaDriftCheck.cs`) compares every `Migration` class in the assembly with `__EFMigrationsHistory` once after startup (background, never throws, never blocks startup). Attributed migrations match by exact id; hand-written classes without `[Migration]` match by `<timestamp>_<ClassName>` suffix and are reported by class name. Missing → `LogCritical` once and the result is kept in the singleton `SchemaDriftState`; Admins see a red banner in `MainLayout` ("Duomenų bazėje trūksta migracijų: …"). No banner when nothing is missing.
+- **Category**: db-schema-drift
+- **Error class**: `staging-migration-drift` (new tag)
+- **Guardrail added**: the startup check above + pure unit tests `SchemaDriftCheckTests`.
+- **Status**: escalated — second staging-lag incident; the guardrail detects the drift but does not prevent it. Limits: a hand-written script that forgets its `__EFMigrationsHistory` INSERT will be reported as missing even though its DDL ran (fail-loud direction); a column added by a script without any migration class is not detectable.
