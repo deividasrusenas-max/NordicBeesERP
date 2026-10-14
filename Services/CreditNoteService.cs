@@ -355,26 +355,14 @@ namespace NordicBeesERP.Services
         public async Task<decimal> GetTotalCreditedAmountAsync(int invoiceId)
         {
             using var context = _contextFactory.CreateDbContext();
-            return await context.CreditNotes
-                .AsNoTracking()
-                .Where(cn => cn.OriginalInvoiceId == invoiceId && cn.Status != CreditNoteStatus.Disputed)
-                .SumAsync(cn => (decimal?)cn.TotalInclVat) ?? 0m;
+            var map = await CreditNoteDebtRule.GetCreditedByInvoiceAsync(context, new[] { invoiceId });
+            return map.TryGetValue(invoiceId, out var sum) ? sum : 0m;
         }
 
         public async Task<Dictionary<int, decimal>> GetTotalCreditedAmountsAsync(IEnumerable<int> invoiceIds)
         {
             using var context = _contextFactory.CreateDbContext();
-            var idList = invoiceIds.ToList();
-            if (idList.Count == 0) return new Dictionary<int, decimal>();
-            var rows = await context.CreditNotes
-                .AsNoTracking()
-                .Where(cr => cr.OriginalInvoiceId != null && idList.Contains(cr.OriginalInvoiceId.Value) && cr.Status != CreditNoteStatus.Disputed)
-                .Select(cr => new { InvoiceId = cr.OriginalInvoiceId!.Value, Amount = cr.TotalInclVat })
-                .ToListAsync();
-            var map = new Dictionary<int, decimal>();
-            foreach (var r in rows)
-                map[r.InvoiceId] = (map.TryGetValue(r.InvoiceId, out var existing) ? existing : 0m) + r.Amount;
-            return map;
+            return await CreditNoteDebtRule.GetCreditedByInvoiceAsync(context, invoiceIds);
         }
 
         public async Task<CreditNoteDetailDto> GetCreditNoteAsync(int id)
@@ -468,6 +456,11 @@ namespace NordicBeesERP.Services
             using var context = await _contextFactory.CreateDbContextAsync();
             await context.Database.ExecuteSqlRawAsync(
                 "UPDATE credit_notes SET status = 'printed', updated_at = NOW() WHERE id = {0}", id);
+
+            // Printing makes the note final, so it now reduces the invoice debt (CreditNoteDebtRule): refresh the invoice status.
+            var originalInvoiceId = await RawSql.ScalarAsync(context, "SELECT original_invoice_id FROM credit_notes WHERE id = @p0", default, id);
+            if (originalInvoiceId is not null and not DBNull)
+                await _paymentService.RecalculateInvoiceStatusAsync(Convert.ToInt32(originalInvoiceId));
         }
 
         // =====================================================

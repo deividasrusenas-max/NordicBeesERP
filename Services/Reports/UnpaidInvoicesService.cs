@@ -50,7 +50,7 @@ public class UnpaidInvoicesService
             .Select(i => new { i.Id, i.InvoiceNumber, i.InvoiceDate, i.DueDate, i.PaymentDueDate, i.TotalInclVat, i.PaidAmount })
             .ToListAsync();
 
-        // Credit-note amounts applied to each invoice (excludes disputed notes).
+        // Credit-note amounts applied to each invoice (only final-state notes, see CreditNoteDebtRule).
         var invoiceIds = invoices.Select(i => i.Id).ToList();
         var credited = await GetCreditedAmountsByInvoiceAsync(db, invoiceIds);
 
@@ -93,22 +93,14 @@ public class UnpaidInvoicesService
     }
 
     /// <summary>
-    /// Sum of CreditNote.TotalInclVat per OriginalInvoiceId, excluding disputed
-    /// notes. Mirrors PaymentService.GetCreditedAmountsByInvoiceAsync.
+    /// Sum of CreditNote.TotalInclVat per OriginalInvoiceId, excluding draft, cancelled and
+    /// disputed notes (CreditNoteDebtRule). Mirrors PaymentService.GetCreditedAmountsByInvoiceAsync.
     /// </summary>
     private static async Task<Dictionary<int, decimal>> GetCreditedAmountsByInvoiceAsync(NordicBeesERPContext db, List<int> invoiceIds)
     {
         if (invoiceIds.Count == 0)
             return new Dictionary<int, decimal>();
 
-        var rows = await db.CreditNotes.AsNoTracking()
-            .Where(cn => cn.OriginalInvoiceId != null && invoiceIds.Contains(cn.OriginalInvoiceId.Value) && cn.Status != CreditNoteStatus.Disputed)
-            .Select(cn => new { InvoiceId = cn.OriginalInvoiceId!.Value, Amount = cn.TotalInclVat })
-            .ToListAsync();
-
-        var map = new Dictionary<int, decimal>();
-        foreach (var row in rows)
-            map[row.InvoiceId] = (map.TryGetValue(row.InvoiceId, out var existing) ? existing : 0m) + row.Amount;
-        return map;
+        return await CreditNoteDebtRule.GetCreditedByInvoiceAsync(db, invoiceIds);
     }
 }

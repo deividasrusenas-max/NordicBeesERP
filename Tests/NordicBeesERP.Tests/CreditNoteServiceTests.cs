@@ -804,6 +804,18 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             Assert.NotNull(creditNote);
             Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
 
+            // A draft note is not a final state (CreditNoteDebtRule): the invoice stays unpaid until the note is printed.
+            await using (var draftCheck = await _fixture.Factory.CreateDbContextAsync())
+            {
+                var draftStored = await draftCheck.Invoices
+                    .FromSqlRaw("SELECT payment_status FROM invoices WHERE id = {0}", invoiceId)
+                    .Select(x => x.PaymentStatus)
+                    .FirstOrDefaultAsync();
+                Assert.Equal("unpaid", draftStored);
+            }
+
+            await service.SetPrintedAsync(creditNote.Id);
+
             // 6. Assert: read the ORIGINAL invoice back with a BRAND NEW DbContext —
             //    payment_status must be "paid" (fully credited) while paid_amount stays 0
             //    (real cash only, no allocations).
@@ -1207,6 +1219,9 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 
             Assert.NotNull(creditNote);
             Assert.False(string.IsNullOrEmpty(creditNote.CreditNoteNumber));
+
+            // Draft notes do not reduce the debt; printing makes the note final and refreshes the invoice status.
+            await service.SetPrintedAsync(creditNote.Id);
 
             // Assert: read the ORIGINAL invoice back with a BRAND NEW DbContext —
             //    payment_status must be "paid" (fully credited) while paid_amount stays 0

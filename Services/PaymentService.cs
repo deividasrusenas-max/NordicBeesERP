@@ -171,9 +171,8 @@ namespace NordicBeesERP.Services
                 .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null) return;
 
-            var totalCredited = await context.CreditNotes
-                .Where(cn => cn.OriginalInvoiceId != null && cn.OriginalInvoiceId == invoiceId && cn.Status != CreditNoteStatus.Disputed)
-                .SumAsync(cn => (decimal?)cn.TotalInclVat) ?? 0m;
+            var creditedByInvoice = await CreditNoteDebtRule.GetCreditedByInvoiceAsync(context, new[] { invoiceId });
+            var totalCredited = creditedByInvoice.TryGetValue(invoiceId, out var creditedSum) ? creditedSum : 0m;
 
             var totalSettled = totalAllocated + totalCredited;
 
@@ -1153,16 +1152,7 @@ namespace NordicBeesERP.Services
             var idList = invoiceIds.ToList();
             if (idList.Count == 0) return new Dictionary<int, decimal>();
 
-            var rows = await context.CreditNotes
-                .AsNoTracking()
-                .Where(cn => cn.OriginalInvoiceId != null && idList.Contains(cn.OriginalInvoiceId.Value) && cn.Status != CreditNoteStatus.Disputed)
-                .Select(cn => new { InvoiceId = cn.OriginalInvoiceId!.Value, Amount = cn.TotalInclVat })
-                .ToListAsync();
-
-            var map = new Dictionary<int, decimal>();
-            foreach (var row in rows)
-                map[row.InvoiceId] = (map.TryGetValue(row.InvoiceId, out var existing) ? existing : 0m) + row.Amount;
-            return map;
+            return await CreditNoteDebtRule.GetCreditedByInvoiceAsync(context, idList);
         }
 
         private async Task LogAuditEntryAsync(

@@ -17,7 +17,7 @@ public class DunningRepository
 {
     /// <summary>
     /// THE shared paid-logic query. remaining = total_incl_vat − paid_amount − Σ credit_notes.total_incl_vat
-    /// (original_invoice_id, status &lt;&gt; 'disputed'); due = COALESCE(due_date, payment_due_date); LAK sales invoices only,
+    /// (original_invoice_id, final-state notes only: CreditNoteDebtRule); due = COALESCE(due_date, payment_due_date); LAK sales invoices only,
     /// excluding ULAK and draft/cancelled/disputed. Partner columns come in the same row (no N+1).
     /// </summary>
     public const string OpenInvoicesSql =
@@ -28,7 +28,7 @@ public class DunningRepository
         "FROM invoices i " +
         "JOIN business_partners bp ON bp.id = i.customer_id " +
         "LEFT JOIN (SELECT original_invoice_id, SUM(total_incl_vat) AS credited FROM credit_notes " +
-        "           WHERE status <> 'disputed' AND original_invoice_id IS NOT NULL GROUP BY original_invoice_id) c ON c.original_invoice_id = i.id " +
+        "           WHERE " + CreditNoteDebtRule.SqlStatusFilter + " AND original_invoice_id IS NOT NULL GROUP BY original_invoice_id) c ON c.original_invoice_id = i.id " +
         "WHERE i.invoice_number LIKE 'LAK%' AND i.invoice_number NOT LIKE 'ULAK%' " +
         "AND i.status NOT IN ('draft', 'cancelled', 'disputed') " +
         "AND (i.total_incl_vat - i.paid_amount - IFNULL(c.credited, 0)) > 0.005";
