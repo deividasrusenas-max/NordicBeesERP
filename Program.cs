@@ -17,6 +17,7 @@ using NordicBeesERP.Services.Artwork;
 using NordicBeesERP.Services.Storage;
 using NordicBeesERP.Services.Labeling;
 using NordicBeesERP.Services.Email;
+using NordicBeesERP.Services.Dunning;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -127,6 +128,10 @@ builder.Services.AddHostedService<DashboardSnapshotWorker>();
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddScoped<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<EmailOutboxWorker>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<DunningRepository>();
+builder.Services.AddScoped<DunningService>();
 
 // Telegram notifications
 builder.Services.Configure<TelegramOptions>(builder.Configuration.GetSection("Telegram"));
