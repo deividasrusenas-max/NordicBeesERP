@@ -11,7 +11,7 @@ namespace NordicBeesERP.Services.Email;
 public static class EmailTemplateRenderer
 {
     public static readonly string[] Placeholders =
-        { "PartnerName", "InvoiceNumber", "InvoiceDate", "Total", "DueDate", "InvoiceTable", "TotalOverdue", "CompanySignature", "InterestBlock" };
+        { "PartnerName", "InvoiceNumber", "InvoiceDate", "Total", "DueDate", "InvoiceTable", "TotalOverdue", "CompanySignature", "InterestBlock", "ReportName", "Period" };
 
     public static readonly string[] HtmlPlaceholders = { "InvoiceTable", "CompanySignature", "InterestBlock" };
 
@@ -51,7 +51,9 @@ public static class EmailTemplateRenderer
             ["InvoiceDate"] = "2026-09-01",
             ["Total"] = "1 234,56 €",
             ["DueDate"] = "2026-09-15",
-            ["TotalOverdue"] = "1 234,56 €"
+            ["TotalOverdue"] = "1 234,56 €",
+            ["ReportName"] = lt ? "Skolų suderinimo aktas" : "Debt reconciliation statement",
+            ["Period"] = "2026"
         };
         var html = new Dictionary<string, string>
         {

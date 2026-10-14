@@ -6,6 +6,8 @@
 @using NordicBeesERP.Services.Pdf
 @using NordicBeesERP.Services.Xlsx
 @using NordicBeesERP.Services.Reports
+@using NordicBeesERP.Services.Email
+@using NordicBeesERP.Components.Dialogs
 @using MudBlazor
 @inject DebtReconciliationService DebtReconciliationService
 @inject DebtReconciliationPdfService DebtReconciliationPdfService
@@ -15,6 +17,8 @@
 @inject UnpaidInvoicesXlsxService UnpaidInvoicesXlsxService
 @inject ICustomerService CustomerService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ReportMailService ReportMail
 @inject IJSRuntime JS
 
 <PageTitle>Skolų suderinimo aktas</PageTitle>
@@ -67,6 +71,7 @@
         <MudStack Row="true" Class="mt-4">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GeneratePdf" Disabled="@(_selectedPartner == null)">Generuoti PDF</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="GenerateXlsx" Disabled="@(_selectedPartner == null)">Generuoti XLSX</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="SendEmailAsync" Disabled="@(_selectedPartner == null)">Siųsti el. paštu</MudButton>
         </MudStack>
     </MudPaper>
 </MudContainer>
@@ -147,5 +152,56 @@
         var bytes = DebtReconciliationXlsxService.GenerateXlsx(result, _language); // sync, do NOT await
         await JS.InvokeVoidAsync("downloadFileFromBytes", $"skolu-suderinimo-aktas-{result.PartnerCode}-{_year}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Convert.ToBase64String(bytes));
         Snackbar.Add("XLSX sugeneruotas", Severity.Success);
+    }
+
+    private async Task SendEmailAsync()
+    {
+        if (_selectedPartner == null)
+        {
+            Snackbar.Add("Pasirinkite partnerį", Severity.Warning);
+            return;
+        }
+
+        var partner = _selectedPartner;
+        var year = _year;
+        int? month = _month == 0 ? null : _month;
+        var language = _language;
+        var unpaidReport = _reportType == ReportType.UnpaidInvoices;
+        const string xlsxType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        var attachments = new List<EmailAttachmentSpec>();
+        string reportName;
+        if (unpaidReport)
+        {
+            reportName = language == ReportLanguage.LT ? "Neapmokėtų sąskaitų suvestinė" : "Statement of unpaid invoices";
+            var baseName = $"neapmoketu-saskaitu-suvestine-{partner.CompanyCode}-{year}";
+            attachments.Add(new EmailAttachmentSpec(baseName + ".pdf", "application/pdf", async () =>
+                await UnpaidInvoicesPdfService.GeneratePdfAsync(await UnpaidInvoicesService.GetUnpaidInvoicesAsync(partner.Id, year, month), language)));
+            attachments.Add(new EmailAttachmentSpec(baseName + ".xlsx", xlsxType, async () =>
+                UnpaidInvoicesXlsxService.GenerateXlsx(await UnpaidInvoicesService.GetUnpaidInvoicesAsync(partner.Id, year, month), language)));
+        }
+        else
+        {
+            reportName = language == ReportLanguage.LT ? "Skolų suderinimo aktas" : "Debt reconciliation statement";
+            var baseName = $"skolu-suderinimo-aktas-{partner.CompanyCode}-{year}";
+            attachments.Add(new EmailAttachmentSpec(baseName + ".pdf", "application/pdf", async () =>
+                await DebtReconciliationPdfService.GeneratePdfAsync(await DebtReconciliationService.GetReconciliationAsync(partner.Id, year, month), language)));
+            attachments.Add(new EmailAttachmentSpec(baseName + ".xlsx", xlsxType, async () =>
+                DebtReconciliationXlsxService.GenerateXlsx(await DebtReconciliationService.GetReconciliationAsync(partner.Id, year, month), language)));
+        }
+
+        var recipient = await ReportMail.GetPartnerAsync(partner.Id);
+        var parameters = new DialogParameters
+        {
+            ["Attachments"] = attachments,
+            ["DefaultTo"] = recipient.To,
+            ["Language"] = language == ReportLanguage.LT ? "LT" : "EN",
+            ["PartnerName"] = partner.Name ?? string.Empty,
+            ["ReportName"] = reportName,
+            ["Period"] = month is null ? year.ToString() : $"{year}-{month:00}",
+            ["NoEmailFlag"] = recipient.NoEmailFlag,
+            ["RelatedId"] = (int?)partner.Id
+        };
+        await DialogService.ShowAsync<SendDocumentEmailDialog>("Siųsti el. paštu", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
     }
 }

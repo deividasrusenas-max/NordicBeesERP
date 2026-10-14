@@ -41,7 +41,7 @@ public class EmailRenderingTests
                 Assert.Contains(m.Groups[1].Value, known);
         }
 
-        foreach (var code in new[] { "INVOICE_SEND", "CREDIT_NOTE_SEND", "DUNNING_L1", "DUNNING_L2", "DUNNING_L3" })
+        foreach (var code in new[] { "INVOICE_SEND", "CREDIT_NOTE_SEND", "DUNNING_L1", "DUNNING_L2", "DUNNING_L3", "REPORT_SEND" })
         {
             Assert.NotNull(EmailTemplateDefaults.Find(code, "LT"));
             Assert.NotNull(EmailTemplateDefaults.Find(code, "EN"));

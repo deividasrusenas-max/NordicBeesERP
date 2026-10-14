@@ -7,12 +7,16 @@
 @using NordicBeesERP.Services.Pdf
 @using NordicBeesERP.Services.Xlsx
 @using NordicBeesERP.Services.Reports
+@using NordicBeesERP.Services.Email
+@using NordicBeesERP.Components.Dialogs
 @using MudBlazor
 @inject SalesByCustomerReportService SalesByCustomerReportService
 @inject SalesByCustomerPdfService SalesByCustomerPdfService
 @inject SalesByCustomerXlsxService SalesByCustomerXlsxService
 @inject ICustomerService CustomerService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ReportMailService ReportMail
 @inject IJSRuntime JS
 
 <PageTitle>Prekių pardavimo suvestinė</PageTitle>
@@ -47,6 +51,7 @@
         <MudStack Row="true" Class="mt-4">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GeneratePdf" Disabled="@(!HasFilter || _isLoading)">Generuoti PDF</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="GenerateXlsx" Disabled="@(!HasFilter || _isLoading)">Generuoti XLSX</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="SendEmailAsync" Disabled="@(!HasFilter || _isLoading)">Siųsti el. paštu</MudButton>
             @if (_isLoading)
             {
                 <MudProgressCircular Class="ml-3" Size="Size.Small" Indeterminate="true" />
@@ -137,5 +142,47 @@
         {
             _isLoading = false;
         }
+    }
+
+    private async Task SendEmailAsync()
+    {
+        if (!HasFilter)
+        {
+            Snackbar.Add("Pasirinkite klientą arba periodą", Severity.Warning);
+            return;
+        }
+
+        var customer = _selectedCustomer;
+        var from = _fromDate;
+        var to = _toDate;
+        var language = _language;
+        var baseName = $"prekiu-pardavimo-suvestine-{customer?.CompanyCode ?? "visi"}-{from?.ToString("yyyyMMdd") ?? "nuo"}-{to?.ToString("yyyyMMdd") ?? "iki"}";
+        var attachments = new List<EmailAttachmentSpec>
+        {
+            new(baseName + ".pdf", "application/pdf", async () =>
+                await SalesByCustomerPdfService.GeneratePdfAsync(await SalesByCustomerReportService.GetReportAsync(customer?.Id, from, to), language)),
+            new(baseName + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", async () =>
+                SalesByCustomerXlsxService.GenerateXlsx(await SalesByCustomerReportService.GetReportAsync(customer?.Id, from, to), language))
+        };
+
+        var recipient = await ReportMail.GetPartnerAsync(customer?.Id);
+        var period = (from, to) switch
+        {
+            (null, null) => string.Empty,
+            _ => $"{from:yyyy-MM-dd} – {to:yyyy-MM-dd}".Trim(' ', '–')
+        };
+        var parameters = new DialogParameters
+        {
+            ["Attachments"] = attachments,
+            ["DefaultTo"] = recipient.To,
+            ["Language"] = language == ReportLanguage.LT ? "LT" : "EN",
+            ["PartnerName"] = customer?.Name ?? string.Empty,
+            ["ReportName"] = language == ReportLanguage.LT ? "Prekių pardavimo suvestinė" : "Sales by customer report",
+            ["Period"] = period,
+            ["NoEmailFlag"] = recipient.NoEmailFlag,
+            ["RelatedId"] = (int?)customer?.Id
+        };
+        await DialogService.ShowAsync<SendDocumentEmailDialog>("Siųsti el. paštu", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
     }
 }

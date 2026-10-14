@@ -132,6 +132,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<EmailOutboxAdminService>();
 builder.Services.AddScoped<DocumentMailService>();
+builder.Services.AddScoped<ReportMailService>();
 builder.Services.AddScoped<DunningRepository>();
 builder.Services.AddScoped<DunningService>();
 builder.Services.AddHostedService<DunningWorker>();

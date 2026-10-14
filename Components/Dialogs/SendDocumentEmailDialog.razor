@@ -1,6 +1,7 @@
 @using MudBlazor
 @using NordicBeesERP.Services.Email
 @inject DocumentMailService DocumentMail
+@inject ReportMailService ReportMail
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -8,7 +9,30 @@
         <MudText Typo="Typo.h6">Siųsti el. paštu</MudText>
     </TitleContent>
     <DialogContent>
-        @if (_draft is null)
+        @if (IsGeneric)
+        {
+            @if (_noAddress)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-3">Klientas neturi el. pašto adreso – įveskite adresą ranka.</MudAlert>
+            }
+            @if (_noEmailFlag)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-3">Klientas pažymėtas „nesiųsti el. laiškų“. Siųsti galite tik jei tikrai to norite.</MudAlert>
+            }
+            <MudTextField @bind-Value="_to" Label="Kam (adresai atskiriami kabliataškiu)" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_cc" Label="Kopija" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_subject" Label="Tema" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_body" Label="Turinys (HTML)" Variant="Variant.Outlined" Lines="8" AutoGrow="true" MaxLines="16" Class="mb-3" />
+            <MudText Typo="Typo.caption">Priedai</MudText>
+            @for (var i = 0; i < Attachments!.Count; i++)
+            {
+                var idx = i;
+                <MudCheckBox T="bool" Value="@_selected[idx]" ValueChanged="@(v => _selected[idx] = v)" Label="@Attachments[idx].Name" Dense="true" />
+            }
+            <MudText Typo="Typo.caption" Class="mt-3">Peržiūra</MudText>
+            <iframe sandbox srcdoc="@_body" style="width:100%;height:240px;border:1px solid #cbd5e1;border-radius:4px;background:#fff"></iframe>
+        }
+        else if (_draft is null)
         {
             <MudProgressCircular Indeterminate="true" />
         }
@@ -38,14 +62,30 @@
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="Cancel">Atšaukti</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" Disabled="@(_draft is null || _draft.IsDraftDocument || _busy)" OnClick="SendAsync">Siųsti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" Disabled="@(IsGeneric ? (_busy || !_selected.Any(x => x)) : (_draft is null || _draft.IsDraftDocument || _busy))" OnClick="SendAsync">Siųsti</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     [Parameter] public string Kind { get; set; } = DocumentMailKind.Invoice;
     [Parameter] public int DocumentId { get; set; }
+    /// <summary>Generic mode: when set, the dialog offers these attachments (checkboxes) instead of a single invoice / credit-note PDF.</summary>
+    [Parameter] public IReadOnlyList<EmailAttachmentSpec>? Attachments { get; set; }
+    [Parameter] public string DefaultTo { get; set; } = string.Empty;
+    [Parameter] public string TemplateCode { get; set; } = ReportMailService.TemplateCode;
+    [Parameter] public string Language { get; set; } = "LT";
+    [Parameter] public string PartnerName { get; set; } = string.Empty;
+    [Parameter] public string ReportName { get; set; } = string.Empty;
+    [Parameter] public string Period { get; set; } = string.Empty;
+    [Parameter] public bool NoEmailFlag { get; set; }
+    [Parameter] public string RelatedType { get; set; } = ReportMailService.RelatedTypeReport;
+    [Parameter] public int? RelatedId { get; set; }
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool IsGeneric => Attachments is not null;
+    private bool[] _selected = Array.Empty<bool>();
+    private bool _noAddress;
+    private bool _noEmailFlag;
 
     private DocumentMailDraft? _draft;
     private string _to = string.Empty;
@@ -56,6 +96,25 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (IsGeneric)
+        {
+            try
+            {
+                _selected = Enumerable.Repeat(true, Attachments!.Count).ToArray();
+                _to = DefaultTo;
+                _noAddress = string.IsNullOrWhiteSpace(DefaultTo) && !string.IsNullOrWhiteSpace(PartnerName);
+                _noEmailFlag = NoEmailFlag;
+                (_subject, _body) = await ReportMail.RenderAsync(TemplateCode, Language, PartnerName, ReportName, Period);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+                MudDialog.Cancel();
+            }
+
+            return;
+        }
+
         try
         {
             _draft = await DocumentMail.PrepareAsync(Kind, DocumentId);
@@ -77,7 +136,17 @@
         _busy = true;
         try
         {
-            var id = await DocumentMail.SendAsync(Kind, DocumentId, _to, _cc, _subject, _body);
+            int id;
+            if (IsGeneric)
+            {
+                var chosen = Attachments!.Where((_, i) => _selected[i]).ToList();
+                id = await ReportMail.SendAsync(_to, _cc, _subject, _body, chosen, RelatedType, RelatedId);
+            }
+            else
+            {
+                id = await DocumentMail.SendAsync(Kind, DocumentId, _to, _cc, _subject, _body);
+            }
+
             Snackbar.Add($"Laiškas įdėtas į siuntimo eilę (#{id})", Severity.Success);
             MudDialog.Close(DialogResult.Ok(id));
         }
