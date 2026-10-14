@@ -1,3 +1,4 @@
+using NordicBeesERP.Services;
 using NordicBeesERP.Services.Dunning;
 using NordicBeesERP.Services.Email;
 
@@ -104,7 +105,8 @@ public class EmailRenderingTests
         Assert.Contains("COALESCE(i.due_date, i.payment_due_date)", sql);
         Assert.Contains("i.invoice_number LIKE 'LAK%' AND i.invoice_number NOT LIKE 'ULAK%'", sql);
         Assert.Contains("i.status NOT IN ('draft', 'cancelled', 'disputed')", sql);
-        Assert.Contains("status <> 'disputed'", sql);
+        Assert.Contains(CreditNoteDebtRule.SqlStatusFilter, sql);
+        Assert.Contains("status NOT IN ('draft', 'cancelled', 'disputed')", sql);
         Assert.Contains("i.total_incl_vat - i.paid_amount - IFNULL(c.credited, 0)", sql);
     }
 }
