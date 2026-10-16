@@ -366,10 +366,12 @@ namespace NordicBeesERP.Services
                     line.LineTotal, line.Notes, now, now);
             }
 
-            // Header: update ONLY the user-editable columns. paid_amount, payment_status, last_payment_date, pdf_path,
+            // Header: update ONLY the user-editable columns. paid_amount, payment_status, last_payment_date,
             // delivery_id, currency_id, due_date, created_at, status and invoice_number are deliberately left untouched.
+            // pdf_path is reset to NULL: any edit invalidates the frozen PDF (same transaction as the content change);
+            // the stale file itself is removed after commit.
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE invoices SET invoice_date = {0}, customer_id = {1}, payment_term_days = {2}, payment_due_date = {3}, language = {4}, invoice_type = {5}, reverse_charge = {6}, subtotal_excl_vat = {7}, total_vat = {8}, total_incl_vat = {9}, notes = {10}, updated_at = {11} WHERE id = {12}",
+                "UPDATE invoices SET invoice_date = {0}, customer_id = {1}, payment_term_days = {2}, payment_due_date = {3}, language = {4}, invoice_type = {5}, reverse_charge = {6}, subtotal_excl_vat = {7}, total_vat = {8}, total_incl_vat = {9}, notes = {10}, updated_at = {11}, pdf_path = NULL WHERE id = {12}",
                 invoice.InvoiceDate, invoice.CustomerId, invoice.PaymentTermDays, invoice.PaymentDueDate, invoice.Language,
                 invoice.InvoiceType, invoice.ReverseCharge, invoice.SubtotalExclVat, invoice.TotalVat, invoice.TotalInclVat,
                 invoice.Notes, invoice.UpdatedAt, invoice.Id);
@@ -386,6 +388,9 @@ namespace NordicBeesERP.Services
             }
 
             await transaction.CommitAsync();
+
+            // After commit (a rollback must keep the old PDF); failures are logged, never thrown
+            PdfFileCache.TryDelete(_pdfBaseDir, existingInvoice.PdfPath);
             return invoice.Id;
         }
 

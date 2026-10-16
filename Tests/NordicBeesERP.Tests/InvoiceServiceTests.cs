@@ -631,6 +631,87 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    private static readonly byte[] EditedPdfBytes =
+        new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x32, 0x2E, 0x30 }; // "%PDF-2.0"
+
+    private async Task<string?> GetPdfPathAsync(int invoiceId)
+    {
+        await using var c = await _fixture.Factory.CreateDbContextAsync();
+        return (await c.Database.SqlQueryRaw<string?>(
+            "SELECT pdf_path AS Value FROM invoices WHERE id = {0}", invoiceId).ToListAsync()).Single();
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_AfterPdfCached_EditedQuantityPrintsRegeneratedPdf()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        var pdfGen = new FakePdfGeneratorService { BytesToReturn = MarkerPdfBytes };
+        var service = new InvoiceService(_fixture.Factory, pdfGen, null!, baseDir);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "PDFEDIT");
+        try
+        {
+            await using (var c = await _fixture.Factory.CreateDbContextAsync())
+                await c.Database.ExecuteSqlRawAsync("UPDATE invoices SET status = {0} WHERE id = {1}", "confirmed", invoiceId);
+
+            // 1. First print freezes the PDF
+            Assert.Equal(MarkerPdfBytes, await service.GenerateAndSavePdfAsync(invoiceId));
+            var cachedRel = await GetPdfPathAsync(invoiceId);
+            Assert.False(string.IsNullOrWhiteSpace(cachedRel));
+            var cachedFull = Path.Combine(baseDir, cachedRel!);
+            Assert.True(File.Exists(cachedFull));
+
+            // 2. Edit a line quantity
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            loaded.Lines.Single(l => l.Description == "Line 1").Quantity = 7m;
+            await service.UpdateInvoiceAsync(loaded);
+
+            // 3. Cache is invalidated: pdf_path reset and the stale file removed
+            Assert.Null(await GetPdfPathAsync(invoiceId));
+            Assert.False(File.Exists(cachedFull));
+
+            // 4. Next print regenerates (new content) and re-freezes
+            pdfGen.BytesToReturn = EditedPdfBytes;
+            Assert.Equal(EditedPdfBytes, await service.GenerateAndSavePdfAsync(invoiceId));
+            Assert.Equal(2, pdfGen.GenerateInvoicePdfAsyncCallCount);
+            var newRel = await GetPdfPathAsync(invoiceId);
+            Assert.False(string.IsNullOrWhiteSpace(newRel));
+            Assert.Equal(EditedPdfBytes, File.ReadAllBytes(Path.Combine(baseDir, newRel!)));
+        }
+        finally
+        {
+            await CleanupInvoiceAsync(partnerId, invoiceId, null);
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task UpdateInvoiceAsync_HeaderOnlyEdit_AlsoInvalidatesCachedPdf()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        var pdfGen = new FakePdfGeneratorService { BytesToReturn = MarkerPdfBytes };
+        var service = new InvoiceService(_fixture.Factory, pdfGen, null!, baseDir);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "PDFHDR");
+        try
+        {
+            await using (var c = await _fixture.Factory.CreateDbContextAsync())
+                await c.Database.ExecuteSqlRawAsync("UPDATE invoices SET status = {0} WHERE id = {1}", "confirmed", invoiceId);
+            await service.GenerateAndSavePdfAsync(invoiceId);
+            Assert.False(string.IsNullOrWhiteSpace(await GetPdfPathAsync(invoiceId)));
+
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            loaded.Notes = "changed note";
+            loaded.PaymentTermDays = 30;
+            await service.UpdateInvoiceAsync(loaded);
+
+            Assert.Null(await GetPdfPathAsync(invoiceId));
+        }
+        finally
+        {
+            await CleanupInvoiceAsync(partnerId, invoiceId, null);
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task GenerateAndSavePdfAsync_DraftInvoice_NeverSavesOrWritesPdfPath()
     {
@@ -1391,7 +1472,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
-    public async Task UpdateInvoiceAsync_PreservesPaymentAndSnapshotFields_RecalculatesTotals()
+    public async Task UpdateInvoiceAsync_PreservesPaymentAndSnapshotFields_ResetsPdfPath_RecalculatesTotals()
     {
         var service = new InvoiceService(_fixture.Factory, null!, null!);
         var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "KEEPFLD");
@@ -1416,7 +1497,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             Assert.Equal(50m, row.PaidAmount);
             Assert.Equal("partial", row.PaymentStatus);
             Assert.Equal("LT123", row.CustomerVatCode);
-            Assert.Equal("/tmp/keep.pdf", row.PdfPath);
+            Assert.Null(row.PdfPath); // any edit invalidates the cached PDF (unsafe rooted path is never deleted from disk)
             Assert.Equal(987654, row.DeliveryId);
             Assert.Equal(40m + 40m + 90m, row.Subtotal);
         }
