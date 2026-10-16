@@ -292,7 +292,9 @@
                     Quantity = line.Quantity / 1.0m, // normalize decimal scale (DB column carries fixed scale, e.g. 2.6500m) so the numeric field doesn't display trailing zeros
                     Unit = line.Unit,
                     PriceExclVat = line.PriceExclVat / 1.0m,
-                    VatRate = line.VatRate
+                    VatRate = line.VatRate,
+                    LotNumber = line.LotNumber,
+                    Notes = line.Notes
                 });
             }
             
@@ -585,7 +587,9 @@
                 Quantity = lineInput.Quantity,
                 Unit = lineInput.Unit,
                 PriceExclVat = lineInput.PriceExclVat,
-                VatRate = lineInput.VatRate
+                VatRate = lineInput.VatRate,
+                LotNumber = lineInput.LotNumber,
+                Notes = lineInput.Notes
             });
         }
         
@@ -615,5 +619,8 @@
         public decimal PriceExclVat { get; set; } = 0;
         public decimal VatRate { get; set; } = 21;
         public decimal LineTotal { get; set; } = 0;
+        // No input in this form: carried through load -> save so UpdateInvoiceAsync does not blank them
+        public string? LotNumber { get; set; }
+        public string? Notes { get; set; }
     }
 }

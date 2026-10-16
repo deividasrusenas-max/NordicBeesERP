@@ -340,10 +340,10 @@ namespace NordicBeesERP.Services
                 {
                     // Update in place by Id — the line keeps its Id, so credit_note_lines.invoice_line_id stays valid
                     await context.Database.ExecuteSqlRawAsync(
-                        "UPDATE invoice_lines SET line_number = {0}, product_id = {1}, product_code = {2}, description = {3}, quantity = {4}, unit = {5}, price_excl_vat = {6}, vat_rate = {7}, line_subtotal = {8}, vat_amount = {9}, line_total = {10}, updated_at = {11} WHERE id = {12} AND invoice_id = {13}",
+                        "UPDATE invoice_lines SET line_number = {0}, product_id = {1}, product_code = {2}, description = {3}, quantity = {4}, unit = {5}, price_excl_vat = {6}, vat_rate = {7}, line_subtotal = {8}, vat_amount = {9}, line_total = {10}, lot_number = {11}, notes = {12}, updated_at = {13} WHERE id = {14} AND invoice_id = {15}",
                         line.LineNumber, line.ProductId, line.ProductCode, line.Description ?? "", line.Quantity, line.Unit,
                         line.PriceExclVat, line.VatRate, line.LineSubtotal, line.VatAmount, line.LineTotal,
-                        DateTime.UtcNow, ex.Id, invoice.Id);
+                        line.LotNumber, line.Notes, DateTime.UtcNow, ex.Id, invoice.Id);
                 }
                 else if (referencedIds.Contains(ex.Id))
                 {

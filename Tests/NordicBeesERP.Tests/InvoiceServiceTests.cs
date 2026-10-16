@@ -1440,6 +1440,36 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task UpdateInvoiceAsync_ExistingLine_LotNumberAndNotesAreEditedAndPersisted()
+    {
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "LOTNOTE");
+        try
+        {
+            var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            var line1 = loaded.Lines.Single(l => l.Description == "Line 1");
+            line1.LotNumber = "LOT-2026-01";
+            line1.Notes = "first note";
+            await service.UpdateInvoiceAsync(loaded);
+
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            var stored = await v.InvoiceLines.AsNoTracking().SingleAsync(l => l.Id == line1.Id);
+            Assert.Equal("LOT-2026-01", stored.LotNumber);
+            Assert.Equal("first note", stored.Notes);
+
+            // Round trip: reloaded values are written back unchanged (no blanking), and can be cleared
+            var reloaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
+            reloaded.Lines.Single(l => l.Id == line1.Id).Notes = null;
+            await service.UpdateInvoiceAsync(reloaded);
+
+            var again = await v.InvoiceLines.AsNoTracking().SingleAsync(l => l.Id == line1.Id);
+            Assert.Equal("LOT-2026-01", again.LotNumber);
+            Assert.Null(again.Notes);
+        }
+        finally { await CleanupInvoiceAsync(partnerId, invoiceId, null); }
+    }
+
+    [Fact]
     public async Task UpdateInvoiceAsync_DeletingUnreferencedLine_KeepsCreditNoteLinkedLineIntact()
     {
         var service = new InvoiceService(_fixture.Factory, null!, null!);
