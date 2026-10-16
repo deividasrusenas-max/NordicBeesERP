@@ -234,7 +234,8 @@ namespace NordicBeesERP.Services
             foreach (var line in invoice.Lines)
             {
                 line.LineNumber = lineNumber++;
-                
+                // UTC like every other invoice_lines write — GenerateAndSavePdfAsync compares updated_at to the PDF file's UTC mtime
+                line.CreatedAt = line.UpdatedAt = DateTime.UtcNow;
 
                 // Calculate line totals (SaskaitosApp logic)
                 line.LineSubtotal = Math.Round(line.Quantity * line.PriceExclVat, 2, MidpointRounding.AwayFromZero);
@@ -658,12 +659,21 @@ namespace NordicBeesERP.Services
 
             var isFinal = invoice.Status != InvoiceStatus.Draft;
 
-            // Serve cached copy when already frozen
+            // Serve cached copy when already frozen — unless a line changed after the file was written
+            // (backstop for edits that bypassed UpdateInvoiceAsync). Only invoice_lines.updated_at is compared:
+            // it is written solely by content edits (always UtcNow), whereas invoices.updated_at also moves on
+            // payments, status changes and on this very pdf_path write, which must not unfreeze the PDF.
             if (isFinal && !string.IsNullOrWhiteSpace(invoice.PdfPath))
             {
-                var cached = PdfFileCache.TryRead(_pdfBaseDir, invoice.PdfPath);
-                if (cached != null)
-                    return cached;
+                var latestLineChange = await context.InvoiceLines.AsNoTracking()
+                    .Where(l => l.InvoiceId == invoiceId)
+                    .MaxAsync(l => (DateTime?)l.UpdatedAt);
+                if (!PdfFileCache.IsStale(_pdfBaseDir, invoice.PdfPath, latestLineChange))
+                {
+                    var cached = PdfFileCache.TryRead(_pdfBaseDir, invoice.PdfPath);
+                    if (cached != null)
+                        return cached;
+                }
             }
 
             var pdfBytes = await _pdfGeneratorService.GenerateInvoicePdfAsync(invoiceId);

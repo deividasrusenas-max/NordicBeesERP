@@ -684,6 +684,51 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Theory]
+    [InlineData(true)]   // file older than the newest line change -> regenerate
+    [InlineData(false)]  // file newer than the newest line change -> serve frozen copy
+    public async Task GenerateAndSavePdfAsync_LineChangedAfterFileWritten_RegeneratesOnlyWhenStale(bool fileIsOlder)
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        var pdfGen = new FakePdfGeneratorService { BytesToReturn = EditedPdfBytes };
+        var service = new InvoiceService(_fixture.Factory, pdfGen, null!, baseDir);
+        var (partnerId, invoiceId) = await CreateThreeLineInvoiceAsync(service, "PDFSTALE");
+        try
+        {
+            var lineChange = DateTime.UtcNow;
+            var rel = $"{DateTime.UtcNow.Year}/STALE-{Guid.NewGuid():N}.pdf";
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(baseDir, rel))!);
+            File.WriteAllBytes(Path.Combine(baseDir, rel), MarkerPdfBytes);
+            File.SetLastWriteTimeUtc(Path.Combine(baseDir, rel), fileIsOlder ? lineChange.AddMinutes(-5) : lineChange.AddMinutes(5));
+
+            await using (var c = await _fixture.Factory.CreateDbContextAsync())
+            {
+                await c.Database.ExecuteSqlRawAsync(
+                    "UPDATE invoices SET status = {0}, pdf_path = {1} WHERE id = {2}", "confirmed", rel, invoiceId);
+                await c.Database.ExecuteSqlRawAsync(
+                    "UPDATE invoice_lines SET updated_at = {0} WHERE invoice_id = {1}", lineChange, invoiceId);
+            }
+
+            var bytes = await service.GenerateAndSavePdfAsync(invoiceId);
+
+            if (fileIsOlder)
+            {
+                Assert.Equal(EditedPdfBytes, bytes);
+                Assert.Equal(1, pdfGen.GenerateInvoicePdfAsyncCallCount);
+            }
+            else
+            {
+                Assert.Equal(MarkerPdfBytes, bytes);
+                Assert.Equal(0, pdfGen.GenerateInvoicePdfAsyncCallCount);
+            }
+        }
+        finally
+        {
+            await CleanupInvoiceAsync(partnerId, invoiceId, null);
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task UpdateInvoiceAsync_HeaderOnlyEdit_AlsoInvalidatesCachedPdf()
     {
