@@ -264,3 +264,24 @@ keitimas = rankinis `UPDATE` prodo DB. Staging klonas turi prodo raktą.
 
 `/var/lib/nordicbees/staging/` 2026-09-25 turėjo tik `.nordicbees-storage` — per
 `IFileStore` staginge iki tol nebuvo įrašytas nė vienas failas.
+
+---
+
+## 8. Atnaujinimas 2026-10-15 — atsarginės kopijos į Backblaze B2
+
+Konkretus I-7 sprendimo kelias. Tas pats modelis, kaip naujam WWW VPS (`~/Projects/infra`,
+ADR apie B2 backup) — iš ten perimti rolę/skriptą, ne rašyti iš naujo.
+
+| # | Darbas | Adresatas | Pastaba |
+|---|---|---|---|
+| I-16 | ERP atsarginės kopijos iš `lakstena-dev` į Backblaze B2 | Deividas + Saulius | Daroma **po** WWW VPS paleidimo. Pirma suderinti su Sauliumi — gal jau yra kopijavimas, kurį galima nukreipti į B2 |
+
+**I-16 apimtis:**
+- Atskiras bucket `lakstena-erp-restic` (EU Central), **nemaišyti** su `lakstena-vps-prod-restic`.
+- Atskiras serverio raktas tik šiam bucket'ui, **be `deleteFiles` / `writeBuckets`** (append-only). Valymas (prune) — tik iš Mac'o atskiru raktu iš Bitwarden.
+- Bucket lifecycle: „Keep all versions“.
+- Kopijuojama: `mariadb-dump --single-transaction` → `nordic_bees_erp` (prod; staging — ne), `/var/lib/nordicbees/artwork`, `delivery-receipts`, `invoices` (sąskaitos — apskaitos dokumentai su saugojimo terminais).
+- restic šifruoja prieš siunčiant.
+- Healthchecks patikra `erp-backup` (projektas `vps-prod` arba atskiras).
+- **Pirma pamatuoti dydį:** B2 nemokami 10 GB yra **visai paskyrai** (bendri su WWW VPS kopijomis).
+- Mėnesinis atkūrimo testas į staging DB.
