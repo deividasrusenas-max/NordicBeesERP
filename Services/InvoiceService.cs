@@ -398,7 +398,14 @@ namespace NordicBeesERP.Services
         public async Task<int> DeleteInvoiceAsync(int id)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
+            var pdfPath = await context.Invoices.AsNoTracking()
+                .Where(i => i.Id == id)
+                .Select(i => i.PdfPath)
+                .FirstOrDefaultAsync();
             await context.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", id);
+
+            // Only reached if the row delete succeeded; failures are logged, never thrown
+            PdfFileCache.TryDelete(_pdfBaseDir, pdfPath);
             return 1;
         }
 

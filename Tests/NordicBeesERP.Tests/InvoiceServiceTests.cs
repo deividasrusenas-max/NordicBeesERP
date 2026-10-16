@@ -90,6 +90,39 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             "DELETE FROM business_partners WHERE id = {0}", partnerId);
     }
 
+    [Fact]
+    public async Task DeleteInvoiceAsync_RemovesCachedPdfFile()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), $"npb-inv-{Guid.NewGuid():N}");
+        try
+        {
+            await using var context = await _fixture.Factory.CreateDbContextAsync();
+            var partner = NewTestCustomer($"Test Customer {Guid.NewGuid():N}");
+            context.BusinessPartners.Add(partner);
+            await context.SaveChangesAsync();
+            var partnerId = partner.Id;
+
+            var invoice = NewTestInvoice(partnerId, $"INV-{Guid.NewGuid():N}");
+            invoice.Status = InvoiceStatus.Confirmed;
+            var rel = PdfFileCache.Save(baseDir, invoice.InvoiceDate.Year, $"DEL-{Guid.NewGuid():N}.pdf", MarkerPdfBytes);
+            invoice.PdfPath = rel;
+            context.Invoices.Add(invoice);
+            await context.SaveChangesAsync();
+            var invoiceId = invoice.Id;
+            Assert.True(File.Exists(Path.Combine(baseDir, rel)));
+
+            var service = new InvoiceService(_fixture.Factory, null!, null!, baseDir);
+            await service.DeleteInvoiceAsync(invoiceId);
+
+            Assert.False(File.Exists(Path.Combine(baseDir, rel)));
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", partnerId);
+        }
+        finally
+        {
+            if (Directory.Exists(baseDir)) Directory.Delete(baseDir, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData(1792, 0.53, 21, 949.76, 199.45, 1149.21)] // 199.4496 -> 199.45
     [InlineData(1, 0.50, 1, 0.50, 0.01, 0.51)]            // VAT 0.005 -> away from zero (banker's would give 0.00)
