@@ -84,7 +84,23 @@ public class DeliveryService : IDeliveryService
         if (toDate.HasValue)
             query = query.Where(d => d.DeliveryDate <= toDate.Value);
 
-        return await query.OrderByDescending(d => d.DeliveryDate).ToListAsync();
+        var deliveries = await query.OrderByDescending(d => d.DeliveryDate).ToListAsync();
+
+        // deliveries.paid_amount is never written by the app: the paid amount is always derived from supplier_payments
+        // (same source as GetAllAsync), otherwise fully paid suppliers show as full debt.
+        var ids = deliveries.Select(d => d.Id).ToList();
+        if (ids.Count > 0)
+        {
+            var paidByDelivery = await context.SupplierPayments
+                .Where(p => ids.Contains(p.DeliveryId))
+                .GroupBy(p => p.DeliveryId)
+                .Select(g => new { DeliveryId = g.Key, Paid = g.Sum(p => p.Amount) })
+                .ToDictionaryAsync(x => x.DeliveryId, x => x.Paid);
+            foreach (var d in deliveries)
+                d.PaidAmount = paidByDelivery.TryGetValue(d.Id, out var paid) ? paid : 0m;
+        }
+
+        return deliveries;
     }
 
     public async Task<Delivery?> GetByIdAsync(int id)
