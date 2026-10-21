@@ -481,6 +481,28 @@ namespace NordicBeesERP.Services
                 invoice.ApprovedAt = null;
             }
 
+            // The edited total may no longer match what was paid: a PAID/PARTIAL invoice whose amount went up
+            // is PARTIAL / unpaid again (payment status is derived from payments vs the CURRENT total).
+            if (newStatus is "PAID" or "PARTIAL")
+            {
+                var paid = await context.ExpensePayments.Where(p => p.InvoiceId == invoice.Id).SumAsync(p => p.Amount);
+                var rederived = ExpenseStatusHelper.Recalculate(paid, invoice.AmountInclVat, invoice.DueDate, newStatus);
+                if (rederived != newStatus)
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE expense_invoices SET paid_amount = {0}, status = {1}, updated_at = {2} WHERE id = {3}",
+                        paid, rederived, DateTime.UtcNow, invoice.Id);
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        INSERT INTO expense_invoice_audit
+                            (invoice_id, invoice_number, action, action_details, old_status, new_status, performed_by, performed_at)
+                        VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
+                        invoice.Id, invoice.InvoiceNumber, "STATUS_CHANGED",
+                        $"Status changed from {newStatus} to {rederived} (amount edited)", newStatus, rederived, performedBy, DateTime.Now);
+                    invoice.Status = rederived;
+                    newStatus = rederived;
+                }
+            }
+
             return newStatus;
         }
 
