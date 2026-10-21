@@ -1069,9 +1069,9 @@
 
     private void SyncLineStrings()
     {
-        _lineQuantities = _ocrLines.Select(l => l.Quantity?.ToString("N2") ?? "1").ToList();
-        _lineAmounts = _ocrLines.Select(l => l.AmountExclVat.ToString("N2")).ToList();
-        _lineVatRates = _ocrLines.Select(l => l.VatRate.ToString("N0")).ToList();
+        _lineQuantities = _ocrLines.Select(l => l.Quantity?.ToString("0.####", LtCulture.Instance) ?? "1").ToList();
+        _lineAmounts = _ocrLines.Select(l => l.AmountExclVat.ToString("F2", LtCulture.Instance)).ToList();
+        _lineVatRates = _ocrLines.Select(l => l.VatRate.ToString("0.##", LtCulture.Instance)).ToList();
     }
 
     private void UpdateLineFromString(int idx)
@@ -1079,17 +1079,17 @@
         if (idx >= _ocrLines.Count) return;
         // a typed amount or quantity means the net is no longer quantity × price as derived by OCR,
         // so the line rule checks the line again (same as the edit path, which stores no marker)
-        if (decimal.TryParse(_lineQuantities[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var qty))
+        if (LtCulture.TryParseDecimal(_lineQuantities[idx], out var qty))
         {
             if (qty != _ocrLines[idx].Quantity) _ocrLines[idx].NetDerived = false;
             _ocrLines[idx].Quantity = qty;
         }
-        if (decimal.TryParse(_lineAmounts[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amt))
+        if (LtCulture.TryParseDecimal(_lineAmounts[idx], out var amt))
         {
             if (amt != _ocrLines[idx].AmountExclVat) _ocrLines[idx].NetDerived = false;
             _ocrLines[idx].AmountExclVat = amt;
         }
-        if (decimal.TryParse(_lineVatRates[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var vat))
+        if (LtCulture.TryParseDecimal(_lineVatRates[idx], out var vat))
             _ocrLines[idx].VatRate = vat;
         _ocrLines[idx].AmountInclVat = _ocrLines[idx].AmountExclVat * (1 + _ocrLines[idx].VatRate / 100);
         StateHasChanged();

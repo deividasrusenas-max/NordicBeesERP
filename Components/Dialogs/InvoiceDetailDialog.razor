@@ -1243,20 +1243,20 @@
     private void SyncLineStrings()
     {
         _lineDescriptions = _lines.Select(l => l.Description ?? "").ToList();
-        _lineQuantities = _lines.Select(l => l.Quantity?.ToString("G29") ?? "1").ToList();
-        _lineAmounts = _lines.Select(l => l.AmountExclVat.ToString("N2")).ToList();
-        _lineVatRates = _lines.Select(l => ((int)l.VatRate).ToString()).ToList();
+        _lineQuantities = _lines.Select(l => l.Quantity?.ToString("0.####", LtCulture.Instance) ?? "1").ToList();
+        _lineAmounts = _lines.Select(l => l.AmountExclVat.ToString("F2", LtCulture.Instance)).ToList();
+        _lineVatRates = _lines.Select(l => l.VatRate.ToString("0.##", LtCulture.Instance)).ToList();
     }
 
     private void UpdateLineFromString(int idx)
     {
         if (idx >= _lines.Count) return;
         _lines[idx].Description = _lineDescriptions[idx];
-        if (decimal.TryParse(_lineQuantities[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var qty))
+        if (LtCulture.TryParseDecimal(_lineQuantities[idx], out var qty))
             _lines[idx].Quantity = qty;
-        if (decimal.TryParse(_lineAmounts[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amt))
+        if (LtCulture.TryParseDecimal(_lineAmounts[idx], out var amt))
             _lines[idx].AmountExclVat = amt;
-        if (decimal.TryParse(_lineVatRates[idx].Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var vat))
+        if (LtCulture.TryParseDecimal(_lineVatRates[idx], out var vat))
             _lines[idx].VatRate = vat;
         _lines[idx].AmountInclVat = _lines[idx].AmountExclVat * (1 + _lines[idx].VatRate / 100);
         StateHasChanged();
