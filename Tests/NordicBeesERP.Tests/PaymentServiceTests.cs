@@ -110,4 +110,66 @@ public class PaymentServiceTests : IClassFixture<DbTestFixture>
         await verifyContext.Database.ExecuteSqlRawAsync(
             "DELETE FROM business_partners WHERE id = {0}", partnerId);
     }
+
+    [Fact]
+    public async Task UpdatePaymentAsync_SplitPayment_DateEditKeepsAllocations_AmountEditRejected()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        var partner = new BusinessPartner
+        {
+            PartnerType = PartnerType.Customer, Name = $"Test Customer {Guid.NewGuid():N}", Country = "Lithuania",
+            CountryCode = "LT", DefaultLanguage = "LT", PaymentTermDays = 14, DefaultVatRate = 21m, IsActive = true,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        };
+        context.BusinessPartners.Add(partner);
+        await context.SaveChangesAsync();
+
+        var invoiceIds = new List<int>();
+        foreach (var _ in new[] { 0, 1 })
+        {
+            var inv = new Invoice
+            {
+                InvoiceNumber = $"INV-{Guid.NewGuid():N}", InvoiceDate = DateTime.UtcNow, CustomerId = partner.Id,
+                Language = "lt", InvoiceType = "PVM SĄSKAITA FAKTŪRA", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+            };
+            context.Invoices.Add(inv);
+            await context.SaveChangesAsync();
+            invoiceIds.Add(inv.Id);
+        }
+
+        var payment = new Payment
+        {
+            PaymentDate = DateTime.UtcNow, CustomerId = partner.Id, Amount = 1000m, PaymentMethod = PaymentMethod.BankTransfer,
+            Source = "manual", InvoiceId = invoiceIds[0], CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        };
+        context.Payments.Add(payment);
+        await context.SaveChangesAsync();
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO payment_allocations (payment_id, invoice_id, allocated_amount, allocated_at) VALUES ({0}, {1}, {2}, NOW())",
+            payment.Id, invoiceIds[0], 600m);
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO payment_allocations (payment_id, invoice_id, allocated_amount, allocated_at) VALUES ({0}, {1}, {2}, NOW())",
+            payment.Id, invoiceIds[1], 400m);
+
+        var service = new PaymentService(_fixture.Factory);
+
+        // Amount change on a split payment is rejected
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.UpdatePaymentAsync(payment.Id, 600m, DateTime.UtcNow, "bank_transfer", null, null, 1));
+
+        // Date-only edit (total unchanged) keeps both allocations as they were
+        await service.UpdatePaymentAsync(payment.Id, 1000m, DateTime.UtcNow.AddDays(-1), "bank_transfer", null, null, 1);
+
+        await using var verify = await _fixture.Factory.CreateDbContextAsync();
+        var allocs = await verify.PaymentAllocations.AsNoTracking()
+            .Where(a => a.PaymentId == payment.Id).OrderBy(a => a.AllocatedAmount).Select(a => a.AllocatedAmount).ToListAsync();
+        Assert.Equal(new[] { 400m, 600m }, allocs);
+        Assert.Equal(1000m, (await verify.Payments.AsNoTracking().FirstAsync(p => p.Id == payment.Id)).Amount);
+
+        await verify.Database.ExecuteSqlRawAsync("DELETE FROM payment_allocations WHERE payment_id = {0}", payment.Id);
+        await verify.Database.ExecuteSqlRawAsync("DELETE FROM payments WHERE id = {0}", payment.Id);
+        foreach (var id in invoiceIds)
+            await verify.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", id);
+        await verify.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", partner.Id);
+    }
 }

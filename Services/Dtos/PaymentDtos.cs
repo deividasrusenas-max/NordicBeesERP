@@ -271,6 +271,8 @@ namespace NordicBeesERP.Services.Dtos
         public int PaymentId { get; set; }
         public DateTime Date { get; set; }
         public decimal Amount { get; set; }
+        /// <summary>Whole payment amount (Amount is only this invoice's allocation).</summary>
+        public decimal PaymentTotal { get; set; }
         public string Method { get; set; } = string.Empty;
         public string? Reference { get; set; }
         public string? Notes { get; set; }

@@ -895,6 +895,15 @@ namespace NordicBeesERP.Services
                 return false;
             }
 
+            // `amount` is the payment TOTAL. A payment split over several invoices cannot have its total
+            // changed here (every allocation would be overwritten) - only date/method/reference/notes.
+            var allocationCount = payment.Allocations?.Count ?? 0;
+            if (amount <= 0)
+                throw new InvalidOperationException("Suma turi būti didesnė nei 0.");
+            if (allocationCount > 1 && amount != payment.Amount)
+                throw new InvalidOperationException(
+                    "Mokėjimas paskirstytas kelioms sąskaitoms – sumos keisti negalima. Ištrinkite mokėjimą ir įveskite iš naujo.");
+
             // Get original values for audit
             var originalAmount = payment.Amount;
             var originalDate = payment.PaymentDate;
@@ -937,10 +946,14 @@ namespace NordicBeesERP.Services
             context.Payments.Update(payment);
             await context.SaveChangesAsync();
 
-            // Update payment_allocations.allocated_amount AFTER SaveChanges
-            await context.Database.ExecuteSqlRawAsync(
-                "UPDATE payment_allocations SET allocated_amount = {0} WHERE payment_id = {1}",
-                amount, paymentId);
+            // Single-allocation payment: the allocation follows the payment total.
+            // Split payments keep their allocations untouched (total edit is rejected above).
+            if (allocationCount == 1)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE payment_allocations SET allocated_amount = {0} WHERE payment_id = {1}",
+                    amount, paymentId);
+            }
 
             // Recalculate all invoices linked to this payment
             var invoiceIds = await context.PaymentAllocations
@@ -1344,6 +1357,7 @@ namespace NordicBeesERP.Services
                             PaymentId = p.Id,
                             Date = p.PaymentDate,
                             Amount = pa.AllocatedAmount,
+                            PaymentTotal = p.Amount,
                             Method = p.PaymentMethod.ToString(),
                             Reference = p.ReferenceNumber,
                             Notes = p.Notes

@@ -640,7 +640,7 @@
             var parameters = new DialogParameters
             {
                 ["PaymentId"] = p.PaymentId,
-                ["CurrentAmount"] = p.Amount,
+                ["CurrentAmount"] = p.PaymentTotal > 0 ? p.PaymentTotal : p.Amount,
                 ["CurrentDate"] = p.Date,
                 ["CurrentMethod"] = p.Method
             };
