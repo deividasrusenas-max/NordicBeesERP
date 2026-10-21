@@ -272,7 +272,7 @@ namespace NordicBeesERP.Services
             }
 
             var invoices = await invoiceQuery
-                .OrderBy(i => i.DueDate)
+                .OrderBy(i => (i.DueDate ?? i.PaymentDueDate))
                 .ToListAsync();
 
             if (invoices.Count == 0)
@@ -303,7 +303,7 @@ namespace NordicBeesERP.Services
                     Id = i.Id,
                     InvoiceNumber = i.InvoiceNumber,
                     InvoiceDate = i.InvoiceDate,
-                    DueDate = i.DueDate,
+                    DueDate = (i.DueDate ?? i.PaymentDueDate),
                     CustomerId = i.CustomerId,
                     CustomerName = customerNameLookup.TryGetValue(i.CustomerId, out var name) ? name : string.Empty,
                     TotalInclVat = i.TotalInclVat,
@@ -336,7 +336,7 @@ namespace NordicBeesERP.Services
                             Id = i.Id,
                             InvoiceNumber = i.InvoiceNumber,
                             InvoiceDate = i.InvoiceDate,
-                            DueDate = i.DueDate,
+                            DueDate = (i.DueDate ?? i.PaymentDueDate),
                             CustomerId = i.CustomerId,
                             CustomerName = bp.Name,
                             TotalInclVat = i.TotalInclVat,
@@ -384,7 +384,7 @@ namespace NordicBeesERP.Services
                                     Id = i.Id,
                                     InvoiceNumber = i.InvoiceNumber,
                                     InvoiceDate = i.InvoiceDate,
-                                    DueDate = i.DueDate,
+                                    DueDate = (i.DueDate ?? i.PaymentDueDate),
                                     CustomerId = i.CustomerId,
                                     CustomerName = bp.Name,
                                     TotalInclVat = i.TotalInclVat,
@@ -459,15 +459,15 @@ namespace NordicBeesERP.Services
                 var invoices = await (from inv in context.Invoices
                                       join bpRaw in context.BusinessPartners on inv.CustomerId equals bpRaw.Id into bpGroup
                                       from bp in bpGroup.DefaultIfEmpty()
-                                      where inv.DueDate >= weekStart && inv.DueDate <= weekEnd &&
+                                      where (inv.DueDate ?? inv.PaymentDueDate) >= weekStart && (inv.DueDate ?? inv.PaymentDueDate) <= weekEnd &&
                                             inv.PaymentStatus != "paid" && inv.Status != InvoiceStatus.Disputed
-                                      orderby inv.DueDate
+                                      orderby (inv.DueDate ?? inv.PaymentDueDate)
                                       select new InvoiceWithPaymentInfo
                                        {
                                            Id = inv.Id,
                                            InvoiceNumber = inv.InvoiceNumber,
                                            InvoiceDate = inv.InvoiceDate,
-                                           DueDate = inv.DueDate,
+                                           DueDate = (inv.DueDate ?? inv.PaymentDueDate),
                                            CustomerId = inv.CustomerId,
                                            CustomerName = bp.Name,
                                            TotalInclVat = inv.TotalInclVat,
@@ -528,7 +528,7 @@ namespace NordicBeesERP.Services
                                             Id = i.Id,
                                             InvoiceNumber = i.InvoiceNumber,
                                             InvoiceDate = i.InvoiceDate,
-                                            DueDate = i.DueDate,
+                                            DueDate = (i.DueDate ?? i.PaymentDueDate),
                                             CustomerId = i.CustomerId,
                                             CustomerName = bp.Name,
                                             TotalInclVat = i.TotalInclVat,
@@ -639,7 +639,7 @@ namespace NordicBeesERP.Services
                             CreatedByName = null,
                             PaymentNumber = $"M-{p.PaymentDate.Year:D4}-{p.Id:D5}",
                             CanBeDeleted = true,
-                            DueDate = inv == null ? null : inv.DueDate,
+                            DueDate = inv == null ? null : (inv.DueDate ?? inv.PaymentDueDate),
                             DaysFromDue = null,
                             InvoiceNumber = inv == null ? null : inv.InvoiceNumber,
                             InvoiceDate = inv == null ? null : inv.InvoiceDate
@@ -781,7 +781,7 @@ namespace NordicBeesERP.Services
                                       CreatedByName = p.CreatedByNavigation != null ? p.CreatedByNavigation.FullName : null,
                                      PaymentNumber = $"M-{p.PaymentDate.Year:D4}-{p.Id:D5}",
                                      CanBeDeleted = !p.Allocations.Any(),
-                                     DueDate = p.Invoice == null ? null : p.Invoice.DueDate,
+                                     DueDate = p.Invoice == null ? null : (p.Invoice.DueDate ?? p.Invoice.PaymentDueDate),
                                      InvoiceNumber = p.Invoice == null ? null : p.Invoice.InvoiceNumber
                                  })
                                  .FirstOrDefaultAsync();
@@ -1281,7 +1281,7 @@ namespace NordicBeesERP.Services
                             Id = i.Id,
                             InvoiceNumber = i.InvoiceNumber,
                             InvoiceDate = i.InvoiceDate,
-                            DueDate = i.DueDate,
+                            DueDate = (i.DueDate ?? i.PaymentDueDate),
                             CustomerId = i.CustomerId,
                             CustomerName = bp.Name,
                             TotalInclVat = i.TotalInclVat,
