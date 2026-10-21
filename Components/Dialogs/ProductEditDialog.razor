@@ -175,8 +175,8 @@
             CreatedAt = Product.CreatedAt,
             UpdatedAt = Product.UpdatedAt
         };
-        _costPriceStr = _editProduct.CostPrice.ToString("N2");
-        _salePriceStr = _editProduct.SalePrice.ToString("N2");
+        _costPriceStr = _editProduct.CostPrice.ToString("F2", LtCulture.Instance);
+        _salePriceStr = _editProduct.SalePrice.ToString("F2", LtCulture.Instance);
         if (_editProduct.Id == 0)
         {
             _editProduct.Code = await ProductService.GenerateProductCodeAsync(_editProduct.ProductType);
@@ -211,11 +211,20 @@
                 return;
             }
 
-            if (decimal.TryParse(_costPriceStr.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var cost))
-                _editProduct.CostPrice = cost;
-            if (decimal.TryParse(_salePriceStr.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sale))
-                _editProduct.SalePrice = sale;
-            _editProduct.PurchasePrice = 0;
+            // Unparseable input must be reported - silently keeping the old price looks like a successful save.
+            if (!LtCulture.TryParseDecimal(_costPriceStr, out var cost))
+            {
+                Snackbar.Add("Neteisinga savikainos reikšmė", Severity.Error);
+                return;
+            }
+            if (!LtCulture.TryParseDecimal(_salePriceStr, out var sale))
+            {
+                Snackbar.Add("Neteisinga pardavimo kainos reikšmė", Severity.Error);
+                return;
+            }
+            _editProduct.CostPrice = cost;
+            _editProduct.SalePrice = sale;
+            // PurchasePrice is not editable here: it keeps the value copied from the product (it used to be reset to 0 on every edit).
 
             Product savedProduct;
             if (_editProduct.Id > 0)
