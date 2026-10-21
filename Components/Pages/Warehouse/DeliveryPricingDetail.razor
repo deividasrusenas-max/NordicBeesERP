@@ -463,7 +463,11 @@
         if (_delivery == null) return;
         try
         {
-            var qualifyingSuppliers = _suppliers.Where(s => !string.IsNullOrEmpty(s.VatCode)).ToList();
+            // 6% kompensacinis PVM: ūkininkai su compensation_vat_code (ne įmonės PVM kodas)
+            var qualifyingSuppliers = _suppliers
+                .Where(s => !string.IsNullOrWhiteSpace(s.CompensationVatCode))
+                .OrderBy(s => s.Name)
+                .ToList();
             var result = await DeliveryInvoiceCostsDialog.DeliveryInvoiceCostsResult.ShowAsync(
                 DialogService, _delivery.TotalAmount, _delivery.TotalNetWeight,
                 qualifyingSuppliers, _delivery.SupplierId);

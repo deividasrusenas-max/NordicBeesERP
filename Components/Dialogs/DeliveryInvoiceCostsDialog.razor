@@ -17,21 +17,22 @@
             </MudAlert>
         }
 
-        <MudSelect T="int?" @bind-Value="_selectedSupplierId"
-                   Label="Ūkininkas (6% PVM)"
-                   Variant="Variant.Outlined"
-                   FullWidth="@true"
-                   Required="true"
-                   Margin="Margin.Dense"
-                   Placeholder="Pasirinkite ūkininką">
-            @if (Suppliers != null)
-            {
-                @foreach (var s in Suppliers)
-                {
-                    <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
-                }
-            }
-        </MudSelect>
+        <MudAutocomplete T="BusinessPartner"
+                         Value="_selectedSupplier"
+                         ValueChanged="@((BusinessPartner? s) => { _selectedSupplier = s; _selectedSupplierId = s?.Id; })"
+                         SearchFunc="SearchSuppliers"
+                         ToStringFunc="@(s => s == null ? string.Empty : $"{s.Name} ({s.CompensationVatCode})")"
+                         Label="Ūkininkas (6% PVM)"
+                         Placeholder="Rašykite vardą, pavardę ar kodą"
+                         Variant="Variant.Outlined"
+                         FullWidth="@true"
+                         Required="true"
+                         Margin="Margin.Dense"
+                         MaxItems="50"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="true"
+                         SelectValueOnTab="true"
+                         Clearable="true" />
 
         <MudNumericField T="decimal"
                          @bind-Value="_transportCost"
@@ -94,6 +95,20 @@
     [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
 
     private int? _selectedSupplierId;
+    private BusinessPartner? _selectedSupplier;
+
+    private Task<IEnumerable<BusinessPartner>> SearchSuppliers(string? value, CancellationToken token)
+    {
+        var list = Suppliers ?? new List<BusinessPartner>();
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult<IEnumerable<BusinessPartner>>(list);
+
+        var term = NordicBeesERP.Helpers.DiacriticHelper.Fold(value.Trim());
+        return Task.FromResult<IEnumerable<BusinessPartner>>(list.Where(s =>
+            NordicBeesERP.Helpers.DiacriticHelper.Fold(s.Name).Contains(term)
+            || (s.CompensationVatCode != null && s.CompensationVatCode.Contains(term, StringComparison.OrdinalIgnoreCase))
+            || (s.NationalIdNumber != null && s.NationalIdNumber.Contains(term))));
+    }
     private decimal _transportCost = 0m;
     private decimal _barrelCost = 0m;
     private decimal _otherCost = 0m;
@@ -110,10 +125,10 @@
 
     protected override void OnInitialized()
     {
-        _selectedSupplierId = (DefaultSupplierId.HasValue
-            && Suppliers?.Any(s => s.Id == DefaultSupplierId.Value) == true)
-            ? DefaultSupplierId
+        _selectedSupplier = DefaultSupplierId.HasValue
+            ? Suppliers?.FirstOrDefault(s => s.Id == DefaultSupplierId.Value)
             : null;
+        _selectedSupplierId = _selectedSupplier?.Id;
     }
 
     private void Cancel() => MudDialog.Cancel();
