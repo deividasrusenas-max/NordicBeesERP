@@ -154,7 +154,7 @@ namespace NordicBeesERP.Services
                 Address = invoice.Customer.Address,
                 City = invoice.Customer.City,
                 PostalCode = invoice.Customer.PostalCode,
-                VatCode = invoice.CustomerVatCode ?? invoice.Customer?.VatCode,
+                VatCode = invoice.CustomerVatCode ?? (isReverseCharge6 ? invoice.Customer?.CompensationVatCode : invoice.Customer?.VatCode),
                 Phone = invoice.Customer.Phone,
                 Email = invoice.Customer.Email,
                 BankAccount = invoice.Customer.BankAccount,
@@ -272,7 +272,7 @@ namespace NordicBeesERP.Services
                         {
                             col.Item().Text(text =>
                             {
-                                text.Span(labels.VatCodeLabel).FontSize(9);
+                                text.Span(isReverseCharge6 ? CompensationVatLabel : labels.VatCodeLabel).FontSize(9);
                                 text.Span(seller.VatCode).FontSize(9);
                             });
                         }
@@ -428,6 +428,9 @@ namespace NordicBeesERP.Services
         // LOKALIZACIJA - LT/EN METODAS
         // =====================================================
         
+        /// <summary>Label for the farmer's code on 6% (ULAK) documents - it is a compensation-rate payer code, not a VAT payer code.</summary>
+        private const string CompensationVatLabel = "Kompensacinio PVM tarifo mokėtojo kodas: ";
+
         private record LocalizationLabels(
             string DocumentTitle,
             string CreditNoteTitle,
@@ -672,7 +675,7 @@ namespace NordicBeesERP.Services
                 Address = customer.Address,
                 City = customer.City,
                 PostalCode = customer.PostalCode,
-                VatCode = customer.VatCode,
+                VatCode = isReverseCharge6 ? (customer.CompensationVatCode ?? customer.VatCode) : customer.VatCode,
                 Phone = customer.Phone,
                 Email = customer.Email,
                 BankAccount = customer.BankAccount,
@@ -798,7 +801,7 @@ namespace NordicBeesERP.Services
                                 {
                                     col.Item().Text(text =>
                                     {
-                                        text.Span(labels.VatCodeLabel).FontSize(9);
+                                        text.Span(isReverseCharge6 ? CompensationVatLabel : labels.VatCodeLabel).FontSize(9);
                                         text.Span(seller.VatCode).FontSize(9);
                                     });
                                 }

@@ -206,6 +206,15 @@ namespace NordicBeesERP.Services
             return invoice;
         }
 
+        /// <summary>
+        /// Code printed next to the counterparty on the invoice: 6% (ULAK) invoices carry the farmer's
+        /// compensation-rate payer code (farmers have no VAT code), every other type the VAT code.
+        /// </summary>
+        public static string? SnapshotVatCode(string? invoiceType, string? vatCode, string? compensationVatCode) =>
+            invoiceType == InvoiceTypes.Ulak6 && !string.IsNullOrWhiteSpace(compensationVatCode)
+                ? compensationVatCode
+                : vatCode;
+
         public async Task<int> CreateInvoiceAsync(Invoice invoice)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
@@ -249,7 +258,7 @@ namespace NordicBeesERP.Services
             // Snapshot the customer's VAT code at issuance (forward-looking; never changes retroactively)
             var customerPartner = await context.BusinessPartners.AsNoTracking()
                 .FirstOrDefaultAsync(bp => bp.Id == invoice.CustomerId);
-            invoice.CustomerVatCode = customerPartner?.VatCode;
+            invoice.CustomerVatCode = SnapshotVatCode(invoice.InvoiceType, customerPartner?.VatCode, customerPartner?.CompensationVatCode);
 
             context.Invoices.Add(invoice);
             await context.SaveChangesAsync();
@@ -380,10 +389,11 @@ namespace NordicBeesERP.Services
             // The VAT-code snapshot is re-taken only when the customer actually changed
             if (invoice.CustomerId != existingInvoice.CustomerId)
             {
-                var vatCode = await context.BusinessPartners.AsNoTracking()
+                var codes = await context.BusinessPartners.AsNoTracking()
                     .Where(bp => bp.Id == invoice.CustomerId)
-                    .Select(bp => bp.VatCode)
+                    .Select(bp => new { bp.VatCode, bp.CompensationVatCode })
                     .FirstOrDefaultAsync();
+                var vatCode = SnapshotVatCode(invoice.InvoiceType, codes?.VatCode, codes?.CompensationVatCode);
                 await context.Database.ExecuteSqlRawAsync(
                     "UPDATE invoices SET customer_vat_code = {0} WHERE id = {1}", vatCode, invoice.Id);
             }

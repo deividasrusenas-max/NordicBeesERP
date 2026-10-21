@@ -93,6 +93,8 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                             c.Item().Text($"Asmens kodas: {supplier.NationalIdNumber}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(supplier?.VatCode))
                             c.Item().Text($"PVM kodas: {supplier.VatCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(supplier?.CompensationVatCode))
+                            c.Item().Text($"Kompensacinio PVM tarifo mokėtojo kodas: {supplier.CompensationVatCode}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(supplier?.Phone))
                             c.Item().Text($"Tel.: {supplier.Phone}").FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(supplier?.Email))
