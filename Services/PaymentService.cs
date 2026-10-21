@@ -858,6 +858,11 @@ namespace NordicBeesERP.Services
                     Allocations = payment.Allocations.Select(a => new { a.InvoiceId, a.AllocatedAmount })
                 }));
 
+            // Bank-import rows that pointed at this payment go back to "unmatched" instead of dangling at a deleted id
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE bank_import_rows SET payment_id = NULL, match_status = 'unmatched', updated_at = CURRENT_TIMESTAMP WHERE payment_id = {0}",
+                paymentId);
+
             // Delete allocations
             context.PaymentAllocations.RemoveRange(payment.Allocations.ToList());
 
