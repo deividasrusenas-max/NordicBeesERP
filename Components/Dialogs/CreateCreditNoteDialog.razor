@@ -4,6 +4,7 @@
 @using NordicBeesERP.Helpers
 @inject ICreditNoteService CreditNoteService
 @inject ISnackbar Snackbar
+@inject IAuthService AuthService
 
 <MudDialog>
     <DialogContent>
@@ -101,7 +102,7 @@
             if (_selectedInvoice?.Id == value?.Id) return;
             _selectedInvoice = value;
             if (value != null)
-                LoadInvoiceDataAsync(value);
+                _ = LoadInvoiceDataAsync(value);
         }
     }
 
@@ -114,8 +115,12 @@
         .Where(l => l.IsSelected)
         .Sum(l => l.LineTotal);
 
-    private async void LoadInvoiceDataAsync(InvoiceModel invoice)
+    // Latest selection wins: a slow response for an earlier invoice must not overwrite the lines of the current one.
+    private int _loadVersion;
+
+    private async Task LoadInvoiceDataAsync(InvoiceModel invoice)
     {
+        var version = ++_loadVersion;
         _invoiceLines = null;
         _lineItems = new();
         _selectedAppliedInvoice = invoice;
@@ -123,7 +128,9 @@
 
         try
         {
-            _invoiceLines = await CreditNoteService.GetInvoiceLinesAsync(invoice.Id);
+            var lines = await CreditNoteService.GetInvoiceLinesAsync(invoice.Id);
+            if (version != _loadVersion) return;
+            _invoiceLines = lines;
             _lineItems = _invoiceLines.Select(l => new LineItem(l)).ToList();
         }
         catch (Exception ex)
@@ -137,6 +144,7 @@
             try
             {
                 var dtos = await CreditNoteService.GetCustomerInvoicesForApplyingAsync(invoice.CustomerId, invoice.Id);
+                if (version != _loadVersion) return;
                 _appliedInvoiceOptions = dtos.Select(d => new InvoiceModel
                 {
                     Id = d.Id,
@@ -239,7 +247,14 @@
                 }).ToList()
             };
 
-            await CreditNoteService.CreateCreditNoteAsync(request, 1);
+            // The audit trail records the real user, not a hardcoded id
+            var userId = await AuthService.GetUserIdAsync();
+            if (!userId.HasValue)
+            {
+                Snackbar.Add("Nepavyko nustatyti vartotojo", Severity.Error);
+                return;
+            }
+            await CreditNoteService.CreateCreditNoteAsync(request, userId.Value);
             Snackbar.Add("Kreditinė sąskaita sukūrta sėkmingai", Severity.Success);
             Dialog?.Close(true);
         }
