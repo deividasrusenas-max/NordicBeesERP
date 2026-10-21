@@ -557,25 +557,31 @@ namespace NordicBeesERP.Services
             string prefix = isPurchaseInvoice ? "ULAK" : "LAK";
             string searchPrefix = prefix + yearSuffix;
 
-            // Use raw SQL to completely bypass EF schema issues
-            var lastNumber = await context.Invoices
+            var existingNumbers = await context.Invoices
+                .AsNoTracking()
                 .Where(i => i.InvoiceNumber.StartsWith(searchPrefix))
-                .OrderByDescending(i => i.InvoiceNumber)
                 .Select(i => i.InvoiceNumber)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
-            int nextNumber = 1;
-            if (!string.IsNullOrEmpty(lastNumber))
+            return NextInvoiceNumber(prefix, yearSuffix, existingNumbers);
+        }
+
+        /// <summary>
+        /// Next number of a year series: the NUMERIC maximum + 1. A string ordering is wrong from the 1000th invoice on
+        /// ("ULAK26999" sorts after "ULAK261000"), which made the series stick at 1000 and hit the unique index.
+        /// </summary>
+        public static string NextInvoiceNumber(string prefix, string yearSuffix, IEnumerable<string> existingNumbers)
+        {
+            var searchPrefix = prefix + yearSuffix;
+            var last = 0;
+            foreach (var number in existingNumbers)
             {
-                // Extract number from prefix + YY + 000 format
-                var numPart = lastNumber.Substring(searchPrefix.Length);
-                if (int.TryParse(numPart, out int lastNum))
-                {
-                    nextNumber = lastNum + 1;
-                }
+                if (number.StartsWith(searchPrefix, StringComparison.Ordinal)
+                    && int.TryParse(number.AsSpan(searchPrefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var n)
+                    && n > last)
+                    last = n;
             }
-
-            return $"{prefix}{yearSuffix}{nextNumber:D3}";
+            return $"{prefix}{yearSuffix}{last + 1:D3}";
         }
 
         public async Task<bool> IsInvoiceNumberTakenAsync(string invoiceNumber, int? excludeInvoiceId = null)
