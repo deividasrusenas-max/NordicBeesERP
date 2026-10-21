@@ -92,7 +92,7 @@
                     <MudSelect T="int?" Label="Tiekėjas *" Value="_selectedSupplierId"
                                Variant="Variant.Outlined" Required="true" Placeholder="Pasirinkite tiekėją"
                                ValueChanged="OnSupplierSelected" Margin="Margin.Dense">
-                        @foreach (var s in _suppliers)
+                        @foreach (var s in _suppliers.Where(x => x.IsActive && x.IsIndividual))
                         {
                             <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.Name</MudSelectItem>
                         }
@@ -125,7 +125,10 @@
                            Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged"
                            Disabled="@_isPurchase" Margin="Margin.Dense">
                      <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM sąskaita faktūra</MudSelectItem>
-                     <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM</MudSelectItem>
+                     @if (_isPurchase)
+                     {
+                         <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM</MudSelectItem>
+                     }
                      <MudSelectItem T="string" Value="@InvoiceTypes.ReverseCharge96">Atvirkštinis PVM (96 str.)</MudSelectItem>
                 </MudSelect>
                 @if (_invoiceType == InvoiceTypes.ReverseCharge96)
@@ -774,30 +777,14 @@
             return false;
         }
         
-        // 6% PVM sąskaitų faktūrų patikrinimas (reverse charge)
+        // 6% (ULAK) is a purchase invoice to a farmer - it is created only on the purchase route
+        // (which validates the farmer in InvoiceService). A sales invoice can never be 6%.
         if (_invoiceType.Contains("6%"))
         {
-            var customer = _customers.FirstOrDefault(c => c.Id == _selectedCustomerId);
-            if (customer is not null)
-            {
-                if (string.IsNullOrEmpty(customer.BankAccount))
-                {
-                    _errorMessage = "6% PVM sąskaitai klientas turi turėti nurodytą banko sąskaitą!";
-                    return false;
-                }
-                if (string.IsNullOrEmpty(customer.CompanyCode))
-                {
-                    _errorMessage = "6% PVM sąskaitai klientas turi turėti nurodytą įmonės kodą!";
-                    return false;
-                }
-                if (string.IsNullOrEmpty(customer.VatCode))
-                {
-                    _errorMessage = "6% PVM sąskaitai klientas turi turėti nurodytą PVM mokėtojo kodą!";
-                    return false;
-                }
-            }
+            _errorMessage = "6% (ULAK) sąskaita išrašoma tik pirkimo sąskaitų puslapyje ūkininkui.";
+            return false;
         }
-        
+
         // Reject a line with a non-empty description but a non-positive price (the most common zero-total cause)
         var badPriceLine = _lines.FirstOrDefault(l => !string.IsNullOrEmpty(l.Description) && l.PriceExclVat < 0);
         if (badPriceLine is not null)
