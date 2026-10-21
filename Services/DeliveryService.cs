@@ -327,6 +327,92 @@ public class DeliveryService : IDeliveryService
         }
     }
 
+    /// <summary>Largest believable barrel net weight (kg). Anything above is a typo (e.g. 30880 for 308,80). Awaiting owner confirmation.</summary>
+    public const decimal MaxBarrelNetKg = 400m;
+
+    public async Task UpdateContainerWeightAsync(int containerId, decimal grossWeight, decimal tareWeight, bool tareManual)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var container = await context.Containers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == containerId)
+            ?? throw new InvalidOperationException("Konteineris nerastas.");
+        if (container.Status != "IN_STOCK")
+            throw new InvalidOperationException($"Konteinerio {container.ContainerCode} svorio keisti negalima – jo statusas {container.Status}, o ne IN_STOCK.");
+        if (!container.DeliveryLineId.HasValue)
+            throw new InvalidOperationException($"Konteineris {container.ContainerCode} nepriskirtas pristatymo eilutei.");
+
+        var line = await context.DeliveryLines.AsNoTracking().FirstOrDefaultAsync(l => l.Id == container.DeliveryLineId.Value)
+            ?? throw new InvalidOperationException("Pristatymo eilutė nerasta.");
+        var delivery = await context.Deliveries.AsNoTracking().FirstOrDefaultAsync(d => d.Id == line.DeliveryId)
+            ?? throw new InvalidOperationException("Pristatymas nerastas.");
+
+        // A supplier-signed act must keep matching the data it was signed on (owner decision pending: block vs re-sign).
+        if (delivery.SupplierSignedAt.HasValue)
+            throw new InvalidOperationException($"Pristatymo aktas {delivery.DeliveryNumber} pasirašytas tiekėjo – svorių keisti negalima.");
+
+        if (grossWeight <= 0)
+            throw new InvalidOperationException($"Konteineris {container.ContainerCode}: brutto svoris turi būti didesnis už 0.");
+        if (tareWeight < 0)
+            throw new InvalidOperationException($"Konteineris {container.ContainerCode}: tara negali būti neigiama.");
+        if (tareWeight >= grossWeight)
+            throw new InvalidOperationException($"Konteineris {container.ContainerCode}: tara turi būti mažesnė už brutto.");
+
+        // Same server-side rules as on creation (bucket tare intervals / manual tare); barrels: net = gross - tare.
+        var candidate = new Container
+        {
+            Id = container.Id,
+            ContainerCode = container.ContainerCode,
+            ContainerType = container.ContainerType,
+            GrossWeight = grossWeight,
+            TareWeight = tareWeight,
+            TareManual = tareManual
+        };
+        await ApplyBucketWeightsAsync(_contextFactory, delivery, new List<Container> { candidate });
+
+        if (candidate.NetWeight <= 0)
+            throw new InvalidOperationException($"Konteineris {container.ContainerCode}: neto svoris turi būti didesnis už 0.");
+        if (container.ContainerType == "BARREL" && candidate.NetWeight > MaxBarrelNetKg)
+            throw new InvalidOperationException($"Konteineris {container.ContainerCode}: neto {candidate.NetWeight:0.##} kg viršija statinės ribą ({MaxBarrelNetKg:0} kg) – patikrinkite kablelį.");
+
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            // status = 'IN_STOCK' in the WHERE closes the race with a concurrent write-off (no row count check:
+            // with UseAffectedRows an identical re-save would report 0 rows and fail wrongly).
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE containers SET gross_weight = {0}, tare_weight = {1}, tare_manual = {2}, net_weight = {3}, updated_at = NOW() WHERE id = {4} AND status = 'IN_STOCK'",
+                candidate.GrossWeight, candidate.TareWeight, candidate.TareManual, candidate.NetWeight, containerId);
+
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE stock_movements SET quantity = {0} WHERE container_id = {1} AND movement_type = 'IN' AND reference_type = 'Delivery'",
+                candidate.NetWeight, containerId);
+
+            // The cached receipt PDF shows the old weights; with the path cleared it is regenerated on the next download.
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE deliveries SET receipt_pdf_path = NULL WHERE id = {0}", delivery.Id);
+
+            await DeliveryTotals.RecalculateAsync(context, delivery.Id);
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task UpdateBarrelsAsync(int deliveryId, bool needReturnBarrels, int barrelsOwed, int barrelsReturned)
+    {
+        if (barrelsOwed < 0 || barrelsReturned < 0)
+            throw new InvalidOperationException("Statinių skaičius negali būti neigiamas.");
+
+        using var context = await _contextFactory.CreateDbContextAsync();
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE deliveries SET need_return_barrels = {0}, barrels_owed = {1}, barrels_returned = {2}, updated_at = NOW() WHERE id = {3}",
+            needReturnBarrels, barrelsOwed, barrelsReturned, deliveryId);
+    }
+
     public async Task RecalculateTotalsAsync(int deliveryId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
