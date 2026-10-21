@@ -70,92 +70,99 @@ namespace NordicBeesERP.Services
 
             _logger.LogInformation("Processing queue item {QueueItemId}", queueItem.Id);
 
-            queueItem.Status = "PROCESSING";
+            // NoTracking is the global default: mutating queueItem/invoice and calling SaveChangesAsync persisted
+            // nothing, so the same file was re-OCR'd every 30 s. Every write below is an explicit UPDATE.
             queueItem.Attempts++;
-            await context.SaveChangesAsync(cancellationToken);
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_ocr_queue SET status = 'PROCESSING', attempts = {0} WHERE id = {1}",
+                new object[] { queueItem.Attempts, queueItem.Id }, cancellationToken);
 
             var ocrResult = await ocrService.ProcessAsync(queueItem.FileContent, queueItem.FileName);
 
             if (ocrResult.Success)
             {
-                queueItem.Status = "COMPLETED";
-                queueItem.ProcessedAt = DateTime.UtcNow;
-
                 if (queueItem.InvoiceId.HasValue)
                 {
                     var invoice = await context.ExpenseInvoices
+                        .AsNoTracking()
                         .FirstOrDefaultAsync(i => i.Id == queueItem.InvoiceId.Value, cancellationToken);
 
                     if (invoice != null)
                     {
-                        invoice.OcrStatus = "COMPLETED";
-                        invoice.OcrConfidence = 95;
+                        var invoiceNumber = !string.IsNullOrEmpty(ocrResult.InvoiceNumber) ? ocrResult.InvoiceNumber : invoice.InvoiceNumber;
+                        var invoiceDate = invoice.InvoiceDate;
+                        if (!string.IsNullOrEmpty(ocrResult.InvoiceDate) && DateTime.TryParse(ocrResult.InvoiceDate, out var parsedInvoiceDate))
+                            invoiceDate = parsedInvoiceDate;
+                        var dueDate = invoice.DueDate;
+                        if (!string.IsNullOrEmpty(ocrResult.DueDate) && DateTime.TryParse(ocrResult.DueDate, out var parsedDueDate))
+                            dueDate = parsedDueDate;
+                        var currency = !string.IsNullOrEmpty(ocrResult.Currency) ? ocrResult.Currency : invoice.Currency;
 
-                        if (!string.IsNullOrEmpty(ocrResult.InvoiceNumber))
-                            invoice.InvoiceNumber = ocrResult.InvoiceNumber;
-
-                        if (!string.IsNullOrEmpty(ocrResult.InvoiceDate) && DateTime.TryParse(ocrResult.InvoiceDate, out var invoiceDate))
-                            invoice.InvoiceDate = invoiceDate;
-
-                        if (!string.IsNullOrEmpty(ocrResult.DueDate) && DateTime.TryParse(ocrResult.DueDate, out var dueDate))
-                            invoice.DueDate = dueDate;
-
-                        if (!string.IsNullOrEmpty(ocrResult.Currency))
-                            invoice.Currency = ocrResult.Currency;
-
-                        invoice.AmountExclVat = ocrResult.AmountExclVat;
-                        invoice.VatRate = ocrResult.VatRate;
-                        invoice.VatAmount = ocrResult.VatAmount;
-                        invoice.AmountInclVat = ocrResult.AmountInclVat;
-                        invoice.PaidAmount = invoice.AmountInclVat;
+                        int? supplierId = invoice.SupplierId;
+                        string? pendingName = invoice.PendingSupplierName;
+                        string? pendingVat = invoice.PendingSupplierVat;
+                        string? pendingAddress = invoice.PendingSupplierAddress;
 
                         if (!string.IsNullOrEmpty(ocrResult.SupplierVatCode))
                         {
                             var supplier = await context.BusinessPartners
-                                .FirstOrDefaultAsync(s => s.VatCode == ocrResult.SupplierVatCode && s.IsActive, cancellationToken);
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(sp => sp.VatCode == ocrResult.SupplierVatCode && sp.IsActive, cancellationToken);
                             if (supplier != null)
                             {
-                                invoice.SupplierId = supplier.Id;
-                                invoice.PendingSupplierName = null;
-                                invoice.PendingSupplierVat = null;
-                                invoice.PendingSupplierAddress = null;
+                                supplierId = supplier.Id;
+                                pendingName = null;
+                                pendingVat = null;
+                                pendingAddress = null;
                             }
                             else
                             {
-                                invoice.PendingSupplierName = ocrResult.SupplierName;
-                                invoice.PendingSupplierVat = ocrResult.SupplierVatCode;
-                                invoice.PendingSupplierAddress = null;
+                                pendingName = ocrResult.SupplierName;
+                                pendingVat = ocrResult.SupplierVatCode;
+                                pendingAddress = null;
                             }
                         }
                         else if (!string.IsNullOrEmpty(ocrResult.SupplierName))
                         {
-                            invoice.PendingSupplierName = ocrResult.SupplierName;
-                            invoice.PendingSupplierVat = null;
-                            invoice.PendingSupplierAddress = null;
+                            pendingName = ocrResult.SupplierName;
+                            pendingVat = null;
+                            pendingAddress = null;
                         }
 
-                        context.ExpenseInvoices.Update(invoice);
+                        // paid_amount is deliberately NOT written: OCR reading an invoice must never mark it paid.
+                        await context.Database.ExecuteSqlRawAsync(
+                            "UPDATE expense_invoices SET ocr_status = 'COMPLETED', ocr_confidence = 95, invoice_number = {0}, invoice_date = {1}, due_date = {2}, currency = {3}, amount_excl_vat = {4}, vat_rate = {5}, vat_amount = {6}, amount_incl_vat = {7}, supplier_id = {8}, pending_supplier_name = {9}, pending_supplier_vat = {10}, pending_supplier_address = {11} WHERE id = {12}",
+                            new object?[]
+                            {
+                                invoiceNumber, invoiceDate, dueDate, currency,
+                                ocrResult.AmountExclVat, ocrResult.VatRate, ocrResult.VatAmount, ocrResult.AmountInclVat,
+                                supplierId, pendingName, pendingVat, pendingAddress, invoice.Id
+                            },
+                            cancellationToken);
                     }
                 }
 
-                await context.SaveChangesAsync(cancellationToken);
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE expense_ocr_queue SET status = 'COMPLETED', processed_at = {0} WHERE id = {1}",
+                    new object[] { DateTime.UtcNow, queueItem.Id }, cancellationToken);
                 _logger.LogInformation("Successfully processed queue item {QueueItemId}", queueItem.Id);
             }
             else
             {
                 if (queueItem.Attempts >= queueItem.MaxAttempts)
                 {
-                    queueItem.Status = "FAILED";
-                    queueItem.ErrorMessage = ocrResult.Diagnostics.AzureError ?? "Unknown error";
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE expense_ocr_queue SET status = 'FAILED', error_message = {0} WHERE id = {1}",
+                        new object?[] { ocrResult.Diagnostics.AzureError ?? "Unknown error", queueItem.Id }, cancellationToken);
                     _logger.LogError("Queue item {QueueItemId} failed after {Attempts} attempts", queueItem.Id, queueItem.Attempts);
                 }
                 else
                 {
-                    queueItem.Status = "WAITING";
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE expense_ocr_queue SET status = 'WAITING' WHERE id = {0}",
+                        new object[] { queueItem.Id }, cancellationToken);
                     _logger.LogInformation("Queue item {QueueItemId} will be retried", queueItem.Id);
                 }
-
-                await context.SaveChangesAsync(cancellationToken);
             }
         }
 
