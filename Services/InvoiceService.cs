@@ -415,9 +415,21 @@ namespace NordicBeesERP.Services
                 var vatCode = SnapshotVatCode(invoice.InvoiceType, codes?.VatCode, codes?.CompensationVatCode);
                 await context.Database.ExecuteSqlRawAsync(
                     "UPDATE invoices SET customer_vat_code = {0} WHERE id = {1}", vatCode, invoice.Id);
+
+                // Payments and credit notes of THIS invoice follow the new customer (customer reconciliation / debts).
+                // A payment that is also allocated to other invoices belongs to a multi-invoice payment - left alone.
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE payments SET customer_id = {0} WHERE invoice_id = {1} AND NOT EXISTS (SELECT 1 FROM payment_allocations pa WHERE pa.payment_id = payments.id AND pa.invoice_id <> {1})",
+                    invoice.CustomerId, invoice.Id);
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE credit_notes SET customer_id = {0} WHERE original_invoice_id = {1}",
+                    invoice.CustomerId, invoice.Id);
             }
 
             await transaction.CommitAsync();
+
+            // The total may have changed: paid_amount / payment_status / Confirmed<->Paid must follow it
+            await PaymentService.RecalculateInvoiceStatusInternalAsync(context, invoice.Id);
 
             // After commit (a rollback must keep the old PDF); failures are logged, never thrown
             PdfFileCache.TryDelete(_pdfBaseDir, existingInvoice.PdfPath);
@@ -495,6 +507,11 @@ namespace NordicBeesERP.Services
                     DateTime.UtcNow
                 );
             }
+
+            // Confirming an invoice that already has payments/credit notes (registered while it was a draft) must
+            // settle it: Confirmed -> Paid when fully covered.
+            if (newStatus == InvoiceStatus.Confirmed)
+                await PaymentService.RecalculateInvoiceStatusInternalAsync(context, id);
 
             return invoice.Id;
         }

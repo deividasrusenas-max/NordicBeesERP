@@ -160,7 +160,9 @@ namespace NordicBeesERP.Services
             await context.SaveChangesAsync();
         }
 
-        private async Task RecalculateInvoiceStatusInternalAsync(NordicBeesERPContext context, int invoiceId)
+        /// <summary>Recomputes paid_amount / payment_status / Confirmed&lt;-&gt;Paid for one invoice from allocations and credit notes (raw UPDATE).
+        /// Static so InvoiceService can call it after it changes an invoice total or confirms an invoice.</summary>
+        public static async Task RecalculateInvoiceStatusInternalAsync(NordicBeesERPContext context, int invoiceId)
         {
             var totalAllocated = await context.PaymentAllocations
                 .Where(a => a.InvoiceId == invoiceId)
