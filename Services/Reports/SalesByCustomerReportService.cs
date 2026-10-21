@@ -42,6 +42,8 @@ public class SalesByCustomerReportService
         var invoices = await db.Invoices.AsNoTracking()
             .Where(i => (customerId == null || i.CustomerId == customerId.Value)
                         && (i.Status == InvoiceStatus.Confirmed || i.Status == InvoiceStatus.Paid)
+                        // ULAK (6%) are PURCHASE invoices to farmers - not sales
+                        && i.InvoiceType != NordicBeesERP.Helpers.InvoiceTypes.Ulak6
                         && (!fromDate.HasValue || i.InvoiceDate >= fromDate.Value)
                         && (!toDate.HasValue || i.InvoiceDate <= toDate.Value))
             .Select(i => new { i.Id, i.InvoiceNumber, i.InvoiceDate, i.CustomerId })
