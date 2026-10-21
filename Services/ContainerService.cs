@@ -149,27 +149,34 @@ public class ContainerService : IContainerService
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
-            foreach (var containerId in containerIds)
-            {
-                var container = await context.Containers.FirstOrDefaultAsync(c => c.Id == containerId);
-                if (container != null)
-                {
-                    await context.Database.ExecuteSqlRawAsync(
-                        "UPDATE containers SET status = {0}, notes = {1}, updated_at = NOW() WHERE id = {2}",
-                        "WRITTEN_OFF", reason, container.Id);
+            var containers = await context.Containers.AsNoTracking()
+                .Where(c => containerIds.Contains(c.Id))
+                .ToListAsync();
 
-                    context.StockMovements.Add(new StockMovement
-                    {
-                        ContainerId = containerId,
-                        MovementType = "OUT",
-                        FromWarehouseId = container.WarehouseId,
-                        Quantity = container.NetWeight,
-                        ReferenceType = "Manual",
-                        Notes = reason,
-                        CreatedBy = createdBy,
-                        CreatedAt = DateTime.Now
-                    });
-                }
+            // Only stock that is still there can be written off: a second write-off would add a second OUT
+            // movement (balance goes negative). Nothing is written when any container is not IN_STOCK.
+            var notInStock = containers.Where(c => c.Status != "IN_STOCK").Select(c => c.ContainerCode).OrderBy(c => c).ToList();
+            if (notInStock.Count > 0)
+                throw new InvalidOperationException($"Nurašyti galima tik sandėlyje esančius konteinerius. Netinka: {string.Join(", ", notInStock)}");
+
+            foreach (var container in containers)
+            {
+                // the reason is appended - earlier notes on the container are kept
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE containers SET status = {0}, notes = CONCAT_WS(' | ', NULLIF(notes, ''), {1}), updated_at = NOW() WHERE id = {2} AND status = 'IN_STOCK'",
+                    "WRITTEN_OFF", reason, container.Id);
+
+                context.StockMovements.Add(new StockMovement
+                {
+                    ContainerId = container.Id,
+                    MovementType = "OUT",
+                    FromWarehouseId = container.WarehouseId,
+                    Quantity = container.NetWeight,
+                    ReferenceType = "Manual",
+                    Notes = reason,
+                    CreatedBy = createdBy,
+                    CreatedAt = DateTime.Now
+                });
             }
             await context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -242,6 +249,11 @@ public class ContainerService : IContainerService
         try
         {
             var containers = await context.Containers.Where(c => containerIds.Contains(c.Id)).ToListAsync();
+
+            // Re-typing stock that already left (written off / sold / transferred) would silently rewrite a closed line.
+            var gone = containers.Where(c => c.Status is "WRITTEN_OFF" or "SOLD" or "TRANSFERRED").Select(c => c.ContainerCode).OrderBy(c => c).ToList();
+            if (gone.Count > 0)
+                throw new InvalidOperationException($"Medaus rūšies keisti negalima nebesančiam sandėlyje konteineriui: {string.Join(", ", gone)}");
 
             // 1. Update container honey_type_id via raw SQL
             foreach (var c in containers)
@@ -345,18 +357,9 @@ public class ContainerService : IContainerService
                 .Distinct()
                 .ToList();
 
+            // line weight, line_total (net x unit_price for every line, incl. the split-off ones), delivery totals, status
             foreach (var deliveryId in uniqueDeliveryIds)
-            {
-                var allLines = await context.DeliveryLines
-                    .Where(l => l.DeliveryId == deliveryId)
-                    .ToListAsync();
-
-                await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE deliveries SET total_net_weight = {0}, total_amount = {1}, updated_at = NOW() WHERE id = {2}",
-                    allLines.Sum(l => l.TotalNetWeight ?? 0),
-                    allLines.Sum(l => l.LineTotal ?? 0),
-                    deliveryId);
-            }
+                await DeliveryTotals.RecalculateAsync(context, deliveryId);
 
             await transaction.CommitAsync();
         }
