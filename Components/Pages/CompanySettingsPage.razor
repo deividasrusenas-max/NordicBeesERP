@@ -35,10 +35,11 @@
                                  ToStringFunc="@(s => s)"
                                  Strict="false"
                                  CoerceText="false"
+                                 CoerceValue="true"
                                  ResetValueOnEmptyText="false"
                                  MinCharacters="3"
                                  ShowProgressIndicator="@_placesLoading"
-                                 OnValueChanged="(string? selected) => OnPlaceSelectedAsync(selected)" />
+                                 @bind-Value:after="@(() => OnPlaceSelectedAsync(settings.Address))" />
             </MudItem>
             <MudItem xs="12" sm="6" md="6">
                 <MudTextField @bind-Value="settings.City" Label="Miestas" MaxLength="100" Variant="Variant.Outlined" Margin="Margin.Dense" />

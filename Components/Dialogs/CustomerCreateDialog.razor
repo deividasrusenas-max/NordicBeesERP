@@ -157,7 +157,7 @@
                                  ResetValueOnEmptyText="false"
                                  MinCharacters="3"
                                  ShowProgressIndicator="@_placesLoading"
-                                 OnValueChanged="(string? selected) => OnPlaceSelectedAsync(selected)" />
+                                 @bind-Value:after="@(() => OnPlaceSelectedAsync(customer.Address))" />
             </MudItem>
             
             <MudItem xs="6">

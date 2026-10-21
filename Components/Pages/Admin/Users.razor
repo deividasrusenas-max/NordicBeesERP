@@ -22,11 +22,11 @@
         <MudGrid Spacing="3">
             <MudItem xs="12" md="6">
                 <MudTextField T="string" Label="Kodas/Pavadinimas" @bind-Value="_searchText"
-                    Immediate="true" OnValueChange="UpdateFilterSearchAsync" Clearable="true" Adornment="Adornment.Start"
+                    Immediate="true" DebounceInterval="400" @bind-Value:after="@(() => UpdateFilterSearchAsync(_searchText))" Clearable="true" Adornment="Adornment.Start"
                     AdornmentIcon="@Icons.Material.Filled.Search" FullWidth="@true" />
             </MudItem>
             <MudItem xs="12" md="6">
-                <MudSelect T="string" Label="Rolė" @bind-Value="_selectedRole" OnValueChanged="UpdateRoleFilterAsync"
+                <MudSelect T="string" Label="Rolė" @bind-Value="_selectedRole" @bind-Value:after="@(() => UpdateRoleFilterAsync(_selectedRole))"
                     Clearable="true" FullWidth="@true">
                     <MudSelectItem T="string" Value="@null"></MudSelectItem>
                     @foreach (var role in _allRoles)
