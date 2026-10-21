@@ -17,7 +17,7 @@
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
         Href="/warehouse/deliveries/new" Class="mb-2">Naujas pristatymas</MudButton>
 
-    @if (_selectedDeliveries.Any(d => string.IsNullOrEmpty(d.InvoiceNumber) && !string.IsNullOrEmpty(GetSupplierVatCode(d.SupplierId)) && d.TotalAmount > 0))
+    @if (_selectedDeliveries.Any(d => string.IsNullOrEmpty(d.InvoiceNumber) && IsFarmerSupplier(d.SupplierId) && d.TotalAmount > 0))
     {
         <MudButton Variant="Variant.Filled" Color="Color.Success"
                    StartIcon="@Icons.Material.Filled.Receipt"
@@ -245,9 +245,12 @@
         return _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
     }
 
-    private string? GetSupplierVatCode(int supplierId)
+    // Bulk invoicing is the 6% (ULAK) flow: only farmers (individuals) with a compensation VAT code.
+    // The VAT code is NOT the criterion - UABs have one and must not get a ULAK, farmers don't have one.
+    private bool IsFarmerSupplier(int supplierId)
     {
-        return _suppliers.FirstOrDefault(s => s.Id == supplierId)?.VatCode;
+        var supplier = _suppliers.FirstOrDefault(s => s.Id == supplierId);
+        return supplier != null && supplier.IsIndividual && !string.IsNullOrWhiteSpace(supplier.CompensationVatCode);
     }
 
     private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
@@ -262,7 +265,7 @@
     {
         var eligible = _selectedDeliveries
             .Where(d => string.IsNullOrEmpty(d.InvoiceNumber)
-                     && !string.IsNullOrEmpty(GetSupplierVatCode(d.SupplierId))
+                     && IsFarmerSupplier(d.SupplierId)
                      && d.TotalAmount > 0)
             .ToList();
 
@@ -272,49 +275,27 @@
             return;
         }
 
+        // One shared path per delivery (draft invoice, delivery date, supplier payment term, farmer validation).
+        // A failure on one delivery must not abort or hide the rest of the batch.
+        var created = 0;
+        var failures = new List<string>();
         foreach (var delivery in eligible)
         {
-            var vatAmount = Math.Round(delivery.TotalAmount * 0.06m, 2);
-            var total = Math.Round(delivery.TotalAmount * 1.06m, 2);
-            var pricePerKg = delivery.TotalNetWeight > 0
-                ? delivery.TotalAmount / delivery.TotalNetWeight
-                : 0;
-
-            var invoice = new Invoice
+            try
             {
-                InvoiceNumber = await InvoiceService.GenerateNextInvoiceNumberAsync(DateTime.Today, "6% PVM SĄSKAITA FAKTŪRA"),
-                InvoiceDate = DateTime.Today,
-                CustomerId = delivery.SupplierId,
-                PaymentDueDate = DateTime.Today.AddDays(10),
-                PaymentTermDays = 10,
-                Language = "LT",
-                InvoiceType = "6% PVM SĄSKAITA FAKTŪRA",
-                Status = InvoiceStatus.Confirmed,
-                SubtotalExclVat = delivery.TotalAmount,
-                TotalVat = vatAmount,
-                TotalInclVat = total,
-                DeliveryId = delivery.Id,
-                Lines = new List<InvoiceLine>
-                {
-                    new InvoiceLine
-                    {
-                        LineNumber = 1,
-                        Description = "Medus",
-                        Unit = "kg",
-                        Quantity = delivery.TotalNetWeight,
-                        PriceExclVat = pricePerKg,
-                        VatRate = 6,
-                        LineSubtotal = delivery.TotalAmount,
-                        VatAmount = vatAmount,
-                        LineTotal = total
-                    }
-                }
-            };
-
-            await InvoiceService.CreateInvoiceAsync(invoice);
+                await InvoiceService.CreateInvoiceFromDeliveryAsync(delivery.Id);
+                created++;
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{delivery.DeliveryNumber}: {ex.Message}");
+            }
         }
 
-        Snackbar.Add($"{eligible.Count} sąskaita(-os) išrašyta(-os)!", Severity.Success);
+        if (created > 0)
+            Snackbar.Add($"{created} sąskaita(-os) išrašyta(-os) (juodraščiai)", Severity.Success);
+        foreach (var failure in failures)
+            Snackbar.Add($"Nepavyko išrašyti – {failure}", Severity.Error);
         _selectedDeliveries.Clear();
         await LoadData();
     }
