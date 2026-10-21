@@ -840,6 +840,40 @@ namespace NordicBeesERP.Services
             return payment;
         }
 
+        public async Task RollbackBankImportPaymentsAsync(int importId)
+        {
+            using var context = _dbFactory.CreateDbContext();
+
+            var rowIds = await context.BankImportRows.AsNoTracking()
+                .Where(r => r.ImportId == importId).Select(r => r.Id).ToListAsync();
+            if (rowIds.Count == 0) return;
+
+            var payments = await context.ExpensePayments.AsNoTracking()
+                .Where(p => (p.BankImportRowId.HasValue && rowIds.Contains(p.BankImportRowId.Value))
+                         || p.BankImportId == importId)
+                .ToListAsync();
+            var affectedInvoices = payments.Select(p => p.InvoiceId).Distinct().ToList();
+
+            foreach (var payment in payments)
+            {
+                if (payment.Source == "bank_import")
+                {
+                    // Created by the wizard itself: remove it, otherwise a re-import books the same money twice.
+                    await context.Database.ExecuteSqlRawAsync("DELETE FROM expense_payments WHERE id = {0}", payment.Id);
+                }
+                else
+                {
+                    // A manual payment the wizard only confirmed: keep the payment, drop the confirmation.
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE expense_payments SET bank_confirmed = 0, bank_import_row_id = NULL, bank_import_id = NULL WHERE id = {0}",
+                        payment.Id);
+                }
+            }
+
+            foreach (var invoiceId in affectedInvoices)
+                await RecalculateInvoiceStatusAsync(invoiceId);
+        }
+
         public async Task<bool> DeletePaymentAsync(int id)
         {
             using var context = _dbFactory.CreateDbContext();

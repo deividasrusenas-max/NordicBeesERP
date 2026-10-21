@@ -56,6 +56,9 @@ namespace NordicBeesERP.Services
         Task<NordicBeesERP.Models.Expenses.ExpenseCostCenter> UpdateCostCenterAsync(NordicBeesERP.Models.Expenses.ExpenseCostCenter center);
         Task<bool> DeleteCostCenterAsync(int id);
         
+        /// <summary>Undo what a bank-import wizard did to expense payments before its rows are discarded (wizard cancel).</summary>
+        Task RollbackBankImportPaymentsAsync(int importId);
+
         // Calculations
         Task RecalculateInvoiceStatusAsync(int invoiceId);
         Task<decimal> CalculateInvoiceTotalAsync(int invoiceId);

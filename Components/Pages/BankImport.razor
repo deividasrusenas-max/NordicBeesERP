@@ -979,6 +979,9 @@
     {
         if (_importId > 0)
         {
+            // Expense payments booked/confirmed by this wizard must go first (they reference the rows being deleted)
+            await ExpenseService.RollbackBankImportPaymentsAsync(_importId);
+
             using var ctx = DbContextFactory.CreateDbContext();
             await ctx.Database.ExecuteSqlRawAsync(
                 "DELETE FROM bank_import_rows WHERE import_id = {0}", _importId);
