@@ -289,22 +289,34 @@ public class DeliveryService : IDeliveryService
         {
             var now = DateTime.Now;
 
+            var ownLineIds = await context.DeliveryLines.AsNoTracking()
+                .Where(l => l.DeliveryId == deliveryId)
+                .Select(l => l.Id)
+                .ToListAsync();
+
             foreach (var line in updatedLines)
             {
-                var unitPrice = line.UnitPrice ?? 0m;
-                var lineTotal = (line.TotalNetWeight ?? 0m) * unitPrice;
+                if (!ownLineIds.Contains(line.Id))
+                    throw new InvalidOperationException("Eilutė nepriklauso šiam pristatymui.");
 
+                var unitPrice = line.UnitPrice ?? 0m;
+                if (unitPrice < 0)
+                    throw new InvalidOperationException("Kaina negali būti neigiama.");
+
+                // Only the unit price comes from the page. The weight is read from the database row in the same
+                // statement, so a page loaded before a weight edit can never write a stale line_total.
                 await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE delivery_lines SET unit_price = {0}, line_total = {1}, updated_at = {2} WHERE id = {3}",
-                    unitPrice, lineTotal, now, line.Id);
+                    "UPDATE delivery_lines SET unit_price = {0}, line_total = COALESCE(total_net_weight, 0) * {0}, updated_at = {1} WHERE id = {2} AND delivery_id = {3}",
+                    unitPrice, now, line.Id, deliveryId);
             }
 
-            // Recalculate TotalAmount from updated lines
-            var totalAmount = updatedLines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m));
-
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE deliveries SET total_amount = {0}, barrels_owed = {1}, status = {2}, updated_at = {3} WHERE id = {4}",
-                totalAmount, barrelsOwed, "RECEIVED", now, deliveryId);
+                "UPDATE deliveries SET barrels_owed = {0}, updated_at = {1} WHERE id = {2}",
+                barrelsOwed, now, deliveryId);
+
+            // total_amount from the lines and the status from the payments - never a literal status
+            // (a priced / partly paid / paid delivery must not fall back to RECEIVED).
+            await DeliveryTotals.RecalculateHeaderAsync(context, deliveryId);
 
             await transaction.CommitAsync();
         }
@@ -318,14 +330,16 @@ public class DeliveryService : IDeliveryService
     public async Task RecalculateTotalsAsync(int deliveryId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var delivery = await context.Deliveries.FirstOrDefaultAsync(d => d.Id == deliveryId);
-        if (delivery != null)
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
         {
-            var lines = await context.DeliveryLines.Where(l => l.DeliveryId == deliveryId).ToListAsync();
-            delivery.TotalNetWeight = lines.Sum(l => l.TotalNetWeight ?? 0);
-            delivery.TotalAmount = lines.Sum(l => l.LineTotal ?? 0);
-            delivery.UpdatedAt = DateTime.Now;
-            await context.SaveChangesAsync();
+            await DeliveryTotals.RecalculateAsync(context, deliveryId);
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
         }
     }
 
@@ -350,21 +364,7 @@ public class DeliveryService : IDeliveryService
     public async Task UpdateDeliveryStatusAsync(int deliveryId)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        var delivery = await context.Deliveries.FirstOrDefaultAsync(d => d.Id == deliveryId);
-        if (delivery == null) return;
-        var paid = await context.SupplierPayments
-            .Where(p => p.DeliveryId == deliveryId)
-            .SumAsync(p => p.Amount);
-        if (delivery.TotalAmount > 0 && paid >= delivery.TotalAmount)
-            delivery.Status = "PAID";
-        else if (delivery.TotalAmount > 0 && paid > 0)
-            delivery.Status = "PARTIAL_PAID";
-        else if (delivery.TotalAmount > 0)
-            delivery.Status = "PRICED";
-        else
-            delivery.Status = "RECEIVED";
-        context.Entry(delivery).Property(d => d.Status).IsModified = true;
-        await context.SaveChangesAsync();
+        await DeliveryTotals.RefreshStatusAsync(context, deliveryId);
     }
 
     public async Task<bool> SaveSignatureAsync(int deliveryId, string signerName, string signatureSvg)

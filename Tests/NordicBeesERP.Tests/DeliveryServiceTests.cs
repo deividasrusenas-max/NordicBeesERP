@@ -126,7 +126,8 @@ public class DeliveryServiceTests : IClassFixture<DbTestFixture>
             Assert.NotNull(reloadedDelivery);
             Assert.Equal(1050m, reloadedDelivery!.TotalAmount);
             Assert.Equal(5, reloadedDelivery.BarrelsOwed);
-            Assert.Equal("RECEIVED", reloadedDelivery.Status);
+            // a priced delivery is PRICED (the old literal RECEIVED reset any priced/paid delivery on every price edit)
+            Assert.Equal("PRICED", reloadedDelivery.Status);
         }
         finally
         {
