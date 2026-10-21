@@ -38,6 +38,20 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         UpdatedAt = DateTime.UtcNow
     };
 
+    /// <summary>Makes a partner a complete, valid farmer (ULAK recipient): individual, names, valid IDs, IBAN and compensation code.</summary>
+    private static BusinessPartner AsValidFarmer(BusinessPartner p)
+    {
+        p.IsIndividual = true;
+        p.DefaultVatRate = 6m;
+        p.SupplierFirstName = "Jonas";
+        p.SupplierLastName = "Jonaitis";
+        p.NationalIdNumber = "10000000098";
+        p.CompensationVatCode = "100008534429";
+        p.BankAccount = "LT121000011101001000";
+        p.Address = "Test g. 1, Vilnius";
+        return p;
+    }
+
     private static Invoice NewTestInvoice(int customerId, string invoiceNumber) => new()
     {
         InvoiceNumber = invoiceNumber,
@@ -256,6 +270,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+        AsValidFarmer(supplier);
         context.BusinessPartners.Add(supplier);
         await context.SaveChangesAsync();
         var supplierId = supplier.Id;
@@ -390,6 +405,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+        AsValidFarmer(recipient);
         context.BusinessPartners.AddRange(deliverySupplier, recipient);
         await context.SaveChangesAsync();
         var deliverySupplierId = deliverySupplier.Id;
@@ -1283,7 +1299,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
 
-        var partner = NewTestCustomer("ULAK6 Test");
+        var partner = AsValidFarmer(NewTestCustomer("ULAK6 Test"));
         context.BusinessPartners.Add(partner);
         await context.SaveChangesAsync();
         var partnerId = partner.Id;

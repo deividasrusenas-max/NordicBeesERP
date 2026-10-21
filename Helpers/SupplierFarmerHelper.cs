@@ -27,6 +27,22 @@ public static class SupplierFarmerHelper
             partner.CompensationVatCode,
             partner.NationalIdNumber, partner.Address, partner.BankAccount);
 
+    /// <summary>
+    /// Checks for issuing a 6% (ULAK) purchase invoice. Gated by the INVOICE TYPE, not by the partner's
+    /// DefaultVatRate: a UAB / 0% / changed-rate partner must be rejected, a farmer must be complete.
+    /// </summary>
+    public static List<string> GetMissingOrInvalidFieldsForUlak(BusinessPartner partner)
+    {
+        if (!partner.IsIndividual)
+            return new List<string> { "Tiekėjas nėra fizinis asmuo (ūkininkas) – 6% sąskaita išrašoma tik ūkininkams" };
+
+        return CheckMissingOrInvalidFields(
+            true, 6m,
+            partner.SupplierFirstName, partner.SupplierLastName,
+            partner.CompensationVatCode,
+            partner.NationalIdNumber, partner.Address, partner.BankAccount);
+    }
+
     // --- private shared cores (single source of truth) ---
 
     private static bool IsFarmer(bool isIndividual, decimal defaultVatRate) =>

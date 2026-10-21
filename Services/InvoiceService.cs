@@ -215,10 +215,27 @@ namespace NordicBeesERP.Services
                 ? compensationVatCode
                 : vatCode;
 
+        /// <summary>A 6% (ULAK) invoice is a purchase invoice to a farmer: reject any other recipient or an incomplete farmer.</summary>
+        private static async Task EnsureUlakRecipientIsValidFarmerAsync(NordicBeesERPContext context, Invoice invoice)
+        {
+            if (invoice.InvoiceType != InvoiceTypes.Ulak6) return;
+
+            var partner = await context.BusinessPartners.AsNoTracking().FirstOrDefaultAsync(bp => bp.Id == invoice.CustomerId);
+            if (partner == null)
+                throw new InvalidOperationException($"Tiekėjas su id {invoice.CustomerId} nerastas");
+
+            var problems = SupplierFarmerHelper.GetMissingOrInvalidFieldsForUlak(partner);
+            if (problems.Count > 0)
+                throw new InvalidOperationException(
+                    $"Negalima išrašyti 6% sąskaitos — ūkininko duomenys neišsamūs: {string.Join("; ", problems)}");
+        }
+
         public async Task<int> CreateInvoiceAsync(Invoice invoice)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             
+            await EnsureUlakRecipientIsValidFarmerAsync(context, invoice);
+
             // Set timestamps
             invoice.CreatedAt = DateTime.UtcNow;
             invoice.UpdatedAt = DateTime.UtcNow;
@@ -285,6 +302,8 @@ namespace NordicBeesERP.Services
             var existingInvoice = await context.Invoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == invoice.Id);
             if (existingInvoice == null)
                 throw new InvalidOperationException($"Sąskaita su id {invoice.Id} nerasta");
+
+            await EnsureUlakRecipientIsValidFarmerAsync(context, invoice);
             
             // Preserve CreatedAt from original invoice
             invoice.CreatedAt = existingInvoice.CreatedAt;
@@ -809,10 +828,9 @@ namespace NordicBeesERP.Services
             if (supplier == null)
                 throw new InvalidOperationException($"Tiekėjas su id {invoiceSupplierId} nerastas");
 
-            var missingFarmerFields = SupplierFarmerHelper.GetMissingOrInvalidFields(supplier);
-            if (missingFarmerFields.Count > 0)
+            if (delivery.InvoiceId.HasValue)
                 throw new InvalidOperationException(
-                    $"Negalima išrašyti sąskaitos — ūkininko duomenys neišsamūs: {string.Join("; ", missingFarmerFields)}");
+                    $"Pristatymui {delivery.DeliveryNumber} sąskaita jau išrašyta ({delivery.InvoiceNumber})");
 
             var deductions = transportCost + barrelCost + otherCost;
             var unitPrice = delivery.TotalNetWeight > 0
