@@ -103,9 +103,13 @@
                     </MudItem>
                     <MudItem xs="12">
                         <MudSelect T="string" Label="Sąskaitos tipas" Value="@_invoiceType" 
-                                   Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged" Margin="Margin.Dense">
+                                   Variant="Variant.Outlined" ValueChanged="@OnInvoiceTypeChanged" Margin="Margin.Dense"
+                                   Disabled="@_invoiceTypeLocked">
                             <MudSelectItem T="string" Value="@("PVM SĄSKAITA FAKTŪRA")">PVM sąskaita faktūra</MudSelectItem>
-                            <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM sąskaita faktūra</MudSelectItem>
+                            @if (_invoiceTypeLocked)
+                            {
+                                <MudSelectItem T="string" Value="@("6% PVM SĄSKAITA FAKTŪRA")">ULAK 6% PVM sąskaita faktūra</MudSelectItem>
+                            }
                             <MudSelectItem T="string" Value="@InvoiceTypes.ReverseCharge96">Atvirkštinis PVM (96 str.)</MudSelectItem>
                         </MudSelect>
                         @if (_invoiceType == InvoiceTypes.ReverseCharge96)
@@ -229,6 +233,9 @@
     private string _selectedClientDisplay = "";
     private string _language = "LT";
     private string _invoiceType = "PVM SĄSKAITA FAKTŪRA";
+    // The number series follows the type (ULAK... vs LAK...), so a 6% (ULAK) invoice never changes type
+    // and a sales invoice can never become 6% while keeping its LAK number.
+    private bool _invoiceTypeLocked;
     private InvoiceStatus _status = InvoiceStatus.Draft;
     private decimal _defaultVatRate = 21m;
     
@@ -275,6 +282,7 @@
             // Map legacy "sales"/"purchase" values to new format
             if (_invoiceType == "sales") _invoiceType = "PVM SĄSKAITA FAKTŪRA";
             if (_invoiceType == "purchase") _invoiceType = "6% PVM SĄSKAITA FAKTŪRA";
+            _invoiceTypeLocked = _invoiceType.Contains("6%");
             
             _status = invoice.Status;
             _notes = invoice.Notes ?? string.Empty;
