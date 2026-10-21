@@ -194,7 +194,7 @@
                 <MudTextField T="string"
                               @key="@_vatRateKey"
                               Value="@(customer.DefaultVatRate.ToString("G29"))"
-                              ValueChanged="@((string v) => { if (decimal.TryParse(v, out var d)) customer.DefaultVatRate = d; })"
+                              ValueChanged="@((string v) => { if (LtCulture.TryParseDecimal(v, out var d)) { customer.DefaultVatRate = d; _vatRateTouched = true; } })"
                               Label="Numatytasis PVM (%)"
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense" />
@@ -236,6 +236,16 @@
     private CompanyLookupResult? _lookupResult = null;
     private string _lastCompanyCode = "";
     private int _vatRateKey = 0;
+    private bool _vatRateTouched = false;
+
+    // New customer: the default VAT follows the country (LT 21%, other 0%) whichever way the country got filled
+    // (registry lookup or address pick) - unless the user already typed a rate themselves.
+    private void ApplyCountryVatDefault(string? countryCode)
+    {
+        if (customer.Id != 0 || _vatRateTouched || string.IsNullOrWhiteSpace(countryCode)) return;
+        customer.DefaultVatRate = countryCode.Trim().ToUpperInvariant() == "LT" ? 21m : 0m;
+        _vatRateKey++;
+    }
     private string? _originalVatCode = "";
     private bool _vatCheckStarted = false;
     private bool _isCheckingVat = false;
@@ -442,8 +452,7 @@
         if (string.IsNullOrEmpty(customer.CountryCode) && !string.IsNullOrEmpty(result.CountryCode))
         {
             customer.CountryCode = result.CountryCode;
-            customer.DefaultVatRate = result.CountryCode.ToUpper() == "LT" ? 21m : 0m;
-            _vatRateKey++;
+            ApplyCountryVatDefault(result.CountryCode);
         }
         await InvokeAsync(StateHasChanged);
     }
@@ -517,7 +526,11 @@
         if (!string.IsNullOrWhiteSpace(details.City)) customer.City = details.City;
         if (!string.IsNullOrWhiteSpace(details.PostalCode)) customer.PostalCode = details.PostalCode;
         if (!string.IsNullOrWhiteSpace(details.Country)) customer.Country = details.Country;
-        if (!string.IsNullOrWhiteSpace(details.CountryCode)) customer.CountryCode = details.CountryCode;
+        if (!string.IsNullOrWhiteSpace(details.CountryCode))
+        {
+            customer.CountryCode = details.CountryCode;
+            ApplyCountryVatDefault(details.CountryCode);
+        }
         _descriptionToPlaceId.Clear();
     }
 }
