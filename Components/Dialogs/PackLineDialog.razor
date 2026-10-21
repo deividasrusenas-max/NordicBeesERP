@@ -44,7 +44,7 @@
                                        FirstDayOfWeek="DayOfWeek.Monday"
                                        Editable="true"
                                        DateFormat="yyyy-MM-dd" />
-                        <MudNumericField T="decimal?"
+                        <MudNumericField Culture="@LtCulture.Instance" T="decimal?"
                                          @bind-Value="batch.Quantity"
                                          Label="Kiekis"
                                          Min="0"

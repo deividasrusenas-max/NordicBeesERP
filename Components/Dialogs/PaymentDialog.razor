@@ -32,7 +32,7 @@
                  <MudTextField T="string" 
                                Label="Suma (€)" 
                                Value="@_amountStr"
-                               ValueChanged="@((string v) => { if (decimal.TryParse(v, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d)) _amount = d; _amountStr = v; })"
+                               ValueChanged="@((string v) => { if (LtCulture.TryParseDecimal(v, out var d)) _amount = d; _amountStr = v; })"
                                Variant="Variant.Outlined" 
                                Margin="Margin.Dense" 
                                Required="@true" />

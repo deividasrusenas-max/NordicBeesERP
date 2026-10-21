@@ -216,7 +216,7 @@
     <TitleContent><MudText Typo="Typo.h6">Naujas mokėjimas</MudText></TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudNumericField T="decimal" @bind-Value="_newPaymentAmount" Label="Suma (€)" Variant="Variant.Outlined" />
+            <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_newPaymentAmount" Label="Suma (€)" Variant="Variant.Outlined" />
             <MudDatePicker @bind-Date="_newPaymentDate" Label="Data" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
             <MudSelect T="string" @bind-Value="_newPaymentMethod" Label="Mokėjimo būdas" Variant="Variant.Outlined">
                 <MudSelectItem Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>

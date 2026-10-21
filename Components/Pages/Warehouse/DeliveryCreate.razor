@@ -185,7 +185,7 @@
 
             @if (_tareMode == "custom")
             {
-                <MudNumericField T="decimal" @bind-Value="_customTare" Label="Taros svoris (kg)"
+                <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_customTare" Label="Taros svoris (kg)"
                     Variant="Variant.Outlined" Min="1" Max="50" Format="F1" Class="mb-3" Style="max-width:200px" />
             }
 
@@ -209,7 +209,7 @@
                             Min="1" Max="500" Style="font-size:1.2rem" />
                     </MudItem>
                     <MudItem xs="6" md="3">
-                        <MudNumericField T="decimal" @bind-Value="_uniformGross" Label="Brutto (kg)" Variant="Variant.Outlined"
+                        <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_uniformGross" Label="Brutto (kg)" Variant="Variant.Outlined"
                             Format="F0" Style="font-size:1.2rem" />
                     </MudItem>
                 </MudGrid>
@@ -263,7 +263,7 @@
             <MudProgressLinear Value="@((double)(_currentBarrelIndex) / _barrelCount * 100)" Color="Color.Primary" Class="mb-3" />
             <MudGrid>
                 <MudItem xs="6">
-                    <MudNumericField T="decimal" @bind-Value="_currentGross" Label="Brutto (kg)" Variant="Variant.Outlined"
+                    <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_currentGross" Label="Brutto (kg)" Variant="Variant.Outlined"
                         Style="font-size:1.5rem; font-weight:bold" Format="F0" Immediate="true" />
                 </MudItem>
             </MudGrid>

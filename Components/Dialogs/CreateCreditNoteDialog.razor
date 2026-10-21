@@ -39,7 +39,7 @@
                     <MudTd DataLabel="Aprašymas">@context.Line.Description</MudTd>
                     <MudTd DataLabel="Orig. kiekis" Style="text-align: right;">@context.Line.Quantity.ToString("G29")</MudTd>
                     <MudTd DataLabel="Kreditinis kiekis">
-                        <MudNumericField T="decimal"
+                        <MudNumericField Culture="@LtCulture.Instance" T="decimal"
                                          @bind-Value="context.CreditQuantity"
                                          Min="0m"
                                          Max="@context.Line.Quantity"

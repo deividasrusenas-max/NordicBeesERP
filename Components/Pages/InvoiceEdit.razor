@@ -147,7 +147,7 @@
                                       OnAdornmentClick="@(async () => { if (_isPurchase) await OpenRawMaterialDialog(line); else await OpenProductDialog(line); })" />
                     </MudTd>
                       <MudTd DataLabel="Kiekis">
-                          <MudNumericField T="decimal" @bind-Value="line.Quantity" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined"
+                          <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="line.Quantity" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined"
                               Margin="Margin.Dense" Min="0" Step="0.001M" Format="0.###"
                               @key="(line, 0)" />
                       </MudTd>
@@ -156,12 +156,12 @@
                                       Margin="Margin.Dense" ReadOnly="false" />
                     </MudTd>
                 <MudTd DataLabel="Kaina">
-                    <MudNumericField T="decimal" @bind-Value="line.PriceExclVat" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined" 
+                    <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="line.PriceExclVat" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined" 
                                      Margin="Margin.Dense" Min="0" Step="0.01M"
                                      @key="(line, 1)" />
                 </MudTd>
                     <MudTd DataLabel="PVM %">
-                        <MudNumericField T="decimal" @bind-Value="line.VatRate" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined" 
+                        <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="line.VatRate" @bind-Value:after="() => CalculateLine(line)" Variant="Variant.Outlined" 
                                           Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
                                           @key="(line, _selectedCustomerId, _invoiceType)" />
                     </MudTd>
