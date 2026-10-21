@@ -5,7 +5,7 @@
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@implements IDisposable
+@implements IAsyncDisposable
 
 <PageTitle>Išlaidų kategorijos</PageTitle>
 
@@ -79,8 +79,26 @@
 @code {
     private List<NBEN.ExpenseCategory> _items = new();
     private bool _loading = true;
-    private System.Threading.Timer? _autoSaveTimer;
     private bool _saveIndicatorVisible = false;
+    // One pending save per category row; flushed in DisposeAsync so leaving the page never drops an edit.
+    private PerKeyDebouncer _saver = null!;
+
+    protected override void OnInitialized()
+    {
+        _saver = new PerKeyDebouncer(async ex =>
+        {
+            await InvokeAsync(() => { Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error); StateHasChanged(); });
+        });
+    }
+
+    private async Task ShowSavedAsync()
+    {
+        _saveIndicatorVisible = true;
+        StateHasChanged();
+        await Task.Delay(1500);
+        _saveIndicatorVisible = false;
+        StateHasChanged();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,29 +136,15 @@
         }
     }
 
-    private async Task OnChanged(NBEN.ExpenseCategory item)
+    private Task OnChanged(NBEN.ExpenseCategory item)
     {
-        _autoSaveTimer?.Dispose();
-        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        _saver.Schedule(item.Id, async () =>
         {
-            await InvokeAsync(async () =>
-            {
-                try
-                {
-                    using var ctx = await ContextFactory.CreateDbContextAsync();
-                    ctx.ExpenseCategories.Update(item);
-                    await ctx.SaveChangesAsync();
-                    _saveIndicatorVisible = true;
-                    StateHasChanged();
-                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
-                }
-                catch (Exception ex)
-                {
-                    Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error);
-                    StateHasChanged();
-                }
-            });
-        }, null, 500, Timeout.Infinite);
+            using var ctx = await ContextFactory.CreateDbContextAsync();
+            ctx.ExpenseCategories.Update(item);
+            await ctx.SaveChangesAsync();
+        }, () => InvokeAsync(ShowSavedAsync));
+        return Task.CompletedTask;
     }
 
     private async Task DeleteItem(NBEN.ExpenseCategory item)
@@ -172,8 +176,5 @@
         }
     }
 
-    public void Dispose()
-    {
-        _autoSaveTimer?.Dispose();
-    }
+    public async ValueTask DisposeAsync() => await _saver.DisposeAsync();
 }

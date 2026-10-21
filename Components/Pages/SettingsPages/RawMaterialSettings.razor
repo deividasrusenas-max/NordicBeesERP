@@ -7,7 +7,7 @@
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@implements IDisposable
+@implements IAsyncDisposable
 
 <PageTitle>Žaliavų tipai</PageTitle>
 
@@ -83,11 +83,25 @@
 @code {
     private List<RawMaterialType> _items = new();
     private bool _loading = true;
-    private System.Threading.Timer? _autoSaveTimer;
     private bool _saveIndicatorVisible = false;
+    // One pending save per row; flushed in DisposeAsync so leaving the page never drops an edit.
+    private PerKeyDebouncer _saver = null!;
+
+    private async Task ShowSavedAsync()
+    {
+        _saveIndicatorVisible = true;
+        StateHasChanged();
+        await Task.Delay(1500);
+        _saveIndicatorVisible = false;
+        StateHasChanged();
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        _saver = new PerKeyDebouncer(async ex =>
+        {
+            await InvokeAsync(() => { Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error); StateHasChanged(); });
+        });
         await LoadData();
     }
 
@@ -126,28 +140,13 @@
 
     private void OnChanged(RawMaterialType item)
     {
-        _autoSaveTimer?.Dispose();
-        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        _saver.Schedule(item.Id, async () =>
         {
-            await InvokeAsync(async () =>
-            {
-                try
-                {
-                    using var context = await ContextFactory.CreateDbContextAsync();
-                    item.UpdatedAt = DateTime.Now;
-                    context.RawMaterialTypes.Update(item);
-                    await context.SaveChangesAsync();
-                    _saveIndicatorVisible = true;
-                    StateHasChanged();
-                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
-                }
-                catch (Exception ex)
-                {
-                    Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error);
-                    StateHasChanged();
-                }
-            });
-        }, null, 500, Timeout.Infinite);
+            using var context = await ContextFactory.CreateDbContextAsync();
+            item.UpdatedAt = DateTime.Now;
+            context.RawMaterialTypes.Update(item);
+            await context.SaveChangesAsync();
+        }, () => InvokeAsync(ShowSavedAsync));
     }
 
     private async Task DeleteItem(RawMaterialType item)
@@ -176,8 +175,5 @@
         }
     }
 
-    public void Dispose()
-    {
-        _autoSaveTimer?.Dispose();
-    }
+    public async ValueTask DisposeAsync() => await _saver.DisposeAsync();
 }

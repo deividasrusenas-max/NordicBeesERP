@@ -16,7 +16,7 @@
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
 @inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
-@implements IDisposable
+@implements IAsyncDisposable
 
 <PageTitle>Pristatymo kainos</PageTitle>
 
@@ -341,7 +341,8 @@
     }
 
     // Autosave
-    private System.Threading.Timer? _autoSaveTimer;
+    // Price edits are saved as one batch for the delivery; flushed in DisposeAsync so leaving within the delay keeps them.
+    private PerKeyDebouncer? _saver;
     private bool _saveIndicatorVisible = false;
 
     protected override async Task OnInitializedAsync()
@@ -395,29 +396,28 @@
 
     private void OnPriceChanged()
     {
-        _autoSaveTimer?.Dispose();
-        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        _saver ??= new PerKeyDebouncer(async ex =>
+        {
+            await InvokeAsync(() =>
+            {
+                Snackbar.Add($"Nepavyko išsaugoti kainų: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+                StateHasChanged();
+            });
+        });
+
+        _saver.Schedule("prices", () => DeliveryService.UpdatePricesAsync(Id, _lines, _delivery!.BarrelsOwed), async () =>
         {
             await InvokeAsync(async () =>
             {
-                try
-                {
-                    await DeliveryService.UpdatePricesAsync(Id, _lines, _delivery!.BarrelsOwed);
-                    
-                    // Perkraunam delivery kad gautum atnaujintą TotalAmount
-                    _delivery = await DeliveryService.GetByIdAsync(Id);
-                    
-                    _saveIndicatorVisible = true;
-                    StateHasChanged();
-                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
-                }
-                catch (Exception ex)
-                {
-                    Snackbar.Add($"Nepavyko išsaugoti kainų: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
-                    StateHasChanged();
-                }
+                // Reload so the page shows the recalculated TotalAmount and status
+                _delivery = await DeliveryService.GetByIdAsync(Id);
+                _saveIndicatorVisible = true;
+                StateHasChanged();
+                await Task.Delay(1500);
+                _saveIndicatorVisible = false;
+                StateHasChanged();
             });
-        }, null, 800, Timeout.Infinite);
+        }, delayMs: 800);
     }
 
     private void OpenPaymentDialog()
@@ -531,8 +531,8 @@
         "offset" => "Užskaita", _ => method
     };
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _autoSaveTimer?.Dispose();
+        if (_saver != null) await _saver.DisposeAsync();
     }
 }
