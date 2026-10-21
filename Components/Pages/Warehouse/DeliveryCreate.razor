@@ -30,7 +30,7 @@
                         Label="Tiekėjas" Variant="Variant.Outlined" Required="true"
                         SearchFunc="SearchSuppliers" ToStringFunc="@(s => s?.Name ?? string.Empty)"
                         MinCharacters="0"
-                        CoerceText="false"
+                        CoerceText="true"
                         CoerceValue="false"
                         ResetValueOnEmptyText="true"
                         Immediate="true"
@@ -407,7 +407,7 @@
     protected override async Task OnInitializedAsync()
     {
         _deliveryNumber = "";  // bus sugeneruotas kai pasirinks žaliavą
-        _suppliers = await CustomerService.GetSuppliersAsync();
+        _suppliers = (await CustomerService.GetSuppliersAsync()).Where(sp => sp.IsActive).ToList();
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _products = await ProductService.GetAllProductsAsync();
         _honeyTypes = await HoneyTypeService.GetActiveAsync();
@@ -446,7 +446,7 @@
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            _suppliers = await CustomerService.GetSuppliersAsync();
+            _suppliers = (await CustomerService.GetSuppliersAsync()).Where(sp => sp.IsActive).ToList();
             StateHasChanged();
         }
     }
