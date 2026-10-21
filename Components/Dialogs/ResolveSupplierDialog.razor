@@ -73,12 +73,11 @@
             @if (_selectedOption == "link")
             {
                 <MudPaper Elevation="1" Class="pa-4 mb-4">
-                    <MudSelect T="int" Label="Pasirinkite tiekėją" @bind-Value="_selectedExistingSupplierId" Variant="Variant.Filled">
-                        @foreach (var supplier in _suppliers)
-                        {
-                            <MudSelectItem Value="@supplier.Id">@supplier.Name</MudSelectItem>
-                        }
-                    </MudSelect>
+                    <MudAutocomplete T="SupplierDto" Label="Pasirinkite tiekėją" Variant="Variant.Filled"
+                                     Value="@_suppliers.FirstOrDefault(sp => sp.Id == _selectedExistingSupplierId)"
+                                     ValueChanged="@((SupplierDto sp) => _selectedExistingSupplierId = sp?.Id ?? 0)"
+                                     SearchFunc="@SearchSuppliers" ToStringFunc="@(sp => sp?.Name ?? string.Empty)"
+                                     MinCharacters="0" OpenOnFocus="true" CoerceText="true" CoerceValue="false" Clearable="true" />
                 </MudPaper>
             }
 
@@ -222,4 +221,9 @@
         Invoice.PaidAmount > 0
             ? ExpenseStatusHelper.Recalculate(Invoice.PaidAmount, Invoice.AmountInclVat, Invoice.DueDate, "PENDING")
             : "PENDING";
+
+    private Task<IEnumerable<SupplierDto>> SearchSuppliers(string? text, CancellationToken ct) =>
+        Task.FromResult(string.IsNullOrWhiteSpace(text)
+            ? _suppliers.AsEnumerable()
+            : _suppliers.Where(sp => sp.Name.Contains(text, StringComparison.OrdinalIgnoreCase)));
 }

@@ -201,13 +201,11 @@
                                                             else
                                                             {
                                                                 <div class="d-flex gap-1 flex-wrap align-center mt-1">
-                                                                    <MudSelect T="BusinessPartner?" @bind-Value="_selectedSupplier" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                                                               Clearable="true" Style="min-width:240px;" Label="Naujas tiekėjas">
-                                                                        @foreach (var sp in RankSuppliers(_suppliers.Where(x => x.Id != _invoice!.SupplierId)))
-                                                                        {
-                                                                            <MudSelectItem T="BusinessPartner?" Value="sp">@sp.Name (@sp.VatCode)</MudSelectItem>
-                                                                        }
-                                                                    </MudSelect>
+                                                                    <MudAutocomplete T="BusinessPartner" @bind-Value="_selectedSupplier" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                                                     Clearable="true" Style="min-width:240px;" Label="Naujas tiekėjas"
+                                                                                     SearchFunc="@SearchChangeSupplier"
+                                                                                     ToStringFunc="@(sp => sp == null ? string.Empty : $"{sp.Name} ({sp.VatCode})")"
+                                                                                     MinCharacters="0" OpenOnFocus="true" CoerceText="true" CoerceValue="false" />
                                                                     <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Margin="Margin.Dense"
                                                                                Disabled="_selectedSupplier == null" OnClick="ChangeSupplierAsync">Pakeisti</MudButton>
                                                                     <MudButton Size="Size.Small" Variant="Variant.Text" Margin="Margin.Dense" OnClick="ToggleChangeSupplier">Atšaukti</MudButton>
@@ -905,6 +903,16 @@
 
         Snackbar.Add("Sąskaita atmesta", Severity.Info);
         MudDialog?.Close(DialogResult.Ok(true));
+    }
+
+    // „Pakeisti tiekėją": ranked (matcher candidates first), searchable by name / VAT code - the list is long
+    private Task<IEnumerable<BusinessPartner>> SearchChangeSupplier(string? val, CancellationToken ct)
+    {
+        var ranked = RankSuppliers(_suppliers.Where(x => x.Id != _invoice!.SupplierId)).AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(val))
+            ranked = ranked.Where(sp => sp.Name.Contains(val, StringComparison.OrdinalIgnoreCase)
+                                        || (sp.VatCode != null && sp.VatCode.Contains(val, StringComparison.OrdinalIgnoreCase)));
+        return Task.FromResult(ranked);
     }
 
     private async Task<IEnumerable<BusinessPartner>> SearchSuppliers(string val, CancellationToken ct)
