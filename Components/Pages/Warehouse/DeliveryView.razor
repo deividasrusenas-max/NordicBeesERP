@@ -12,12 +12,10 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
-@inject IDbContextFactory<NordicBeesERP.Data.NordicBeesERPContext> ContextFactory
 @inject IDeliveryReceiptPdfService DeliveryReceiptPdfService
 @inject IJSRuntime JS
 @inject IRawMaterialTypeService RawMaterialTypeService
 
-@implements IDisposable
 
 <PageTitle>Pristatymas</PageTitle>
 
@@ -127,19 +125,19 @@
             <MudGrid>
                 <MudItem xs="12" md="6">
                     <MudSwitch T="bool" Value="_delivery.NeedReturnBarrels"
-                        ValueChanged="@((bool val) => { _delivery.NeedReturnBarrels = val; OnFieldChanged(); })"
+                        ValueChanged="@(async (bool val) => await SaveBarrelsAsync(val, _delivery.BarrelsOwed, _delivery.BarrelsReturned))"
                         Color="Color.Primary" Label="Ar reikės grąžinti statines?" />
                 </MudItem>
                 @if (_delivery.NeedReturnBarrels)
                 {
                     <MudItem xs="6" md="3">
                         <MudNumericField T="int" Value="_delivery.BarrelsOwed"
-                            ValueChanged="@((int val) => { _delivery.BarrelsOwed = val; OnFieldChanged(); })"
+                            ValueChanged="@(async (int val) => await SaveBarrelsAsync(_delivery.NeedReturnBarrels, val, _delivery.BarrelsReturned))"
                             Label="Skolingos statinės (vnt)" Variant="Variant.Outlined" Min="0" />
                     </MudItem>
                     <MudItem xs="6" md="3">
                         <MudNumericField T="int" Value="_delivery.BarrelsReturned"
-                            ValueChanged="@((int val) => { _delivery.BarrelsReturned = val; OnFieldChanged(); })"
+                            ValueChanged="@(async (int val) => await SaveBarrelsAsync(_delivery.NeedReturnBarrels, _delivery.BarrelsOwed, val))"
                             Label="Grąžintos (vnt)" Variant="Variant.Outlined" Min="0" />
                     </MudItem>
                 }
@@ -148,6 +146,10 @@
         }
 
         <!-- Containers table -->
+        @if (_delivery.SupplierSignedAt.HasValue)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Aktas pasirašytas tiekėjo – svoriai nebekeičiami.</MudAlert>
+        }
         <MudText Typo="Typo.h6" Class="mb-2 mt-4">Pristatymo detalizacija</MudText>
         <MudTable T="Container" Items="_containers" Dense="true" Hover="true" Striped="false" Bordered="false">
             <HeaderContent>
@@ -162,26 +164,32 @@
                 <MudTd Style="width:80px">@context.Id</MudTd>
                 <MudTd Style="width:150px">@GetContainerTypeName(context.ContainerType)</MudTd>
                 <MudTd Style="text-align:right">
-                    <input type="number" 
-                        value="@context.GrossWeight.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)" 
-                        step="0.1"
-                        style="width:70px; text-align:right; border:none; border-bottom:1px solid #ccc; background:transparent; font-size:14px; outline:none"
-                        @onchange="@(async (ChangeEventArgs e) => { 
-                            if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var val)) 
-                            { context.GrossWeight = val; context.NetWeight = val - context.TareWeight; OnContainerChanged(context); } 
-                        })" />
+                    @if (CanEditWeights(context))
+                    {
+                        <input type="text" inputmode="decimal" @key="@($"g{context.Id}-{_reloadToken}")"
+                            value="@FormatWeight(context, context.GrossWeight)"
+                            style="width:70px; text-align:right; border:none; border-bottom:1px solid #ccc; background:transparent; font-size:14px; outline:none"
+                            @onchange="@(async (ChangeEventArgs e) => await SaveWeightAsync(context, e.Value?.ToString(), isGross: true))" />
+                    }
+                    else
+                    {
+                        <span>@FormatWeight(context, context.GrossWeight)</span>
+                    }
                 </MudTd>
                 <MudTd Style="text-align:right">
-                    <input type="number" 
-                        value="@context.TareWeight.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)" 
-                        step="0.1"
-                        style="width:70px; text-align:right; border:none; border-bottom:1px solid #ccc; background:transparent; font-size:14px; outline:none"
-                        @onchange="@(async (ChangeEventArgs e) => { 
-                            if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var val)) 
-                            { context.TareWeight = val; context.NetWeight = context.GrossWeight - val; OnContainerChanged(context); } 
-                        })" />
+                    @if (CanEditWeights(context))
+                    {
+                        <input type="text" inputmode="decimal" @key="@($"t{context.Id}-{_reloadToken}")"
+                            value="@FormatWeight(context, context.TareWeight)"
+                            style="width:70px; text-align:right; border:none; border-bottom:1px solid #ccc; background:transparent; font-size:14px; outline:none"
+                            @onchange="@(async (ChangeEventArgs e) => await SaveWeightAsync(context, e.Value?.ToString(), isGross: false))" />
+                    }
+                    else
+                    {
+                        <span>@FormatWeight(context, context.TareWeight)</span>
+                    }
                 </MudTd>
-                <MudTd Style="width:100px; text-align:right"><b>@context.NetWeight.ToString("F1")</b></MudTd>
+                <MudTd Style="width:100px; text-align:right"><b>@FormatWeight(context, context.NetWeight)</b></MudTd>
                 <MudTd Style="width:120px">
                     <MudChip T="string" Size="Size.Small" Color="Color.Default">@GetContainerStatusName(context.Status)</MudChip>
                 </MudTd>
@@ -210,70 +218,73 @@
     private List<HoneyType> _honeyTypes = new();
     private List<RawMaterialType> _rawMaterialTypes = new();
 
-    private System.Threading.Timer? _autoSaveTimer;
     private bool _saveIndicatorVisible = false;
+    // Bumped after every reload so a rejected value typed into an <input> is replaced by the stored one.
+    private int _reloadToken;
 
-    private void OnFieldChanged()
+    private async Task ShowSavedAsync()
     {
-        _autoSaveTimer?.Dispose();
-        _autoSaveTimer = new System.Threading.Timer(async _ =>
-        {
-            await InvokeAsync(async () =>
-            {
-                try
-                {
-                    if (_delivery == null) return;
-                    _delivery.UpdatedAt = DateTime.Now;
-                    using var context = await ContextFactory.CreateDbContextAsync();
-                    context.Deliveries.Update(_delivery);
-                    await context.SaveChangesAsync();
-                    _saveIndicatorVisible = true;
-                    StateHasChanged();
-                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
-                }
-                catch (Exception ex)
-                {
-                    Snackbar.Add($"Nepavyko išsaugoti: {ex.Message}", Severity.Error);
-                    StateHasChanged();
-                }
-            });
-        }, null, 500, Timeout.Infinite);
+        _saveIndicatorVisible = true;
+        StateHasChanged();
+        await Task.Delay(1500);
+        _saveIndicatorVisible = false;
+        StateHasChanged();
     }
 
-    private void OnContainerChanged(Container container)
+    // Weights can only change while the container is on stock and the act is unsigned (the service enforces it too).
+    private bool CanEditWeights(Container c) => c.Status == "IN_STOCK" && _delivery?.SupplierSignedAt == null;
+
+    // Buckets keep 2 decimals, barrels 1; lt-LT comma, same culture the user types in.
+    private static string FormatWeight(Container c, decimal value) =>
+        value.ToString(c.ContainerType is "BUCKET" or "BUCKET_GROUP" ? "F2" : "F1", LtCulture.Instance);
+
+    // One save per edited cell, straight to the service (no shared timer: two quick edits must both persist,
+    // and leaving the page right after an edit must not drop it).
+    private async Task SaveWeightAsync(Container container, string? raw, bool isGross)
     {
-        _autoSaveTimer?.Dispose();
-        _autoSaveTimer = new System.Threading.Timer(async _ =>
+        try
         {
-            await InvokeAsync(async () =>
+            if (!LtCulture.TryParseDecimal(raw, out var value))
             {
-                try
-                {
-                    using var context = await ContextFactory.CreateDbContextAsync();
-                    var existing = await context.Containers.FindAsync(container.Id);
-                    if (existing != null)
-                    {
-                        existing.GrossWeight = container.GrossWeight;
-                        existing.TareWeight = container.TareWeight;
-                        existing.NetWeight = container.GrossWeight - container.TareWeight;
-                        existing.UpdatedAt = DateTime.Now;
-                        context.Entry(existing).Property(x => x.GrossWeight).IsModified = true;
-                        context.Entry(existing).Property(x => x.TareWeight).IsModified = true;
-                        context.Entry(existing).Property(x => x.NetWeight).IsModified = true;
-                        context.Entry(existing).Property(x => x.UpdatedAt).IsModified = true;
-                        await context.SaveChangesAsync();
-                    }
-                    _saveIndicatorVisible = true;
-                    StateHasChanged();
-                    _ = Task.Delay(1500).ContinueWith(_ => InvokeAsync(() => { _saveIndicatorVisible = false; StateHasChanged(); }));
-                }
-                catch (Exception ex)
-                {
-                    Snackbar.Add($"Nepavyko išsaugoti: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
-                    StateHasChanged();
-                }
-            });
-        }, null, 500, Timeout.Infinite);
+                Snackbar.Add("Neteisingas skaičius", Severity.Warning);
+                return;
+            }
+
+            var gross = isGross ? value : container.GrossWeight;
+            var tare = isGross ? container.TareWeight : value;
+            // A hand-typed tare is manual; editing only the gross keeps the container's current mode.
+            await DeliveryService.UpdateContainerWeightAsync(container.Id, gross, tare, tareManual: isGross ? container.TareManual : true);
+            await ShowSavedAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko išsaugoti: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            // Always re-read: shows the cascaded line/delivery totals, or reverts the rejected input.
+            await LoadData();
+            _reloadToken++;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveBarrelsAsync(bool needReturn, int owed, int returned)
+    {
+        if (_delivery == null) return;
+        try
+        {
+            await DeliveryService.UpdateBarrelsAsync(Id, needReturn, owed, returned);
+            _delivery.NeedReturnBarrels = needReturn;
+            _delivery.BarrelsOwed = owed;
+            _delivery.BarrelsReturned = returned;
+            await ShowSavedAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko išsaugoti: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+            await LoadData();
+        }
     }
 
     protected override async Task OnInitializedAsync()
@@ -381,8 +392,4 @@
         }
     }
 
-    public void Dispose()
-    {
-        _autoSaveTimer?.Dispose();
-    }
 }
