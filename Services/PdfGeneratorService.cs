@@ -72,7 +72,8 @@ namespace NordicBeesERP.Services
                 invoice.Lines = context.Set<InvoiceLine>().Where(l => l.InvoiceId == invoice.Id).ToList();
                 if (invoice.DeliveryId.HasValue)
                     invoice.Delivery = context.Deliveries.FirstOrDefault(d => d.Id == invoice.DeliveryId.Value);
-                if (invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
+                // The language chosen on the invoice wins; the partner default is only a fallback for an invoice without one
+                if (string.IsNullOrEmpty(invoice.Language) && invoice.Customer != null && !string.IsNullOrEmpty(invoice.Customer.DefaultLanguage))
                     invoice.Language = invoice.Customer.DefaultLanguage;
             }
             
