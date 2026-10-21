@@ -1439,6 +1439,18 @@ namespace NordicBeesERP.Services
                 WHERE id = {4}",
                 supplierId, newStatus, now, ocrFlagsJson, invoiceId);
 
+            // Payments booked before the supplier was known: PENDING must not hide them (review status keeps priority)
+            if (newStatus == "PENDING" && invoice.PaidAmount > 0)
+            {
+                var settled = ExpenseStatusHelper.Recalculate(invoice.PaidAmount, invoice.AmountInclVat, invoice.DueDate, "PENDING");
+                if (settled != newStatus)
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        "UPDATE expense_invoices SET status = {0} WHERE id = {1}", settled, invoiceId);
+                    newStatus = settled;
+                }
+            }
+
             // Audit log (INSERT — AddAsync + SaveChangesAsync is correct for inserts)
             context.ExpenseInvoiceAudits.Add(new ExpenseInvoiceAudit
             {

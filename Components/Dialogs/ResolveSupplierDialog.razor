@@ -170,7 +170,7 @@
                 context.Entry(Invoice).Property(p => p.PendingSupplierVat).IsModified = true;
 
                 Invoice.SupplierId = partner.Id;
-                Invoice.Status = "PENDING";
+                Invoice.Status = StatusAfterResolve();
                 Invoice.PendingSupplierName = null;
                 Invoice.PendingSupplierVat = null;
                 await context.SaveChangesAsync();
@@ -184,7 +184,7 @@
                 context.Entry(Invoice).Property(p => p.PendingSupplierVat).IsModified = true;
 
                 Invoice.SupplierId = _selectedExistingSupplierId;
-                Invoice.Status = "PENDING";
+                Invoice.Status = StatusAfterResolve();
                 Invoice.PendingSupplierName = null;
                 Invoice.PendingSupplierVat = null;
                 await context.SaveChangesAsync();
@@ -196,7 +196,7 @@
                 context.Entry(Invoice).Property(p => p.PendingSupplierName).IsModified = true;
                 context.Entry(Invoice).Property(p => p.PendingSupplierVat).IsModified = true;
 
-                Invoice.Status = "PENDING";
+                Invoice.Status = StatusAfterResolve();
                 Invoice.PendingSupplierName = null;
                 Invoice.PendingSupplierVat = null;
                 await context.SaveChangesAsync();
@@ -216,4 +216,10 @@
         public int Id { get; set; }
         public string Name { get; set; } = "";
     }
+
+    // A payment already booked on the invoice (paid_amount) must survive the supplier resolution: PENDING only when nothing was paid.
+    private string StatusAfterResolve() =>
+        Invoice.PaidAmount > 0
+            ? ExpenseStatusHelper.Recalculate(Invoice.PaidAmount, Invoice.AmountInclVat, Invoice.DueDate, "PENDING")
+            : "PENDING";
 }
