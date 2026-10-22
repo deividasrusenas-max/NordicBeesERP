@@ -269,7 +269,7 @@ public class ContainerServiceTests : IClassFixture<DbTestFixture>
         await context.SaveChangesAsync();
         var lineId = line.Id;
 
-        // 5. Create one Container with a pre-existing note (to prove the service overwrites it)
+        // 5. Create one Container with a pre-existing note (to prove the service appends to it)
         var container = new Container
         {
             ContainerCode = $"CC-{DateTime.UtcNow.Ticks % 10000000:D7}",
@@ -306,7 +306,7 @@ public class ContainerServiceTests : IClassFixture<DbTestFixture>
                 .FirstOrDefaultAsync(c => c.Id == containerId);
             Assert.NotNull(reloadedContainer);
             Assert.Equal("WRITTEN_OFF", reloadedContainer!.Status);
-            Assert.Equal(reason, reloadedContainer.Notes);
+            Assert.Equal($"original-note | {reason}", reloadedContainer.Notes); // reason is appended, earlier notes kept
 
             var movement = await verifyContext.StockMovements
                 .AsNoTracking()
