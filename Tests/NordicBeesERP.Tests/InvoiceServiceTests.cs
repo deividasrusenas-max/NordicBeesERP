@@ -1457,6 +1457,8 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             await c.Database.ExecuteSqlRawAsync("DELETE FROM credit_note_lines WHERE credit_note_id = {0}", creditNoteId.Value);
             await c.Database.ExecuteSqlRawAsync("DELETE FROM credit_notes WHERE id = {0}", creditNoteId.Value);
         }
+        // payments of the invoice first (their allocations cascade; allocations RESTRICT the invoice delete)
+        await c.Database.ExecuteSqlRawAsync("DELETE FROM payments WHERE invoice_id = {0}", invoiceId);
         await c.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
         await c.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", invoiceId);
         await c.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", partnerId);
@@ -1604,9 +1606,17 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
         {
             await using (var c = await _fixture.Factory.CreateDbContextAsync())
             {
+                // 50 EUR is booked as a real payment + allocation; paid_amount / payment_status are derived from them
                 await c.Database.ExecuteSqlRawAsync(
-                    "UPDATE invoices SET paid_amount = {0}, payment_status = {1}, customer_vat_code = {2}, pdf_path = {3}, delivery_id = {4} WHERE id = {5}",
-                    50m, "partial", "LT123", "/tmp/keep.pdf", 987654, invoiceId);
+                    "INSERT INTO payments (payment_date, invoice_id, customer_id, amount, payment_method, source, created_at) VALUES (NOW(), {0}, {1}, {2}, 'bank_transfer', 'manual', NOW())",
+                    invoiceId, partnerId, 50m);
+                await c.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO payment_allocations (payment_id, invoice_id, allocated_amount, allocated_at) SELECT id, {0}, {1}, NOW() FROM payments WHERE invoice_id = {0}",
+                    invoiceId, 50m);
+                await PaymentService.RecalculateInvoiceStatusInternalAsync(c, invoiceId);
+                await c.Database.ExecuteSqlRawAsync(
+                    "UPDATE invoices SET customer_vat_code = {0}, pdf_path = {1}, delivery_id = {2} WHERE id = {3}",
+                    "LT123", "/tmp/keep.pdf", 987654, invoiceId);
             }
 
             var loaded = (await service.GetInvoiceWithDetailsAsync(invoiceId))!;
@@ -1619,7 +1629,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
                 invoiceId).ToListAsync()).Single();
 
             Assert.Equal(50m, row.PaidAmount);
-            Assert.Equal("partial", row.PaymentStatus);
+            Assert.Equal("partial", row.PaymentStatus); // 50 < new total 205.70 (170 + 21% VAT)
             Assert.Equal("LT123", row.CustomerVatCode);
             Assert.Null(row.PdfPath); // any edit invalidates the cached PDF (unsafe rooted path is never deleted from disk)
             Assert.Equal(987654, row.DeliveryId);
