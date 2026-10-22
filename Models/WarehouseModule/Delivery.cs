@@ -1,3 +1,4 @@
+using NordicBeesERP.Services;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -42,6 +43,14 @@ public class Delivery
 
     [Column("paid_amount")]
     public decimal PaidAmount { get; set; }
+
+    /// <summary>Total incl. VAT of the linked purchase (ULAK) invoice when it is not draft/cancelled; filled by DeliveryService (D1).</summary>
+    [NotMapped]
+    public decimal? DebtInvoiceTotal { get; set; }
+
+    /// <summary>What the supplier is owed for this delivery: the linked invoice total incl. VAT, else TotalAmount.</summary>
+    [NotMapped]
+    public decimal DebtBase => DeliveryDebt.Base(TotalAmount, DebtInvoiceTotal);
 
     [Column("barrels_owed")]
     public int BarrelsOwed { get; set; }

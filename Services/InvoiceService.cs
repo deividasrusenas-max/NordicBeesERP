@@ -431,6 +431,9 @@ namespace NordicBeesERP.Services
             // The total may have changed: paid_amount / payment_status / Confirmed<->Paid must follow it
             await PaymentService.RecalculateInvoiceStatusInternalAsync(context, invoice.Id);
 
+            // A purchase invoice is the debt base of its deliveries (D1): their PAID/PARTIAL_PAID/PRICED follows the new total
+            await DeliveryDebt.RefreshForInvoiceAsync(context, invoice.Id);
+
             // After commit (a rollback must keep the old PDF); failures are logged, never thrown
             PdfFileCache.TryDelete(_pdfBaseDir, existingInvoice.PdfPath);
             return invoice.Id;
@@ -512,6 +515,9 @@ namespace NordicBeesERP.Services
             // settle it: Confirmed -> Paid when fully covered.
             if (newStatus == InvoiceStatus.Confirmed)
                 await PaymentService.RecalculateInvoiceStatusInternalAsync(context, id);
+
+            // Draft/cancelled invoices are not the debt base (D1): linked deliveries fall back to / switch to their own amount
+            await DeliveryDebt.RefreshForInvoiceAsync(context, id);
 
             return invoice.Id;
         }

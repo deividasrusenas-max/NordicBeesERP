@@ -145,7 +145,7 @@
         <MudGrid Spacing="3">
             <MudItem xs="4">
                 <MudPaper Elevation="0" Class="pa-4 card-summary" Style="background:#f1f8e9; border-radius:12px; height:100px">
-                    <MudText Typo="Typo.caption" Style="color:#666">Bendra suma</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#666">Bendra suma@(_delivery?.DebtInvoiceTotal.HasValue == true ? " (su 6 % PVM)" : "")</MudText>
                     <MudText Typo="Typo.h5" Style="font-weight:600">@FormatAmountHelper.Trim(_totalAmountDisplay, 2) €</MudText>
                 </MudPaper>
             </MudItem>
@@ -275,12 +275,12 @@
         _delivery != null
         && _delivery.InvoiceId == null
         && _delivery.TotalNetWeight > 0;
-    private decimal _totalAmount => _delivery?.TotalAmount ?? 0;
+    private decimal _totalAmount => _delivery?.DebtBase ?? 0;
     private decimal _paidAmount => _delivery?.PaidAmount ?? 0;
     private decimal _skola => Math.Max(0, _totalAmount - _paidAmount);
     private decimal _permoka => _paidAmount > _totalAmount ? _paidAmount - _totalAmount : 0;
     private bool _isPartiallyPaid => _totalAmount > 0 && _paidAmount > 0 && _paidAmount < _totalAmount;
-    private decimal _totalAmountDisplay => _delivery?.TotalAmount ?? 0m;
+    private decimal _totalAmountDisplay => _delivery?.DebtBase ?? 0m;
     private decimal _paidAmountDisplay => _delivery?.PaidAmount ?? 0m;
     private decimal _debtDisplay => Math.Max(0, _totalAmountDisplay - _paidAmountDisplay);
 

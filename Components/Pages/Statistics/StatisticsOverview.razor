@@ -172,7 +172,7 @@
         _count = d.Count;
         _totalKg = d.Sum(x => x.TotalNetWeight);
         _totalAmount = d.Sum(x => x.TotalAmount);
-        _totalDebt = d.Sum(x => Math.Max(0, x.TotalAmount - x.PaidAmount));
+        _totalDebt = d.Sum(x => Math.Max(0, x.DebtBase - x.PaidAmount));
         var allMonths = Enumerable.Range(1, 12).Select(m => new MonthRow
         {
             Month = new DateTime(_selectedYear, m, 1).ToString("MMMM", new System.Globalization.CultureInfo("lt-LT")),
@@ -189,7 +189,7 @@
                 row.NetWeight = g.Sum(x => x.TotalNetWeight);
                 row.Amount = g.Sum(x => x.TotalAmount);
                 row.Paid = g.Sum(x => x.PaidAmount);
-                row.Debt = g.Sum(x => Math.Max(0, x.TotalAmount - x.PaidAmount));
+                row.Debt = g.Sum(x => Math.Max(0, x.DebtBase - x.PaidAmount));
             }
         }
         _monthly = allMonths;
@@ -208,7 +208,7 @@
                 Count = g.Count(),
                 NetWeight = g.Sum(x => x.TotalNetWeight),
                 Amount = g.Sum(x => x.TotalAmount),
-                Debt = g.Sum(x => Math.Max(0, x.TotalAmount - x.PaidAmount)),
+                Debt = g.Sum(x => Math.Max(0, x.DebtBase - x.PaidAmount)),
                 AvgPrice = g.Sum(x => x.TotalNetWeight) > 0 
                     ? g.Sum(x => x.TotalAmount) / g.Sum(x => x.TotalNetWeight) 
                     : 0

@@ -44,17 +44,18 @@ public static class DeliveryTotals
         await RefreshStatusAsync(context, deliveryId);
     }
 
-    /// <summary>RECEIVED / PRICED / PARTIAL_PAID / PAID from total_amount vs supplier_payments.</summary>
+    /// <summary>RECEIVED / PRICED / PARTIAL_PAID / PAID from the debt base (D1: linked invoice total incl. VAT, else total_amount) vs supplier_payments.</summary>
     public static async Task RefreshStatusAsync(NordicBeesERPContext context, int deliveryId)
     {
-        await context.Database.ExecuteSqlRawAsync(@"
-            UPDATE deliveries d SET
-                d.status = CASE
-                    WHEN d.total_amount > 0 AND (SELECT COALESCE(SUM(sp.amount), 0) FROM supplier_payments sp WHERE sp.delivery_id = d.id) >= d.total_amount THEN 'PAID'
-                    WHEN d.total_amount > 0 AND (SELECT COALESCE(SUM(sp.amount), 0) FROM supplier_payments sp WHERE sp.delivery_id = d.id) > 0 THEN 'PARTIAL_PAID'
-                    WHEN d.total_amount > 0 THEN 'PRICED'
-                    ELSE 'RECEIVED'
-                END
-            WHERE d.id = {0} AND d.status IN ('RECEIVED', 'PRICED', 'PARTIAL_PAID', 'PAID')", deliveryId);
+        // compile-time constant (no runtime string building): the debt base expression is repeated per branch
+        const string paid = "(SELECT COALESCE(SUM(sp.amount), 0) FROM supplier_payments sp WHERE sp.delivery_id = d.id)";
+        const string sql =
+            "UPDATE deliveries d SET d.status = CASE " +
+            "WHEN " + DeliveryDebt.SqlBase + " > 0 AND " + paid + " >= " + DeliveryDebt.SqlBase + " THEN 'PAID' " +
+            "WHEN " + DeliveryDebt.SqlBase + " > 0 AND " + paid + " > 0 THEN 'PARTIAL_PAID' " +
+            "WHEN " + DeliveryDebt.SqlBase + " > 0 THEN 'PRICED' " +
+            "ELSE 'RECEIVED' END " +
+            "WHERE d.id = {0} AND d.status IN ('RECEIVED', 'PRICED', 'PARTIAL_PAID', 'PAID')";
+        await context.Database.ExecuteSqlRawAsync(sql, deliveryId);
     }
 }

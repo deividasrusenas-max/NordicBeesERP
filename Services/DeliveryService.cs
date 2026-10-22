@@ -67,6 +67,7 @@ public class DeliveryService : IDeliveryService
             PaidAmount = d.PaidAmount
         }).ToList();
 
+        await DeliveryDebt.ApplyAsync(context, result);
         return result;
     }
 
@@ -99,6 +100,7 @@ public class DeliveryService : IDeliveryService
             foreach (var d in deliveries)
                 d.PaidAmount = paidByDelivery.TryGetValue(d.Id, out var paid) ? paid : 0m;
         }
+        await DeliveryDebt.ApplyAsync(context, deliveries);
 
         return deliveries;
     }
@@ -106,7 +108,9 @@ public class DeliveryService : IDeliveryService
     public async Task<Delivery?> GetByIdAsync(int id)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Deliveries.FirstOrDefaultAsync(d => d.Id == id);
+        var delivery = await context.Deliveries.FirstOrDefaultAsync(d => d.Id == id);
+        if (delivery != null) await DeliveryDebt.ApplyAsync(context, new[] { delivery });
+        return delivery;
     }
 
     public async Task<List<DeliveryLine>> GetLinesByDeliveryIdAsync(int deliveryId)

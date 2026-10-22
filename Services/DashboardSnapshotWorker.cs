@@ -97,8 +97,8 @@ public class DashboardSnapshotWorker : BackgroundService
 
         // Supplier debt: total amount owed minus what has been paid, only for positive balances.
         var debts = deliveries
-            .Where(d => (d.TotalAmount - d.PaidAmount) > 0)
-            .Select(d => d.TotalAmount - d.PaidAmount)
+            .Where(d => (d.DebtBase - d.PaidAmount) > 0)
+            .Select(d => d.DebtBase - d.PaidAmount)
             .ToList();
 
         var supplierDebtTotal = debts.Sum();

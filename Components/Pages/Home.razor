@@ -599,8 +599,8 @@
             _bucketCount = allContainers.Count(c => c.ContainerType == "BUCKET_GROUP");
             _bucketNetWeight = allContainers.Where(c => c.ContainerType == "BUCKET_GROUP").Sum(c => c.NetWeight);
             _unpricedDeliveries = deliveries.Count(d => d.Status == "RECEIVED");
-            _totalDebt = deliveries.Sum(d => Math.Max(0, d.TotalAmount - d.PaidAmount));
-            _suppliersWithDebt = deliveries.Where(d => d.TotalAmount - d.PaidAmount > 0).Select(d => d.SupplierId).Distinct().Count();
+            _totalDebt = deliveries.Sum(d => Math.Max(0, d.DebtBase - d.PaidAmount));
+            _suppliersWithDebt = deliveries.Where(d => d.DebtBase - d.PaidAmount > 0).Select(d => d.SupplierId).Distinct().Count();
             _recentDeliveries = deliveries.Take(10).ToList();
 
             var honeyTypes = await HoneyTypeService.GetAllAsync();

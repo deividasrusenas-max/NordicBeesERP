@@ -54,7 +54,7 @@
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#fef3c7; border-radius:12px">
-                    <MudText Typo="Typo.caption" Style="color:#666">Bendra suma</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#666">Bendra suma (ULAK su 6 % PVM)</MudText>
                     <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FormatAmountHelper.Trim(FilteredDebtRows.Sum(r => r.TotalAmount), 2) €</MudText>
                 </MudPaper>
             </MudItem>
@@ -204,9 +204,9 @@
                     SupplierName = s.Name,
                     DeliveryCount = supplierDeliveries.Count,
                     TotalNetWeight = supplierDeliveries.Sum(d => d.TotalNetWeight),
-                    TotalAmount = supplierDeliveries.Sum(d => d.TotalAmount),
+                    TotalAmount = supplierDeliveries.Sum(d => d.DebtBase),
                     PaidAmount = supplierDeliveries.Sum(d => d.PaidAmount),
-                    Debt = supplierDeliveries.Sum(d => d.TotalAmount - d.PaidAmount)
+                    Debt = supplierDeliveries.Sum(d => d.DebtBase - d.PaidAmount)
                 };
             })
             .Where(r => r.DeliveryCount > 0)

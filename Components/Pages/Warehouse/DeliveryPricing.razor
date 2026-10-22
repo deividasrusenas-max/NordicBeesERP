@@ -128,12 +128,12 @@
                         <MudText Typo="Typo.caption" Style="color:#aaa">—</MudText>
                     }
                 </MudTd>
-                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.TotalAmount, 2)</MudTd>
+                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.DebtBase, 2)@(d.DebtInvoiceTotal.HasValue ? " su 6 % PVM" : "")</MudTd>
                 <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.PaidAmount, 2)</MudTd>
                 <MudTd @attributes='new Dictionary<string, object> { 
-                    { "style", $"text-align:right; {GetDebtStyle(d.TotalAmount - d.PaidAmount)}" } 
+                    { "style", $"text-align:right; {GetDebtStyle(d.DebtBase - d.PaidAmount)}" } 
                 }'>
-                    @FormatAmountHelper.Trim(d.TotalAmount - d.PaidAmount, 2)
+                    @FormatAmountHelper.Trim(d.DebtBase - d.PaidAmount, 2)
                 </MudTd>
             </RowTemplate>
         </MudTable>
@@ -234,10 +234,10 @@
 
     private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
 
-    private (string Label, Color Color) GetStatusBadge(Delivery d) => (d.TotalAmount, d.PaidAmount) switch {
-        _ when d.TotalAmount <= 0 => ("Priimtas", Color.Default),
+    private (string Label, Color Color) GetStatusBadge(Delivery d) => (d.DebtBase, d.PaidAmount) switch {
+        _ when d.DebtBase <= 0 => ("Priimtas", Color.Default),
         _ when d.PaidAmount <= 0 => ("Neapmokėtas", Color.Error),
-        _ when d.PaidAmount >= d.TotalAmount => ("Apmokėtas", Color.Success),
+        _ when d.PaidAmount >= d.DebtBase => ("Apmokėtas", Color.Success),
         _ => ("Dalinai", Color.Warning)
     };
 
@@ -259,13 +259,13 @@
             switch (_selectedTab)
             {
                 case 1: // Neapmokėtos
-                    if (!(d.TotalAmount > 0 && d.PaidAmount <= 0)) return false;
+                    if (!(d.DebtBase > 0 && d.PaidAmount <= 0)) return false;
                     break;
                 case 2: // Dalinai apmokėtos
-                    if (!(d.PaidAmount > 0 && d.PaidAmount < d.TotalAmount)) return false;
+                    if (!(d.PaidAmount > 0 && d.PaidAmount < d.DebtBase)) return false;
                     break;
                 case 3: // Apmokėtos
-                    if (d.PaidAmount <= 0 || d.PaidAmount < d.TotalAmount) return false;
+                    if (d.PaidAmount <= 0 || d.PaidAmount < d.DebtBase) return false;
                     break;
                 case 4: // Šis mėnuo
                     if (d.DeliveryDate.Date < new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)) return false;
