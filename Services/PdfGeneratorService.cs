@@ -298,6 +298,16 @@ namespace NordicBeesERP.Services
                     
                     // Eilutė 3: data "2026-03-16"
                     col.Item().AlignCenter().PaddingTop(5).Text(invoice.Language?.ToUpper() == "EN" ? invoice.InvoiceDate.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture) : invoice.InvoiceDate.ToString("yyyy-MM-dd")).FontSize(11);
+
+                    // Supply date: shown only when it differs from the issue date (ULAK issued after the delivery)
+                    if (invoice.SupplyDate.HasValue && invoice.SupplyDate.Value.Date != invoice.InvoiceDate.Date)
+                    {
+                        var isEn = invoice.Language?.ToUpper() == "EN";
+                        var supply = isEn
+                            ? invoice.SupplyDate.Value.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)
+                            : invoice.SupplyDate.Value.ToString("yyyy-MM-dd");
+                        col.Item().AlignCenter().PaddingTop(2).Text($"{(isEn ? "Date of supply:" : "Prekių tiekimo data:")} {supply}").FontSize(9);
+                    }
                 });
                 
                 // Lentelė su prekėmis

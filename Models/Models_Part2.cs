@@ -294,6 +294,10 @@ public class Invoice
     [Column("invoice_date")]
     public DateTime InvoiceDate { get; set; }
 
+    /// <summary>Supply (delivery) date when it differs from the issue date - ULAK from a delivery. NULL = same as invoice_date.</summary>
+    [Column("supply_date")]
+    public DateTime? SupplyDate { get; set; }
+
     [Required]
     [Column("customer_id")]
     public int CustomerId { get; set; }

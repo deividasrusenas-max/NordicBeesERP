@@ -394,6 +394,7 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
             await using var v = await _fixture.Factory.CreateDbContextAsync();
             var invoice = await v.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoiceId);
             Assert.Equal(new DateTime(2026, 10, 21), invoice.InvoiceDate);
+            Assert.Equal(new DateTime(2025, 9, 17), invoice.SupplyDate); // delivery date is kept as the supply date
             Assert.StartsWith("ULAK26", invoice.InvoiceNumber);
             Assert.Equal(new DateTime(2026, 10, 21).AddDays(14), invoice.PaymentDueDate);
         }

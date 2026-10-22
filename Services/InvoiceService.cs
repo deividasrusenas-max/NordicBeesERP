@@ -881,6 +881,7 @@ namespace NordicBeesERP.Services
             {
                 // InvoiceNumber intentionally left empty — CreateInvoiceAsync generates it.
                 InvoiceDate = issueDate,
+                SupplyDate = delivery.DeliveryDate.Date,
                 CustomerId = invoiceSupplierId,
                 DeliveryId = delivery.Id,
                 PaymentTermDays = paymentTermDays,
