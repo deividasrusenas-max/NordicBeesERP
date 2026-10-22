@@ -58,6 +58,36 @@ public class PdfFileCacheTests : IDisposable
     }
 
     [Fact]
+    public void TryDelete_IoFailure_IsLoggedNotThrown()
+    {
+        if (OperatingSystem.IsWindows()) return; // relies on a read-only directory
+        var yearDir = Path.Combine(_baseDir, "2026");
+        Directory.CreateDirectory(yearDir);
+        File.WriteAllBytes(Path.Combine(yearDir, "locked.pdf"), Bytes);
+        File.SetUnixFileMode(yearDir, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        var logger = new CapturingLogger();
+        try
+        {
+            var deleted = PdfFileCache.TryDelete(_baseDir, "2026/locked.pdf", logger);
+
+            if (!deleted) // running as root can still delete; then there is nothing to log
+            {
+                Assert.Contains(logger.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Message.Contains("2026/locked.pdf"));
+            }
+        }
+        finally { File.SetUnixFileMode(yearDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute); }
+    }
+
+    private sealed class CapturingLogger : Microsoft.Extensions.Logging.ILogger
+    {
+        public List<(Microsoft.Extensions.Logging.LogLevel Level, string Message)> Entries { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception)));
+    }
+
+    [Fact]
     public void IsStale_FileOlderThanChange_ReturnsTrue()
     {
         var rel = PdfFileCache.Save(_baseDir, 2026, "B.pdf", Bytes);

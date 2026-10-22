@@ -46,6 +46,7 @@ public class Delivery
 
     /// <summary>Total incl. VAT of the linked purchase (ULAK) invoice when it is not draft/cancelled; filled by DeliveryService (D1).</summary>
     [NotMapped]
+    [Precision(12, 2)]
     public decimal? DebtInvoiceTotal { get; set; }
 
     /// <summary>What the supplier is owed for this delivery: the linked invoice total incl. VAT, else TotalAmount.</summary>

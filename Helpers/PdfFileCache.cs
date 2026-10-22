@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace NordicBeesERP.Helpers;
 
 public static class PdfFileCache
@@ -46,9 +48,9 @@ public static class PdfFileCache
     /// Deletes a cached PDF. Never throws: a missing file or an unsafe path is a
     /// no-op, and an I/O failure is logged and reported as false (the cache entry
     /// is already invalidated in the DB, so a leftover file is harmless).
-    /// Returns true only when a file was actually removed.
+    /// Returns true only when a file was actually removed. The failure goes to <paramref name="logger"/> when given.
     /// </summary>
-    public static bool TryDelete(string baseDir, string? relativePath)
+    public static bool TryDelete(string baseDir, string? relativePath, ILogger? logger = null)
     {
         try
         {
@@ -59,7 +61,7 @@ public static class PdfFileCache
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"PdfFileCache: nepavyko ištrinti '{relativePath}': {ex.Message}");
+            logger?.LogWarning(ex, "PdfFileCache: nepavyko ištrinti '{RelativePath}'", relativePath);
             return false;
         }
     }

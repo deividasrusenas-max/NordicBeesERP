@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 // =====================================================
 // NORDIC BEES ERP - INVOICE SERVICE
 // Framework: .NET 10
@@ -68,8 +69,11 @@ namespace NordicBeesERP.Services
         private readonly IAuthService _authService;
         private readonly string _pdfBaseDir;
 
-        public InvoiceService(IDbContextFactory<NordicBeesERPContext> contextFactory, IPdfGeneratorService pdfGeneratorService, IAuthService authService, string? pdfBaseDir = null)
+        private readonly ILogger<InvoiceService>? _logger;
+
+        public InvoiceService(IDbContextFactory<NordicBeesERPContext> contextFactory, IPdfGeneratorService pdfGeneratorService, IAuthService authService, string? pdfBaseDir = null, ILogger<InvoiceService>? logger = null)
         {
+            _logger = logger;
             _contextFactory = contextFactory;
             _pdfGeneratorService = pdfGeneratorService;
             _authService = authService;
@@ -435,7 +439,7 @@ namespace NordicBeesERP.Services
             await DeliveryDebt.RefreshForInvoiceAsync(context, invoice.Id);
 
             // After commit (a rollback must keep the old PDF); failures are logged, never thrown
-            PdfFileCache.TryDelete(_pdfBaseDir, existingInvoice.PdfPath);
+            PdfFileCache.TryDelete(_pdfBaseDir, existingInvoice.PdfPath, _logger);
             return invoice.Id;
         }
 
@@ -449,7 +453,7 @@ namespace NordicBeesERP.Services
             await context.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", id);
 
             // Only reached if the row delete succeeded; failures are logged, never thrown
-            PdfFileCache.TryDelete(_pdfBaseDir, pdfPath);
+            PdfFileCache.TryDelete(_pdfBaseDir, pdfPath, _logger);
             return 1;
         }
 

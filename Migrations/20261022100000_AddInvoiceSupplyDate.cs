@@ -14,12 +14,12 @@ namespace NordicBeesERP.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS supply_date DATE NULL AFTER invoice_date;");
+            migrationBuilder.Sql("ALTER TABLE invoices ADD COLUMN supply_date DATE NULL AFTER invoice_date;");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("ALTER TABLE invoices DROP COLUMN IF EXISTS supply_date;");
+            migrationBuilder.Sql("ALTER TABLE invoices DROP COLUMN supply_date;");
         }
     }
 }

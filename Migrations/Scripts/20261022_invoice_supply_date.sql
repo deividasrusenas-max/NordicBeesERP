@@ -1,9 +1,9 @@
 -- Apply manually (dev, nordic_bees_erp_test, staging, then prod). Works on MySQL 8.0.
 -- Verify BEFORE on each DB:  SHOW COLUMNS FROM invoices LIKE 'supply_date';   (expect empty)
--- Re-runnable (IF NOT EXISTS is accepted by the dev MySQL 8.0.46 / MariaDB, see AGENTS.md).
+-- Not re-runnable (plain ADD COLUMN, project rule nordicbees-migration-if-not-exists): check SHOW COLUMNS first; skip if present.
 -- Verify AFTER:  SHOW COLUMNS FROM invoices LIKE 'supply_date';   expect date, NULL, default NULL
 -- Existing rows keep NULL (= same as invoice_date). The agent does NOT run DDL.
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS supply_date DATE NULL AFTER invoice_date;
+ALTER TABLE invoices ADD COLUMN supply_date DATE NULL AFTER invoice_date;
 
 -- EF history row (ProductVersion copied from the latest existing row)
 INSERT IGNORE INTO __EFMigrationsHistory (MigrationId, ProductVersion)
