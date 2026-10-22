@@ -194,7 +194,7 @@
                 <MudTextField T="string"
                               @key="@_vatRateKey"
                               Value="@(customer.DefaultVatRate.ToString("G29"))"
-                              ValueChanged="@((string v) => { if (LtCulture.TryParseDecimal(v, out var d)) { customer.DefaultVatRate = d; _vatRateTouched = true; } })"
+                              ValueChanged="@((string v) => { if (LtNumber.TryParseDecimal(v, out var d)) { customer.DefaultVatRate = d; _vatRateTouched = true; } })"
                               Label="Numatytasis PVM (%)"
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense" />

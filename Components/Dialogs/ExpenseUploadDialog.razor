@@ -1079,17 +1079,17 @@
         if (idx >= _ocrLines.Count) return;
         // a typed amount or quantity means the net is no longer quantity × price as derived by OCR,
         // so the line rule checks the line again (same as the edit path, which stores no marker)
-        if (LtCulture.TryParseDecimal(_lineQuantities[idx], out var qty))
+        if (LtNumber.TryParseDecimal(_lineQuantities[idx], out var qty))
         {
             if (qty != _ocrLines[idx].Quantity) _ocrLines[idx].NetDerived = false;
             _ocrLines[idx].Quantity = qty;
         }
-        if (LtCulture.TryParseDecimal(_lineAmounts[idx], out var amt))
+        if (LtNumber.TryParseDecimal(_lineAmounts[idx], out var amt))
         {
             if (amt != _ocrLines[idx].AmountExclVat) _ocrLines[idx].NetDerived = false;
             _ocrLines[idx].AmountExclVat = amt;
         }
-        if (LtCulture.TryParseDecimal(_lineVatRates[idx], out var vat))
+        if (LtNumber.TryParseDecimal(_lineVatRates[idx], out var vat))
             _ocrLines[idx].VatRate = vat;
         _ocrLines[idx].AmountInclVat = _ocrLines[idx].AmountExclVat * (1 + _ocrLines[idx].VatRate / 100);
         StateHasChanged();

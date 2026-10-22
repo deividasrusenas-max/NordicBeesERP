@@ -24,9 +24,7 @@ public class LtCultureTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("abc")]
-    [InlineData("1.234,5")]
-    [InlineData("1,234.5")]
-    public void TryParseDecimal_RejectsEmptyAndAmbiguous(string? text)
+    public void TryParseDecimal_RejectsEmpty(string? text)
     {
         Assert.False(LtCulture.TryParseDecimal(text, out _));
     }

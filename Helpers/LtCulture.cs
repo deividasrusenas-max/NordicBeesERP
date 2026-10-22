@@ -13,7 +13,13 @@ public static class LtCulture
 
     private static CultureInfo Create()
     {
-        try { return new CultureInfo("lt-LT"); }
+        try
+        {
+            // ICU lt-LT writes the negative sign as U+2212; keep ASCII "-" so formatted values re-parse and copy/paste cleanly
+            var lt = new CultureInfo("lt-LT");
+            lt.NumberFormat.NegativeSign = "-";
+            return lt;
+        }
         catch (CultureNotFoundException) { }
 
         // No ICU data (invariant-globalization container): same decimal comma, no thousands grouping.
@@ -25,23 +31,6 @@ public static class LtCulture
         return fallback;
     }
 
-    /// <summary>
-    /// Parses user-typed text: "308,80" -> 308.80, "1 234,5" -> 1234.5, "19.5" -> 19.5.
-    /// A single separator (comma or dot) is the decimal separator; spaces / NBSP are grouping and ignored.
-    /// Ambiguous input with several separators ("1.234,5", "1,234.5") is rejected rather than guessed.
-    /// </summary>
-    public static bool TryParseDecimal(string? text, out decimal value)
-    {
-        value = 0m;
-        if (string.IsNullOrWhiteSpace(text)) return false;
-
-        var cleaned = text.Trim()
-            .Replace(" ", "").Replace(" ", "").Replace(" ", "")
-            .Replace(',', '.');
-
-        if (cleaned.Count(c => c == '.') > 1) return false;
-
-        return decimal.TryParse(cleaned, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
-            CultureInfo.InvariantCulture, out value);
-    }
+    /// <summary>Kept for existing callers; see <see cref="LtNumber.TryParseDecimal"/>.</summary>
+    public static bool TryParseDecimal(string? text, out decimal value) => LtNumber.TryParseDecimal(text, out value);
 }

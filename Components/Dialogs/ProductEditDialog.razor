@@ -212,12 +212,12 @@
             }
 
             // Unparseable input must be reported - silently keeping the old price looks like a successful save.
-            if (!LtCulture.TryParseDecimal(_costPriceStr, out var cost))
+            if (!LtNumber.TryParseDecimal(_costPriceStr, out var cost))
             {
                 Snackbar.Add("Neteisinga savikainos reikšmė", Severity.Error);
                 return;
             }
-            if (!LtCulture.TryParseDecimal(_salePriceStr, out var sale))
+            if (!LtNumber.TryParseDecimal(_salePriceStr, out var sale))
             {
                 Snackbar.Add("Neteisinga pardavimo kainos reikšmė", Severity.Error);
                 return;

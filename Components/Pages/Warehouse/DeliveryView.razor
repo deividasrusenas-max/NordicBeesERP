@@ -244,7 +244,7 @@
     {
         try
         {
-            if (!LtCulture.TryParseDecimal(raw, out var value))
+            if (!LtNumber.TryParseDecimal(raw, out var value))
             {
                 Snackbar.Add("Neteisingas skaičius", Severity.Warning);
                 return;

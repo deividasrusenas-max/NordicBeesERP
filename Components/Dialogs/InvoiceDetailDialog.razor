@@ -1260,11 +1260,11 @@
     {
         if (idx >= _lines.Count) return;
         _lines[idx].Description = _lineDescriptions[idx];
-        if (LtCulture.TryParseDecimal(_lineQuantities[idx], out var qty))
+        if (LtNumber.TryParseDecimal(_lineQuantities[idx], out var qty))
             _lines[idx].Quantity = qty;
-        if (LtCulture.TryParseDecimal(_lineAmounts[idx], out var amt))
+        if (LtNumber.TryParseDecimal(_lineAmounts[idx], out var amt))
             _lines[idx].AmountExclVat = amt;
-        if (LtCulture.TryParseDecimal(_lineVatRates[idx], out var vat))
+        if (LtNumber.TryParseDecimal(_lineVatRates[idx], out var vat))
             _lines[idx].VatRate = vat;
         _lines[idx].AmountInclVat = _lines[idx].AmountExclVat * (1 + _lines[idx].VatRate / 100);
         StateHasChanged();
