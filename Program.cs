@@ -20,6 +20,9 @@ using NordicBeesERP.Services.Email;
 using NordicBeesERP.Services.Dunning;
 using QuestPDF.Infrastructure;
 
+// lt-LT for every user and every thread (decimal comma regardless of browser / server locale)
+AppCulture.ApplyDefaults();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Local, git-ignored config for developer-machine secrets (DB password, etc.).
@@ -203,6 +206,9 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Single lt-LT culture; Accept-Language is ignored. Must run before the Blazor hub so the circuit starts in lt-LT.
+app.UseRequestLocalization(AppCulture.CreateRequestLocalizationOptions());
 
 // Invoice PDFs are served only through IFileStore (DB-backed blobs) — block
 // anonymous static-file access to legacy wwwroot/uploads/invoices paths.
