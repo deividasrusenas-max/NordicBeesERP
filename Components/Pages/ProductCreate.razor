@@ -52,20 +52,20 @@
             </MudItem>
             
             <MudItem xs="12" md="4">
-                <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="product.CostPrice" Label="Savikaina (€)" 
+                <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="product.CostPrice" Label="Savikaina (€)" 
                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro"
                                  Min="0m" Step="0.01m" />
             </MudItem>
             
             <MudItem xs="12" md="4">
-                <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="product.SalePrice" Label="Pardavimo kaina (€)" 
+                <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="product.SalePrice" Label="Pardavimo kaina (€)" 
                                  Required="true"
                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro"
                                  Min="0m" Step="0.01m" />
             </MudItem>
             
             <MudItem xs="12" md="4">
-                <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="product.PurchasePrice" Label="Pirkimo kaina (€)" 
+                <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="product.PurchasePrice" Label="Pirkimo kaina (€)" 
                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro"
                                  Min="0m" Step="0.01m" />
             </MudItem>

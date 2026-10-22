@@ -31,6 +31,16 @@ public static class FilterUrlBuilder
     public static string? ToQueryValue(IEnumerable<string>? values) =>
         values != null && values.Any() ? string.Join(",", values) : null;
 
+    // Decimal lists in URLs are a machine format (invariant dot, comma-separated list) - never the UI's decimal comma.
+    public static string? ToQueryValue(IEnumerable<decimal>? values) =>
+        values != null && values.Any()
+            ? string.Join(",", values.Select(v => v.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            : null;
+
+    public static HashSet<decimal> ParseDecimalSet(string? raw) =>
+        new((raw ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => decimal.Parse(x.Trim(), System.Globalization.CultureInfo.InvariantCulture)));
+
     // Query-string-to-value parse-back helpers
     public static bool? ParseBool(string? raw) =>
         raw switch { "1" => true, "0" => false, _ => null };

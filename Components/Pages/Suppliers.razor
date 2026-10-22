@@ -381,9 +381,7 @@
         {
             try
             {
-                _selectedVatRates = new HashSet<decimal>(
-                    VatRates.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(x => decimal.Parse(x.Trim(), System.Globalization.CultureInfo.InvariantCulture)));
+                _selectedVatRates = FilterUrlBuilder.ParseDecimalSet(VatRates);
             }
             catch
             {
@@ -414,7 +412,7 @@
         _searchText = val;
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _searchText),
-            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates.Select(r => r.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates)),
             ("active", FilterUrlBuilder.ToQueryValue(_filterActive)),
             ("tab", _tabIndex != 0 ? _tabIndex.ToString() : null)), replace: true);
     }
@@ -424,7 +422,7 @@
         _tabIndex = i;
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _searchText),
-            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates.Select(r => r.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates)),
             ("active", FilterUrlBuilder.ToQueryValue(_filterActive)),
             ("tab", _tabIndex != 0 ? _tabIndex.ToString() : null)), replace: false);
     }
@@ -528,7 +526,7 @@
             _selectedVatRates.Add(rate);
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _searchText),
-            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates.Select(r => r.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates)),
             ("active", FilterUrlBuilder.ToQueryValue(_filterActive)),
             ("tab", _tabIndex != 0 ? _tabIndex.ToString() : null)), replace: false);
     }
@@ -538,7 +536,7 @@
         _filterActive = _filterActive == value ? null : value;
         Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
             ("q", _searchText),
-            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates.Select(r => r.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+            ("vat", FilterUrlBuilder.ToQueryValue(_selectedVatRates)),
             ("active", FilterUrlBuilder.ToQueryValue(_filterActive)),
             ("tab", _tabIndex != 0 ? _tabIndex.ToString() : null)), replace: false);
     }

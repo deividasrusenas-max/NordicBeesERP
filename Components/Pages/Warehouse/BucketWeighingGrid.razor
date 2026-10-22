@@ -12,7 +12,7 @@
                 <MudText Typo="Typo.body2" Color="Color.Secondary">@(row.i + 1)</MudText>
             </MudItem>
             <MudItem xs="5" sm="3">
-                <MudNumericField Culture="@LtCulture.Instance" T="decimal?" @ref="r.BruttoRef" Value="r.Brutto"
+                <MudNumericField Converter="@LtNumberConverters.NullableDecimal" Culture="@LtCulture.Instance" T="decimal?" @ref="r.BruttoRef" Value="r.Brutto"
                     ValueChanged="@((decimal? v) => OnBruttoChanged(r, v))"
                     OnKeyDown="@((KeyboardEventArgs e) => OnBruttoKeyDown(e, r))"
                     Label="Brutto (kg)" Variant="Variant.Outlined" Format="F2" Immediate="true"
@@ -20,7 +20,7 @@
                     Style="font-size:1.3rem" />
             </MudItem>
             <MudItem xs="5" sm="3">
-                <MudNumericField Culture="@LtCulture.Instance" T="decimal?" Value="r.Tare"
+                <MudNumericField Converter="@LtNumberConverters.NullableDecimal" Culture="@LtCulture.Instance" T="decimal?" Value="r.Tare"
                     ValueChanged="@((decimal? v) => OnTareChanged(r, v))"
                     Label="Tara (kg)" Variant="Variant.Outlined" Format="F2" Immediate="true"
                     HideSpinButtons="true" Margin="Margin.Dense"

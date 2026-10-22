@@ -6,7 +6,7 @@
     <DialogContent>
         <MudGrid Class="mt-3">
             <MudItem xs="12">
-                <MudNumericField Culture="@LtCulture.Instance" T="decimal"
+                <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal"
                                  Value="_amount"
                                  ValueChanged="@((decimal v) => _amount = v)"
                                  Label="Suma (€)"

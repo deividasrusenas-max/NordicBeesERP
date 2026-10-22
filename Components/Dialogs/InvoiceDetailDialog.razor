@@ -320,7 +320,7 @@
                                                 </div>
                                                 <MudGrid Spacing="2">
                                                     <MudItem xs="6">
-                                                        <MudNumericField Culture="@LtCulture.Instance" T="decimal"
+                                                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal"
                                                                          Value="_invoice!.AmountExclVat"
                                                                          ValueChanged="@(v => OnAmountExclVatChanged(v))"
                                                                          Format="N2"
@@ -337,7 +337,7 @@
                                                                          ValueChanged="@(v => { _editVatRateLocal = v; _invoice!.VatRate = v; OnVatRateChanged((decimal)v); })" />
                                                     </MudItem>
                                                     <MudItem xs="6">
-                                                        <MudNumericField Culture="@LtCulture.Instance" T="decimal"
+                                                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal"
                                                                          Value="_invoice!.VatAmount"
                                                                          ValueChanged="@(v => { })"
                                                                          ReadOnly="true"
@@ -347,7 +347,7 @@
                                                                          Disabled="true" />
                                                     </MudItem>
                                                     <MudItem xs="6">
-                                                        <MudNumericField Culture="@LtCulture.Instance" T="decimal"
+                                                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal"
                                                                          Value="_invoice!.AmountInclVat"
                                                                          ValueChanged="@(v => OnAmountInclVatChanged(v))"
                                                                          Format="N2"

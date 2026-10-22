@@ -33,20 +33,45 @@ public class RazorMarkupGuardTests
         Assert.Empty(offenders);
     }
 
+    private static IEnumerable<(string File, string Src)> ComponentSources()
+    {
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(Root(), "Components"), "*.razor", SearchOption.AllDirectories))
+            yield return (Path.GetRelativePath(Root(), file), File.ReadAllText(file));
+    }
+
     [Fact]
-    public void MudNumericField_Decimal_AlwaysHasCulture()
+    public void MudNumericField_Decimal_AlwaysHasSharedConverterAndLtCulture()
     {
         var offenders = new List<string>();
-        foreach (var file in Directory.EnumerateFiles(Path.Combine(Root(), "Components"), "*.razor", SearchOption.AllDirectories))
+        foreach (var (file, src) in ComponentSources())
         {
-            var src = File.ReadAllText(file);
             foreach (Match m in Regex.Matches(src, @"<MudNumericField\b.*?(?<![-=])/?>", RegexOptions.Singleline))
             {
                 var t = Regex.Match(m.Value, "\\bT=\"([\\w?]+)\"").Groups[1].Value.TrimEnd('?').ToLowerInvariant();
-                if ((t == "decimal" || t == "double" || t == "float") && !m.Value.Contains("Culture"))
-                    offenders.Add(Path.GetFileName(file));
+                if (t == "") { offenders.Add($"{file}: MudNumericField without explicit T"); continue; }
+                if (t is "decimal" or "double" or "float"
+                    && (!m.Value.Contains("Converter=\"@LtNumberConverters.") || !m.Value.Contains("Culture=\"@LtCulture.Instance\"")))
+                    offenders.Add($"{file}: decimal MudNumericField needs Converter=\"@LtNumberConverters.*\" and Culture=\"@LtCulture.Instance\"");
             }
         }
         Assert.Empty(offenders);
+    }
+
+    [Fact]
+    public void Components_NoNumberInputs_ForDecimalValues()
+    {
+        var offenders = ComponentSources()
+            .Where(x => Regex.IsMatch(x.Src, "type\\s*=\\s*[\"']number[\"']|InputType\\.Number"))
+            .Select(x => x.File).ToList();
+        Assert.Empty(offenders); // browser-locale dependent: use MudNumericField with the shared converter or a text input + LtNumber
+    }
+
+    [Fact]
+    public void Components_NoManualDecimalParse_UseLtNumber()
+    {
+        var offenders = ComponentSources()
+            .Where(x => Regex.IsMatch(x.Src, @"\b(decimal|double|float)\.(Try)?Parse\("))
+            .Select(x => x.File).ToList();
+        Assert.Empty(offenders); // typed numbers: LtNumber.TryParseDecimal; machine formats belong in Helpers/Services
     }
 }

@@ -45,16 +45,16 @@
                         <MudNumericField T="int" @bind-Value="_cfg.RunHour" Label="Paleidimo valanda (Vilniaus laiku, 0–23)" Min="0" Max="23" Variant="Variant.Outlined" Class="mb-2" />
                         <MudNumericField T="int" @bind-Value="_cfg.GraceDays" Label="Lengvatinis laikotarpis (dienos po termino)" Min="0" Variant="Variant.Outlined" Class="mb-2" />
                         <MudNumericField T="int" @bind-Value="_cfg.MinDaysBetween" Label="Minimalus intervalas tarp priminimų klientui (dienos)" Min="0" Variant="Variant.Outlined" Class="mb-2" />
-                        <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_cfg.MinAmount" Label="Minimali skola (€, siunčiama jei didesnė)" Min="0m" Variant="Variant.Outlined" Class="mb-2" />
+                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="_cfg.MinAmount" Label="Minimali skola (€, siunčiama jei didesnė)" Min="0m" Variant="Variant.Outlined" Class="mb-2" />
                         <MudNumericField T="int" @bind-Value="_cfg.StaleImportDays" Label="Banko importas laikomas pasenusiu po (dienų)" Min="0" Variant="Variant.Outlined" Class="mb-2" />
                         <MudTextField T="string" @bind-Value="_cfg.CcAddress" Label="Kopija (CC) adresas" Variant="Variant.Outlined" />
                     </MudItem>
                     <MudItem xs="12">
                         <MudText Typo="Typo.subtitle2" Class="mb-1">Informacinės sumos laiške (tik paskutiniame lygyje, jei šablone yra {{InterestBlock}})</MudText>
                         <MudSwitch T="bool" @bind-Value="_cfg.ShowInterest" Color="Color.Primary" Label="Rodyti palūkanas" />
-                        <MudNumericField Culture="@LtCulture.Instance" T="decimal?" @bind-Value="_cfg.InterestRatePct" Label="Metinė palūkanų norma (%)" Min="0m" Variant="Variant.Outlined" Class="mb-2" Style="max-width:260px" />
+                        <MudNumericField Converter="@LtNumberConverters.NullableDecimal" Culture="@LtCulture.Instance" T="decimal?" @bind-Value="_cfg.InterestRatePct" Label="Metinė palūkanų norma (%)" Min="0m" Variant="Variant.Outlined" Class="mb-2" Style="max-width:260px" />
                         <MudSwitch T="bool" @bind-Value="_cfg.ShowFixedFee" Color="Color.Primary" Label="Rodyti fiksuotą kompensaciją" />
-                        <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_cfg.FixedFeeEur" Label="Fiksuota kompensacija už sąskaitą (€)" Min="0m" Variant="Variant.Outlined" Style="max-width:260px" />
+                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="_cfg.FixedFeeEur" Label="Fiksuota kompensacija už sąskaitą (€)" Min="0m" Variant="Variant.Outlined" Style="max-width:260px" />
                     </MudItem>
                     <MudItem xs="12">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="SaveConfigAsync">Išsaugoti</MudButton>

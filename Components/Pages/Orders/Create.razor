@@ -136,7 +136,7 @@
                                 </MudAutocomplete>
                             </td>
                             <td>
-                                <MudNumericField Culture="@LtCulture.Instance" T="decimal"
+                                <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal"
                                                  @bind-Value="@line.Quantity"
                                                  Variant="Variant.Outlined"
                                                  Margin="Margin.Dense"

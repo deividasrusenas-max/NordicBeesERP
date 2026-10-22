@@ -107,17 +107,17 @@
                     <MudText>@(line.AlreadyCredited % 1 == 0 ? ((int)line.AlreadyCredited).ToString() : line.AlreadyCredited.ToString("F2"))</MudText>
                 </MudTd>
                 <MudTd DataLabel="Kreditinis kiekis">
-                    <MudNumericField Culture="@LtCulture.Instance" T="decimal" Value="@line.CreditQuantity" Variant="Variant.Outlined"
+                    <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" Value="@line.CreditQuantity" Variant="Variant.Outlined"
                                       Margin="Margin.Dense" Min="0" Max="@line.RemainingQuantity" Step="0.001M" Format="0.####" HideSpinButtons="true"
                                      ValueChanged="@((decimal val) => { line.CreditQuantity = Math.Min(val, line.RemainingQuantity); line.IsChecked = line.CreditQuantity > 0; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="Kaina (be PVM)">
-                    <MudNumericField Culture="@LtCulture.Instance" T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined"
+                    <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" Value="@line.PriceExclVat" Variant="Variant.Outlined"
                                      Margin="Margin.Dense" Step="0.01M" Format="0.####"
                                      ValueChanged="@((decimal val) => { line.PriceExclVat = val; line.IsChecked = true; CalculateLine(line); })" />
                 </MudTd>
                 <MudTd DataLabel="PVM %">
-                    <MudNumericField Culture="@LtCulture.Instance" T="decimal" Value="@line.VatRate" Variant="Variant.Outlined"
+                    <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" Value="@line.VatRate" Variant="Variant.Outlined"
                                      Margin="Margin.Dense" Min="0" Step="1M" Format="F0"
                                      ValueChanged="@((decimal val) => { line.VatRate = val; line.IsChecked = true; CalculateLine(line); })" />
                 </MudTd>

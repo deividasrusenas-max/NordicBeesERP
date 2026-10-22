@@ -64,7 +64,7 @@
                     <MudDatePicker Label="Mokėjimo data" Date="_paymentDate" DateChanged="@((DateTime? d) => _paymentDate = d)" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudNumericField Culture="@LtCulture.Instance" T="decimal" Label="Suma (€)" @bind-Value="_paymentAmount" Min="0.01m" Max="999999999.99m" Format="F2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" Label="Suma (€)" @bind-Value="_paymentAmount" Min="0.01m" Max="999999999.99m" Format="F2" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="6">
                     <MudSelect T="string" Label="Mokėjimo būdas" @bind-Value="_paymentMethod" Variant="Variant.Outlined" Margin="Margin.Dense">

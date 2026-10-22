@@ -41,31 +41,31 @@
                          SelectValueOnTab="true"
                          Clearable="true" />
 
-        <MudNumericField T="decimal"
+        <MudNumericField Converter="@LtNumberConverters.Decimal" T="decimal"
                          @bind-Value="_transportCost"
                          Label="Transporto išlaidos, kurias skolingas tiekėjas (€)"
                          Variant="Variant.Outlined"
                          FullWidth="@true"
                          Format="F2"
-                         Culture="@_ltCulture"
+                         Culture="@LtCulture.Instance"
                          Margin="Margin.Dense"
                          Immediate="true" />
-        <MudNumericField T="decimal"
+        <MudNumericField Converter="@LtNumberConverters.Decimal" T="decimal"
                          @bind-Value="_barrelCost"
                          Label="Statinių/taros išlaidos, kurias skolingas tiekėjas (€)"
                          Variant="Variant.Outlined"
                          FullWidth="@true"
                          Format="F2"
-                         Culture="@_ltCulture"
+                         Culture="@LtCulture.Instance"
                          Margin="Margin.Dense"
                          Immediate="true" />
-        <MudNumericField T="decimal"
+        <MudNumericField Converter="@LtNumberConverters.Decimal" T="decimal"
                          @bind-Value="_otherCost"
                          Label="Kitos išlaidos (€)"
                          Variant="Variant.Outlined"
                          FullWidth="@true"
                          Format="F2"
-                         Culture="@_ltCulture"
+                         Culture="@LtCulture.Instance"
                          Margin="Margin.Dense"
                          Immediate="true" />
 

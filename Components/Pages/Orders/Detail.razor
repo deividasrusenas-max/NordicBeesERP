@@ -198,7 +198,7 @@
                             var batchId = p.BatchId; // Local capture for proper closure
                             <tr>
                                 <td>
-                                    <MudNumericField Culture="@LtCulture.Instance" T="decimal"
+                                    <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal"
                                                      Value="@GetShipmentQuantity(batchId)"
                                                      ValueChanged="@(v => SetShipmentQuantity(batchId, v))"
                                                      Min="0"

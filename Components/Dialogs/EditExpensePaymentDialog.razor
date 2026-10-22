@@ -13,7 +13,7 @@
     <DialogContent>
         <MudGrid Class="mt-3">
             <MudItem xs="12">
-                <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_amount" Label="Suma (€)"
+                <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="_amount" Label="Suma (€)"
                                  Min="0.01m" Max="999999999.99m" Required="true" Format="F2" />
             </MudItem>
             <MudItem xs="12">

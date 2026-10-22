@@ -110,12 +110,12 @@
                 <MudTd Style="text-align:right">@line.ContainerCount</MudTd>
                 <MudTd Style="text-align:right">@FormatAmountHelper.Trim((line.TotalNetWeight ?? 0m), 1)</MudTd>
                 <MudTd Style="text-align:right">
-                <MudNumericField T="decimal?" Value="@line.UnitPrice"
+                <MudNumericField Converter="@LtNumberConverters.NullableDecimal" T="decimal?" Value="@line.UnitPrice"
                     ValueChanged="@((decimal? val) => { line.UnitPrice = val; OnPriceChanged(); })"
                     Variant="Variant.Outlined" Style="max-width:130px"
                     Step="0.01m"
                     Format="F2"
-                    Culture="@(new System.Globalization.CultureInfo("lt-LT"))"
+                    Culture="@LtCulture.Instance"lt-LT"))"
                     HideSpinButtons="true" />
                 </MudTd>
                 <MudTd Style="text-align:right">
@@ -216,7 +216,7 @@
     <TitleContent><MudText Typo="Typo.h6">Naujas mokėjimas</MudText></TitleContent>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="_newPaymentAmount" Label="Suma (€)" Variant="Variant.Outlined" />
+            <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="_newPaymentAmount" Label="Suma (€)" Variant="Variant.Outlined" />
             <MudDatePicker @bind-Date="_newPaymentDate" Label="Data" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
             <MudSelect T="string" @bind-Value="_newPaymentMethod" Label="Mokėjimo būdas" Variant="Variant.Outlined">
                 <MudSelectItem Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>
@@ -239,12 +239,12 @@
     <DialogContent>
         <div @onkeydown="@((KeyboardEventArgs e) => { if (e.Key == "Escape") _editPaymentDialogVisible = false; if (e.Key == "Enter") _ = SaveEditPayment(); })" tabindex="0">
             <MudStack Spacing="3">
-                <MudNumericField T="decimal" 
+                <MudNumericField Converter="@LtNumberConverters.Decimal" T="decimal" 
                     Value="@(_editingPayment?.Amount ?? 0)"
                     ValueChanged="@((decimal val) => { if (_editingPayment != null) _editingPayment.Amount = val; })"
                     Label="Suma (€)" Variant="Variant.Outlined"
                     Format="F2"
-                    Culture="@(new System.Globalization.CultureInfo("lt-LT"))" />
+                    Culture="@LtCulture.Instance"lt-LT"))" />
                 <MudDatePicker @bind-Date="_editingPaymentDate" Label="Data" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
                 <MudSelect T="string" @bind-Value="_editingPayment.PaymentMethod" Label="Mokėjimo būdas" Variant="Variant.Outlined">
                     <MudSelectItem Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>

@@ -56,15 +56,15 @@
                 </HeaderContent>
                 <RowTemplate Context="item">
                     <MudTd>
-                        <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="item.MinBruttoKg" Format="F2" Immediate="true"
+                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="item.MinBruttoKg" Format="F2" Immediate="true"
                             Variant="Variant.Text" HideSpinButtons="true" Style="max-width:120px" />
                     </MudTd>
                     <MudTd>
-                        <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="item.MaxBruttoKg" Format="F2" Immediate="true"
+                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="item.MaxBruttoKg" Format="F2" Immediate="true"
                             Variant="Variant.Text" HideSpinButtons="true" Style="max-width:120px" />
                     </MudTd>
                     <MudTd>
-                        <MudNumericField Culture="@LtCulture.Instance" T="decimal" @bind-Value="item.TareKg" Format="F2" Immediate="true"
+                        <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" @bind-Value="item.TareKg" Format="F2" Immediate="true"
                             Variant="Variant.Text" HideSpinButtons="true" Style="max-width:120px" />
                     </MudTd>
                     <MudTd>
