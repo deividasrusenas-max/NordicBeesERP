@@ -50,7 +50,7 @@ public class ExpenseManualEditTests : IClassFixture<DbTestFixture>
     }
 
     private async Task<int> InsertInvoiceAsync(string status, int? supplierId, IEnumerable<string> flags,
-        string? rejectedReason = null, bool zeroVat = false, string? approvedBy = null)
+        string? rejectedReason = null, bool zeroVat = false, string? approvedBy = null, decimal paid = 0m)
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();
         var number = $"MEDIT-{Guid.NewGuid():N}";
@@ -64,7 +64,17 @@ public class ExpenseManualEditTests : IClassFixture<DbTestFixture>
             JsonSerializer.Serialize(flags), rejectedReason, approvedBy, approvedBy != null ? DateTime.Now : null,
             "EUR", "MANUAL", "COMPLETED");
 
-        return await context.ExpenseInvoices.Where(i => i.InvoiceNumber == number).Select(i => i.Id).FirstAsync();
+        var id = await context.ExpenseInvoices.Where(i => i.InvoiceNumber == number).Select(i => i.Id).FirstAsync();
+        if (paid > 0m)
+        {
+            // payment status is derived from expense_payments, so the fixture books a real payment
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO expense_payments (invoice_id, payment_date, amount, payment_method, created_at) VALUES ({0}, {1}, {2}, 'BANK', NOW())",
+                id, Today, paid);
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE expense_invoices SET paid_amount = {0} WHERE id = {1}", paid, id);
+        }
+        return id;
     }
 
     private async Task<ExpenseInvoice> ReloadAsync(int id)
@@ -169,14 +179,38 @@ public class ExpenseManualEditTests : IClassFixture<DbTestFixture>
     public async Task ClosedOrQuarantined_StatusKept_FlagStored(string status)
     {
         var supplierId = await InsertSupplierAsync();
-        var id = await InsertInvoiceAsync(status, supplierId, Array.Empty<string>());
+        // fixture total is 121: PAID = paid in full, PARTIAL = part of it
+        var paid = status switch { "PAID" => 121m, "PARTIAL" => 50m, _ => 0m };
+        var id = await InsertInvoiceAsync(status, supplierId, Array.Empty<string>(), paid: paid);
         try
         {
-            await CreateService().UpdateInvoiceAsync(Edit(await ReloadAsync(id), excl: 803.31m, vat: 168.69m, incl: 1000m));
+            // breaks the arithmetic (80 + 21 != 121) but keeps the total, so the payments still match it
+            await CreateService().UpdateInvoiceAsync(Edit(await ReloadAsync(id), excl: 80m, vat: 21m, incl: 121m));
 
             var after = await ReloadAsync(id);
             Assert.Equal(status, after.Status);
             Assert.Contains(OcrFlag.AmountArithmeticMismatch, FlagsOf(after));
+        }
+        finally
+        {
+            await CleanupAsync(new[] { id }, supplierId);
+        }
+    }
+
+    [Fact]
+    public async Task Paid_TotalIncreased_BecomesPartial()
+    {
+        var supplierId = await InsertSupplierAsync();
+        var id = await InsertInvoiceAsync("PAID", supplierId, Array.Empty<string>(), paid: 121m);
+        try
+        {
+            // consistent amounts, total 121 -> 242: the 121 paid no longer covers it
+            await CreateService().UpdateInvoiceAsync(Edit(await ReloadAsync(id), excl: 200m, vat: 42m, incl: 242m));
+
+            var after = await ReloadAsync(id);
+            Assert.Equal("PARTIAL", after.Status);
+            Assert.Equal(121m, after.PaidAmount);
+            Assert.Equal(242m, after.AmountInclVat);
         }
         finally
         {
