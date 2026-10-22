@@ -152,11 +152,11 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
                                 table.Cell().Element(DataCell).Text(prekeName);
                                 table.Cell().Element(DataCell).Text(containerTypeDisplay);
                                 table.Cell().Element(DataCell).AlignRight().Text(line.ContainerCount.ToString());
-                                table.Cell().Element(DataCell).AlignRight().Text($"{(line.TotalNetWeight ?? 0):N1}");
+                                table.Cell().Element(DataCell).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{(line.TotalNetWeight ?? 0):N1}"));
                             }
 
                             table.Cell().ColumnSpan(3).Padding(4).AlignRight().Text("Iš viso netto:").Bold();
-                            table.Cell().Padding(4).AlignRight().Text($"{lines.Sum(l => l.TotalNetWeight ?? 0):N1} kg").Bold();
+                            table.Cell().Padding(4).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{lines.Sum(l => l.TotalNetWeight ?? 0):N1} kg")).Bold();
                         });
                     });
 
@@ -205,17 +205,17 @@ public class DeliveryReceiptPdfService : IDeliveryReceiptPdfService
 
                                     table.Cell().Element(DataCell).Text(nr.ToString());
                                     table.Cell().Element(DataCell).Text(typeName);
-                                    table.Cell().Element(DataCell).AlignRight().Text($"{container.GrossWeight:N1}");
-                                    table.Cell().Element(DataCell).AlignRight().Text($"{container.TareWeight:N1}");
-                                    table.Cell().Element(DataCell).AlignRight().Text($"{container.NetWeight:N1}");
+                                    table.Cell().Element(DataCell).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{container.GrossWeight:N1}"));
+                                    table.Cell().Element(DataCell).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{container.TareWeight:N1}"));
+                                    table.Cell().Element(DataCell).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{container.NetWeight:N1}"));
                                     nr++;
                                 }
 
                                 // Footer
                                 table.Cell().ColumnSpan(2).Padding(4).Text($"Iš viso ({containers.Count} vnt.)").Bold();
-                                table.Cell().Padding(4).AlignRight().Text($"{containers.Sum(c => c.GrossWeight):N1}").Bold();
-                                table.Cell().Padding(4).AlignRight().Text($"{containers.Sum(c => c.TareWeight):N1}").Bold();
-                                table.Cell().Padding(4).AlignRight().Text($"{containers.Sum(c => c.NetWeight):N1}").Bold();
+                                table.Cell().Padding(4).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{containers.Sum(c => c.GrossWeight):N1}")).Bold();
+                                table.Cell().Padding(4).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{containers.Sum(c => c.TareWeight):N1}")).Bold();
+                                table.Cell().Padding(4).AlignRight().Text(NordicBeesERP.Helpers.LtNumber.Lt($"{containers.Sum(c => c.NetWeight):N1}")).Bold();
                             });
                         });
                     }

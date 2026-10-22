@@ -14,7 +14,7 @@ public static class NumberToWordsHelper
     public static string ConvertToLithuanianWords(decimal amount)
     {
         if (amount < 0 || amount > 999999)
-            return amount.ToString("N2", CultureInfo.InvariantCulture) + " €";
+            return amount.ToString("N2", NordicBeesERP.Helpers.LtCulture.Instance) + " €";
 
         var eur = (int)Math.Floor(amount);
         var ct = (int)Math.Round((amount - eur) * 100);
@@ -28,7 +28,7 @@ public static class NumberToWordsHelper
     public static string ConvertToEnglishWords(decimal amount)
     {
         if (amount < 0 || amount > 999999)
-            return amount.ToString("N2", CultureInfo.InvariantCulture) + " EUR";
+            return amount.ToString("N2", NordicBeesERP.Helpers.LtCulture.Instance) + " EUR";
 
         var eur = (int)Math.Floor(amount);
         var ct = (int)Math.Round((amount - eur) * 100);

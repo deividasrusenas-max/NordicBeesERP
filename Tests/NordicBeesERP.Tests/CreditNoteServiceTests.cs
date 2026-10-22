@@ -1873,8 +1873,8 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 
             var text = ExtractNormalizedText(pdf);
             // Derived line VAT (66.00 * 21%) and derived line total (66.00 + 13.86)
-            Assert.Contains("13.86", text);
-            Assert.Contains("79.86", text);
+            Assert.Contains("13,86", text);
+            Assert.Contains("79,86", text);
             // "Suma apmokėjimui:" label fragment — no 't' glyph, extraction-safe
             Assert.Contains(NoSpaces(Rc96PayableLabelFragment), NoSpaces(text));
             // RC96 legal-note fragment (same stable fragment as the invoice test)
@@ -1950,8 +1950,8 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
 
             var text = ExtractNormalizedText(pdf);
-            Assert.Contains("6.00", text);
-            Assert.Contains("106.00", text);
+            Assert.Contains("6,00", text);
+            Assert.Contains("106,00", text);
             Assert.DoesNotContain(NoSpaces(Rc96PayableLabelFragment), NoSpaces(text));
             Assert.DoesNotContain(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
         }
@@ -2025,8 +2025,8 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
             Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
 
             var text = ExtractNormalizedText(pdf);
-            Assert.Contains("21.00", text);
-            Assert.Contains("121.00", text);
+            Assert.Contains("21,00", text);
+            Assert.Contains("121,00", text);
             Assert.DoesNotContain(NoSpaces(Rc96PayableLabelFragment), NoSpaces(text));
             Assert.DoesNotContain(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
         }

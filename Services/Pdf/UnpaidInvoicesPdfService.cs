@@ -184,5 +184,5 @@ internal class UnpaidInvoicesDocument : IDocument
     }
 
     private static string FormatAmount(decimal value) =>
-        value.ToString("N2", CultureInfo.InvariantCulture) + " €";
+        value.ToString("N2", NordicBeesERP.Helpers.LtCulture.Instance) + " €";
 }

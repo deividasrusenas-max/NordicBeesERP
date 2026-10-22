@@ -254,5 +254,5 @@ internal class DebtReconciliationDocument : IDocument
     }
 
     private static string FormatAmount(decimal value) =>
-        value.ToString("#,##0.00", CultureInfo.InvariantCulture);
+        value.ToString("#,##0.00", NordicBeesERP.Helpers.LtCulture.Instance);
 }

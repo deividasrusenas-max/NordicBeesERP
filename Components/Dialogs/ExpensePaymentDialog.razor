@@ -301,7 +301,7 @@
             if (_totalPaid >= (_invoice?.AmountInclVat ?? 0))
                 return "Sumokėta visiškai";
             else if (_totalPaid > 0)
-                return $"Liko: {RemainingAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} €";
+                return $"Liko: {LtNumber.Format(RemainingAmount, 2, grouped: false)} €";
             else
                 return "Nesumokėta";
         }

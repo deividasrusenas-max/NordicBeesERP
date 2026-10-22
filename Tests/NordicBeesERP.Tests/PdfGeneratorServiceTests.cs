@@ -202,9 +202,9 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
 
             var text = ExtractNormalizedText(pdf);
             Assert.Contains("21%", text);
-            Assert.Contains("13.86", text);
-            Assert.Contains("79.86", text);
-            Assert.Contains("66.00", text);
+            Assert.Contains("13,86", text);
+            Assert.Contains("79,86", text);
+            Assert.Contains("66,00", text);
             Assert.Contains(AmountPayableLabel, text);
             Assert.Contains(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
         }
@@ -278,9 +278,9 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
 
             var text = ExtractNormalizedText(pdf);
             Assert.Contains("6%", text);
-            Assert.Contains("100.00", text);
-            Assert.Contains("6.00", text);
-            Assert.Contains("106.00", text);
+            Assert.Contains("100,00", text);
+            Assert.Contains("6,00", text);
+            Assert.Contains("106,00", text);
             Assert.DoesNotContain(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
             Assert.DoesNotContain(AmountPayableLabel, text);
         }
@@ -353,9 +353,10 @@ public class PdfGeneratorServiceTests : IClassFixture<DbTestFixture>
 
             var text = ExtractNormalizedText(pdf);
             Assert.Contains("21%", text);
-            Assert.Contains("100.00", text);
-            Assert.Contains("21.00", text);
-            Assert.Contains("121.00", text);
+            Assert.Contains("100,00", text);
+            Assert.Contains("21,00", text);
+            Assert.Contains("121,00", text);
+            Assert.DoesNotContain("121.00", text); // decimal comma in every invoice language, independent of thread culture
             Assert.DoesNotContain(NoSpaces(Rc96NoteStableFragment), NoSpaces(text));
             Assert.DoesNotContain(AmountPayableLabel, text);
         }

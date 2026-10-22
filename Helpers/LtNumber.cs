@@ -65,4 +65,7 @@ public static class LtNumber
 
     public static string Format(double value, int decimals = 2, bool grouped = true) =>
         value.ToString((grouped ? "N" : "F") + decimals, LtCulture.Instance);
+
+    /// <summary>Interpolated string rendered with the lt-LT culture (PDF text must not depend on the generating thread's culture).</summary>
+    public static string Lt(FormattableString text) => text.ToString(LtCulture.Instance);
 }

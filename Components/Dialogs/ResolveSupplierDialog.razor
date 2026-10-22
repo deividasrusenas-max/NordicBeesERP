@@ -25,7 +25,7 @@
                     </MudItem>
                     <MudItem xs="12" sm="6">
                         <MudText Typo="Typo.body2" Color="Color.Default">Suma su PVM</MudText>
-                        <MudText Typo="Typo.body1">@Invoice.AmountInclVat.ToString("F2", CultureInfo.InvariantCulture) €</MudText>
+                        <MudText Typo="Typo.body1">@LtNumber.Format(Invoice.AmountInclVat, 2) €</MudText>
                     </MudItem>
                     <MudItem xs="12" sm="6">
                         <MudText Typo="Typo.body2" Color="Color.Default">OCR aptiktas tiekėjas</MudText>

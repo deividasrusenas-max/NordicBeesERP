@@ -663,7 +663,7 @@
     {
         if (!deltaPercent.HasValue) return "—";
         var sign = deltaPercent.Value >= 0 ? "+" : "";
-        return $"{sign}{deltaPercent.Value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}%";
+        return $"{sign}{deltaPercent.Value.ToString("0.#", LtCulture.Instance)}%";
     }
 
     // `invert` flips the good/bad color mapping for KPIs where a rising value is undesirable (e.g. debt).

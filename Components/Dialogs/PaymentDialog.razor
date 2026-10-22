@@ -117,14 +117,14 @@
          if (_amount == 0 && RemainingAmount > 0)
          {
              _amount = RemainingAmount;
-             _amountStr = RemainingAmount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+             _amountStr = LtNumber.Format(RemainingAmount, 2, grouped: false);
          }
      }
 
      protected override async Task OnInitializedAsync()
      {
          _amount = RemainingAmount;
-         _amountStr = RemainingAmount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+         _amountStr = LtNumber.Format(RemainingAmount, 2, grouped: false);
          _date = DateTime.Today;
          _method = "bank_transfer";
          await Task.Delay(1);
