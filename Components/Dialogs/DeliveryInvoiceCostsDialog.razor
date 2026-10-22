@@ -17,6 +17,13 @@
             </MudAlert>
         }
 
+        <MudDatePicker @bind-Date="_invoiceDate"
+                       Label="Sąskaitos išrašymo data"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Class="mb-2"
+                       HelperText="Pristatymo data sąskaitoje rodoma kaip prekių tiekimo data" />
+
         <MudAutocomplete T="BusinessPartner"
                          Value="_selectedSupplier"
                          ValueChanged="@((BusinessPartner? s) => { _selectedSupplier = s; _selectedSupplierId = s?.Id; })"
@@ -81,7 +88,7 @@
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    Style="text-transform:none"
-                   Disabled="@(_selectedSupplierId == null || (TotalAmount > 0 && _previewTotal < 0))"
+                   Disabled="@(_selectedSupplierId == null || _invoiceDate == null || (TotalAmount > 0 && _previewTotal < 0))"
                    OnClick="@Confirm">Formuoti sąskaitą</MudButton>
     </DialogActions>
 </MudDialog>
@@ -94,6 +101,7 @@
 
     [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
 
+    private DateTime? _invoiceDate = DateTime.Today;
     private int? _selectedSupplierId;
     private BusinessPartner? _selectedSupplier;
 
@@ -136,6 +144,7 @@
     private void Confirm() => MudDialog.Close(DialogResult.Ok(new DeliveryInvoiceCostsResult
     {
         SupplierId = _selectedSupplierId,
+        InvoiceDate = _invoiceDate!.Value.Date,
         TransportCost = _transportCost,
         BarrelCost = _barrelCost,
         OtherCost = _otherCost
@@ -144,6 +153,7 @@
     public class DeliveryInvoiceCostsResult
     {
         public int? SupplierId { get; init; }
+        public DateTime InvoiceDate { get; init; } = DateTime.Today;
         public decimal TransportCost { get; init; }
         public decimal BarrelCost { get; init; }
         public decimal OtherCost { get; init; }

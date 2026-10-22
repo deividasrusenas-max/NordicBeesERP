@@ -27,7 +27,7 @@ namespace NordicBeesERP.Services
         Task<InvoiceStatistics> GetInvoiceStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
         Task<List<Invoice>> GetInvoicesAsync(DateTime? fromDate = null, DateTime? toDate = null, InvoiceStatus? status = null, int? customerId = null, string? searchTerm = null, int take = 50, string? type = null);
         Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId);
-        Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost, int? recipientSupplierId = null);
+        Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost, int? recipientSupplierId = null, DateTime? invoiceDate = null);
         Task<List<int>> GetInvoiceYearsAsync();
         Task<byte[]> GeneratePdfAsync(int invoiceId);
 
@@ -840,7 +840,11 @@ namespace NordicBeesERP.Services
             return await CreateInvoiceFromDeliveryAsync(deliveryId, 0m, 0m, 0m, null);
         }
 
-        public async Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost, int? recipientSupplierId = null)
+        /// <summary>
+        /// invoice_date is the ISSUE day (<paramref name="invoiceDate"/>, default today), not the delivery date: it drives the
+        /// year of the number (ULAK26xxx) and the due date. The delivery date is the supply date, not the invoice date.
+        /// </summary>
+        public async Task<int> CreateInvoiceFromDeliveryAsync(int deliveryId, decimal transportCost, decimal barrelCost, decimal otherCost, int? recipientSupplierId = null, DateTime? invoiceDate = null)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -871,15 +875,16 @@ namespace NordicBeesERP.Services
             // the invoice itself should not display them as a comment).
 
             var paymentTermDays = supplier.PaymentTermDays > 0 ? supplier.PaymentTermDays : 10;
+            var issueDate = (invoiceDate ?? DateTime.Today).Date;
 
             var invoice = new Invoice
             {
                 // InvoiceNumber intentionally left empty — CreateInvoiceAsync generates it.
-                InvoiceDate = delivery.DeliveryDate,
+                InvoiceDate = issueDate,
                 CustomerId = invoiceSupplierId,
                 DeliveryId = delivery.Id,
                 PaymentTermDays = paymentTermDays,
-                PaymentDueDate = delivery.DeliveryDate.AddDays(paymentTermDays),
+                PaymentDueDate = issueDate.AddDays(paymentTermDays),
                 Language = "LT",
                 InvoiceType = "6% PVM SĄSKAITA FAKTŪRA",
                 Status = InvoiceStatus.Draft,

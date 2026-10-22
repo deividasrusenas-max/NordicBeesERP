@@ -4,10 +4,12 @@
 @using NordicBeesERP.Models
 @using NordicBeesERP.Models.WarehouseModule
 @using NordicBeesERP.Helpers
+@using NordicBeesERP.Components.Dialogs
 @inject IDeliveryService DeliveryService
 @inject ICustomerService CustomerService
 @inject IInvoiceService InvoiceService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject NavigationManager Navigation
 
 <PageTitle>Pristatymai</PageTitle>
@@ -275,6 +277,14 @@
             return;
         }
 
+        // Issue day (default today): drives the invoice number year and the due date; delivery date stays the supply date
+        var dialog = await DialogService.ShowAsync<InvoiceDateDialog>("Sąskaitų išrašymas",
+            new DialogParameters<InvoiceDateDialog> { { x => x.ContentText, $"Išrašoma sąskaitų: {eligible.Count}. Pasirinkite išrašymo datą." } },
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var dialogResult = await dialog.Result;
+        if (dialogResult == null || dialogResult.Canceled || dialogResult.Data is not DateTime issueDate)
+            return;
+
         // One shared path per delivery (draft invoice, delivery date, supplier payment term, farmer validation).
         // A failure on one delivery must not abort or hide the rest of the batch.
         var created = 0;
@@ -283,7 +293,7 @@
         {
             try
             {
-                await InvoiceService.CreateInvoiceFromDeliveryAsync(delivery.Id);
+                await InvoiceService.CreateInvoiceFromDeliveryAsync(delivery.Id, 0m, 0m, 0m, null, issueDate);
                 created++;
             }
             catch (Exception ex)

@@ -359,6 +359,57 @@ public class InvoiceServiceTests : IClassFixture<DbTestFixture>
     }
 
     [Fact]
+    public async Task CreateInvoiceFromDeliveryAsync_InvoiceDateIsIssueDay_NumberFollowsItsYear()
+    {
+        await using var context = await _fixture.Factory.CreateDbContextAsync();
+        var warehouse = new Warehouse
+        {
+            Code = $"WH-{Guid.NewGuid():N}"[..17], Name = $"Test Warehouse {DateTime.UtcNow.Ticks}",
+            IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        };
+        context.Warehouses.Add(warehouse);
+        await context.SaveChangesAsync();
+        var supplier = new BusinessPartner
+        {
+            PartnerType = PartnerType.Supplier, Name = $"Test Supplier {DateTime.UtcNow.Ticks}", Country = "Lithuania",
+            CountryCode = "LT", DefaultLanguage = "LT", PaymentTermDays = 14, DefaultVatRate = 0m, IsActive = true,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        };
+        AsValidFarmer(supplier);
+        context.BusinessPartners.Add(supplier);
+        await context.SaveChangesAsync();
+        var delivery = new Models.WarehouseModule.Delivery
+        {
+            DeliveryDate = new DateTime(2025, 9, 17), SupplierId = supplier.Id, WarehouseId = warehouse.Id, Status = "RECEIVED",
+            TotalNetWeight = 100m, TotalAmount = 200m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        };
+        context.Deliveries.Add(delivery);
+        await context.SaveChangesAsync();
+
+        var service = new InvoiceService(_fixture.Factory, null!, null!);
+        var invoiceId = await service.CreateInvoiceFromDeliveryAsync(
+            delivery.Id, 0m, 0m, 0m, null, new DateTime(2026, 10, 21));
+        try
+        {
+            await using var v = await _fixture.Factory.CreateDbContextAsync();
+            var invoice = await v.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoiceId);
+            Assert.Equal(new DateTime(2026, 10, 21), invoice.InvoiceDate);
+            Assert.StartsWith("ULAK26", invoice.InvoiceNumber);
+            Assert.Equal(new DateTime(2026, 10, 21).AddDays(14), invoice.PaymentDueDate);
+        }
+        finally
+        {
+            await using var c = await _fixture.Factory.CreateDbContextAsync();
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM invoice_lines WHERE invoice_id = {0}", invoiceId);
+            await c.Database.ExecuteSqlRawAsync("UPDATE deliveries SET invoice_id = NULL WHERE id = {0}", delivery.Id);
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM invoices WHERE id = {0}", invoiceId);
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM deliveries WHERE id = {0}", delivery.Id);
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM warehouses WHERE id = {0}", warehouse.Id);
+            await c.Database.ExecuteSqlRawAsync("DELETE FROM business_partners WHERE id = {0}", supplier.Id);
+        }
+    }
+
+    [Fact]
     public async Task CreateInvoiceFromDeliveryAsync_RecipientSupplierId_InvoicesSelectedRecipient()
     {
         await using var context = await _fixture.Factory.CreateDbContextAsync();

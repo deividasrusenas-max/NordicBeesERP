@@ -475,7 +475,7 @@
                 return; // cancelled
 
             var invoiceId = await InvoiceService.CreateInvoiceFromDeliveryAsync(
-                _delivery.Id, result.TransportCost, result.BarrelCost, result.OtherCost, result.SupplierId);
+                _delivery.Id, result.TransportCost, result.BarrelCost, result.OtherCost, result.SupplierId, result.InvoiceDate);
 
             Snackbar.Add($"Sąskaita išrašyta: {invoiceId}", Severity.Success);
             Navigation.NavigateTo($"/invoices/{invoiceId}");
