@@ -7,6 +7,7 @@
 @inject IDeliveryService DeliveryService
 @inject ICustomerService CustomerService
 @inject IHoneyTypeService HoneyTypeService
+@inject IContainerService ContainerService
 @inject IProductService ProductService
 @inject IWarehouseService WarehouseService
 @inject ISnackbar Snackbar
@@ -104,7 +105,33 @@
                 <MudTh Style="text-align:right">Netto (kg)</MudTh>
             </HeaderContent>
             <RowTemplate Context="context">
-                <MudTd colspan="2">@GetLineName(context)</MudTd>
+                <MudTd colspan="2">
+                    @if (CanEditHoneyType(context))
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            @if (!string.IsNullOrEmpty(GetRawMaterialName()))
+                            {
+                                <span>@GetRawMaterialName() —</span>
+                            }
+                            <MudSelect T="int?" @key="@($"ht{context.Id}-{_reloadToken}")" Value="context.HoneyTypeId"
+                                ValueChanged="@(async (int? val) => await ChangeLineHoneyTypeAsync(context, val))"
+                                Dense="true" Margin="Margin.Dense" Variant="Variant.Text" Placeholder="Nenurodyta" Style="min-width:180px">
+                                @if (context.HoneyTypeId is int current && _activeHoneyTypes.All(h => h.Id != current))
+                                {
+                                    <MudSelectItem T="int?" Value="@((int?)current)" Disabled="true">@GetHoneyTypeName(current)</MudSelectItem>
+                                }
+                                @foreach (var h in _activeHoneyTypes)
+                                {
+                                    <MudSelectItem T="int?" Value="@((int?)h.Id)">@h.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        @GetLineName(context)
+                    }
+                </MudTd>
                 <MudTd>@GetContainerTypeName(context.ContainerType)</MudTd>
                 <MudTd Style="text-align:right">@context.ContainerCount</MudTd>
                 <MudTd Style="text-align:right">@((context.TotalNetWeight ?? 0m).ToString("N1"))</MudTd>
@@ -155,6 +182,7 @@
             <HeaderContent>
                 <MudTh Style="width:80px">ID</MudTh>
                 <MudTh Style="width:150px">Tipas</MudTh>
+                <MudTh Style="width:150px">Rūšis</MudTh>
                 <MudTh Style="width:150px; text-align:right">Brutto (kg)</MudTh>
                 <MudTh Style="width:150px; text-align:right">Tara (kg)</MudTh>
                 <MudTh Style="width:100px; text-align:right">Netto (kg)</MudTh>
@@ -163,6 +191,7 @@
             <RowTemplate Context="context">
                 <MudTd Style="width:80px">@context.Id</MudTd>
                 <MudTd Style="width:150px">@GetContainerTypeName(context.ContainerType)</MudTd>
+                <MudTd Style="width:150px">@(context.HoneyTypeId.HasValue ? GetHoneyTypeName(context.HoneyTypeId) : "Nenurodyta")</MudTd>
                 <MudTd Style="text-align:right">
                     @if (CanEditWeights(context))
                     {
@@ -216,6 +245,7 @@
     // Lookups
     private List<Product> _products = new();
     private List<HoneyType> _honeyTypes = new();
+    private List<HoneyType> _activeHoneyTypes = new();
     private List<RawMaterialType> _rawMaterialTypes = new();
 
     private bool _saveIndicatorVisible = false;
@@ -233,6 +263,32 @@
 
     // Weights can only change while the container is on stock and the act is unsigned (the service enforces it too).
     private bool CanEditWeights(Container c) => c.Status == "IN_STOCK" && _delivery?.SupplierSignedAt == null;
+
+    // The type can change while every container of the line is still on stock (also on a signed act: no quantity or money changes).
+    private bool CanEditHoneyType(DeliveryLine line) =>
+        _containers.Where(c => c.DeliveryLineId == line.Id).All(c => c.Status is "IN_STOCK" or "RECEIVED");
+
+    private async Task ChangeLineHoneyTypeAsync(DeliveryLine line, int? honeyTypeId)
+    {
+        try
+        {
+            if (!honeyTypeId.HasValue || honeyTypeId == line.HoneyTypeId) return;
+
+            await ContainerService.UpdateDeliveryLineHoneyTypeAsync(line.Id, honeyTypeId.Value);
+            await ShowSavedAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Nepavyko pakeisti rūšies: {ex.InnerException?.Message ?? ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            // Always re-read: shows the split / merged lines and totals, or reverts the select after a rejected change.
+            await LoadData();
+            _reloadToken++;
+            StateHasChanged();
+        }
+    }
 
     // Buckets keep 2 decimals, barrels 1; lt-LT comma, same culture the user types in.
     private static string FormatWeight(Container c, decimal value) =>
@@ -291,6 +347,7 @@
     {
         _products = await ProductService.GetAllProductsAsync();
         _honeyTypes = await HoneyTypeService.GetAllAsync();
+        _activeHoneyTypes = await HoneyTypeService.GetActiveAsync();
         _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
         await LoadData();
     }
@@ -309,6 +366,11 @@
         var warehouses = await WarehouseService.GetAllAsync();
         _warehouseName = warehouses.FirstOrDefault(w => w.Id == _delivery.WarehouseId)?.Name ?? "";
     }
+
+    private string? GetRawMaterialName() =>
+        _delivery?.RawMaterialTypeId.HasValue == true
+            ? _rawMaterialTypes.FirstOrDefault(r => r.Id == _delivery.RawMaterialTypeId)?.Name
+            : null;
 
     private string GetLineName(DeliveryLine line)
     {
