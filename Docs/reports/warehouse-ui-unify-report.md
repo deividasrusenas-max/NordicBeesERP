@@ -90,3 +90,30 @@ Passed!  - Failed:     0, Passed:  1912, Skipped:     0, Total:  1912, Duration:
 - Nepavykusių testų: 0 (`grep -E "^\s+Failed "` → 0 eilučių), todėl (a)/(b)/(c) klasifikuoti nėra ko; pataisymų commitų šiame žingsnyje nereikėjo, `/code-review` nebuvo reikalingas.
 - Ankstesnis 554 nepavykusių rezultatas buvo vien dėl nepasiekiamos DB (`Connect Timeout expired`) – dabar paneigtas: regresijų nėra.
 - Migracijos ir DB komandos nevykdytos.
+
+## Pataisymai po vizualinės patikros (localhost:5082)
+
+| # | Problema | Commit |
+|---|---|---|
+| 1 | Sumų eilutė: `tfoot > tr > tr > td` (įdėtas `<tr>`). Pašalintas vidinis `MudTFootRow` iš `FooterContent` (MudTable jau apgaubia `<tr>`), paliekami `MudTd` tiesiogiai. Patikrinti visi `FooterContent` projekte: įdėtas `MudTFootRow` buvo tik **DeliveryPricingDetail.razor** ir **DeliveryView.razor** (abu ištaisyti tame pačiame commit); ExpenseCashFlow, PaymentHistory, InvoicePaymentList, StatisticsOverview (2), SalesStatistics, DeliverySignature jau naudoja `MudTd` tiesiogiai. | `e8913fe` |
+| 2 | Viena efektyvi būsena visuose keturiuose languose: `DeliveryStatusHelper.KeyFor/GetLabel/GetColor(Delivery)` skaičiuoja iš `DebtBase`/`PaidAmount` (kaip kainų sąrašas). Naudojama DeliveryList, DeliveryPricing, DeliveryView, DeliveryPricingDetail. Senieji string perkrovimai pervadinti į `LabelForKey/ColorForKey`. `DeliveryService.GetByIdAsync` dabar užpildo `PaidAmount` iš `supplier_payments` (kaip `GetFilteredAsync`), kitaip DeliveryView visada matytų 0 sumokėta. DB reikšmių nekeista, `RefreshStatusAsync` nekviestas. Pridėti testai (efektyvi būsena ignoruoja pasenusį saugomą statusą, ribiniai atvejai). | `80eb089` |
+| 3 | Netto kg pristatymo kainų detalėje (eilutės ir suvestinė) formatuojamas `ToString("N1")` kaip sąrašuose. | `bf37687` |
+| 4 | Pristatymų sąrašo pasirinkimo juostoje „Išrašyti sąskaitas (N)" rodomas visada, kai yra pasirinkimas; disabled, kai tinkamų nėra; tooltip nurodo priežastis (neįkainoti / jau turi sąskaitą / tiekėjas ne ūkininkas su kompensaciniu PVM kodu). | `c2251bf` |
+| 5 | „Mokėjimai": tuščia būsena „Mokėjimų dar nėra". | `cbad8d9` |
+
+### Čipai ir saugomas statusas (punktas 2)
+
+- **Pristatymų sąrašas:** čipas „Neįkainoti" anksčiau rėmėsi saugomu `Status == "RECEIVED"`; dabar naudoja efektyvią būseną (`KeyFor(d) == "RECEIVED"`, t. y. `DebtBase <= 0`), todėl sutampa su rodoma būsena. Čipai „Be sąskaitos" (`InvoiceNumber`) ir „Negrąžintos statinės" nuo statuso nepriklauso; „Šis mėnuo" – nuo datos.
+- **Kainų sąrašas:** čipai Neįkainoti / Neapmokėti / Dalinai / Vėluojantys jau rėmėsi `DebtBase`/`PaidAmount` – sutampa su efektyvia būsena.
+- **Nepakeista (už keturių langų ribų), gali nesutapti su rodoma būsena, jei saugomas statusas atsilieka:** `Components/Pages/Home.razor` (neįkainotų pristatymų skaičius), `Services/DashboardSnapshotWorker.cs`, `SupplierDebtDetail.razor` (savo statusų žemėlapis), `DeliveryService.GetFilteredAsync(status, …)` (filtruoja pagal saugomą `Status`; naujas UI jo nebenaudoja su statusu). Siūlau atskirai suvienodinti.
+- `KeyFromAmounts` grąžina „Priimtas", kai `DebtBase <= 0`, net jei yra avansinis mokėjimas (taip pat elgiasi kainų sąrašas nuo pradžių).
+
+### /code-review (po kiekvieno pataisymo)
+
+- 1: be pastabų.
+- 2: pastabos dėl Home/DashboardSnapshotWorker/SupplierDebtDetail/GetFilteredAsync (aukščiau, už apimties ribų), `PaidAmount` išvedimas dubliuojamas trijose `DeliveryService` vietose (galima išskirti bendrą metodą), `GetByIdAsync` neturi atskiro DB testo.
+- 3–5: tik žemo prioriteto pastabos: pasirinkimo juostos `IneligibleReason` skaičiuojamas kiekvieną perpiešimą ir priežasčių skaičiai gali persidengti; svorio formatas (`N1`) kopijuojamas keliose vietose (galima `Weight()` helperis); „Mokėjimų dar nėra" spalva `#666` kaip kitur šiame lange. `CreateInvoicesForSelected` tuščio sąrašo atveju jau rodo įspėjimą.
+
+### Testai
+
+`dotnet test` po 2 punkto: `Passed! - Failed: 0, Passed: 1919, Skipped: 0, Total: 1919, Duration: 3 m 33 s`. Po 3–5 punktų: `Passed! - Failed: 0, Passed: 1919, Skipped: 0, Total: 1919, Duration: 3 m 33 s`. (Bazė 1912/0 + 7 nauji testai.) Aplikacija perstatyta ir paleista iš naujo ant http://localhost:5082.
