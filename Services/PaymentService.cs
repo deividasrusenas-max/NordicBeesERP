@@ -44,6 +44,36 @@ namespace NordicBeesERP.Services
             }
 
             using var context = await _contextFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            try
+            {
+                // Serialize concurrent registrations on the same invoices so the duplicate / remaining checks see committed rows
+                var placeholders = string.Join(", ", Enumerable.Range(0, invoiceIds.Count).Select(i => "@p" + i));
+                await RawSql.QueryAsync(context,
+                    "SELECT id FROM invoices WHERE id IN (" + placeholders + ") ORDER BY id FOR UPDATE",
+                    r => r.Int("id"), default, invoiceIds.Cast<object?>().ToArray());
+
+                var paymentId = await RegisterPaymentCoreAsync(context, invoiceIds, amount, paymentDate, method, reference, notes, userId);
+                await transaction.CommitAsync();
+                return paymentId;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        private async Task<int> RegisterPaymentCoreAsync(
+            NordicBeesERPContext context,
+            List<int> invoiceIds,
+            decimal amount,
+            DateTime paymentDate,
+            string method,
+            string? reference,
+            string? notes,
+            int userId)
+        {
 
             // Validate invoices exist and get their details
             var invoices = await context.Invoices
@@ -867,10 +897,24 @@ namespace NordicBeesERP.Services
         public async Task<bool> DeletePaymentAsync(int paymentId, int userId)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            try
+            {
+                var deleted = await DeletePaymentCoreAsync(context, paymentId, userId);
+                await transaction.CommitAsync();
+                return deleted;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
 
+        private async Task<bool> DeletePaymentCoreAsync(NordicBeesERPContext context, int paymentId, int userId)
+        {
             var payment = await context.Payments
                 .Include(p => p.Allocations)
-                .Include(p => p.AuditLogs)
                 .FirstOrDefaultAsync(p => p.Id == paymentId);
 
             if (payment == null)
@@ -881,7 +925,7 @@ namespace NordicBeesERP.Services
             // Get invoice IDs before deleting
             var invoiceIds = payment.Allocations.Select(a => a.InvoiceId).ToList();
 
-            // Log deletion
+            // Log deletion (existing audit rows for this payment are kept)
             await LogAuditEntryAsync(context, paymentId, null, "delete",
                 payment.Amount, null, userId, JsonSerializer.Serialize(new
                 {
@@ -900,8 +944,7 @@ namespace NordicBeesERP.Services
             // Delete allocations
             context.PaymentAllocations.RemoveRange(payment.Allocations.ToList());
 
-            // Delete audit logs
-            context.PaymentAuditLogs.RemoveRange(payment.AuditLogs.ToList());
+            // payment_audit_log rows are never deleted: the history of a deleted payment stays, plus the "delete" row above
 
             // Delete payment
             context.Payments.Remove(payment);
@@ -925,7 +968,22 @@ namespace NordicBeesERP.Services
         public async Task<bool> UpdatePaymentAsync(int paymentId, decimal amount, DateTime date, string method, string? reference, string? notes, int userId)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            try
+            {
+                var updated = await UpdatePaymentCoreAsync(context, paymentId, amount, date, method, reference, notes, userId);
+                await transaction.CommitAsync();
+                return updated;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
 
+        private async Task<bool> UpdatePaymentCoreAsync(NordicBeesERPContext context, int paymentId, decimal amount, DateTime date, string method, string? reference, string? notes, int userId)
+        {
             // Get the payment and its allocations
             var payment = await context.Payments
                 .Include(p => p.Allocations)
@@ -991,9 +1049,23 @@ namespace NordicBeesERP.Services
             // Split payments keep their allocations untouched (total edit is rejected above).
             if (allocationCount == 1)
             {
+                // Capped at what the invoice still owes without this payment (total - other allocations - credit notes);
+                // the rest of the amount stays on the payment row as overpayment.
+                var allocatedInvoiceId = payment.Allocations!.Single().InvoiceId;
+                var invoiceTotal = await context.Invoices
+                    .Where(i => i.Id == allocatedInvoiceId)
+                    .Select(i => i.TotalInclVat)
+                    .FirstAsync();
+                var otherAllocations = await context.PaymentAllocations
+                    .Where(a => a.InvoiceId == allocatedInvoiceId && a.PaymentId != paymentId)
+                    .SumAsync(a => (decimal?)a.AllocatedAmount) ?? 0m;
+                var credited = (await CreditNoteDebtRule.GetCreditedByInvoiceAsync(context, new[] { allocatedInvoiceId }))
+                    .GetValueOrDefault(allocatedInvoiceId);
+                var allocatedAmount = Math.Min(amount, Math.Max(invoiceTotal - otherAllocations - credited, 0m));
+
                 await context.Database.ExecuteSqlRawAsync(
                     "UPDATE payment_allocations SET allocated_amount = {0} WHERE payment_id = {1}",
-                    amount, paymentId);
+                    allocatedAmount, paymentId);
             }
 
             // Recalculate all invoices linked to this payment
