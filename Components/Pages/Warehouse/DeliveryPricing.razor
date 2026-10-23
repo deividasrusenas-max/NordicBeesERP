@@ -19,70 +19,33 @@
 <PageTitle>Pristatymų kainos ir mokėjimai</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h5" Class="mb-4">Pristatymų kainos ir mokėjimai</MudText>
-
-    <MudPaper Class="pa-3 mb-4" Elevation="2">
-        <MudGrid Spacing="3">
-            <MudItem xs="12" md="4">
-                <MudTextField T="string" Label="Paieška (nr. / tiekėjas)" @bind-Value="_searchText"
-                    Immediate="true" OnValueChange="UpdateFilterSearchAsync" Clearable="true" Adornment="Adornment.Start"
-                    AdornmentIcon="@Icons.Material.Filled.Search" />
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <MudDateRangePicker T="DateTime?" Label="Pristatymo data" @bind-DateRange="_dateRange"
-                    OnRangeSelected="UpdateDateRangeAsync" />
-            </MudItem>
-            @if (!string.IsNullOrWhiteSpace(_searchText) || _dateRange?.Start != null || _selectedStatuses.Any())
-            {
-                <MudItem xs="12" Class="d-flex align-center">
-                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
-                        Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                        OnClick="ClearFiltersAsync">
-                        Išvalyti filtrus
-                    </MudButton>
-                </MudItem>
-            }
-        </MudGrid>
-    </MudPaper>
-
-    <div class="d-flex flex-wrap gap-2 mb-3 align-center">
-        <MudText Typo="Typo.body2" Style="color:#6b7280;margin-right:4px;">Statusas:</MudText>
-        @if (_selectedStatuses.Any())
-        {
-            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
-                StartIcon="@Icons.Material.Filled.FilterAltOff"
-                OnClick="ClearFiltersAsync">
-                Rodyti visas
-            </MudButton>
-        }
-        @foreach (var status in _availableStatuses)
-        {
-            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                Color="@(_statusChipColor[status])"
-                OnClick="@(() => ToggleStatusAsync(status))"
-                Checked="@_selectedStatuses.Contains(status)">@status</MudChip>
-        }
-    </div>
-
-    <MudTabs ActivePanelIndex="_selectedTab"
-             ActivePanelIndexChanged="@(async (int index) => await OnTabChangedAsync(index))"
-             Elevation="0" Rounded="true" Square="false" Class="mt-2">
-        <MudTabPanel Text="Visos" />
-        <MudTabPanel Text="Neapmokėtos" />
-        <MudTabPanel Text="Dalinai apmokėtos" />
-        <MudTabPanel Text="Apmokėtos" />
-        <MudTabPanel Text="Šis mėnuo" />
-    </MudTabs>
+    <MudText Typo="Typo.h5" Class="mb-3">Pristatymų kainos ir mokėjimai</MudText>
 
     @if (_loading)
     {
-        <MudProgressCircular Indeterminate="true" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
-    else
+
+    <ListFilterCard Search="@_searchText"
+                    SearchChanged="UpdateFilterSearchAsync"
+                    SearchLabel="Paieška (nr., tiekėjas, sąskaita)"
+                    DateRange="@_dateRange"
+                    DateRangeChanged="UpdateDateRangeAsync"
+                    ShowClear="@(!string.IsNullOrWhiteSpace(_searchText) || _dateRange?.Start != null || _dateRange?.End != null || _selectedTab != 0)"
+                    OnClear="ClearFiltersAsync" />
+
+    <div class="d-flex flex-wrap gap-2 mb-3 align-center">
+        @foreach (var chip in _quickChips)
+        {
+            <FilterChip Selected="@(_selectedTab == chip.Tab)" ActiveColor="@chip.Color" OnClick="@(() => OnTabChangedAsync(chip.Tab))">@chip.Label</FilterChip>
+        }
+    </div>
+
+    @if (!_loading)
     {
-        <MudTable T="Delivery" Items="FilteredDeliveries" Dense="true" Hover="true" Striped="true"
-            OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) OpenPricingDetail(args.Item.Id); })"
-            Style="cursor:pointer">
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable T="Delivery" Items="PagedItems" Dense="true" Hover="true" Striped="true" Elevation="0"
+                  RowsPerPage="@PageSize" RowStyleFunc="@GetRowStyle" Style="cursor:default">
             <HeaderContent>
                 <MudTh>Nr.</MudTh>
                 <MudTh>Data</MudTh>
@@ -95,15 +58,15 @@
                 <MudTh Style="text-align:right">Skola €</MudTh>
             </HeaderContent>
             <RowTemplate Context="d">
-                <MudTd>@d.DeliveryNumber</MudTd>
-                <MudTd>@d.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
-                <MudTd>@GetSupplierName(d.SupplierId)</MudTd>
-                <MudTd Style="text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
-                <MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Style="cursor:pointer">@d.DeliveryNumber</MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Style="cursor:pointer">@d.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Style="cursor:pointer">@GetSupplierName(d.SupplierId)</MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Style="cursor:pointer">
                     @{
                         var badge = GetStatusBadge(d);
                     }
-                    <MudChip T="string" Size="Size.Small" Color="@badge.Color">@badge.Label</MudChip>
+                    <MudChip T="string" Size="Size.Small" Style="text-transform:none" Color="@badge.Color">@badge.Label</MudChip>
                 </MudTd>
                 <MudTd>
                     @if (d.InvoiceId != null)
@@ -111,15 +74,15 @@
                         var invStatus = GetInvoiceStatus(d.InvoiceId.Value);
                         <div class="d-flex align-center gap-1">
                             <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
-                                StartIcon="@Icons.Material.Filled.Receipt"
+                                StartIcon="@Icons.Material.Filled.Receipt" Style="text-transform:none"
                                 Href="@($"/invoices/{d.InvoiceId}")">@d.InvoiceNumber</MudButton>
                             @if (invStatus == InvoiceStatus.Draft)
                             {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Neatspausdinta</MudChip>
+                                <MudChip T="string" Size="Size.Small" Style="text-transform:none" Color="Color.Warning">Neatspausdinta</MudChip>
                             }
                             else
                             {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Atspausdinta</MudChip>
+                                <MudChip T="string" Size="Size.Small" Style="text-transform:none" Color="Color.Success">Atspausdinta</MudChip>
                             }
                         </div>
                     }
@@ -128,72 +91,81 @@
                         <MudText Typo="Typo.caption" Style="color:#aaa">—</MudText>
                     }
                 </MudTd>
-                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.DebtBase, 2)@(d.DebtInvoiceTotal.HasValue ? " su 6 % PVM" : "")</MudTd>
-                <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.PaidAmount, 2)</MudTd>
-                <MudTd @attributes='new Dictionary<string, object> { 
-                    { "style", $"text-align:right; {GetDebtStyle(d.DebtBase - d.PaidAmount)}" } 
-                }'>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">
+                    @FormatAmountHelper.Trim(d.DebtBase, 2)
+                    @if (d.DebtInvoiceTotal.HasValue)
+                    {
+                        <MudText Typo="Typo.caption" Style="color:#6b7280;display:block" title="Suma su 6 % PVM">su 6 % PVM</MudText>
+                    }
+                </MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">@FormatAmountHelper.Trim(d.PaidAmount, 2)</MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="@($"cursor:pointer;text-align:right;{GetDebtStyle(d.DebtBase - d.PaidAmount)}")">
                     @FormatAmountHelper.Trim(d.DebtBase - d.PaidAmount, 2)
                 </MudTd>
             </RowTemplate>
+            <PagerContent>
+                <ListPager Page="EffectivePage" PageSize="PageSize" TotalCount="_filtered.Count" PageChanged="NavigateToPage" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Pristatymų nerasta</MudText>
+            </NoRecordsContent>
         </MudTable>
+    </MudPaper>
     }
 </MudContainer>
 
 @code {
-    private List<Delivery> _deliveries = new();
-    private List<BusinessPartner> _suppliers = new();
-    private bool _loading = true;
-    private DateTime _lastClickTime = DateTime.MinValue;
-    private object? _lastClickItem;
+    private const int PageSize = 50;
 
-    [SupplyParameterFromQuery]
+    private List<Delivery> _deliveries = new();
+    private List<Delivery> _filtered = new();
+    private List<BusinessPartner> _suppliers = new();
+    private Dictionary<int, string> _supplierNames = new();
+    private bool _loading = true;
+
+    [SupplyParameterFromQuery(Name = "q")]
     private string? Q { get; set; }
     [SupplyParameterFromQuery(Name = "from")]
-    private string? DateFrom { get; set; }
+    private DateTime? DateFrom { get; set; }
     [SupplyParameterFromQuery(Name = "to")]
-    private string? DateTo { get; set; }
-    [SupplyParameterFromQuery(Name = "status")]
-    private string? StatusCsv { get; set; }
+    private DateTime? DateTo { get; set; }
     [SupplyParameterFromQuery(Name = "tab")]
     private int? Tab { get; set; }
+    [SupplyParameterFromQuery(Name = "page")]
+    private int? QPage { get; set; }
 
     private int _selectedTab = 0;
+    private int _page = 1;
     private string _searchText = string.Empty;
     private DateRange? _dateRange;
-    private HashSet<string> _selectedStatuses = new();
-    private readonly List<string> _availableStatuses = new() { "Priimtas", "Neapmokėtas", "Apmokėtas", "Dalinai" };
-    private readonly Dictionary<string, Color> _statusChipColor = new()
+
+    // Tab 0 = all. One chip row only (the status chips and the tabs used to filter together).
+    private static readonly (int Tab, string Label, Color Color)[] _quickChips =
     {
-        { "Priimtas", Color.Default },
-        { "Neapmokėtas", Color.Error },
-        { "Apmokėtas", Color.Success },
-        { "Dalinai", Color.Warning }
+        (0, "Visos", Color.Primary),
+        (1, "Neįkainoti", Color.Warning),
+        (2, "Neapmokėti", Color.Error),
+        (3, "Dalinai", Color.Warning),
+        (4, "Vėluojantys", Color.Error),
+        (5, "Šis mėnuo", Color.Primary),
     };
 
-    private bool IsDoubleClick(object item)
-    {
-        var now = DateTime.Now;
-        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
-        {
-            _lastClickItem = null;
-            return true;
-        }
-        _lastClickItem = item;
-        _lastClickTime = now;
-        return false;
-    }
+    private int EffectivePage => Math.Clamp(_page, 1, Math.Max(1, (int)Math.Ceiling(_filtered.Count / (double)PageSize)));
+    private List<Delivery> PagedItems => _filtered.Skip((EffectivePage - 1) * PageSize).Take(PageSize).ToList();
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         await LoadData();
+    }
+
+    // Only query parameters change on filtering/paging: sync state and re-filter the loaded list, no DB reload.
+    protected override void OnParametersSet()
+    {
         _searchText = Q ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(DateFrom) && DateTime.TryParse(DateFrom, out var from))
-            _dateRange = new DateRange(from, _dateRange?.End);
-        if (!string.IsNullOrWhiteSpace(DateTo) && DateTime.TryParse(DateTo, out var to))
-            _dateRange = new DateRange(_dateRange?.Start, to);
-        _selectedStatuses = FilterUrlBuilder.ParseStatusCsv(StatusCsv);
-        _selectedTab = Tab ?? 0;
+        _dateRange = (DateFrom.HasValue || DateTo.HasValue) ? new DateRange(DateFrom, DateTo) : null;
+        _selectedTab = Tab is >= 0 and <= 5 ? Tab.Value : 0;
+        _page = QPage is > 0 ? QPage.Value : 1;
+        _filtered = GetFilteredDeliveries();
     }
 
     private async Task LoadData()
@@ -203,18 +175,22 @@
         try
         {
             _suppliers = await CustomerService.GetSuppliersAsync();
+            _supplierNames = _suppliers.ToDictionary(x => x.Id, x => x.Name ?? "");
             _deliveries = await DeliveryService.GetAllAsync();
 
             var invoiceIds = _deliveries.Where(d => d.InvoiceId != null).Select(d => d.InvoiceId!.Value).Distinct().ToList();
             _invoiceStatusById.Clear();
+            _invoiceDueById.Clear();
             if (invoiceIds.Any())
             {
                 var allInvoices = await InvoiceService.GetInvoicesAsync(take: 5000);
                 foreach (var inv in allInvoices.Where(i => invoiceIds.Contains(i.Id)))
                 {
                     _invoiceStatusById[inv.Id] = inv.Status;
+                    _invoiceDueById[inv.Id] = inv.PaymentDueDate;
                 }
             }
+            _filtered = GetFilteredDeliveries();
         }
         finally
         {
@@ -224,15 +200,27 @@
     }
 
     private Dictionary<int, InvoiceStatus> _invoiceStatusById = new();
+    private Dictionary<int, DateTime?> _invoiceDueById = new();
     private InvoiceStatus GetInvoiceStatus(int invoiceId) => _invoiceStatusById.TryGetValue(invoiceId, out var s) ? s : InvoiceStatus.Draft;
+
+    // Payment due date of the linked purchase invoice; deliveries without an invoice have none.
+    private DateTime? GetDueDate(Delivery d) =>
+        d.InvoiceId.HasValue && _invoiceDueById.TryGetValue(d.InvoiceId.Value, out var due) ? due : null;
+
+    private string BuildListUrl(int page) => FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+        ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
+        ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+        ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+        ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null),
+        ("page", page > 1 ? page.ToString() : null));
 
     private void OpenPricingDetail(int deliveryId)
     {
-        // Kol kas navigacija į esamą delivery view — vėliau bus atskiras pricing dialog
-        Navigation.NavigateTo($"/warehouse/deliveries/{deliveryId}/pricing");
+        Navigation.NavigateTo(FilterUrlBuilder.BuildDetailUrl(
+            $"/warehouse/deliveries/{deliveryId}/pricing", BuildListUrl(EffectivePage), Navigation.BaseUri));
     }
 
-    private string GetSupplierName(int id) => _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+    private string GetSupplierName(int id) => _supplierNames.TryGetValue(id, out var name) ? name : $"#{id}";
 
     private (string Label, Color Color) GetStatusBadge(Delivery d) => (d.DebtBase, d.PaidAmount) switch {
         _ when d.DebtBase <= 0 => ("Priimtas", Color.Default),
@@ -243,95 +231,86 @@
 
     private string GetDebtStyle(decimal debt) => debt > 0 ? "color:red;font-weight:bold" : "";
 
-    private IEnumerable<Delivery> GetFilteredDeliveries()
+    private string GetRowStyle(Delivery d, int index)
     {
-        if (_deliveries == null) return Enumerable.Empty<Delivery>();
-        var q = _searchText?.Trim().ToLowerInvariant() ?? string.Empty;
-        return _deliveries.Where(d =>
-        {
-            if (!string.IsNullOrWhiteSpace(q) &&
-                !d.DeliveryNumber.ToLowerInvariant().Contains(q) &&
-                !GetSupplierName(d.SupplierId).ToLowerInvariant().Contains(q))
-                return false;
-            if (_dateRange?.Start != null && d.DeliveryDate.Date < _dateRange.Start.Value.Date) return false;
-            if (_dateRange?.End != null && d.DeliveryDate.Date > _dateRange.End.Value.Date) return false;
-            if (_selectedStatuses.Count > 0 && !_selectedStatuses.Contains(GetStatusBadge(d).Label)) return false;
-            switch (_selectedTab)
-            {
-                case 1: // Neapmokėtos
-                    if (!(d.DebtBase > 0 && d.PaidAmount <= 0)) return false;
-                    break;
-                case 2: // Dalinai apmokėtos
-                    if (!(d.PaidAmount > 0 && d.PaidAmount < d.DebtBase)) return false;
-                    break;
-                case 3: // Apmokėtos
-                    if (d.PaidAmount <= 0 || d.PaidAmount < d.DebtBase) return false;
-                    break;
-                case 4: // Šis mėnuo
-                    if (d.DeliveryDate.Date < new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)) return false;
-                    break;
-            }
-            return true;
-        });
+        var debt = d.DebtBase - d.PaidAmount;
+        return ListRowStyle.ForDue(debt <= 0, GetDueDate(d)?.Date, debt > 0, DateTime.Today);
     }
 
-    private IEnumerable<Delivery> FilteredDeliveries => GetFilteredDeliveries();
+    private List<Delivery> GetFilteredDeliveries()
+    {
+        var q = _searchText?.Trim() ?? string.Empty;
+        var today = DateTime.Today;
+        IEnumerable<Delivery> result = _deliveries;
 
-    private Task UpdateFilterSearchAsync(string value)
+        if (q.Length > 0)
+        {
+            result = result.Where(d =>
+                (d.DeliveryNumber != null && d.DeliveryNumber.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                GetSupplierName(d.SupplierId).Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(d.InvoiceNumber) && d.InvoiceNumber.Contains(q, StringComparison.OrdinalIgnoreCase)));
+        }
+        if (_dateRange?.Start != null)
+            result = result.Where(d => d.DeliveryDate.Date >= _dateRange.Start.Value.Date);
+        if (_dateRange?.End != null)
+            result = result.Where(d => d.DeliveryDate.Date <= _dateRange.End.Value.Date);
+
+        switch (_selectedTab)
+        {
+            case 1: // Neįkainoti
+                result = result.Where(d => d.DebtBase <= 0);
+                break;
+            case 2: // Neapmokėti
+                result = result.Where(d => d.DebtBase > 0 && d.PaidAmount <= 0);
+                break;
+            case 3: // Dalinai
+                result = result.Where(d => d.PaidAmount > 0 && d.PaidAmount < d.DebtBase);
+                break;
+            case 4: // Vėluojantys: open debt past the linked invoice's payment due date
+                result = result.Where(d => d.DebtBase - d.PaidAmount > 0 && GetDueDate(d) is DateTime due && due.Date < today);
+                break;
+            case 5: // Šis mėnuo
+                var startOfMonth = new DateTime(today.Year, today.Month, 1);
+                result = result.Where(d => d.DeliveryDate.Date >= startOfMonth);
+                break;
+        }
+        return result.ToList();
+    }
+
+    private Task UpdateFilterSearchAsync(string? value)
     {
         _searchText = value ?? string.Empty;
-        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
-            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
-            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
-            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)));
+        _page = 1;
+        Navigation.NavigateTo(BuildListUrl(1), replace: true);
         return Task.CompletedTask;
     }
 
     private Task UpdateDateRangeAsync(DateRange? range)
     {
         _dateRange = range;
-        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
-            ("from", FilterUrlBuilder.ToQueryValue(range?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(range?.End)),
-            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
-            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)));
-        return Task.CompletedTask;
-    }
-
-    private Task ToggleStatusAsync(string status)
-    {
-        if (_selectedStatuses.Contains(status)) _selectedStatuses.Remove(status);
-        else _selectedStatuses.Add(status);
-        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
-            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
-            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
-            ("tab", _selectedTab != 0 ? _selectedTab.ToString() : null)));
+        _page = 1;
+        Navigation.NavigateTo(BuildListUrl(1));
         return Task.CompletedTask;
     }
 
     private Task OnTabChangedAsync(int index)
     {
+        if (_selectedTab == index) return Task.CompletedTask;
         _selectedTab = index;
-        Navigation.NavigateTo(FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("q", string.IsNullOrWhiteSpace(_searchText) ? null : _searchText),
-            ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
-            ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
-            ("status", _selectedStatuses.Count == 0 ? null : string.Join(",", _selectedStatuses)),
-            ("tab", index != 0 ? index.ToString() : null)));
+        _page = 1;
+        Navigation.NavigateTo(BuildListUrl(1));
+        return Task.CompletedTask;
+    }
+
+    private Task NavigateToPage(int page)
+    {
+        _page = page;
+        Navigation.NavigateTo(BuildListUrl(page), replace: true);
         return Task.CompletedTask;
     }
 
     private Task ClearFiltersAsync()
     {
-        _selectedTab = 0;
-        _searchText = string.Empty;
-        _dateRange = null;
-        _selectedStatuses.Clear();
         Navigation.NavigateTo(Navigation.Uri.Split('?')[0]);
         return Task.CompletedTask;
     }
