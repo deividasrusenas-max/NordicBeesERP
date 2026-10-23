@@ -147,10 +147,8 @@
                 <MudTd Style="text-align:right">@((context.TotalNetWeight ?? 0m).ToString("N1"))</MudTd>
             </RowTemplate>
             <FooterContent>
-                <MudTFootRow>
-                    <MudTd colspan="3" Style="text-align:right"><strong>Iš viso netto:</strong></MudTd>
-                    <MudTd Style="text-align:right"><strong>@GetFooterNetWeight() kg</strong></MudTd>
-                </MudTFootRow>
+                <MudTd colspan="3" Style="text-align:right"><strong>Iš viso netto:</strong></MudTd>
+                <MudTd Style="text-align:right"><strong>@GetFooterNetWeight() kg</strong></MudTd>
             </FooterContent>
         </MudTable>
 

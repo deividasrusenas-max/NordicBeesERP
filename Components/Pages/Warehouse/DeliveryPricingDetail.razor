@@ -123,12 +123,10 @@
                 </MudTd>
             </RowTemplate>
             <FooterContent>
-                <MudTFootRow>
-                    <MudTd></MudTd><MudTd></MudTd><MudTd></MudTd><MudTd></MudTd>
-                    <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => l.TotalNetWeight ?? 0m), 1)</strong></MudTd>
-                    <MudTd></MudTd>
-                    <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Money(_lines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m)))</strong></MudTd>
-                </MudTFootRow>
+                <MudTd></MudTd><MudTd></MudTd><MudTd></MudTd><MudTd></MudTd>
+                <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => l.TotalNetWeight ?? 0m), 1)</strong></MudTd>
+                <MudTd></MudTd>
+                <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Money(_lines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m)))</strong></MudTd>
             </FooterContent>
         </MudTable>
 
