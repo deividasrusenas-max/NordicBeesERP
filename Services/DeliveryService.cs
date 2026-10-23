@@ -109,7 +109,14 @@ public class DeliveryService : IDeliveryService
     {
         using var context = await _contextFactory.CreateDbContextAsync();
         var delivery = await context.Deliveries.FirstOrDefaultAsync(d => d.Id == id);
-        if (delivery != null) await DeliveryDebt.ApplyAsync(context, new[] { delivery });
+        if (delivery != null)
+        {
+            // Paid amount is derived from supplier_payments (deliveries.paid_amount is never written), same as GetFilteredAsync.
+            delivery.PaidAmount = await context.SupplierPayments
+                .Where(p => p.DeliveryId == id)
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+            await DeliveryDebt.ApplyAsync(context, new[] { delivery });
+        }
         return delivery;
     }
 

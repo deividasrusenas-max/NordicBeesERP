@@ -64,9 +64,9 @@
                 <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
                 <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Style="cursor:pointer">
                     @{
-                        var statusKey = DeliveryStatusHelper.KeyFromAmounts(d.DebtBase, d.PaidAmount);
+                        var statusKey = DeliveryStatusHelper.KeyFor(d);
                     }
-                    <MudChip T="string" Size="Size.Small" Style="text-transform:none" Color="@DeliveryStatusHelper.GetColor(statusKey)">@DeliveryStatusHelper.GetLabel(statusKey)</MudChip>
+                    <MudChip T="string" Size="Size.Small" Style="text-transform:none" Color="@DeliveryStatusHelper.ColorForKey(statusKey)">@DeliveryStatusHelper.LabelForKey(statusKey)</MudChip>
                 </MudTd>
                 <MudTd>
                     @if (d.InvoiceId != null)

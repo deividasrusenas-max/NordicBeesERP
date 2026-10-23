@@ -30,7 +30,7 @@
         <div class="mb-4">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-1">
                 <MudText Typo="Typo.h5" Style="font-weight:600">Kainos: @_delivery.DeliveryNumber</MudText>
-                <MudChip T="string" Color="@DeliveryStatusHelper.GetColor(_delivery.Status)">@DeliveryStatusHelper.GetLabel(_delivery.Status)</MudChip>
+                <MudChip T="string" Color="@DeliveryStatusHelper.GetColor(_delivery)">@DeliveryStatusHelper.GetLabel(_delivery)</MudChip>
             </MudStack>
             <MudText Typo="Typo.body2" Class="mb-3" Style="color:#666">Tiekėjas: @_supplierName</MudText>
             <div class="d-flex flex-wrap gap-2">

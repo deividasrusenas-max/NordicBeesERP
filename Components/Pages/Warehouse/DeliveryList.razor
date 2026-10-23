@@ -99,9 +99,9 @@
                 </MudTd>
                 <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Style="cursor:pointer">
                     <MudChip T="string" Size="Size.Small" Style="text-transform:none"
-                             Color="@DeliveryStatusHelper.GetColor(delivery.Status)"
+                             Color="@DeliveryStatusHelper.GetColor(delivery)"
                              Icon="@(!string.IsNullOrEmpty(delivery.InvoiceNumber) ? Icons.Material.Filled.Receipt : null)">
-                        @DeliveryStatusHelper.GetLabel(delivery.Status)
+                        @DeliveryStatusHelper.GetLabel(delivery)
                     </MudChip>
                 </MudTd>
             </RowTemplate>
@@ -189,7 +189,7 @@
         switch (_tab)
         {
             case 1: // Neįkainoti
-                result = result.Where(d => d.Status == "RECEIVED");
+                result = result.Where(d => DeliveryStatusHelper.KeyFor(d) == "RECEIVED");
                 break;
             case 2: // Be sąskaitos
                 result = result.Where(d => string.IsNullOrEmpty(d.InvoiceNumber));
