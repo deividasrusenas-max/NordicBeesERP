@@ -20,34 +20,44 @@
 
 <PageTitle>Pristatymo kainos</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     @if (_delivery == null)
     {
         <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
     }
     else
     {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-            <MudText Typo="Typo.h5" Style="font-weight:600">Kainos: @_delivery.DeliveryNumber</MudText>
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
-                    Href="/warehouse/delivery-pricing">Atgal</MudButton>
+        <div class="mb-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-1">
+                <MudText Typo="Typo.h5" Style="font-weight:600">Kainos: @_delivery.DeliveryNumber</MudText>
+                <MudChip T="string" Color="@DeliveryStatusHelper.GetColor(_delivery.Status)">@DeliveryStatusHelper.GetLabel(_delivery.Status)</MudChip>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mb-3" Style="color:#666">Tiekėjas: @_supplierName</MudText>
+            <div class="d-flex flex-wrap gap-2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none"
+                    StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => HandleBack())">Atgal</MudButton>
+                <AuthorizeView Roles="Admin,Warehouse">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none"
+                        EndIcon="@Icons.Material.Filled.ArrowForward"
+                        OnClick="@OpenDelivery">Pristatymas</MudButton>
+                </AuthorizeView>
                 @if (_canIssueInvoice)
                 {
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none"
                         StartIcon="@Icons.Material.Filled.Receipt"
-                        OnClick="IssueInvoiceAsync"
-                        Class="ml-2">Išrašyti sąskaitą</MudButton>
+                        OnClick="IssueInvoiceAsync">Išrašyti sąskaitą</MudButton>
                 }
                 else if (_delivery.InvoiceId != null)
                 {
-                    <MudButton Variant="Variant.Text" Color="Color.Primary"
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none"
                         StartIcon="@Icons.Material.Filled.Receipt"
-                        Href="@($"/invoices/{_delivery.InvoiceId}")"
-                        Class="ml-2">Sąskaita išrašyta: @_delivery.InvoiceNumber</MudButton>
+                        Href="@($"/invoices/{_delivery.InvoiceId}")">Sąskaita išrašyta: @_delivery.InvoiceNumber</MudButton>
                 }
-            </MudStack>
-        </MudStack>
+                <MudButton Variant="@(_canIssueInvoice ? Variant.Outlined : Variant.Filled)" Color="Color.Primary" Style="text-transform:none"
+                    StartIcon="@Icons.Material.Filled.Add"
+                    OnClick="OpenPaymentDialog">Registruoti mokėjimą</MudButton>
+            </div>
+        </div>
 
         <!-- Save indicator -->
         @if (_saveIndicatorVisible)
@@ -60,33 +70,23 @@
 
         <!-- Info -->
         <MudGrid Class="mb-4">
-            <MudItem xs="6" md="3">
+            <MudItem xs="12" md="4">
                 <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px; cursor:pointer"
                     @ondblclick="OpenSupplierEditDialog">
                     <MudText Typo="Typo.caption">Tiekėjas</MudText>
                     <MudText Typo="Typo.h6">@_supplierName</MudText>
                 </MudPaper>
             </MudItem>
-            <MudItem xs="6" md="3">
+            <MudItem xs="12" md="4">
                 <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
                     <MudText Typo="Typo.caption">Data</MudText>
                     <MudText Typo="Typo.h6">@_delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudText>
                 </MudPaper>
             </MudItem>
-            <MudItem xs="6" md="3">
+            <MudItem xs="12" md="4">
                 <MudPaper Class="pa-3" Elevation="0" Style="background:#f5f5f5; border-radius:8px">
                     <MudText Typo="Typo.caption">Netto</MudText>
                     <MudText Typo="Typo.h6">@_delivery.TotalNetWeight.ToString("N1") kg</MudText>
-                </MudPaper>
-            </MudItem>
-            <MudItem xs="6" md="3">
-                <MudPaper Class="pa-3" Elevation="0" Style="@(_skola > 0 ? "background:#ffebee; border-radius:8px" : "background:#e8f5e9; border-radius:8px")">
-                    <MudText Typo="Typo.caption">Skola</MudText>
-                    <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_skola, 2) €</MudText>
-                    @if (_permoka > 0)
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Success">Permoka: @FormatAmountHelper.Trim(_permoka, 2) €</MudText>
-                    }
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -115,7 +115,7 @@
                     Variant="Variant.Outlined" Style="max-width:130px"
                     Step="0.01m"
                     Format="F2"
-                    Culture="@LtCulture.Instance"lt-LT"))"
+                    Culture="@LtCulture.Instance"
                     HideSpinButtons="true" />
                 </MudTd>
                 <MudTd Style="text-align:right">
@@ -124,7 +124,7 @@
             </RowTemplate>
             <FooterContent>
                 <MudTFootRow>
-                    <MudTd colspan="4"></MudTd>
+                    <MudTd></MudTd><MudTd></MudTd><MudTd></MudTd><MudTd></MudTd>
                     <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => l.TotalNetWeight ?? 0m), 1)</strong></MudTd>
                     <MudTd></MudTd>
                     <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m)), 2) €</strong></MudTd>
@@ -157,7 +157,7 @@
             </MudItem>
             <MudItem xs="4">
                 <MudPaper Elevation="0" Class="pa-4 card-summary card-debt" Style="height:100px">
-                    <MudText Typo="Typo.caption" Style="color:#666">@DeliveryStatusHelper.GetLabel(_delivery?.Status)</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#666">Liko</MudText>
                     <MudText Typo="Typo.h5" Style="font-weight:600; color:#c62828">
                         @FormatAmountHelper.Trim(_debtDisplay, 2) €
                     </MudText>
@@ -179,9 +179,6 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <MudText Typo="Typo.h6">Mokėjimai</MudText>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
-                StartIcon="@Icons.Material.Filled.Add"
-                OnClick="OpenPaymentDialog">+ Pridėti mokėjimą</MudButton>
         </div>
 
         @if (_payments.Any())
@@ -244,7 +241,7 @@
                     ValueChanged="@((decimal val) => { if (_editingPayment != null) _editingPayment.Amount = val; })"
                     Label="Suma (€)" Variant="Variant.Outlined"
                     Format="F2"
-                    Culture="@LtCulture.Instance"lt-LT"))" />
+                    Culture="@LtCulture.Instance" />
                 <MudDatePicker @bind-Date="_editingPaymentDate" Label="Data" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
                 <MudSelect T="string" @bind-Value="_editingPayment.PaymentMethod" Label="Mokėjimo būdas" Variant="Variant.Outlined">
                     <MudSelectItem Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>
@@ -265,6 +262,16 @@
 
 @code {
     [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+
+    private void HandleBack() =>
+        Navigation.NavigateTo(FilterUrlBuilder.ResolveReturnUrl(ReturnUrl, "/warehouse/delivery-pricing"));
+
+    private void OpenDelivery()
+    {
+        var back = Uri.EscapeDataString("/" + Navigation.ToBaseRelativePath(Navigation.Uri));
+        Navigation.NavigateTo($"/warehouse/deliveries/{Id}?returnUrl={back}");
+    }
 
     private Delivery? _delivery;
     private List<DeliveryLine> _lines = new();
