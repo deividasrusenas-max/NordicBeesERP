@@ -117,3 +117,7 @@ Passed!  - Failed:     0, Passed:  1912, Skipped:     0, Total:  1912, Duration:
 ### Testai
 
 `dotnet test` po 2 punkto: `Passed! - Failed: 0, Passed: 1919, Skipped: 0, Total: 1919, Duration: 3 m 33 s`. Po 3–5 punktų: `Passed! - Failed: 0, Passed: 1919, Skipped: 0, Total: 1919, Duration: 3 m 33 s`. (Bazė 1912/0 + 7 nauji testai.) Aplikacija perstatyta ir paleista iš naujo ant http://localhost:5082.
+
+### DeliveryView sumų eilutė (antras taisymas)
+
+DeliveryView lentelėje thead „Prekė" ir tbody pirmas langelis turi `colspan=2` (5 stulpeliai), o tfoot etiketė turėjo `colspan=3` + 1 reikšmė = 4 → „2 860,0 kg" buvo po „Kiekis". Etiketė pakeista į `colspan=4` (išdėstymas paliktas), reikšmė dabar po „Netto (kg)". Visų `FooterContent` audito (thead = tbody = tfoot, skaičiuojant `colspan`): sutampa DeliveryPricingDetail 7/7/7, DeliveryView 5/5/5, SalesStatistics 5/5/5, StatisticsOverview (2 lentelės) 6/6/6; pataisyti dar du, kurių tfoot užėmė vienu stulpeliu mažiau: PaymentHistory (7 stulpeliai, buvo `colspan=6`) ir InvoicePaymentList (9 stulpeliai, buvo `colspan=8`). Jų eilutėje tik etiketė „N įrašai", reikšmių nebuvo, todėl poslinkio nebuvo. ExpenseCashFlow (išorinė lentelė, 4 tfoot langeliai) ir DeliverySignature (tuščias tfoot) – be pastabų. `dotnet test`: `Passed! - Failed: 0, Passed: 1919, Skipped: 0, Total: 1919, Duration: 3 m 40 s`. `/code-review`: be pastabų. Commit `f14a790`.
