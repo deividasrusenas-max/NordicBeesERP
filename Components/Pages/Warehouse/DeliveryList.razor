@@ -47,15 +47,17 @@
     </div>
 
     <SelectionBar Count="_selectedIds.Count" OnCancel="@(() => _selectedIds.Clear())">
-        @if (EligibleSelected.Any())
-        {
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Receipt"
-                       OnClick="CreateInvoicesForSelected"
-                       Style="text-transform:none">
-                Išrašyti sąskaitas (@EligibleSelected.Count)
-            </MudButton>
-        }
+        <MudTooltip Text="@IneligibleReason" Disabled="@(string.IsNullOrEmpty(IneligibleReason))">
+            <span>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Receipt"
+                           OnClick="CreateInvoicesForSelected"
+                           Disabled="@(!EligibleSelected.Any())"
+                           Style="text-transform:none">
+                    Išrašyti sąskaitas (@EligibleSelected.Count)
+                </MudButton>
+            </span>
+        </MudTooltip>
     </SelectionBar>
 
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
@@ -324,6 +326,23 @@
                  && IsFarmerSupplier(d.SupplierId)
                  && d.TotalAmount > 0)
         .ToList();
+
+    // Why selected deliveries cannot get an invoice (shown as a tooltip on the disabled bulk button).
+    private string IneligibleReason
+    {
+        get
+        {
+            var selected = _filtered.Where(d => _selectedIds.Contains(d.Id)).ToList();
+            var noPrice = selected.Count(d => d.TotalAmount <= 0);
+            var hasInvoice = selected.Count(d => !string.IsNullOrEmpty(d.InvoiceNumber));
+            var notFarmer = selected.Count(d => !IsFarmerSupplier(d.SupplierId));
+            var reasons = new List<string>();
+            if (noPrice > 0) reasons.Add($"neįkainoti: {noPrice}");
+            if (hasInvoice > 0) reasons.Add($"jau turi sąskaitą: {hasInvoice}");
+            if (notFarmer > 0) reasons.Add($"tiekėjas ne ūkininkas su kompensaciniu PVM kodu: {notFarmer}");
+            return reasons.Count == 0 ? "" : "Sąskaitos išrašomos tik įkainotiems ūkininkų pristatymams be sąskaitos. Netinka – " + string.Join("; ", reasons);
+        }
+    }
 
     private async Task CreateInvoicesForSelected()
     {
