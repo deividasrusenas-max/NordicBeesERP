@@ -925,16 +925,15 @@ namespace NordicBeesERP.Services
             // Get invoice IDs before deleting
             var invoiceIds = payment.Allocations.Select(a => a.InvoiceId).ToList();
 
-            // Log deletion (existing audit rows for this payment are kept)
-            await LogAuditEntryAsync(context, paymentId, null, "delete",
-                payment.Amount, null, userId, JsonSerializer.Serialize(new
-                {
-                    payment.PaymentDate,
-                    payment.Amount,
-                    payment.PaymentMethod,
-                    payment.ReferenceNumber,
-                    Allocations = payment.Allocations.Select(a => new { a.InvoiceId, a.AllocatedAmount })
-                }));
+            var auditNotes = JsonSerializer.Serialize(new
+            {
+                payment.PaymentDate,
+                payment.Amount,
+                payment.PaymentMethod,
+                payment.ReferenceNumber,
+                Allocations = payment.Allocations.Select(a => new { a.InvoiceId, a.AllocatedAmount })
+            });
+            var deletedAmount = payment.Amount;
 
             // Bank-import rows that pointed at this payment go back to "unmatched" instead of dangling at a deleted id
             await context.Database.ExecuteSqlRawAsync(
@@ -944,11 +943,14 @@ namespace NordicBeesERP.Services
             // Delete allocations
             context.PaymentAllocations.RemoveRange(payment.Allocations.ToList());
 
-            // payment_audit_log rows are never deleted: the history of a deleted payment stays, plus the "delete" row above
-
             // Delete payment
             context.Payments.Remove(payment);
 
+            await context.SaveChangesAsync();
+
+            // payment_audit_log rows are never deleted: the history of a deleted payment stays, plus this "delete" row.
+            // Added AFTER the payment is gone - while the payment is tracked as Deleted, EF would cascade-remove the new row with it.
+            await LogAuditEntryAsync(context, paymentId, null, "delete", deletedAmount, null, userId, auditNotes);
             await context.SaveChangesAsync();
 
             // Recalculate invoice statuses using the SAME context
