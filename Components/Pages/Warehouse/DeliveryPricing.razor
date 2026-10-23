@@ -92,15 +92,15 @@
                     }
                 </MudTd>
                 <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">
-                    @FormatAmountHelper.Trim(d.DebtBase, 2)
+                    @FormatAmountHelper.Money(d.DebtBase)
                     @if (d.DebtInvoiceTotal.HasValue)
                     {
                         <MudText Typo="Typo.caption" Style="color:#6b7280;display:block" title="Suma su 6 % PVM">su 6 % PVM</MudText>
                     }
                 </MudTd>
-                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">@FormatAmountHelper.Trim(d.PaidAmount, 2)</MudTd>
+                <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">@FormatAmountHelper.Money(d.PaidAmount)</MudTd>
                 <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="@($"cursor:pointer;text-align:right;{GetDebtStyle(d.DebtBase - d.PaidAmount)}")">
-                    @FormatAmountHelper.Trim(d.DebtBase - d.PaidAmount, 2)
+                    @FormatAmountHelper.Money(d.DebtBase - d.PaidAmount)
                 </MudTd>
             </RowTemplate>
             <PagerContent>

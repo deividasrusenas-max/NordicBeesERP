@@ -36,6 +36,23 @@ public static class FormatAmountHelper
     /// 5.000m with maxDecimals=3 -> "5" | 5.250m with maxDecimals=3 -> "5,25" |
     /// 5.500m with maxDecimals=3 -> "5,5".
     /// </summary>
+    /// <summary>
+    /// Money display with a thousands separator (U+00A0), always 2 decimals and the euro sign:
+    /// 11180.4m -> "11 180,40 €", 0m -> "0,00 €". Unlike <see cref="Trim"/> it never drops zeros.
+    /// </summary>
+    public static string Money(decimal value)
+        => (value == 0m ? 0m : value).ToString("N2", MoneyFormat) + "\u00A0€";
+
+    public static string Money(decimal? value) => Money(value ?? 0m);
+
+    private static readonly NumberFormatInfo MoneyFormat = new()
+    {
+        NumberDecimalSeparator = ",",
+        NumberGroupSeparator = "\u00A0",
+        NumberGroupSizes = new[] { 3 },
+        NegativeSign = "-"
+    };
+
     public static string Trim(decimal value, int maxDecimals = 3)
     {
         var rounded = Math.Round(value, maxDecimals, MidpointRounding.AwayFromZero);

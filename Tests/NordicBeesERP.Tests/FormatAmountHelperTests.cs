@@ -48,3 +48,20 @@ public class FormatAmountHelperTests
         Assert.Equal("7,5", FormatAmountHelper.Trim((decimal?)7.5m, 3));
     }
 }
+
+public class FormatAmountHelperMoneyTests
+{
+    [Theory]
+    [InlineData("11180.4", "11 180,40 €")]
+    [InlineData("0", "0,00 €")]
+    [InlineData("243.5", "243,50 €")]
+    [InlineData("999.999", "1 000,00 €")]
+    [InlineData("1234567.891", "1 234 567,89 €")]
+    [InlineData("-12.5", "-12,50 €")]
+    public void Money_FormatsThousandsTwoDecimalsAndEuro(string value, string expected) =>
+        Assert.Equal(expected, NordicBeesERP.Helpers.FormatAmountHelper.Money(decimal.Parse(value, System.Globalization.CultureInfo.InvariantCulture)));
+
+    [Fact]
+    public void Money_NullIsZero() =>
+        Assert.Equal("0,00 €", NordicBeesERP.Helpers.FormatAmountHelper.Money((decimal?)null));
+}

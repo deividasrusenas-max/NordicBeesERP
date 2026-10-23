@@ -119,7 +119,7 @@
                     HideSpinButtons="true" />
                 </MudTd>
                 <MudTd Style="text-align:right">
-                    <strong>@FormatAmountHelper.Trim((line.TotalNetWeight ?? 0m) * (line.UnitPrice ?? 0m), 2)</strong>
+                    <strong>@FormatAmountHelper.Money((line.TotalNetWeight ?? 0m) * (line.UnitPrice ?? 0m))</strong>
                 </MudTd>
             </RowTemplate>
             <FooterContent>
@@ -127,7 +127,7 @@
                     <MudTd></MudTd><MudTd></MudTd><MudTd></MudTd><MudTd></MudTd>
                     <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => l.TotalNetWeight ?? 0m), 1)</strong></MudTd>
                     <MudTd></MudTd>
-                    <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Trim(_lines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m)), 2) €</strong></MudTd>
+                    <MudTd Style="text-align:right"><strong>@FormatAmountHelper.Money(_lines.Sum(l => (l.TotalNetWeight ?? 0m) * (l.UnitPrice ?? 0m)))</strong></MudTd>
                 </MudTFootRow>
             </FooterContent>
         </MudTable>
@@ -146,20 +146,20 @@
             <MudItem xs="4">
                 <MudPaper Elevation="0" Class="pa-4 card-summary" Style="background:#f1f8e9; border-radius:12px; height:100px">
                     <MudText Typo="Typo.caption" Style="color:#666">Bendra suma@(_delivery?.DebtInvoiceTotal.HasValue == true ? " (su 6 % PVM)" : "")</MudText>
-                    <MudText Typo="Typo.h5" Style="font-weight:600">@FormatAmountHelper.Trim(_totalAmountDisplay, 2) €</MudText>
+                    <MudText Typo="Typo.h5" Style="font-weight:600">@FormatAmountHelper.Money(_totalAmountDisplay)</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="4">
                 <MudPaper Elevation="0" Class="pa-4 card-summary" Style="background:#e3f2fd; border-radius:12px; height:100px">
                     <MudText Typo="Typo.caption" Style="color:#666">Sumokėta</MudText>
-                    <MudText Typo="Typo.h5" Style="font-weight:600">@FormatAmountHelper.Trim(_paidAmountDisplay, 2) €</MudText>
+                    <MudText Typo="Typo.h5" Style="font-weight:600">@FormatAmountHelper.Money(_paidAmountDisplay)</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="4">
                 <MudPaper Elevation="0" Class="pa-4 card-summary card-debt" Style="height:100px">
                     <MudText Typo="Typo.caption" Style="color:#666">Liko</MudText>
                     <MudText Typo="Typo.h5" Style="font-weight:600; color:#c62828">
-                        @FormatAmountHelper.Trim(_debtDisplay, 2) €
+                        @FormatAmountHelper.Money(_debtDisplay)
                     </MudText>
                     @if (_permoka > 0)
                     {
@@ -193,7 +193,7 @@
                 </HeaderContent>
                 <RowTemplate Context="p">
                     <MudTd>@p.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
-                    <MudTd Style="text-align:right">@FormatAmountHelper.Trim(p.Amount, 2)</MudTd>
+                    <MudTd Style="text-align:right">@FormatAmountHelper.Money(p.Amount)</MudTd>
                     <MudTd>@GetPaymentMethodText(p.PaymentMethod)</MudTd>
                     <MudTd>@p.Notes</MudTd>
                     <MudTd>
