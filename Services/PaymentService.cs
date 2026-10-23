@@ -1012,39 +1012,46 @@ namespace NordicBeesERP.Services
             var originalReference = payment.ReferenceNumber;
             var originalNotes = payment.Notes;
 
-            // Update payment fields
-            payment.Amount = amount;
-            payment.PaymentDate = date;
-            payment.PaymentMethod = method switch {
+            // New values kept in locals: the entity read above is not mutated (global NoTracking, writes go through raw SQL)
+            var newMethod = method switch {
                 "bank_transfer" => PaymentMethod.BankTransfer,
                 "cash" => PaymentMethod.Cash,
                 "card" => PaymentMethod.Card,
                 "other" => PaymentMethod.Other,
                 _ => PaymentMethod.BankTransfer
             };
-            payment.ReferenceNumber = reference;
-            payment.Notes = notes;
-            payment.UpdatedAt = DateTime.UtcNow;
 
             // Log update
             await LogAuditEntryAsync(context, paymentId, payment.InvoiceId, "update",
                 originalAmount, amount, userId, JsonSerializer.Serialize(new
                 {
-                    payment.PaymentDate,
-                    payment.Amount,
-                    payment.PaymentMethod,
-                    payment.ReferenceNumber,
-                    payment.Notes,
+                    PaymentDate = date,
+                    Amount = amount,
+                    PaymentMethod = newMethod,
+                    ReferenceNumber = reference,
+                    Notes = notes,
                     ChangedFields = new {
                         AmountChanged = originalAmount != amount,
                         DateChanged = originalDate != date,
-                        MethodChanged = originalMethod != payment.PaymentMethod,
-                        ReferenceChanged = originalReference != payment.ReferenceNumber,
-                        NotesChanged = originalNotes != payment.Notes
+                        MethodChanged = originalMethod != newMethod,
+                        ReferenceChanged = originalReference != reference,
+                        NotesChanged = originalNotes != notes
                     }
                 }));
 
-            context.Payments.Update(payment);
+            // Raw UPDATE of exactly the columns this method changes (global NoTracking: Update()+SaveChanges is not used).
+            // payment_method goes through the model's own value converter so the DB gets the same text as an EF write.
+            var methodConverter = context.Model.FindEntityType(typeof(Payment))!
+                .FindProperty(nameof(Payment.PaymentMethod))!.GetValueConverter()!;
+            var rowsAffected = await context.Database.ExecuteSqlRawAsync(
+                "UPDATE payments SET amount = {0}, payment_date = {1}, payment_method = {2}, reference_number = {3}, notes = {4}, updated_at = UTC_TIMESTAMP() WHERE id = {5}",
+                amount, date, methodConverter.ConvertToProvider(newMethod)!, reference, notes, paymentId);
+            if (rowsAffected != 1)
+            {
+                throw new InvalidOperationException($"Payment {paymentId} was not updated (rows affected: {rowsAffected})");
+            }
+
+            // Saves the audit row added above
             await context.SaveChangesAsync();
 
             // Single-allocation payment: the allocation follows the payment total.

@@ -418,6 +418,34 @@ public class PaymentServiceTests : IClassFixture<DbTestFixture>
         finally { await CleanupAsync(seed); }
     }
 
+    [Fact]
+    public async Task UpdatePaymentAsync_ChangesMethodAndFields_PersistedByRawUpdate()
+    {
+        var seed = new Seed(new(), new());
+        try
+        {
+            var partnerId = await SeedPartnerAsync(seed);
+            var invoiceId = await SeedInvoiceAsync(seed, partnerId, 100m);
+            var service = new PaymentService(_fixture.Factory);
+            var paymentId = await service.RegisterPaymentAsync(new List<int> { invoiceId }, 40m, DateTime.UtcNow.Date, "bank_transfer", "OLD-REF", "old note", 1);
+
+            var newDate = DateTime.UtcNow.Date.AddDays(-3);
+            await service.UpdatePaymentAsync(paymentId, 55m, newDate, "cash", "NEW-REF", null, 1);
+
+            await using var verify = await _fixture.Factory.CreateDbContextAsync();
+            var method = await RawSql.ScalarAsync(verify, "SELECT payment_method FROM payments WHERE id = @p0", default, paymentId);
+            Assert.Equal("cash", method);
+            var payment = await verify.Payments.AsNoTracking().SingleAsync(p => p.Id == paymentId);
+            Assert.Equal(PaymentMethod.Cash, payment.PaymentMethod);
+            Assert.Equal(55m, payment.Amount);
+            Assert.Equal(newDate, payment.PaymentDate.Date);
+            Assert.Equal("NEW-REF", payment.ReferenceNumber);
+            Assert.Null(payment.Notes);
+            Assert.Equal(55m, (await verify.PaymentAllocations.AsNoTracking().SingleAsync(a => a.PaymentId == paymentId)).AllocatedAmount);
+        }
+        finally { await CleanupAsync(seed); }
+    }
+
     // Transaction rollback test (#8) intentionally not written: every failure point after the payment insert in
     // RegisterPaymentAsync needs either a DB-level fault (DDL/trigger - forbidden for agents) or a test seam in
     // production code, and the task says to skip it in that case.
