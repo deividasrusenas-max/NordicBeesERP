@@ -76,6 +76,7 @@
                             <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                            Color="Color.Error"
                                            Size="Size.Small"
+                                           Disabled="@_busy"
                                            OnClick="@(() => DeletePayment(context.PaymentId))" />
                         </div>
                     </MudTd>
@@ -88,7 +89,13 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SavePayment">Išsaugoti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="@SavePayment" Disabled="@_busy">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Išsaugoti
+        </MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="@CancelDialog">Atšaukti</MudButton>
     </DialogActions>
 </MudDialog>
@@ -111,6 +118,7 @@
      private string _method = "bank_transfer";
      private string _reference = string.Empty;
      private string _notes = string.Empty;
+     private bool _busy;
 
      protected override void OnParametersSet()
      {
@@ -133,6 +141,8 @@
 
     private async Task SavePayment()
     {
+        if (_busy) return;
+        _busy = true;
         try
         {
             // Validate amount does not exceed remaining balance
@@ -160,6 +170,10 @@
         {
             Snackbar.Add($"Klaida registruojant mokėjimą: {ex.Message}", Severity.Error);
         }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private void CancelDialog()
@@ -169,22 +183,31 @@
 
     private async Task DeletePayment(int paymentId)
     {
+        if (_busy) return;
         var confirmed = await DialogService.ShowMessageBox(
             "Ištrinti mokėjimą?",
             "Ar tikrai norite ištrinti šį mokėjimą?",
             yesText: "Ištrinti",
             cancelText: "Atšaukti");
         if (confirmed != true) return;
-        
-        var userId = await AuthService.GetUserIdAsync();
-        await PaymentService.DeletePaymentAsync(paymentId, userId!.Value);
-        
-        if (ExistingPayments != null)
+
+        _busy = true;
+        try
         {
-            ExistingPayments.RemoveAll(p => p.PaymentId == paymentId);
+            var userId = await AuthService.GetUserIdAsync();
+            await PaymentService.DeletePaymentAsync(paymentId, userId!.Value);
+
+            if (ExistingPayments != null)
+            {
+                ExistingPayments.RemoveAll(p => p.PaymentId == paymentId);
+            }
+
+            MudDialogInstance?.Close(DialogResult.Ok(true));
         }
-        
-        MudDialogInstance?.Close(DialogResult.Ok(true));
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private string GetPaymentMethodLabel(string method)

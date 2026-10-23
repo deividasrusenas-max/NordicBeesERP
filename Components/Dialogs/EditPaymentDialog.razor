@@ -44,7 +44,11 @@
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Filled" Color="Color.Success" 
-                   OnClick="@SavePayment" StartIcon="@Icons.Material.Filled.Save">
+                   OnClick="@SavePayment" StartIcon="@Icons.Material.Filled.Save" Disabled="@_busy">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
             Išsaugoti
         </MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" 
@@ -70,6 +74,7 @@
     private string _method = "BankTransfer";
     private string _reference = string.Empty;
     private string _notes = string.Empty;
+    private bool _busy;
 
     protected override async Task OnInitializedAsync()
     {
@@ -91,6 +96,8 @@
 
     private async Task SavePayment()
     {
+        if (_busy) return;
+        _busy = true;
         try
         {
             if (_amount <= 0)
@@ -121,6 +128,10 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Klaida atnaujinant mokėjimą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 

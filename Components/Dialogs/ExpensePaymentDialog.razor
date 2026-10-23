@@ -109,10 +109,12 @@
                             <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                            Size="Size.Small" Color="Color.Primary"
                                            Title="Redaguoti mokėjimą"
+                                           Disabled="@_busy"
                                            OnClick="@(() => EditPaymentAsync(payment))" />
                             <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
                                            Size="Size.Small" Color="Color.Error"
                                            Title="Anuliuoti mokėjimą"
+                                           Disabled="@_busy"
                                            OnClick="@(() => DeletePaymentAsync(payment.Id))" />
                         </MudTd>
                     </RowTemplate>
@@ -125,7 +127,13 @@
         </MudPaper>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="AddPayment">Išsaugoti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="AddPayment" Disabled="@_busy">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Išsaugoti
+        </MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="Close">Atšaukti</MudButton>
     </DialogActions>
 </MudDialog>
@@ -159,6 +167,7 @@
     private string _paymentNotes = string.Empty;
     private decimal _totalPaid;
     private MudTextField<decimal>? _amountField;
+    private bool _busy;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -205,9 +214,12 @@
 
     private async Task AddPayment()
     {
-        if (_invoice is null || !CanAddPayment)
+        if (_busy || _invoice is null || !CanAddPayment)
             return;
 
+        _busy = true;
+        try
+        {
         Console.WriteLine($"Adding payment for invoice id: {Invoice?.Id}");
         var payment = new ExpensePayment
         {
@@ -238,6 +250,11 @@
 
         // Close dialog with success result to notify parent
         MudDialog?.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task EditPaymentAsync(ExpensePayment payment)
@@ -266,7 +283,7 @@
 
     private async Task DeletePaymentAsync(int paymentId)
     {
-        if (DialogService == null) return;
+        if (_busy || DialogService == null) return;
 
         var confirmed = await ConfirmDialog.ShowAsync(
             DialogService,
@@ -275,14 +292,22 @@
             confirmText: "Taip, anuliuoti");
         if (!confirmed) return;
 
-        await ExpenseService.DeletePaymentAsync(paymentId);
-        Snackbar.Add("Mokėjimas anuliuotas", Severity.Success);
+        _busy = true;
+        try
+        {
+            await ExpenseService.DeletePaymentAsync(paymentId);
+            Snackbar.Add("Mokėjimas anuliuotas", Severity.Success);
 
-        await LoadPaymentsAsync();
+            await LoadPaymentsAsync();
 
-        // Reload invoice from DB to get fresh status
-        _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(_invoice.Id);
-        StateHasChanged();
+            // Reload invoice from DB to get fresh status
+            _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(_invoice.Id);
+            StateHasChanged();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task RemovePayment(int paymentId)

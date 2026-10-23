@@ -39,7 +39,13 @@
     <DialogActions>
         <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Atšaukti</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Išsaugoti</MudButton>
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync" Disabled="@_busy">
+            @if (_busy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Išsaugoti
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -55,6 +61,7 @@
     private string _method = "BANK";
     private string _reference = string.Empty;
     private string _notes = string.Empty;
+    private bool _busy;
 
     protected override void OnInitialized()
     {
@@ -67,12 +74,14 @@
 
     private async Task SaveAsync()
     {
+        if (_busy) return;
         if (_amount <= 0)
         {
             Snackbar.Add("Suma turi būti didesnė nei 0", Severity.Error);
             return;
         }
 
+        _busy = true;
         try
         {
             var updated = new ExpensePayment
@@ -92,6 +101,10 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Klaida atnaujinant mokėjimą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 
