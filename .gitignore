@@ -59,3 +59,7 @@ Docs/Invoice pvz/
 # diff artifact (written on every mismatch, including the deliberate smoke-test one) —
 # only the accepted .verified.txt baselines are tracked.
 *.received.txt
+
+backup_*.sql
+*.sql.gz
+.env.*

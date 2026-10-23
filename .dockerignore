@@ -4,3 +4,8 @@
 Tests
 .opencode
 Docs
+
+.env
+.env.*
+backup_*.sql
+*.sql.gz
