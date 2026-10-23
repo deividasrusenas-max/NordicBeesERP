@@ -1,0 +1,95 @@
+@namespace NordicBeesERP.Components.Shared
+@using MudBlazor
+@using NordicBeesERP.Services
+@inject IGooglePlacesService GooglePlaces
+
+@* Google address lookup, kept separate from the "Adresas" text field so typing there is never intercepted. *@
+@if (_unavailable)
+{
+    <MudTextField T="string" Label="Ieškoti adreso (Google)" Value="@("")" Disabled="true"
+                  HelperText="Google adresų paieška neprieinama"
+                  Variant="Variant.Outlined" Margin="Margin.Dense" Class="@Class" />
+}
+else
+{
+    <MudAutocomplete @key="_resetKey" T="PlaceSuggestion"
+                     Label="Ieškoti adreso (Google)"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     Class="@Class"
+                     SearchFunc="@SearchAsync"
+                     ToStringFunc="@(s => s?.Description ?? string.Empty)"
+                     ValueChanged="@OnSuggestionPickedAsync"
+                     MinCharacters="3"
+                     DebounceInterval="400"
+                     ShowProgressIndicator="@_loading" />
+}
+
+@code {
+    [Parameter] public EventCallback<AddressPick> OnPicked { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string _sessionToken = Guid.NewGuid().ToString();
+    private bool _unavailable;
+    private bool _loading;
+    private int _resetKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _unavailable = !await GooglePlaces.IsHealthyAsync();
+        }
+        catch
+        {
+            _unavailable = true;
+        }
+    }
+
+    private async Task<IEnumerable<PlaceSuggestion>> SearchAsync(string? input, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(input) || input.Trim().Length < 3)
+            return Array.Empty<PlaceSuggestion>();
+
+        _loading = true;
+        try
+        {
+            return await GooglePlaces.AutocompleteAsync(input.Trim(), _sessionToken);
+        }
+        catch
+        {
+            _unavailable = true;
+            return Array.Empty<PlaceSuggestion>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSuggestionPickedAsync(PlaceSuggestion? suggestion)
+    {
+        if (suggestion is null) return;
+
+        PlaceAddressDetails? details;
+        try
+        {
+            details = await GooglePlaces.GetPlaceDetailsAsync(suggestion.PlaceId, _sessionToken);
+        }
+        catch
+        {
+            details = null;
+        }
+
+        // The session ends with the details call; further lookups need a new token.
+        _sessionToken = Guid.NewGuid().ToString();
+
+        var address = !string.IsNullOrWhiteSpace(details?.StreetAddress) ? details!.StreetAddress : suggestion.Description;
+        var pick = new AddressPick(address, details?.City ?? "", details?.PostalCode ?? "",
+            details?.Country ?? "", details?.CountryCode ?? "");
+
+        await OnPicked.InvokeAsync(pick);
+
+        _resetKey++; // recreate the search box so it is empty again
+    }
+}

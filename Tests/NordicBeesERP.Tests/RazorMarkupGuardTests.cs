@@ -33,6 +33,22 @@ public class RazorMarkupGuardTests
         Assert.Empty(offenders);
     }
 
+    [Fact]
+    public void MudAutocomplete_NeverBoundToAnAddressField()
+    {
+        // A free-text "Adresas" must be a plain MudTextField: bound to a MudAutocomplete it blocked typing
+        // (CoerceValue/DebounceInterval). Google lookup is the separate AddressSearch component.
+        var offenders = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(Root(), "Components"), "*.razor", SearchOption.AllDirectories))
+        {
+            var src = File.ReadAllText(file);
+            foreach (Match m in Regex.Matches(src, @"<MudAutocomplete\b.*?/>|<MudAutocomplete\b.*?>", RegexOptions.Singleline))
+                if (Regex.IsMatch(m.Value, @"@bind-Value(:\w+)?\s*=\s*""[^""]*\.Address\b"))
+                    offenders.Add(Path.GetFileName(file));
+        }
+        Assert.Empty(offenders);
+    }
+
     private static IEnumerable<(string File, string Src)> ComponentSources()
     {
         foreach (var file in Directory.EnumerateFiles(Path.Combine(Root(), "Components"), "*.razor", SearchOption.AllDirectories))

@@ -10,7 +10,6 @@
 @inject IDbContextFactory<NordicBeesERPContext> DbFactory
 @inject ICompanyLookupService CompanyLookupService
 @inject ICompanySettingsService CompanySettingsService
-@inject IGooglePlacesService GooglePlaces
 @inject IAuthService AuthService
 
 <MudDialog>
@@ -198,21 +197,8 @@
             }
 
             <MudItem xs="12">
-                <MudAutocomplete T="string"
-                                 @bind-Value="supplier.Address"
-                                 Label="Adresas"
-                                 Variant="Variant.Outlined"
-                                 Margin="Margin.Dense"
-                                 SearchFunc="@SearchPlaces"
-                                 ToStringFunc="@(s => s)"
-                                 Strict="false"
-                                 CoerceText="false"
-                                 CoerceValue="true"
-                                 DebounceInterval="400"
-                                 ResetValueOnEmptyText="false"
-                                 MinCharacters="3"
-                                 ShowProgressIndicator="@_placesLoading"
-                                  @bind-Value:after="@(() => OnPlaceSelectedAsync(supplier.Address))" />
+                <AddressSearch Class="mb-2" OnPicked="OnAddressPicked" />
+                <MudTextField @bind-Value="supplier.Address" Label="Adresas" MaxLength="255" Variant="Variant.Outlined" Margin="Margin.Dense" />
             </MudItem>
             
             <MudItem xs="12" md="6">
@@ -334,9 +320,6 @@
     private string? _originalVatCode = "";
     private bool _vatCheckStarted = false;
     private bool _isCheckingVat = false;
-    private string _sessionToken = "";
-    private readonly Dictionary<string, string> _descriptionToPlaceId = new();
-    private bool _placesLoading = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -394,7 +377,6 @@
 
     protected override void OnParametersSet()
     {
-        _sessionToken = Guid.NewGuid().ToString();
 
         supplier = Supplier ?? new Supplier
         {
@@ -509,77 +491,10 @@
         }
     }
 
-    private async Task<IEnumerable<string>> SearchPlaces(string? input, CancellationToken token)
+    private void OnAddressPicked(AddressPick pick)
     {
-        if (string.IsNullOrWhiteSpace(input) || input.Trim().Length < 3)
-            return Array.Empty<string>();
-
-        _placesLoading = true;
-        try
-        {
-            var suggestions = await GooglePlaces.AutocompleteAsync(input.Trim(), _sessionToken);
-            _descriptionToPlaceId.Clear();
-            foreach (var s in suggestions)
-                _descriptionToPlaceId[s.Description] = s.PlaceId;
-            return suggestions.Select(s => s.Description);
-        }
-        catch
-        {
-            return Array.Empty<string>();
-        }
-        finally
-        {
-            _placesLoading = false;
-        }
-    }
-
-    private async Task OnPlaceSelectedAsync(string? selectedDescription)
-    {
-        if (string.IsNullOrWhiteSpace(selectedDescription)) return;
-        if (!_descriptionToPlaceId.TryGetValue(selectedDescription, out var placeId)) return;
-
-        PlaceAddressDetails? details;
-        try
-        {
-            details = await GooglePlaces.GetPlaceDetailsAsync(placeId, _sessionToken);
-        }
-        catch
-        {
-            details = null;
-        }
-
-        // Session terminated after details call — start a fresh one for any further lookups
-        _sessionToken = Guid.NewGuid().ToString();
-
-        // MudAutocomplete's @bind-Value has ALREADY written the clicked suggestion
-        // description into supplier.Address before this handler runs. Never allow
-        // that value to be replaced with an empty string: locality-level places
-        // (no "route"/"street_number" address component) resolve to an empty
-        // StreetAddress, which used to wipe the stored address on save.
-        if (details is null)
-        {
-            _descriptionToPlaceId.Clear();
-            snackbar?.Add("Nepavyko gauti adreso detalių — paliktas pasirinktas adresas", Severity.Warning);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(details.StreetAddress))
-        {
-            // No street component (e.g. a village/municipality): keep the clicked
-            // description as the address instead of overwriting it with "".
-            snackbar?.Add("Nerasta gatvės adreso dalis — įrašytas pasirinktas vietovės pavadinimas", Severity.Warning);
-        }
-        else
-        {
-            supplier.Address = details.StreetAddress;
-        }
-
-        // Fill only what the lookup actually returned — never clear existing values.
-        if (!string.IsNullOrWhiteSpace(details.City)) supplier.City = details.City;
-        if (!string.IsNullOrWhiteSpace(details.PostalCode)) supplier.PostalCode = details.PostalCode;
-        if (!string.IsNullOrWhiteSpace(details.Country)) supplier.Country = details.Country;
-        if (CountryCodeResolver.FromAddress(details.CountryCode) is { } placeCountry) supplier.CountryCode = placeCountry;
-        _descriptionToPlaceId.Clear();
+        pick.ApplyTo(v => supplier.Address = v, v => supplier.City = v, v => supplier.PostalCode = v, v => supplier.Country = v,
+            v => { if (CountryCodeResolver.FromAddress(v) is { } code) supplier.CountryCode = code; });
     }
 
     private async Task ApplyLookupResult(CompanyLookupResult result)
