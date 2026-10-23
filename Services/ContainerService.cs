@@ -242,18 +242,43 @@ public class ContainerService : IContainerService
         return await context.Containers.Where(c => ids.Contains(c.Id)).ToListAsync();
     }
 
+    // A type change rewrites the delivery line the container belongs to, so only stock that is still there qualifies.
+    private static readonly string[] HoneyTypeChangeableStatuses = { "IN_STOCK", "RECEIVED" };
+
     public async Task UpdateHoneyTypeAsync(List<int> containerIds, int honeyTypeId)
     {
+        if (containerIds == null || containerIds.Count == 0) return;
+
         using var context = await _contextFactory.CreateDbContextAsync();
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
+            await EnsureActiveHoneyTypeAsync(context, honeyTypeId);
+
             var containers = await context.Containers.Where(c => containerIds.Contains(c.Id)).ToListAsync();
 
-            // Re-typing stock that already left (written off / sold / transferred) would silently rewrite a closed line.
-            var gone = containers.Where(c => c.Status is "WRITTEN_OFF" or "SOLD" or "TRANSFERRED").Select(c => c.ContainerCode).OrderBy(c => c).ToList();
-            if (gone.Count > 0)
-                throw new InvalidOperationException($"Medaus rūšies keisti negalima nebesančiam sandėlyje konteineriui: {string.Join(", ", gone)}");
+            // Nothing is written when any container is outside IN_STOCK / RECEIVED (reserved, in production, sold, returned, written off).
+            var blocked = containers
+                .Where(c => !HoneyTypeChangeableStatuses.Contains(c.Status))
+                .Select(c => $"{c.ContainerCode} ({c.Status})")
+                .OrderBy(c => c)
+                .ToList();
+            if (blocked.Count > 0)
+                throw new InvalidOperationException($"Medaus rūšį galima keisti tik konteineriams, kurių būsena IN_STOCK arba RECEIVED. Netinka: {string.Join(", ", blocked)}");
+
+            var deliveryLineIds = containers
+                .Where(c => c.DeliveryLineId.HasValue)
+                .Select(c => c.DeliveryLineId!.Value)
+                .Distinct()
+                .ToList();
+
+            // Resolved up front: the merge step below can delete lines.
+            var uniqueDeliveryIds = await context.DeliveryLines
+                .Where(dl => deliveryLineIds.Contains(dl.Id))
+                .Select(dl => dl.DeliveryId)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToListAsync();
 
             // 1. Update container honey_type_id via raw SQL
             foreach (var c in containers)
@@ -264,12 +289,6 @@ public class ContainerService : IContainerService
             }
 
             // Perskaido DeliveryLine pagal rūšis
-            var deliveryLineIds = containers
-                .Where(c => c.DeliveryLineId.HasValue)
-                .Select(c => c.DeliveryLineId!.Value)
-                .Distinct()
-                .ToList();
-
             foreach (var lineId in deliveryLineIds)
             {
                 var line = await context.DeliveryLines.AsNoTracking().FirstOrDefaultAsync(l => l.Id == lineId);
@@ -339,27 +358,7 @@ public class ContainerService : IContainerService
                 }
             }
 
-            // Perskaičiuoti delivery totals
-            var deliveryIds = containers
-                .Where(c => c.DeliveryLineId.HasValue)
-                .Select(c => c.DeliveryLineId!.Value)
-                .Distinct()
-                .ToList();
-
-            var deliveryLineMap = await context.DeliveryLines
-                .Where(dl => deliveryIds.Contains(dl.Id))
-                .Select(dl => new { dl.Id, dl.DeliveryId })
-                .ToListAsync();
-
-            var uniqueDeliveryIds = deliveryLineMap
-                .Select(dl => dl.DeliveryId)
-                .Where(id => id > 0)
-                .Distinct()
-                .ToList();
-
-            // line weight, line_total (net x unit_price for every line, incl. the split-off ones), delivery totals, status
-            foreach (var deliveryId in uniqueDeliveryIds)
-                await DeliveryTotals.RecalculateAsync(context, deliveryId);
+            await FinishDeliveriesAsync(context, uniqueDeliveryIds);
 
             await transaction.CommitAsync();
         }
@@ -367,6 +366,103 @@ public class ContainerService : IContainerService
         {
             await transaction.RollbackAsync();
             throw;
+        }
+    }
+
+    public async Task UpdateDeliveryLineHoneyTypeAsync(int deliveryLineId, int honeyTypeId)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var containerIds = await context.Containers
+            .Where(c => c.DeliveryLineId == deliveryLineId)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        if (containerIds.Count > 0)
+        {
+            await UpdateHoneyTypeAsync(containerIds, honeyTypeId);
+            return;
+        }
+
+        // Legacy line without containers: nothing to regroup, only the line itself carries the type.
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            await EnsureActiveHoneyTypeAsync(context, honeyTypeId);
+
+            var line = await context.DeliveryLines.AsNoTracking().FirstOrDefaultAsync(l => l.Id == deliveryLineId)
+                ?? throw new InvalidOperationException("Pristatymo eilutė nerasta.");
+
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE delivery_lines SET honey_type_id = {0}, updated_at = NOW() WHERE id = {1}",
+                honeyTypeId, deliveryLineId);
+
+            await FinishDeliveriesAsync(context, new List<int> { line.DeliveryId });
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    private static async Task EnsureActiveHoneyTypeAsync(NordicBeesERPContext context, int honeyTypeId)
+    {
+        var active = await context.HoneyTypes.AnyAsync(h => h.Id == honeyTypeId && h.IsActive);
+        if (!active)
+            throw new InvalidOperationException("Medaus rūšis nerasta arba neaktyvi.");
+    }
+
+    // Merge identical lines, recompute line / delivery totals, and drop the cached receipt so the act is regenerated.
+    private static async Task FinishDeliveriesAsync(NordicBeesERPContext context, List<int> deliveryIds)
+    {
+        foreach (var deliveryId in deliveryIds)
+        {
+            await MergeDuplicateLinesAsync(context, deliveryId);
+
+            // line weight, line_total (net x unit_price for every line, incl. the split-off ones), delivery totals, status
+            await DeliveryTotals.RecalculateAsync(context, deliveryId);
+
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE deliveries SET receipt_pdf_path = NULL WHERE id = {0}", deliveryId);
+        }
+    }
+
+    // Lines of one delivery that agree on (honey type, container type, product, unit price) become one line: the lowest
+    // id survives, the containers move to it, the emptied line is deleted. Different unit_price never merges. Lines
+    // without containers (legacy) are left alone: the totals recompute does not cover them, so merging would drop their weight.
+    private static async Task MergeDuplicateLinesAsync(NordicBeesERPContext context, int deliveryId)
+    {
+        var lines = await context.DeliveryLines.Where(l => l.DeliveryId == deliveryId).ToListAsync();
+        var lineIds = lines.Select(l => l.Id).ToList();
+        var linesWithContainers = (await context.Containers
+            .Where(c => c.DeliveryLineId.HasValue && lineIds.Contains(c.DeliveryLineId.Value))
+            .Select(c => c.DeliveryLineId!.Value)
+            .Distinct()
+            .ToListAsync()).ToHashSet();
+
+        var duplicateGroups = lines
+            .Where(l => linesWithContainers.Contains(l.Id))
+            .GroupBy(l => new { l.HoneyTypeId, l.ContainerType, l.ProductId, l.UnitPrice })
+            .Where(g => g.Count() > 1);
+
+        foreach (var group in duplicateGroups)
+        {
+            var survivorId = group.Min(l => l.Id);
+            foreach (var other in group.Where(l => l.Id != survivorId))
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE containers SET delivery_line_id = {0}, updated_at = NOW() WHERE delivery_line_id = {1}",
+                    survivorId, other.Id);
+                await context.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM delivery_lines WHERE id = {0}", other.Id);
+            }
+
+            var survivorContainers = await context.Containers.Where(c => c.DeliveryLineId == survivorId).ToListAsync();
+            await context.Database.ExecuteSqlRawAsync(
+                "UPDATE delivery_lines SET container_count = {0}, updated_at = NOW() WHERE id = {1}",
+                survivorContainers.Sum(c => c.Quantity), survivorId);
         }
     }
 }

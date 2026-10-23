@@ -22,5 +22,8 @@ public interface IContainerService
     /// <summary>Codes from <paramref name="codes"/> that already exist in containers.</summary>
     Task<List<string>> FindExistingCodesAsync(IEnumerable<string> codes);
     Task<List<Container>> GetByIdsAsync(List<int> ids);
+    /// <summary>Sets the honey type of IN_STOCK / RECEIVED containers; splits / merges delivery lines, recomputes totals, clears the cached receipt.</summary>
     Task UpdateHoneyTypeAsync(List<int> containerIds, int honeyTypeId);
+    /// <summary>Same rules for every container of one delivery line (a legacy line without containers is updated directly).</summary>
+    Task UpdateDeliveryLineHoneyTypeAsync(int deliveryLineId, int honeyTypeId);
 }
