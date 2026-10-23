@@ -235,7 +235,7 @@
                         <MudTd Class="text-center">@line.Unit</MudTd>
                         <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(line.PriceExclVat)</MudTd>
                         <MudTd Class="text-center">@FormatVatRate(line.VatRate)</MudTd>
-                        <MudTd Class="text-right">@FormatAmountHelper.FormatAmount(line.LineTotal)</MudTd>
+                        <MudTd Class="text-right">@FormatAmountHelper.Money(line.LineTotal)</MudTd>
                     </RowTemplate>
                 </MudTable>
                 
@@ -244,16 +244,16 @@
                             <div style="background:#eff6ff; border-radius:8px; padding:16px; min-width:280px;">
                                 <div class="d-flex justify-space-between gap-4">
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">Suma be PVM:</MudText>
-                                    <MudText Typo="Typo.body2">@FormatAmountHelper.FormatAmount(_invoice.SubtotalExclVat) €</MudText>
+                                    <MudText Typo="Typo.body2">@FormatAmountHelper.Money(_invoice.SubtotalExclVat)</MudText>
                                 </div>
                                 <div class="d-flex justify-space-between gap-4 mt-1">
                                     <MudText Typo="Typo.body2" Color="Color.Secondary">PVM:</MudText>
-                                    <MudText Typo="Typo.body2">@FormatAmountHelper.FormatAmount(_invoice.TotalVat) €</MudText>
+                                    <MudText Typo="Typo.body2">@FormatAmountHelper.Money(_invoice.TotalVat)</MudText>
                                 </div>
                                 <MudDivider Class="my-2" />
                                 <div class="d-flex justify-space-between gap-4">
                                     <MudText Typo="Typo.body1" Style="font-weight:600">Iš viso:</MudText>
-                                    <MudText Typo="Typo.body1" Style="font-weight:600">@FormatAmountHelper.FormatAmount(_invoice.TotalInclVat) €</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight:600">@FormatAmountHelper.Money(_invoice.TotalInclVat)</MudText>
                                 </div>
                             </div>
                         </div>
@@ -354,7 +354,7 @@
                             }
                         </MudTd>
                         <MudTd>@payment.Date.ToString("yyyy-MM-dd")</MudTd>
-                        <MudTd Class="text-right">@FormatAmountHelper.Trim(payment.Amount, 2)</MudTd>
+                        <MudTd Class="text-right">@FormatAmountHelper.Money(payment.Amount)</MudTd>
                         <MudTd>@GetPaymentMethodLabel(payment.Method)</MudTd>
                         <MudTd Class="text-center">
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="() => OpenEditPayment(payment)" />
@@ -411,7 +411,7 @@
                         <MudTr @onclick="@(() => NavigateToCreditNote(cn.Id))" Style="cursor:pointer;">
                             <MudTd>@cn.CreditNoteNumber</MudTd>
                             <MudTd>@cn.CreditDate.ToString("yyyy-MM-dd")</MudTd>
-                            <MudTd Class="text-right">-@FormatAmountHelper.Trim(cn.TotalInclVat, 2)</MudTd>
+                            <MudTd Class="text-right">-@FormatAmountHelper.Money(cn.TotalInclVat)</MudTd>
                             <MudTd>
                                 <MudChip T="string" Color="@GetCreditStatusColor(cn.Status)" Variant="Variant.Outlined">@GetCreditStatusLabel(cn.Status)</MudChip>
                             </MudTd>
