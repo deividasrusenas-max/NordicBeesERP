@@ -71,7 +71,7 @@ else
                 <div class="lb-sublist">
                     @foreach (var item in topSection.Items)
                     {
-                        <NavLink href="@item.Href" Match="NavLinkMatch.Prefix" class="lb-sublink">
+                        <NavLink href="@item.Href" Match="@SubLinkMatch(item.Href)" class="@SubLinkClass(item.Href)">
                             <span>@item.Label</span>
                             @if (item.Count > 0)
                             {
@@ -98,7 +98,7 @@ else
                 <div class="lb-sublist">
                     @foreach (var item in group.Section.Items)
                     {
-                        <NavLink href="@item.Href" Match="NavLinkMatch.Prefix" class="lb-sublink">
+                        <NavLink href="@item.Href" Match="@SubLinkMatch(item.Href)" class="@SubLinkClass(item.Href)">
                             <span>@item.Label</span>
                             @if (item.Danger && item.Count > 0)
                             {
@@ -368,6 +368,16 @@ else
     {
         section.Expanded = !section.Expanded;
     }
+
+    // /warehouse/deliveries/{id}/pricing belongs to "Kainos ir mokėjimai", not "Pristatymai"
+    private bool OnDeliveryPricingDetail =>
+        System.Text.RegularExpressions.Regex.IsMatch(_currentPath, @"^/warehouse/deliveries/\d+/pricing/?$");
+
+    private NavLinkMatch SubLinkMatch(string href) =>
+        OnDeliveryPricingDetail && href == "/warehouse/deliveries" ? NavLinkMatch.All : NavLinkMatch.Prefix;
+
+    private string SubLinkClass(string href) =>
+        OnDeliveryPricingDetail && href == "/warehouse/delivery-pricing" ? "lb-sublink active" : "lb-sublink";
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
