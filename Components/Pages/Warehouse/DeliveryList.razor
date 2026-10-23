@@ -15,122 +15,128 @@
 <PageTitle>Pristatymai</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h5" Style="font-weight:600" Class="mb-4">Pristatymai</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-        Href="/warehouse/deliveries/new" Class="mb-2">Naujas pristatymas</MudButton>
+    <MudText Typo="Typo.h5" Class="mb-3">Pristatymai</MudText>
 
-    @if (_selectedDeliveries.Any(d => string.IsNullOrEmpty(d.InvoiceNumber) && IsFarmerSupplier(d.SupplierId) && d.TotalAmount > 0))
+    <MudButton OnClick="@(() => Navigation.NavigateTo("/warehouse/deliveries/new"))"
+               StartIcon="@Icons.Material.Filled.Add"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mb-4"
+               Style="text-transform:none">
+        Naujas pristatymas
+    </MudButton>
+
+    @if (_loading)
     {
-        <MudButton Variant="Variant.Filled" Color="Color.Success"
-                   StartIcon="@Icons.Material.Filled.Receipt"
-                   OnClick="CreateInvoicesForSelected">
-            Išrašyti sąskaitas (@_selectedDeliveries.Count(d => string.IsNullOrEmpty(d.InvoiceNumber)))
-        </MudButton>
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
     }
 
-    <!-- Filters -->
-    <StandardListFilterBar>
-        <MudGrid>
-            <MudItem xs="12" sm="6" md="4">
-                <MudTextField T="string" Value="@_search" ValueChanged="UpdateSearchAsync"
-                    Label="Paieška (numeris, tiekėjas, sąskaita)"
-                    Adornment="Adornment.Start"
-                    AdornmentIcon="@Icons.Material.Filled.Search"
-                    Clearable="true" Immediate="true" FullWidth="@true" Variant="Variant.Text" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4">
-                <MudDateRangePicker DateRange="@_dateRange" DateRangeChanged="UpdateDateRangeAsync"
-                    Label="Laikotarpis" Variant="Variant.Text" FullWidth="@true" Clearable="true" />
-            </MudItem>
-            @if (!string.IsNullOrWhiteSpace(_search) || _dateRange?.Start != null || _dateRange?.End != null || _filterStatus != null)
-            {
-                <MudItem xs="12">
-                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
-                               Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                               OnClick="ClearFilters">
-                        Išvalyti filtrus
-                    </MudButton>
-                </MudItem>
-            }
-        </MudGrid>
-    </StandardListFilterBar>
+    <ListFilterCard Search="@_search"
+                    SearchChanged="UpdateSearchAsync"
+                    SearchLabel="Paieška (numeris, tiekėjas, sąskaita)"
+                    DateRange="@_dateRange"
+                    DateRangeChanged="UpdateDateRangeAsync"
+                    ShowClear="@(!string.IsNullOrWhiteSpace(_search) || _dateRange?.Start != null || _dateRange?.End != null || _tab != 0)"
+                    OnClear="ClearFilters" />
 
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
-        @foreach (var status in _statusDisplay)
+        @foreach (var chip in _quickChips)
         {
-            var isStatusSelected = _filterStatus == status.Key;
-            <MudChip T="string"
-                     Color="@status.Value.Color"
-                     Variant="@(isStatusSelected ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatusFilter(status.Key))"
-                     Size="Size.Small"
-                     Style="@(isStatusSelected ? "" : "opacity:0.7")">
-               @status.Value.Label
-             </MudChip>
+            <FilterChip Selected="@(_tab == chip.Tab)" ActiveColor="@chip.Color" OnClick="@(() => SetTabAsync(chip.Tab))">@chip.Label</FilterChip>
         }
     </div>
 
-    <MudTable T="Delivery" Items="FilteredDeliveries" Hover="true" Dense="true" Loading="_loading"
-        RowClassFunc="@((delivery, i) => _selectedDeliveries.Contains(delivery) ? "selected-row" : "")"
-        OnRowClick="@((TableRowClickEventArgs<Delivery> args) => { if (IsDoubleClick(args.Item)) GoToDelivery(args.Item.Id); })">
-        <HeaderContent>
-            <MudTh Style="width:40px"></MudTh>
-            <MudTh>Data</MudTh>
-            <MudTh>Numeris</MudTh>
-            <MudTh>Tiekėjas</MudTh>
-            <MudTh Style="text-align:right">Netto (kg)</MudTh>
-            <MudTh Style="text-align:center">Tara</MudTh>
-            <MudTh>Būsena</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd @onclick:stopPropagation="true" Style="width:40px">
-                <input type="checkbox"
-                    checked="@_selectedDeliveries.Contains(context)"
-                    @onchange="@(_ => ToggleSelection(context))" />
-            </MudTd>
-            <MudTd>@context.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
-            <MudTd>@context.DeliveryNumber</MudTd>
-            <MudTd>@GetSupplierName(context.SupplierId)</MudTd>
-            <MudTd Class="lakstena-mono" Style="text-align:right">@context.TotalNetWeight.ToString("N1")</MudTd>
-            <MudTd Style="text-align:center">
-                @if (context.BarrelsOwed == 0)
-                {
-                    <MudText Typo="Typo.caption" Style="color:#aaa">-</MudText>
-                }
-                else
-                {
-                    var taraFull = context.BarrelsReturned >= context.BarrelsOwed;
-                    <MudChip T="string" Size="Size.Small" Color="@(taraFull ? Color.Success : Color.Warning)">@context.BarrelsReturned/@context.BarrelsOwed</MudChip>
-                }
-            </MudTd>
-            <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(context.Status, _statusDisplay)"
-                    Icon="@(!string.IsNullOrEmpty(context.InvoiceNumber) ? Icons.Material.Filled.Receipt : null)">
-                    @StatusDisplayHelper.GetLabel(context.Status, _statusDisplay)
-                </MudChip>
-            </MudTd>
-        </RowTemplate>
-        <NoRecordsContent>
-            <MudText>Pristatymų nerasta</MudText>
-        </NoRecordsContent>
-    </MudTable>
+    <SelectionBar Count="_selectedIds.Count" OnCancel="@(() => _selectedIds.Clear())">
+        @if (EligibleSelected.Any())
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Receipt"
+                       OnClick="CreateInvoicesForSelected"
+                       Style="text-transform:none">
+                Išrašyti sąskaitas (@EligibleSelected.Count)
+            </MudButton>
+        }
+    </SelectionBar>
+
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
+        <MudTable T="Delivery" Items="PagedItems" Dense="true" Hover="true" Striped="true" Elevation="0"
+                  RowsPerPage="@PageSize" Style="cursor:default">
+            <HeaderContent>
+                <MudTh Style="min-width:48px;width:48px;">
+                    <input type="checkbox" class="nb-check"
+                           checked="@(AllPageSelected)"
+                           @onchange="@((ChangeEventArgs e) => ToggleSelectAll((bool)e.Value!))"
+                           @onclick:stopPropagation="true" />
+                </MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Numeris</MudTh>
+                <MudTh>Tiekėjas</MudTh>
+                <MudTh Style="text-align:right">Netto (kg)</MudTh>
+                <MudTh Style="text-align:center">Tara</MudTh>
+                <MudTh>Būsena</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="delivery">
+                <MudTd Style="min-width:48px;width:48px;">
+                    <input type="checkbox" class="nb-check"
+                           checked="@_selectedIds.Contains(delivery.Id)"
+                           @onchange="@((ChangeEventArgs e) => ToggleSelection(delivery.Id, (bool)e.Value!))"
+                           @onclick:stopPropagation="true" />
+                </MudTd>
+                <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Style="cursor:pointer">@delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Style="cursor:pointer">@delivery.DeliveryNumber</MudTd>
+                <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Style="cursor:pointer">@GetSupplierName(delivery.SupplierId)</MudTd>
+                <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">@delivery.TotalNetWeight.ToString("N1")</MudTd>
+                <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Style="cursor:pointer;text-align:center">
+                    @if (delivery.BarrelsOwed == 0)
+                    {
+                        <MudText Typo="Typo.caption" Style="color:#aaa">-</MudText>
+                    }
+                    else
+                    {
+                        var taraFull = delivery.BarrelsReturned >= delivery.BarrelsOwed;
+                        <MudChip T="string" Size="Size.Small" Color="@(taraFull ? Color.Success : Color.Warning)">@delivery.BarrelsReturned/@delivery.BarrelsOwed</MudChip>
+                    }
+                </MudTd>
+                <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Style="cursor:pointer">
+                    <MudChip T="string" Size="Size.Small" Style="text-transform:none"
+                             Color="@StatusDisplayHelper.GetColor(delivery.Status, _statusDisplay)"
+                             Icon="@(!string.IsNullOrEmpty(delivery.InvoiceNumber) ? Icons.Material.Filled.Receipt : null)">
+                        @StatusDisplayHelper.GetLabel(delivery.Status, _statusDisplay)
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <ListPager Page="EffectivePage" PageSize="PageSize" TotalCount="FilteredDeliveries.Count" PageChanged="NavigateToPage" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Pristatymų nerasta</MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
 </MudContainer>
 
+<style>
+    input[type=checkbox].nb-check {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #594ae2;
+    }
+</style>
+
 @code {
-    private List<Delivery> _selectedDeliveries = new();
+    private const int PageSize = 50;
+
     private List<Delivery> _deliveries = new();
     private List<NordicBeesERP.Models.BusinessPartner> _suppliers = new();
+    private HashSet<int> _selectedIds = new();
     private bool _loading = true;
 
-    private string? _filterStatus;
+    // Filter state (mirrors the URL; filtering runs over the already loaded list, no reload)
     private string? _search;
     private DateRange? _dateRange;
-    private DateTime? _filterFrom;
-    private DateTime? _filterTo;
-
-    // URL query-string parameters (synchronized with filter state)
-    [SupplyParameterFromQuery(Name = "status")]
-    public string? QStatus { get; set; }
+    private int _tab;
+    private int _page = 1;
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? Q { get; set; }
@@ -141,110 +147,167 @@
     [SupplyParameterFromQuery(Name = "to")]
     public DateTime? QTo { get; set; }
 
-    // Client-side free-text filter over the loaded deliveries (number, supplier name, invoice number)
-    private List<Delivery> FilteredDeliveries => string.IsNullOrWhiteSpace(_search)
-        ? _deliveries
-        : _deliveries.Where(d =>
-            (d.DeliveryNumber != null && d.DeliveryNumber.Contains(_search, StringComparison.OrdinalIgnoreCase)) ||
-            (GetSupplierName(d.SupplierId) != null && GetSupplierName(d.SupplierId).Contains(_search, StringComparison.OrdinalIgnoreCase)) ||
-            (!string.IsNullOrEmpty(d.InvoiceNumber) && d.InvoiceNumber.Contains(_search, StringComparison.OrdinalIgnoreCase)))
-          .ToList();
+    [SupplyParameterFromQuery(Name = "tab")]
+    public int? QTab { get; set; }
 
-    private DateTime _lastClickTime = DateTime.MinValue;
-    private object? _lastClickItem;
+    [SupplyParameterFromQuery(Name = "page")]
+    public int? QPage { get; set; }
 
-    private bool IsDoubleClick(object item)
+    // Tab 0 = all
+    private static readonly (int Tab, string Label, Color Color)[] _quickChips =
     {
-        var now = DateTime.Now;
-        if (_lastClickItem == item && (now - _lastClickTime).TotalMilliseconds < 400)
+        (0, "Visos", Color.Primary),
+        (1, "Neįkainoti", Color.Warning),
+        (2, "Be sąskaitos", Color.Warning),
+        (3, "Negrąžintos statinės", Color.Warning),
+        (4, "Šis mėnuo", Color.Primary),
+    };
+
+    private List<Delivery> _filtered = new();
+    private List<Delivery> FilteredDeliveries => _filtered;
+    private Dictionary<int, string> _supplierNames = new();
+    private int EffectivePage => Math.Clamp(_page, 1, Math.Max(1, (int)Math.Ceiling(_filtered.Count / (double)PageSize)));
+    private List<Delivery> PagedItems => _filtered.Skip((EffectivePage - 1) * PageSize).Take(PageSize).ToList();
+
+    private List<Delivery> GetFiltered()
+    {
+        IEnumerable<Delivery> result = _deliveries;
+
+        if (!string.IsNullOrWhiteSpace(_search))
         {
-            _lastClickItem = null;
-            return true;
+            var term = _search.Trim();
+            result = result.Where(d =>
+                (d.DeliveryNumber != null && d.DeliveryNumber.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+                GetSupplierName(d.SupplierId).Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(d.InvoiceNumber) && d.InvoiceNumber.Contains(term, StringComparison.OrdinalIgnoreCase)));
         }
-        _lastClickItem = item;
-        _lastClickTime = now;
-        return false;
+        if (_dateRange?.Start != null)
+            result = result.Where(d => d.DeliveryDate.Date >= _dateRange.Start.Value.Date);
+        if (_dateRange?.End != null)
+            result = result.Where(d => d.DeliveryDate.Date <= _dateRange.End.Value.Date);
+
+        switch (_tab)
+        {
+            case 1: // Neįkainoti
+                result = result.Where(d => d.Status == "RECEIVED");
+                break;
+            case 2: // Be sąskaitos
+                result = result.Where(d => string.IsNullOrEmpty(d.InvoiceNumber));
+                break;
+            case 3: // Negrąžintos statinės
+                result = result.Where(d => d.BarrelsOwed > d.BarrelsReturned);
+                break;
+            case 4: // Šis mėnuo
+                var startOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                result = result.Where(d => d.DeliveryDate >= startOfMonth);
+                break;
+        }
+        return result.ToList();
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        _filterStatus = QStatus;
-        _search = Q;
-        _dateRange = (QFrom.HasValue || QTo.HasValue) ? new DateRange(QFrom, QTo) : null;
-        _filterFrom = QFrom;
-        _filterTo = QTo;
-
         _suppliers = await CustomerService.GetSuppliersAsync();
         await LoadData();
+    }
+
+    // Only URL query parameters change on filtering/paging: sync state, never reload from the DB.
+    protected override void OnParametersSet()
+    {
+        _search = Q;
+        _dateRange = (QFrom.HasValue || QTo.HasValue) ? new DateRange(QFrom, QTo) : null;
+        _tab = QTab is >= 0 and <= 4 ? QTab.Value : 0;
+        _page = QPage is > 0 ? QPage.Value : 1;
+        _selectedIds.Clear();
+        _filtered = GetFiltered();
     }
 
     private async Task LoadData()
     {
         _loading = true;
-        _deliveries = await DeliveryService.GetFilteredAsync(_filterStatus, null, _filterFrom, _filterTo);
+        _deliveries = await DeliveryService.GetFilteredAsync(null, null, null, null);
+        _supplierNames = _suppliers.ToDictionary(x => x.Id, x => x.Name ?? "");
+        _filtered = GetFiltered();
         _loading = false;
     }
 
-    private async Task UpdateSearchAsync(string? value)
+    private string BuildListUrl(int page) => FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
+        ("q", FilterUrlBuilder.ToQueryValue(_search)),
+        ("from", FilterUrlBuilder.ToQueryValue(_dateRange?.Start)),
+        ("to", FilterUrlBuilder.ToQueryValue(_dateRange?.End)),
+        ("tab", _tab != 0 ? _tab.ToString() : null),
+        ("page", page > 1 ? page.ToString() : null));
+
+    private Task UpdateSearchAsync(string? value)
     {
         _search = value;
-        StateHasChanged();
-        PersistUrl();
+        _page = 1;
+        Navigation.NavigateTo(BuildListUrl(1), replace: true);
+        return Task.CompletedTask;
     }
 
-    private async Task UpdateDateRangeAsync(DateRange? range)
+    private Task UpdateDateRangeAsync(DateRange? range)
     {
         _dateRange = range;
-        _filterFrom = range?.Start;
-        _filterTo = range?.End;
-        await LoadData();
-        PersistUrl();
+        _page = 1;
+        Navigation.NavigateTo(BuildListUrl(1));
+        return Task.CompletedTask;
     }
 
-    private void PersistUrl()
+    private Task SetTabAsync(int tab)
     {
-        var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
-            ("status", FilterUrlBuilder.ToQueryValue(_filterStatus)),
-            ("q", FilterUrlBuilder.ToQueryValue(_search)),
-            ("from", FilterUrlBuilder.ToQueryValue(_filterFrom)),
-            ("to", FilterUrlBuilder.ToQueryValue(_filterTo)));
-        Navigation.NavigateTo(newUrl, replace: true);
+        if (_tab == tab) return Task.CompletedTask;
+        _tab = tab;
+        _page = 1;
+        Navigation.NavigateTo(BuildListUrl(1));
+        return Task.CompletedTask;
+    }
+
+    private Task NavigateToPage(int page)
+    {
+        _page = page;
+        Navigation.NavigateTo(BuildListUrl(page), replace: true);
+        return Task.CompletedTask;
     }
 
     private void ClearFilters()
     {
-        _search = null;
-        _dateRange = null;
-        _filterStatus = null;
-        _filterFrom = null;
-        _filterTo = null;
         Navigation.NavigateTo(Navigation.Uri.Split('?')[0]);
-    }
-
-    private async Task ToggleStatusFilter(string status)
-    {
-        _filterStatus = _filterStatus == status ? null : status;
-        await LoadData();
-        PersistUrl();
-    }
-
-    private void ToggleSelection(Delivery delivery)
-    {
-        if (_selectedDeliveries.Contains(delivery))
-            _selectedDeliveries.Remove(delivery);
-        else
-            _selectedDeliveries.Add(delivery);
     }
 
     private void GoToDelivery(int id)
     {
-        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/warehouse/deliveries/{id}", Navigation.Uri, Navigation.BaseUri);
+        var detailUrl = FilterUrlBuilder.BuildDetailUrl($"/warehouse/deliveries/{id}", BuildListUrl(EffectivePage), Navigation.BaseUri);
         Navigation.NavigateTo(detailUrl);
+    }
+
+    private void ToggleSelection(int id, bool selected)
+    {
+        if (selected) _selectedIds.Add(id);
+        else _selectedIds.Remove(id);
+    }
+
+    private bool AllPageSelected
+    {
+        get
+        {
+            var ids = PagedItems.Select(d => d.Id).ToList();
+            return ids.Count > 0 && ids.All(_selectedIds.Contains);
+        }
+    }
+
+    private void ToggleSelectAll(bool state)
+    {
+        foreach (var d in PagedItems)
+        {
+            if (state) _selectedIds.Add(d.Id);
+            else _selectedIds.Remove(d.Id);
+        }
     }
 
     private string GetSupplierName(int id)
     {
-        return _suppliers.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+        return _supplierNames.TryGetValue(id, out var name) ? name : $"#{id}";
     }
 
     // Bulk invoicing is the 6% (ULAK) flow: only farmers (individuals) with a compensation VAT code.
@@ -255,21 +318,24 @@
         return supplier != null && supplier.IsIndividual && !string.IsNullOrWhiteSpace(supplier.CompensationVatCode);
     }
 
+    private List<Delivery> EligibleSelected => _filtered
+        .Where(d => _selectedIds.Contains(d.Id)
+                 && string.IsNullOrEmpty(d.InvoiceNumber)
+                 && IsFarmerSupplier(d.SupplierId)
+                 && d.TotalAmount > 0)
+        .ToList();
+
     private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
     {
-        { "RECEIVED", ("Priimtas", Color.Default) },
-        { "PRICED", ("Įkainotas", Color.Info) },
+        { "RECEIVED", ("Priimtas", Color.Info) },
+        { "PRICED", ("Įkainotas", Color.Error) },
         { "PARTIAL_PAID", ("Dalinai", Color.Warning) },
         { "PAID", ("Apmokėtas", Color.Success) }
     };
 
     private async Task CreateInvoicesForSelected()
     {
-        var eligible = _selectedDeliveries
-            .Where(d => string.IsNullOrEmpty(d.InvoiceNumber)
-                     && IsFarmerSupplier(d.SupplierId)
-                     && d.TotalAmount > 0)
-            .ToList();
+        var eligible = EligibleSelected;
 
         if (!eligible.Any())
         {
@@ -306,11 +372,7 @@
             Snackbar.Add($"{created} sąskaita(-os) išrašyta(-os) (juodraščiai)", Severity.Success);
         foreach (var failure in failures)
             Snackbar.Add($"Nepavyko išrašyti – {failure}", Severity.Error);
-        _selectedDeliveries.Clear();
+        _selectedIds.Clear();
         await LoadData();
     }
 }
-
-<style>
-    .selected-row { background-color: #e3f2fd !important; }
-</style>
