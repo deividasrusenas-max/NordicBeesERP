@@ -345,7 +345,7 @@
         </TitleContent>
         <DialogContent>
             <MudSelect T="int?" @bind-Value="_assignHoneyTypeId" Label="Medaus rūšis" Variant="Variant.Outlined" Required="true">
-                @foreach (var h in _honeyTypes)
+                @foreach (var h in _activeHoneyTypes)
                 {
                     <MudSelectItem T="int?" Value="h.Id">@h.Name</MudSelectItem>
                 }
@@ -397,6 +397,7 @@
     private List<Warehouse> _warehouses = new();
     private List<BusinessPartner> _suppliers = new();
     private List<HoneyType> _honeyTypes = new();
+    private List<HoneyType> _activeHoneyTypes = new();
     private List<RawMaterialType> _rawMaterialTypes = new();
     private readonly Dictionary<int, int> _deliveryLineToRawTypeId = new();
 
@@ -628,6 +629,7 @@
         _warehouses = (await WarehouseService.GetAllAsync()).ToList();
         _suppliers = await CustomerService.GetSuppliersAsync();
         _honeyTypes = await HoneyTypeService.GetAllAsync();
+        _activeHoneyTypes = await HoneyTypeService.GetActiveAsync();
         _rawMaterialTypes = await RawMaterialTypeService.GetActiveAsync();
     }
 
