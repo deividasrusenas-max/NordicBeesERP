@@ -10,7 +10,7 @@ public static class DeliveryStatusHelper
 {
     public static readonly IReadOnlyDictionary<string, (string Label, Color Color)> Map = new Dictionary<string, (string Label, Color Color)>
     {
-        { "RECEIVED", ("Neįkainotas", Color.Default) },
+        { "RECEIVED", ("Priimtas", Color.Default) },
         { "PRICED", ("Neapmokėtas", Color.Error) },
         { "PARTIAL_PAID", ("Dalinai apmokėtas", Color.Warning) },
         { "PAID", ("Apmokėtas", Color.Success) }

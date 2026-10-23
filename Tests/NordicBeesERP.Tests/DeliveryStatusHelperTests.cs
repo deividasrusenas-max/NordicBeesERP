@@ -17,11 +17,11 @@ public class DeliveryStatusHelperTests
     [Fact]
     public void Labels_AreSharedAcrossAllStatuses()
     {
-        Assert.Equal("Neįkainotas", DeliveryStatusHelper.GetLabel("RECEIVED"));
+        Assert.Equal("Priimtas", DeliveryStatusHelper.GetLabel("RECEIVED"));
         Assert.Equal("Neapmokėtas", DeliveryStatusHelper.GetLabel("PRICED"));
         Assert.Equal("Dalinai apmokėtas", DeliveryStatusHelper.GetLabel("PARTIAL_PAID"));
         Assert.Equal("Apmokėtas", DeliveryStatusHelper.GetLabel("PAID"));
         Assert.Equal(Color.Success, DeliveryStatusHelper.GetColor("PAID"));
-        Assert.Equal("Neįkainotas", DeliveryStatusHelper.GetLabel(null));
+        Assert.Equal("Priimtas", DeliveryStatusHelper.GetLabel(null));
     }
 }
