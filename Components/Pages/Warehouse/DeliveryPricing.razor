@@ -64,9 +64,9 @@
                 <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Class="lakstena-mono" Style="cursor:pointer;text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
                 <MudTd @ondblclick="@(() => OpenPricingDetail(d.Id))" Style="cursor:pointer">
                     @{
-                        var badge = GetStatusBadge(d);
+                        var statusKey = DeliveryStatusHelper.KeyFromAmounts(d.DebtBase, d.PaidAmount);
                     }
-                    <MudChip T="string" Size="Size.Small" Style="text-transform:none" Color="@badge.Color">@badge.Label</MudChip>
+                    <MudChip T="string" Size="Size.Small" Style="text-transform:none" Color="@DeliveryStatusHelper.GetColor(statusKey)">@DeliveryStatusHelper.GetLabel(statusKey)</MudChip>
                 </MudTd>
                 <MudTd>
                     @if (d.InvoiceId != null)
@@ -221,13 +221,6 @@
     }
 
     private string GetSupplierName(int id) => _supplierNames.TryGetValue(id, out var name) ? name : $"#{id}";
-
-    private (string Label, Color Color) GetStatusBadge(Delivery d) => (d.DebtBase, d.PaidAmount) switch {
-        _ when d.DebtBase <= 0 => ("Priimtas", Color.Default),
-        _ when d.PaidAmount <= 0 => ("Neapmokėtas", Color.Error),
-        _ when d.PaidAmount >= d.DebtBase => ("Apmokėtas", Color.Success),
-        _ => ("Dalinai", Color.Warning)
-    };
 
     private string GetDebtStyle(decimal debt) => debt > 0 ? "color:red;font-weight:bold" : "";
 

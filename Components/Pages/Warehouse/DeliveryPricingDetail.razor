@@ -157,7 +157,7 @@
             </MudItem>
             <MudItem xs="4">
                 <MudPaper Elevation="0" Class="pa-4 card-summary card-debt" Style="height:100px">
-                    <MudText Typo="Typo.caption" Style="color:#666">@StatusDisplayHelper.GetLabel(_delivery?.Status ?? "RECEIVED", _deliveryStatusDisplay)</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#666">@DeliveryStatusHelper.GetLabel(_delivery?.Status)</MudText>
                     <MudText Typo="Typo.h5" Style="font-weight:600; color:#c62828">
                         @FormatAmountHelper.Trim(_debtDisplay, 2) €
                     </MudText>
@@ -517,13 +517,6 @@
         _ => type ?? "-"
     };
 
-    private static readonly Dictionary<string, (string Label, Color Color)> _deliveryStatusDisplay = new()
-    {
-        ["RECEIVED"] = ("Priimtas", Color.Default),
-        ["PRICED"] = ("Įkainotas", Color.Info),
-        ["PARTIAL_PAID"] = ("Dalinai apmokėtas", Color.Warning),
-        ["PAID"] = ("Apmokėtas", Color.Success),
-    };
 
     private string GetPaymentMethodText(string method) => method switch
     {

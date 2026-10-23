@@ -31,7 +31,7 @@
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
                 <MudText Typo="Typo.h5">Pristatymas @_delivery.DeliveryNumber</MudText>
-                <MudChip T="string" Color="@StatusDisplayHelper.GetColor(_delivery.Status, _statusDisplay)">@StatusDisplayHelper.GetLabel(_delivery.Status, _statusDisplay)</MudChip>
+                <MudChip T="string" Color="@DeliveryStatusHelper.GetColor(_delivery.Status)">@DeliveryStatusHelper.GetLabel(_delivery.Status)</MudChip>
                 @if (_delivery.SupplierSignedAt.HasValue)
                 {
                     <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.VerifiedUser">
@@ -398,13 +398,6 @@
         _ => containerType
     };
 
-    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
-    {
-        { "RECEIVED", ("Priimtas", Color.Default) },
-        { "PRICED", ("Įkainotas", Color.Info) },
-        { "PARTIAL_PAID", ("Dalinai", Color.Warning) },
-        { "PAID", ("Apmokėtas", Color.Success) }
-    };
 
     private string GetContainerStatusName(string? status) => status switch
     {

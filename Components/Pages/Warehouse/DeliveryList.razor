@@ -99,9 +99,9 @@
                 </MudTd>
                 <MudTd @ondblclick="@(() => GoToDelivery(delivery.Id))" Style="cursor:pointer">
                     <MudChip T="string" Size="Size.Small" Style="text-transform:none"
-                             Color="@StatusDisplayHelper.GetColor(delivery.Status, _statusDisplay)"
+                             Color="@DeliveryStatusHelper.GetColor(delivery.Status)"
                              Icon="@(!string.IsNullOrEmpty(delivery.InvoiceNumber) ? Icons.Material.Filled.Receipt : null)">
-                        @StatusDisplayHelper.GetLabel(delivery.Status, _statusDisplay)
+                        @DeliveryStatusHelper.GetLabel(delivery.Status)
                     </MudChip>
                 </MudTd>
             </RowTemplate>
@@ -325,13 +325,6 @@
                  && d.TotalAmount > 0)
         .ToList();
 
-    private static readonly Dictionary<string, (string Label, Color Color)> _statusDisplay = new()
-    {
-        { "RECEIVED", ("Priimtas", Color.Info) },
-        { "PRICED", ("Įkainotas", Color.Error) },
-        { "PARTIAL_PAID", ("Dalinai", Color.Warning) },
-        { "PAID", ("Apmokėtas", Color.Success) }
-    };
 
     private async Task CreateInvoicesForSelected()
     {
