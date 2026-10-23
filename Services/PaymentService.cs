@@ -16,6 +16,8 @@ namespace NordicBeesERP.Services
 {
     public class PaymentService : IPaymentService
     {
+        private const int DuplicateWindowSeconds = 120;
+
         private readonly IDbContextFactory<NordicBeesERPContext> _contextFactory;
 
         public PaymentService(IDbContextFactory<NordicBeesERPContext> contextFactory)
@@ -36,6 +38,11 @@ namespace NordicBeesERP.Services
             string? notes,
             int userId)
         {
+            if (amount <= 0)
+            {
+                throw new InvalidOperationException("Mokėjimo suma turi būti didesnė už 0.");
+            }
+
             using var context = await _contextFactory.CreateDbContextAsync();
 
             // Validate invoices exist and get their details
@@ -49,19 +56,58 @@ namespace NordicBeesERP.Services
                 throw new InvalidOperationException("One or more invoices not found");
             }
 
-            // Validate amounts - check each invoice can be paid
+            if (invoices.Select(i => i.CustomerId).Distinct().Count() > 1)
+            {
+                throw new InvalidOperationException("Visos sąskaitos turi būti to paties kliento.");
+            }
+
+            if (invoices.Any(i => i.Status == InvoiceStatus.Draft || i.Status == InvoiceStatus.Cancelled))
+            {
+                throw new InvalidOperationException("Negalima registruoti mokėjimo juodraščiui ar anuliuotai sąskaitai.");
+            }
+
+            var customerId = invoices[0].CustomerId;
+
+            // Duplicate guard: same customer/amount/date/user/invoice set registered moments ago (double submit)
+            var duplicateSince = DateTime.UtcNow.AddSeconds(-DuplicateWindowSeconds);
+            var recent = await context.Payments
+                .Include(p => p.Allocations)
+                .Where(p => p.CustomerId == customerId && p.Amount == amount && p.CreatedBy == userId && p.CreatedAt >= duplicateSince)
+                .ToListAsync();
+            var requestedSet = invoiceIds.ToHashSet();
+            if (recent.Any(p => p.PaymentDate.Date == paymentDate.Date
+                                && p.Allocations.Select(a => a.InvoiceId).ToHashSet().SetEquals(requestedSet)))
+            {
+                throw new InvalidOperationException("Toks mokėjimas ką tik užregistruotas – patikrinkite mokėjimų sąrašą.");
+            }
+
+            // Remaining per invoice = total - allocations - credit notes (same credited rule as invoice status recalculation)
+            var allocatedByInvoice = await context.PaymentAllocations
+                .Where(a => invoiceIds.Contains(a.InvoiceId))
+                .GroupBy(a => a.InvoiceId)
+                .Select(g => new { InvoiceId = g.Key, Sum = g.Sum(a => a.AllocatedAmount) })
+                .ToDictionaryAsync(x => x.InvoiceId, x => x.Sum);
+            var creditedByInvoice = await CreditNoteDebtRule.GetCreditedByInvoiceAsync(context, invoiceIds);
+
+            var plannedAllocations = new List<(int InvoiceId, decimal Amount)>();
+            decimal remainingAmount = amount;
             foreach (var invoice in invoices)
             {
-                var remaining = invoice.TotalInclVat - invoice.PaidAmount;
-                if (remaining <= 0)
+                var remainingOnInvoice = invoice.TotalInclVat
+                    - allocatedByInvoice.GetValueOrDefault(invoice.Id)
+                    - creditedByInvoice.GetValueOrDefault(invoice.Id);
+                if (remainingOnInvoice <= 0)
                 {
                     throw new InvalidOperationException($"Invoice {invoice.Id} is already fully paid");
                 }
-            }
 
-            // Get customer ID from first invoice (all invoices should have same customer)
-            var firstInvoice = invoices[0];
-            var customerId = firstInvoice.CustomerId;
+                var allocateAmount = Math.Min(remainingAmount, remainingOnInvoice);
+                if (allocateAmount > 0)
+                {
+                    plannedAllocations.Add((invoice.Id, allocateAmount));
+                    remainingAmount -= allocateAmount;
+                }
+            }
 
             // Create payment with invoice_id set when there's exactly one invoice
             var payment = new Payment
@@ -89,27 +135,15 @@ namespace NordicBeesERP.Services
             await context.SaveChangesAsync();
 
             // Create allocations
-            decimal remainingAmount = amount;
-            foreach (var invoice in invoices)
+            foreach (var (invoiceId, allocateAmount) in plannedAllocations)
             {
-                var remainingOnInvoice = invoice.TotalInclVat - invoice.PaidAmount;
-                var allocateAmount = Math.Min(remainingAmount, remainingOnInvoice);
-
-                if (allocateAmount > 0)
+                context.PaymentAllocations.Add(new PaymentAllocation
                 {
-                    var allocation = new PaymentAllocation
-                    {
-                        PaymentId = payment.Id,
-                        InvoiceId = invoice.Id,
-                        AllocatedAmount = allocateAmount,
-                        AllocatedAt = DateTime.UtcNow
-                    };
-
-                    context.PaymentAllocations.Add(allocation);
-                    remainingAmount -= allocateAmount;
-                }
-
-                if (remainingAmount <= 0) break;
+                    PaymentId = payment.Id,
+                    InvoiceId = invoiceId,
+                    AllocatedAmount = allocateAmount,
+                    AllocatedAt = DateTime.UtcNow
+                });
             }
 
             await context.SaveChangesAsync();
@@ -127,10 +161,10 @@ namespace NordicBeesERP.Services
                 payment.Amount,
                 payment.PaymentMethod,
                 payment.ReferenceNumber,
-                Allocations = invoices.Select((inv, i) => new
+                Allocations = plannedAllocations.Select(a => new
                 {
-                    InvoiceId = inv.Id,
-                    AllocatedAmount = amount
+                    a.InvoiceId,
+                    AllocatedAmount = a.Amount
                 })
             }));
 
