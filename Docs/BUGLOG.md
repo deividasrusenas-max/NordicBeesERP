@@ -1926,3 +1926,11 @@ Follow-up to the 2026-10-21 run, where DB-backed tests were written but not run.
 - **Guardrail added**: none.
 - **Category**: infra
 - **Error class**: `staging-migration-drift` (reused verbatim). Status: N/A — unguarded; a periodic test-DB vs prod schema diff would catch it.
+
+### 2026-10-24 — Prod: /_framework/blazor.web.js returned 404 (Docker restore ran before the sources were copied)
+- **Symptom**: after deploying 3932894, `/_framework/blazor.web.js` was 404 on both prod ports (8080, 8081) — the Blazor client never started.
+- **Root cause**: 3932894 split the Dockerfile into `COPY NordicBeesERP.csproj` + `dotnet restore` + `COPY . .` for layer caching. A restore with only the .csproj present does not see the .razor files, so the implicit framework-assets package is not restored and `publish --no-restore` omits `wwwroot/_framework/blazor.web.js`. Build and deploy still succeeded; nothing checked the published output.
+- **Fix**: Dockerfile build stage copies all sources first, then restore, then publish `--no-restore`, then `RUN test -f /app/publish/wwwroot/_framework/blazor.web.js || (echo ... && exit 1)` so the build fails if the file is missing. Verified with `docker build`: old Dockerfile → file absent in the image, new one → present (200645 bytes). Final stage and .dockerignore unchanged.
+- **Guardrail added**: the `test -f` step in the build stage (mechanical, fails the CI build). No smoke test of the deployed URL yet.
+- **Category**: infra
+- **Error class**: `docker-restore-before-source-copy` (new). Status: monitoring.
