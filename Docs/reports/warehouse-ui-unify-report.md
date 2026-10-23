@@ -74,3 +74,19 @@ ed09c93 refactor(ui): extract shared list components from invoices list
 Sąskaitos detalėje (`InvoiceView`) naudojamas `Color.Success` ir juodraščiui du užpildyti mygtukai – tai prieštarauja §22 ir vieno pagrindinio mygtuko taisyklei. Sandėlio languose naudojamas `Color.Primary` ir vienas užpildytas mygtukas; sąskaitos detalė paliko kaip buvo.
 
 Atmintinė: nordicbees-erp · darbai +1 ✓0
+
+## Testai po DB įjungimo
+
+Ryšys: `nc -zv -w 5 100.110.26.80 3306` → `Connection to 100.110.26.80 port 3306 [tcp/mysql] succeeded!`. `git status --short` švarus, šaka `main`, HEAD `3ce552d`.
+
+Pilnas `dotnet test` (log `/tmp/test-full.log`), tikra suvestinės eilutė:
+
+```
+Passed!  - Failed:     0, Passed:  1912, Skipped:     0, Total:  1912, Duration: 3 m 36 s - NordicBeesERP.Tests.dll (net10.0)
+```
+
+- Bazė (prieš 1 fazę): 1900 praėjo / 0 nepavyko. Dabar: 1912 praėjo / 0 nepavyko.
+- Skirtumas 12 = nauji testai, visi praeina (atskiras paleidimas su `--filter`: `Passed: 12, Failed: 0`): `DeliveryStatusHelperTests` (5) ir `FormatAmountHelperMoneyTests` (7).
+- Nepavykusių testų: 0 (`grep -E "^\s+Failed "` → 0 eilučių), todėl (a)/(b)/(c) klasifikuoti nėra ko; pataisymų commitų šiame žingsnyje nereikėjo, `/code-review` nebuvo reikalingas.
+- Ankstesnis 554 nepavykusių rezultatas buvo vien dėl nepasiekiamos DB (`Connect Timeout expired`) – dabar paneigtas: regresijų nėra.
+- Migracijos ir DB komandos nevykdytos.
