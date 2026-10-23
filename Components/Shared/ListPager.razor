@@ -1,0 +1,57 @@
+@namespace NordicBeesERP.Components.Shared
+@using MudBlazor
+
+@if (TotalCount > PageSize)
+{
+    var totalPages = (int)Math.Ceiling((double)TotalCount / PageSize);
+    var Page = Math.Clamp(this.Page, 1, totalPages);
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="pa-2">
+        <MudButton Variant="Variant.Outlined"
+                   Size="Size.Small"
+                   Disabled="@(Page <= 1)"
+                   OnClick="@(() => PageChanged.InvokeAsync(Page - 1))"
+                   StartIcon="@Icons.Material.Filled.ChevronLeft">
+            Ankstesnė
+        </MudButton>
+
+        @for (int i = 0; i < totalPages; i++)
+        {
+            var pageNum = i + 1;
+            if (ShouldShowPage(pageNum, Page, totalPages))
+            {
+                if (i > 0 && !ShouldShowPage(pageNum - 1, Page, totalPages))
+                {
+                    <MudText Class="mx-1">...</MudText>
+                }
+                <MudButton Variant="@(pageNum == Page ? Variant.Filled : Variant.Outlined)"
+                           Color="@(pageNum == Page ? Color.Primary : Color.Default)"
+                           Size="Size.Small"
+                           OnClick="@(() => PageChanged.InvokeAsync(pageNum))">
+                    @pageNum
+                </MudButton>
+            }
+        }
+
+        <MudButton Variant="Variant.Outlined"
+                   Size="Size.Small"
+                   Disabled="@(Page >= totalPages)"
+                   OnClick="@(() => PageChanged.InvokeAsync(Page + 1))"
+                   EndIcon="@Icons.Material.Filled.ChevronRight">
+            Kitas
+        </MudButton>
+    </MudStack>
+}
+
+@code {
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 50;
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+
+    private static bool ShouldShowPage(int page, int currentPage, int totalPages)
+    {
+        if (page == 1 || page == totalPages) return true;
+        if (Math.Abs(page - currentPage) <= 2) return true;
+        return false;
+    }
+}

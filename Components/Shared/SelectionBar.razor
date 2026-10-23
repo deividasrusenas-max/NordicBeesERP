@@ -1,0 +1,25 @@
+@namespace NordicBeesERP.Components.Shared
+@using MudBlazor
+
+@* "Pasirinkta: N" bar for rows ticked in a list; bulk actions go into ChildContent. *@
+@if (Count > 0)
+{
+    <MudPaper Elevation="0" Rounded="true" Square="false" Class="mb-2 pa-3 d-flex align-center justify-space-between"
+              Style="background:#e8f0fe; border-radius:8px;">
+        <MudText Typo="Typo.body1" Style="color:#1976d2;font-weight:500;">
+            Pasirinkta: @Count
+        </MudText>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" OnClick="OnCancel">
+                Atšaukti
+            </MudButton>
+            @ChildContent
+        </div>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public int Count { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

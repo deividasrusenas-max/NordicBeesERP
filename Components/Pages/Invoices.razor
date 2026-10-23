@@ -66,125 +66,55 @@
     }
 
     <!-- Filter section -->
-    <StandardListFilterBar>
-        <MudGrid>
-            <MudItem xs="12" sm="6" md="4">
-                <MudTextField Value="@_filterSearch"
-                                ValueChanged="@(async (string val) => await UpdateFilterSearchAsync(val))"
-                                Label="Paieška pagal Nr. arba klientą"
-                               Variant="Variant.Text"
-                               Immediate="true"
-                               FullWidth="@true"
-                               Clearable="true"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Adornment="Adornment.Start" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4">
-                 <MudDateRangePicker DateRange="@_dateRange"
-                                        DateRangeChanged="@(async (DateRange dr) => await UpdateDateRangeAsync(dr))"
-                                    Label="Data (nuo / iki)"
-                                     Variant="Variant.Text"
-                                     FullWidth="@true"
-                                     Clearable="true" Editable="true" DateFormat="yyyy-MM-dd" />
-            </MudItem>
-            @if (!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null || _selectedStatuses.Any())
-            {
-                <MudItem xs="12">
-                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
-                               Variant="Variant.Text"
-                               Color="Color.Secondary"
-                               Size="Size.Small"
-                                 OnClick="@(async () => await ClearFiltersAsync())">
-                        Išvalyti filtrus
-                    </MudButton>
-                </MudItem>
-            }
-        </MudGrid>
-    </StandardListFilterBar>
+    <ListFilterCard Search="@_filterSearch"
+                    SearchChanged="UpdateFilterSearchAsync"
+                    SearchLabel="Paieška pagal Nr. arba klientą"
+                    DateRange="@_dateRange"
+                    DateRangeChanged="UpdateDateRangeAsync"
+                    ShowClear="@(!string.IsNullOrEmpty(_filterSearch) || _dateRange?.Start != null || _selectedStatuses.Any())"
+                    OnClear="ClearFiltersAsync" />
 
     <!-- Unified quick-filter + status chip row -->
     @if (_invoiceType != "KLAK")
     {
     <div class="d-flex flex-wrap gap-2 mb-3 align-center">
-        <MudChip T="string"
-                 Color="@(_selectedTab == 0 ? Color.Primary : Color.Default)"
-                 Variant="@(_selectedTab == 0 ? Variant.Filled : Variant.Outlined)"
-                 Style="text-transform:none;"
-                 Size="Size.Small"
-                 OnClick="@(async () => { if (_selectedTab != 0) await OnTabChangedAsync(0); })">
-            Visos
-        </MudChip>
-        <MudChip T="string"
-                  Color="@(_selectedTab == 1 ? Color.Error : Color.Default)"
-                  Variant="@(_selectedTab == 1 ? Variant.Filled : Variant.Outlined)"
-                  Style="text-transform:none;"
-                  Size="Size.Small"
-                  OnClick="@(async () => { if (_selectedTab != 1) await OnTabChangedAsync(1); })">
-             Neapmokėtos
-         </MudChip>
-          <MudChip T="string"
-                   Color="@(_selectedTab == 2 ? Color.Warning : Color.Default)"
-                   Variant="@(_selectedTab == 2 ? Variant.Filled : Variant.Outlined)"
-                   Style="text-transform:none;"
-                   Size="Size.Small"
-                   OnClick="@(async () => { if (_selectedTab != 2) await OnTabChangedAsync(2); })">
-             Vėluojančios
-         </MudChip>
-          <MudChip T="string"
-                   Color="@(_selectedTab == 3 ? Color.Primary : Color.Default)"
-                   Variant="@(_selectedTab == 3 ? Variant.Filled : Variant.Outlined)"
-                   Style="text-transform:none;"
-                   Size="Size.Small"
-                   OnClick="@(async () => { if (_selectedTab != 3) await OnTabChangedAsync(3); })">
-             Šis mėnuo
-         </MudChip>
+        <FilterChip Selected="@(_selectedTab == 0)" OnClick="@(async () => { if (_selectedTab != 0) await OnTabChangedAsync(0); })">Visos</FilterChip>
+        <FilterChip Selected="@(_selectedTab == 1)" ActiveColor="Color.Error" OnClick="@(async () => { if (_selectedTab != 1) await OnTabChangedAsync(1); })">Neapmokėtos</FilterChip>
+        <FilterChip Selected="@(_selectedTab == 2)" ActiveColor="Color.Warning" OnClick="@(async () => { if (_selectedTab != 2) await OnTabChangedAsync(2); })">Vėluojančios</FilterChip>
+        <FilterChip Selected="@(_selectedTab == 3)" OnClick="@(async () => { if (_selectedTab != 3) await OnTabChangedAsync(3); })">Šis mėnuo</FilterChip>
 
         @* Status chips (multi-select) — NO "Būsena:" label, "Paid/Apmokėta" excluded per v2 *@
         @foreach (var status in _availableStatuses)
         {
             @if (status != "Paid")
             {
-                var isSelected = _selectedStatuses.Contains(status);
                 var chipColor = status == "Confirmed" ? Color.Info : Color.Default;
-                <MudChip T="string"
-                          Color="@chipColor"
-                          Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                          OnClick="@(async () => await ToggleStatusAsync(status))"
-                          Size="Size.Small"
-                          Style="@(isSelected ? "" : "opacity:0.7")">
+                <FilterChip Selected="@_selectedStatuses.Contains(status)"
+                            ActiveColor="chipColor" InactiveColor="chipColor" DimWhenInactive="true"
+                            OnClick="@(async () => await ToggleStatusAsync(status))">
                     @StatusDisplayHelper.GetLabel(status, _statusDisplay)
-                </MudChip>
+                </FilterChip>
             }
         }
     </div>
     }
 
     <!-- Bulk actions bar -->
-    @if (_selectedInvoices.Count > 0 && _invoiceType != "KLAK")
+    @if (_invoiceType != "KLAK")
     {
-        <MudPaper Elevation="0" Rounded="true" Square="false" Class="mb-2 pa-3 d-flex align-center justify-space-between"
-                  Style="background:#e8f0fe; border-radius:8px;">
-            <MudText Typo="Typo.body1" Style="color:#1976d2;font-weight:500;">
-                Pasirinkta: @_selectedInvoices.Count
-            </MudText>
-            <div class="d-flex gap-2">
-                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
-                           OnClick="@(() => { _selectedInvoices.Clear(); StateHasChanged(); })">
-                    Atšaukti
-                </MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                           StartIcon="@Icons.Material.Filled.PictureAsPdf"
-                            OnClick="@(async () => await GenerateBulkPdfAsync())"
-                           Disabled="@_isGenerating"
-                           Style="text-transform:none">
-                    @if (_isGenerating)
-                    {
-                        <MudProgressCircular Size="Size.Small" Color="Color.Default" />
-                    }
-                    Generuoti PDF
-                </MudButton>
-            </div>
-        </MudPaper>
+        <SelectionBar Count="_selectedInvoices.Count" OnCancel="@(() => { _selectedInvoices.Clear(); StateHasChanged(); })">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                       OnClick="@(async () => await GenerateBulkPdfAsync())"
+                       Disabled="@_isGenerating"
+                       Style="text-transform:none">
+                @if (_isGenerating)
+                {
+                    <MudProgressCircular Size="Size.Small" Color="Color.Default" />
+                }
+                Generuoti PDF
+            </MudButton>
+        </SelectionBar>
     }
 
     <!-- Table -->
@@ -291,45 +221,7 @@
                 </MudTd>
             </RowTemplate>
             <PagerContent>
-                @if (FilteredItems.Count > PageSize)
-                {
-                    var totalPages = (int)Math.Ceiling((double)FilteredItems.Count / PageSize);
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="pa-2">
-                        <MudButton Variant="Variant.Outlined" 
-                                   Size="Size.Small"
-                                   Disabled="@(_currentPage <= 1)"
-                                   OnClick="@(() => NavigateToPage(_currentPage - 1))"
-                                   StartIcon="@Icons.Material.Filled.ChevronLeft">
-                            Ankstesnė
-                        </MudButton>
-                        
-                        @for (int i = 0; i < totalPages; i++)
-                        {
-                            var pageNum = i + 1;
-                            if (ShouldShowPage(pageNum, _currentPage, totalPages))
-                            {
-                                if (i > 0 && !ShouldShowPage(pageNum - 1, _currentPage, totalPages))
-                                {
-                                    <MudText Class="mx-1">...</MudText>
-                                }
-                                <MudButton Variant="@(pageNum == _currentPage ? Variant.Filled : Variant.Outlined)"
-                                           Color="@(pageNum == _currentPage ? Color.Primary : Color.Default)"
-                                           Size="Size.Small"
-                                           OnClick="@(() => NavigateToPage(pageNum))">
-                                    @pageNum
-                                </MudButton>
-                            }
-                        }
-                        
-                        <MudButton Variant="Variant.Outlined" 
-                                   Size="Size.Small"
-                                   Disabled="@(_currentPage >= totalPages)"
-                                   OnClick="@(() => NavigateToPage(_currentPage + 1))"
-                                   EndIcon="@Icons.Material.Filled.ChevronRight">
-                            Kitas
-                        </MudButton>
-                    </MudStack>
-                }
+                <ListPager Page="_currentPage" PageSize="PageSize" TotalCount="FilteredItems.Count" PageChanged="NavigateToPage" />
             </PagerContent>
             <NoRecordsContent>
                 <MudText Class="text-center py-4">Įrašų nėra</MudText>
@@ -379,45 +271,7 @@
                 </MudTd>
             </RowTemplate>
             <PagerContent>
-                @if (_creditNoteItems.Count > PageSize)
-                {
-                    var totalPages = (int)Math.Ceiling((double)_creditNoteItems.Count / PageSize);
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Class="pa-2">
-                        <MudButton Variant="Variant.Outlined" 
-                                   Size="Size.Small"
-                                   Disabled="@(_currentPage <= 1)"
-                                   OnClick="@(() => NavigateToPage(_currentPage - 1))"
-                                   StartIcon="@Icons.Material.Filled.ChevronLeft">
-                            Ankstesnė
-                        </MudButton>
-                        
-                        @for (int i = 0; i < totalPages; i++)
-                        {
-                            var pageNum = i + 1;
-                            if (ShouldShowPage(pageNum, _currentPage, totalPages))
-                            {
-                                if (i > 0 && !ShouldShowPage(pageNum - 1, _currentPage, totalPages))
-                                {
-                                    <MudText Class="mx-1">...</MudText>
-                                }
-                                <MudButton Variant="@(pageNum == _currentPage ? Variant.Filled : Variant.Outlined)"
-                                           Color="@(pageNum == _currentPage ? Color.Primary : Color.Default)"
-                                           Size="Size.Small"
-                                           OnClick="@(() => NavigateToPage(pageNum))">
-                                    @pageNum
-                                </MudButton>
-                            }
-                        }
-                        
-                        <MudButton Variant="Variant.Outlined" 
-                                   Size="Size.Small"
-                                   Disabled="@(_currentPage >= totalPages)"
-                                   OnClick="@(() => NavigateToPage(_currentPage + 1))"
-                                   EndIcon="@Icons.Material.Filled.ChevronRight">
-                            Kitas
-                        </MudButton>
-                    </MudStack>
-                }
+                <ListPager Page="_currentPage" PageSize="PageSize" TotalCount="_creditNoteItems.Count" PageChanged="NavigateToPage" />
             </PagerContent>
             <NoRecordsContent>
                 <MudText Class="text-center py-4">Įrašų nėra</MudText>
@@ -741,7 +595,7 @@
     }
 
     // Pagination navigation
-    private void NavigateToPage(int page)
+    private Task NavigateToPage(int page)
     {
         _currentPage = page;
         var newUrl = FilterUrlBuilder.Build(Navigation.Uri.Split('?')[0],
@@ -753,14 +607,7 @@
             ("type", !string.IsNullOrEmpty(_invoiceType) && _invoiceType != "LAK" ? _invoiceType : null),
             ("page", page > 1 ? page.ToString() : null));
         Navigation.NavigateTo(newUrl, replace: true);
-    }
-
-    // Page visibility helper for pager UI
-    private static bool ShouldShowPage(int page, int currentPage, int totalPages)
-    {
-        if (page == 1 || page == totalPages) return true;
-        if (Math.Abs(page - currentPage) <= 2) return true;
-        return false;
+        return Task.CompletedTask;
     }
 
     // Display helpers
@@ -797,25 +644,8 @@
         return "color:#16a34a"; // Green - OK
     }
 
-    private string GetRowStyle(Invoice item, int index)
-    {
-        if (item.Status == InvoiceStatus.Paid)
-        {
-            return ""; // Normal for paid invoices
-        }
-        
-        if (item.PaymentDueDate.HasValue && item.PaymentDueDate.Value < DateTime.Today && item.PaidAmount < item.TotalInclVat)
-        {
-            return "background:#fef2f2"; // Red background for overdue
-        }
-        
-        if (item.PaymentDueDate.HasValue && item.PaymentDueDate.Value <= DateTime.Today.AddDays(7))
-        {
-            return "background:#fffbeb"; // Yellow background for due soon
-        }
-        
-        return "";
-    }
+    private string GetRowStyle(Invoice item, int index) =>
+        ListRowStyle.ForDue(item.Status == InvoiceStatus.Paid, item.PaymentDueDate, item.PaidAmount < item.TotalInclVat, DateTime.Today);
 
     // Selection helpers
     private void ToggleInvoice(int id, bool selected)

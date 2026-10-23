@@ -1,0 +1,21 @@
+@namespace NordicBeesERP.Components.Shared
+@using MudBlazor
+
+@* One quick-filter / status chip of a list's chip row. Filled when selected, outlined otherwise. *@
+<MudChip T="string"
+         Color="@(Selected ? ActiveColor : InactiveColor)"
+         Variant="@(Selected ? Variant.Filled : Variant.Outlined)"
+         Size="Size.Small"
+         Style="@(DimWhenInactive ? (Selected ? "" : "opacity:0.7") : "text-transform:none;")"
+         OnClick="OnClick">
+    @ChildContent
+</MudChip>
+
+@code {
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public Color ActiveColor { get; set; } = Color.Primary;
+    [Parameter] public Color InactiveColor { get; set; } = Color.Default;
+    [Parameter] public bool DimWhenInactive { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

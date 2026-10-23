@@ -1,0 +1,53 @@
+@namespace NordicBeesERP.Components.Shared
+@using MudBlazor
+
+@* Standard list filter card: search with clear (X) + date range + "Išvalyti filtrus". Extra filters go into ChildContent. *@
+<StandardListFilterBar>
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField T="string"
+                          Value="@Search"
+                          ValueChanged="SearchChanged"
+                          Label="@SearchLabel"
+                          Variant="Variant.Text"
+                          Immediate="true"
+                          FullWidth="@true"
+                          Clearable="true"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Adornment="Adornment.Start" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudDateRangePicker DateRange="@DateRange"
+                                DateRangeChanged="DateRangeChanged"
+                                Label="@DateLabel"
+                                Variant="Variant.Text"
+                                FullWidth="@true"
+                                Clearable="true" Editable="true" DateFormat="yyyy-MM-dd" />
+        </MudItem>
+        @ChildContent
+        @if (ShowClear)
+        {
+            <MudItem xs="12">
+                <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                           Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Small"
+                           OnClick="OnClear">
+                    Išvalyti filtrus
+                </MudButton>
+            </MudItem>
+        }
+    </MudGrid>
+</StandardListFilterBar>
+
+@code {
+    [Parameter] public string? Search { get; set; }
+    [Parameter] public EventCallback<string> SearchChanged { get; set; }
+    [Parameter] public string SearchLabel { get; set; } = "Paieška";
+    [Parameter] public DateRange? DateRange { get; set; }
+    [Parameter] public EventCallback<DateRange> DateRangeChanged { get; set; }
+    [Parameter] public string DateLabel { get; set; } = "Data (nuo / iki)";
+    [Parameter] public bool ShowClear { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
