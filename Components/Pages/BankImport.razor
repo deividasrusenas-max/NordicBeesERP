@@ -758,7 +758,7 @@
                     {
                         // CASE 2: Amount mismatch → needs_review
                         await ctxExpDedup.Database.ExecuteSqlRawAsync(
-                            "UPDATE bank_import_rows SET match_status = {0}, updated_at = CURRENT_TIMESTAMP WHERE id = {1}",
+                            "UPDATE bank_import_rows SET match_status = {0} WHERE id = {1}",
                             "needs_review", row.Id);
                         continue;
                     }
@@ -767,7 +767,7 @@
                 {
                     // CASE 4: Ambiguous → needs_review
                     await ctxExpDedup.Database.ExecuteSqlRawAsync(
-                        "UPDATE bank_import_rows SET match_status = {0}, updated_at = CURRENT_TIMESTAMP WHERE id = {1}",
+                        "UPDATE bank_import_rows SET match_status = {0} WHERE id = {1}",
                         "needs_review", row.Id);
                     continue;
                 }

@@ -938,7 +938,7 @@ namespace NordicBeesERP.Services
 
             // Bank-import rows that pointed at this payment go back to "unmatched" instead of dangling at a deleted id
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE bank_import_rows SET payment_id = NULL, match_status = 'unmatched', updated_at = CURRENT_TIMESTAMP WHERE payment_id = {0}",
+                "UPDATE bank_import_rows SET payment_id = NULL, match_status = 'unmatched' WHERE payment_id = {0}",
                 paymentId);
 
             // Delete allocations
@@ -1116,7 +1116,7 @@ namespace NordicBeesERP.Services
             }
 
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE bank_import_rows SET matched_invoice_id = {0}, match_status = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                "UPDATE bank_import_rows SET matched_invoice_id = {0}, match_status = {1} WHERE id = {2}",
                 invoiceId, "manual_match", bankImportRowId);
 
             row.MatchedInvoiceId = invoiceId;
@@ -1152,7 +1152,7 @@ namespace NordicBeesERP.Services
             if (existingPayment != null)
             {
                 await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE bank_import_rows SET match_status = {0}, updated_at = CURRENT_TIMESTAMP WHERE id = {1}",
+                    "UPDATE bank_import_rows SET match_status = {0} WHERE id = {1}",
                     "already_paid", bankImportRowId);
                 throw new InvalidOperationException($"Sąskaita {row.MatchedInvoiceId} jau apmokėta iš banko importo");
             }
@@ -1175,7 +1175,7 @@ namespace NordicBeesERP.Services
                         bankImportRowId, row.ImportId, existing.Id);
 
                     await context.Database.ExecuteSqlRawAsync(
-                        "UPDATE bank_import_rows SET match_status = {0}, payment_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                        "UPDATE bank_import_rows SET match_status = {0}, payment_id = {1} WHERE id = {2}",
                         "matched", existing.Id, bankImportRowId);
 
                     await RecalculateInvoiceStatusInternalAsync(context, row.MatchedInvoiceId.Value);
@@ -1189,7 +1189,7 @@ namespace NordicBeesERP.Services
                 {
                     // CASE 2: Amount mismatch → needs_review
                     await context.Database.ExecuteSqlRawAsync(
-                        "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                        "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1} WHERE id = {2}",
                         "needs_review", row.MatchedInvoiceId, bankImportRowId);
 
                     throw new NeedsReviewException(
@@ -1205,7 +1205,7 @@ namespace NordicBeesERP.Services
             {
                 // CASE 4: Multiple manual payments (ambiguous) → needs_review
                 await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                    "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1} WHERE id = {2}",
                     "needs_review", row.MatchedInvoiceId, bankImportRowId);
 
                 throw new NeedsReviewException(
@@ -1253,7 +1253,7 @@ namespace NordicBeesERP.Services
 
             // Update bank import row
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE bank_import_rows SET match_status = {0}, payment_id = {1}, updated_at = CURRENT_TIMESTAMP WHERE id = {2}",
+                "UPDATE bank_import_rows SET match_status = {0}, payment_id = {1} WHERE id = {2}",
                 "auto_match", payment.Id, bankImportRowId);
 
             // Log audit entry
