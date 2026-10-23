@@ -1884,3 +1884,45 @@ Follow-up to the 2026-10-21 run, where DB-backed tests were written but not run.
 - **Guardrail added**: none beyond the tests — a deny-list of status strings that do not exist is not mechanically detectable with the current rule set. Allow-lists are the pattern to use for status guards.
 - **Category**: other
 - **Error class**: `guard-on-nonexistent-enum-value` (new). Status: N/A — new class, unguarded.
+
+### 2026-10-24 — Payment dialogs could be submitted repeatedly: invoice ULAK26013 got 7 identical manual payments
+- **Symptom**: prod invoice 744 (total 5150.92) received 7 identical payments (ids 4284–4290, created_by 8, two bursts within 17 s); paid_amount 36056.44.
+- **Root cause**: `PaymentDialog.SavePayment`, `ExpensePaymentDialog.AddPayment`, `EditPaymentDialog.SavePayment` (and the edit/delete handlers) had no busy flag, so the button stayed clickable while the service call ran. `RegisterPaymentAsync` had no server-side guard either (no amount > 0, no same-customer, no draft/cancelled check, remaining ignored credit notes) and the audit "create" row logged the full payment as every invoice's allocation.
+- **Fix**: C1 `bb285cd` (`_busy` + `Disabled` + progress indicator in all four dialogs), C2 `4ea7111` (server validation, 120 s duplicate guard, credit-aware remaining, real per-invoice audit amounts). E2E `a79742a` clicks Save 2× and 3× quickly and asserts exactly one payment.
+- **Guardrail added**: `_busy` pattern + server duplicate guard (defence in depth) + `PaymentServiceTests` + `PaymentIntegrityE2ETests`. No semgrep rule — a missing busy flag on a save handler is not mechanically detectable with the current rule set.
+- **Category**: UI-form
+- **Error class**: `ui-double-submit-no-busy-guard` (new). Status: monitoring.
+
+### 2026-10-24 — PaymentService register/update/delete ran as several independent commits (no transaction)
+- **Symptom**: a failure between the payment insert, the allocation insert and the invoice recalculation left a payment without allocations / stale invoice paid_amount.
+- **Root cause**: `RegisterPaymentAsync` (3× SaveChanges), `UpdatePaymentAsync` and `DeletePaymentAsync` each wrote in several steps on one context without a transaction. Same mechanism as the 2026-09-13 CreditNoteService entry, which was fixed only in that service.
+- **Fix**: C3 `9ac3409` — each method runs in one `BeginTransactionAsync` with rollback + rethrow; Register locks the invoice rows (`SELECT ... FOR UPDATE`) so concurrent registrations cannot both pass the duplicate/remaining checks; single-allocation update caps `allocated_amount` at the invoice remaining excluding the payment. Not done: `CreatePaymentFromBankImportAsync` still has no transaction. Rollback test not written (no clean seam without production hooks).
+- **Guardrail added**: the transaction itself. No mechanical check.
+- **Category**: EF-core
+- **Error class**: `no-transaction-multi-write-partial-state` (reused verbatim — recurrence in a different service).
+- **Status**: escalated — the first fix (credit notes) did not carry over to payments; a mechanical check (rule flagging services with ≥2 SaveChanges/ExecuteSqlRaw in one method and no BeginTransaction) is needed instead of another note.
+
+### 2026-10-24 — Deleting a payment erased its audit history; the new "delete" audit row was swallowed by EF cascade
+- **Symptom**: `DeletePaymentAsync` removed every `payment_audit_log` row of the payment (`RemoveRange(payment.AuditLogs)`), so who created/changed a deleted payment was unrecoverable (prod has no FK from payment_audit_log, so rows could have stayed). While fixing it, the first version (audit row added before `Payments.Remove`) lost the new "delete" row: EF fixup attached it to the payment tracked as Deleted and cascaded the delete.
+- **Root cause**: audit rows treated as owned children of the payment; and adding a dependent row while its principal is tracked as Deleted.
+- **Fix**: C3 `9ac3409` stopped deleting audit rows; `5b2693c` writes the "delete" row after the payment is removed, still inside the transaction. Test `DeletePaymentAsync_RemovesPaymentAndAllocations_KeepsAuditHistoryAndAddsDeleteRow` + E2E assert create+delete rows remain.
+- **Guardrail added**: the two tests. None mechanical.
+- **Category**: EF-core
+- **Error class**: `audit-log-deleted-with-subject` (new). Status: monitoring.
+
+### 2026-10-24 — SQL wrote to bank_import_rows.updated_at, a column that does not exist (payment delete broken on prod since 6982d59)
+- **Symptom**: deleting a payment threw `Unknown column 'updated_at'`; prod and staging `bank_import_rows` have no `updated_at` (owner verified via information_schema); the test DB also lacks it. Found when the new delete test failed.
+- **Root cause**: commit 6982d59 (#32) added `updated_at = CURRENT_TIMESTAMP` to raw UPDATEs without checking the table; the column is in no migration and not on the model. Same bad write existed in 8 more statements (PaymentService match/unmatch/import paths, BankImport.razor ×2).
+- **Fix**: `adb23bb` removes `updated_at = CURRENT_TIMESTAMP` from every `UPDATE bank_import_rows` (PaymentService.cs ×7, BankImport.razor ×2); repo-wide grep and a multi-line regex find no remaining write.
+- **Guardrail added**: delete test (`PaymentServiceTests`) now covers the statement. No mechanical check for raw-SQL column existence.
+- **Category**: EF-core
+- **Error class**: `schema-drift-unverified-column-mapping` (reused verbatim — raw SQL instead of model mapping, same mechanism).
+- **Status**: escalated — 5th entry in this class; prompt/skill rules do not hold. A check of raw-SQL column names against the migrations/live schema is needed.
+
+### 2026-10-24 — Test DB lagged behind prod: invoices.status enum lacked 'cancelled'
+- **Symptom**: seeding a cancelled invoice in `nordic_bees_erp_test` failed with `Data truncated for column 'status'`; test DB enum was `('draft','confirmed','paid','disputed')`, prod has 'cancelled'.
+- **Root cause**: test DB schema not kept in step with prod.
+- **Fix**: owner altered the test DB enum (DDL is human-only); the cancelled-invoice test stays.
+- **Guardrail added**: none.
+- **Category**: infra
+- **Error class**: `staging-migration-drift` (reused verbatim). Status: N/A — unguarded; a periodic test-DB vs prod schema diff would catch it.
