@@ -264,13 +264,16 @@
     [Parameter] public int Id { get; set; }
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
 
-    private void HandleBack() =>
-        Navigation.NavigateTo(FilterUrlBuilder.ResolveReturnUrl(ReturnUrl, "/warehouse/delivery-pricing"));
+    private void HandleBack()
+    {
+        var target = FilterUrlBuilder.ResolveReturnUrl(ReturnUrl, "/warehouse/delivery-pricing");
+        Navigation.NavigateTo(target.StartsWith('/') && !target.StartsWith("//") ? target : "/warehouse/delivery-pricing");
+    }
 
     private void OpenDelivery()
     {
-        var back = Uri.EscapeDataString("/" + Navigation.ToBaseRelativePath(Navigation.Uri));
-        Navigation.NavigateTo($"/warehouse/deliveries/{Id}?returnUrl={back}");
+        var suffix = string.IsNullOrEmpty(ReturnUrl) ? "" : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+        Navigation.NavigateTo($"/warehouse/deliveries/{Id}{suffix}");
     }
 
     private Delivery? _delivery;
