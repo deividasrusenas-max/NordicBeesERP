@@ -14,6 +14,12 @@ jobs:
   test:
     runs-on: self-hosted
     steps:
+      - name: Clean root-owned build output left by earlier container runs
+        run: |
+          if [ -d "$GITHUB_WORKSPACE" ]; then
+            docker run --rm -v "$GITHUB_WORKSPACE":/w mcr.microsoft.com/dotnet/sdk:10.0 \
+              sh -c 'find /w -mindepth 1 -maxdepth 1 -exec rm -rf {} +' || true
+          fi
       - name: Checkout
         uses: actions/checkout@v4
       - name: Build and test (SDK container)
@@ -30,7 +36,7 @@ jobs:
             ENV_ARGS="-e TEST_DB_CONNECTION"
             export TEST_DB_CONNECTION="$TEST_DB_SECRET"
           fi
-          docker run --rm --network host $ENV_ARGS \
+          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp $ENV_ARGS \
             -v "$GITHUB_WORKSPACE":/src -w /src \
             mcr.microsoft.com/dotnet/sdk:10.0 \
             sh -c "dotnet add Tests/NordicBeesERP.Tests package SkiaSharp.NativeAssets.Linux.NoDependencies --version 2.88.8 && dotnet build NordicBeesERP.csproj -c Release && dotnet test Tests/NordicBeesERP.Tests"
