@@ -923,6 +923,65 @@ public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
         }
     }
 
+    [Theory]
+    [InlineData(0.125, 21, 0.13, 0.03, 0.16)] // subtotal 0.125 -> 0.13 (banker's would give 0.12 and a 0.15 total)
+    [InlineData(0.50, 21, 0.50, 0.11, 0.61)]  // VAT 0.105 -> 0.11 (banker's would give 0.10)
+    public async Task CreateCreditNoteAsync_FullCredit_UsesCommercialRounding_MatchesInvoiceExactly(
+        double price, double rate, double subtotal, double vat, double total)
+    {
+        var now = DateTime.UtcNow;
+        var invoiceNumber = $"INV-VAT01-{now.Ticks}";
+        var partnerId = await SeedPdfCustomerAsync();
+        var invoiceId = await SeedOriginalInvoiceAsync(
+            partnerId, invoiceNumber, now.Date, "PVM SĄSKAITA FAKTŪRA", reverseCharge: false,
+            quantity: 1m, price: (decimal)price, rate: (decimal)rate,
+            subtotal: (decimal)subtotal, vat: (decimal)vat, total: (decimal)total);
+
+        await using var setupContext = await _fixture.Factory.CreateDbContextAsync();
+        await setupContext.Database.ExecuteSqlRawAsync(
+            "UPDATE invoices SET paid_amount = {0}, payment_status = {1}, status = {2} WHERE id = {3}",
+            0m, "unpaid", "confirmed", invoiceId);
+        var invoiceLineId = await setupContext.InvoiceLines
+            .FromSqlRaw("SELECT id FROM invoice_lines WHERE invoice_id = {0}", invoiceId)
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        var creditNoteNumber = "";
+        try
+        {
+            var service = new CreditNoteService(
+                _fixture.Factory,
+                new TestCreditNoteNumberGenerator(),
+                new TestCompanySettingsService(),
+                new TestPdfGeneratorService(),
+                new TestPaymentService(new PaymentService(_fixture.Factory)));
+
+            var creditNote = await service.CreateCreditNoteAsync(new CreateCreditNoteRequest
+            {
+                OriginalInvoiceId = invoiceId,
+                CreditDate = now,
+                Language = "LT",
+                Lines = new List<CreditNoteLineRequest> { new CreditNoteLineRequest { InvoiceLineId = invoiceLineId, Quantity = 1 } }
+            }, 1);
+            creditNoteNumber = creditNote.CreditNoteNumber;
+            await service.SetPrintedAsync(creditNote.Id);
+
+            await using var verify = await _fixture.Factory.CreateDbContextAsync();
+            var note = await verify.CreditNotes.AsNoTracking().FirstAsync(n => n.Id == creditNote.Id);
+            Assert.Equal((decimal)subtotal, note.SubtotalExclVat);
+            Assert.Equal((decimal)vat, note.TotalVat);
+            Assert.Equal((decimal)total, note.TotalInclVat); // credit total == invoice total exactly
+
+            var invoice = await verify.Invoices.AsNoTracking().FirstAsync(i => i.Id == invoiceId);
+            Assert.Equal((decimal)total, invoice.TotalInclVat);
+            Assert.Equal("paid", invoice.PaymentStatus); // remaining 0 -> no 1-cent debt
+        }
+        finally
+        {
+            await CleanupPdfSeedAsync(partnerId, invoiceId, creditNoteNumber);
+        }
+    }
+
     [Fact]
     public async Task CreateCreditNoteAsync_Rc96Invoice_PartialCredit_StoresNetOnlyLine()
     {

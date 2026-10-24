@@ -219,8 +219,8 @@ namespace NordicBeesERP.Services
                     continue;
 
                 var unitPrice = lineRequest.PriceExclVat > 0m ? lineRequest.PriceExclVat : invoiceLine.PriceExclVat;
-                var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2);
-                var vatAmount = originalIsRc96 ? 0m : Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
+                var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2, MidpointRounding.AwayFromZero);
+                var vatAmount = originalIsRc96 ? 0m : Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2, MidpointRounding.AwayFromZero);
                 var lineTotal = originalIsRc96 ? lineSubtotal : lineSubtotal + vatAmount;
 
                 // HARD amount guard: a line can never be credited for more than remains owed on it.
@@ -630,8 +630,8 @@ namespace NordicBeesERP.Services
                     continue;
 
                 var unitPrice = lineRequest.PriceExclVat > 0m ? lineRequest.PriceExclVat : invoiceLine.PriceExclVat;
-                var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2);
-                var vatAmount = originalIsRc96 ? 0m : Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2);
+                var lineSubtotal = Math.Round(lineQuantity * unitPrice, 2, MidpointRounding.AwayFromZero);
+                var vatAmount = originalIsRc96 ? 0m : Math.Round(lineSubtotal * invoiceLine.VatRate / 100, 2, MidpointRounding.AwayFromZero);
                 var lineTotal = originalIsRc96 ? lineSubtotal : lineSubtotal + vatAmount;
 
                 // HARD amount guard: a line can never be credited for more than remains owed on it.
