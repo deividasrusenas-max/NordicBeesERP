@@ -222,7 +222,9 @@ public class SettlementOffsetServiceTests : IClassFixture<DbTestFixture>
             var id = await service.CreateAndConfirmAsync(Request(w, 20m, 20m), 1);
             await service.CancelAsync(id, "Klaidingai pasirinkta sąskaita", userId: 2);
 
-            Assert.Equal((0m, "unpaid", 0m, "APPROVED"), await StateAsync(w));
+            // Same status recalculation as ExpenseService.DeletePaymentAsync: a PAID invoice whose payment goes away is PENDING again
+            // (the APPROVED mark is not restored there either).
+            Assert.Equal((0m, "unpaid", 0m, "PENDING"), await StateAsync(w));
             await using var db = await _fixture.Factory.CreateDbContextAsync();
             var offset = await db.SettlementOffsets.AsNoTracking().FirstAsync(o => o.Id == id);
             Assert.Equal("cancelled", offset.Status);
