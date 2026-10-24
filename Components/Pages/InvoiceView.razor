@@ -355,7 +355,7 @@
                         </MudTd>
                         <MudTd>@payment.Date.ToString("yyyy-MM-dd")</MudTd>
                         <MudTd Class="text-right">@FormatAmountHelper.Money(payment.Amount)</MudTd>
-                        <MudTd>@(GetPaymentMethodLabel(payment.Method) + (string.Equals(payment.Method, "offset", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(payment.Reference) ? " " + payment.Reference : ""))</MudTd>
+                        <MudTd>@PaymentMethodLabels.Label(payment.Method, payment.Reference)</MudTd>
                         <MudTd Class="text-center">
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="() => OpenEditPayment(payment)" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="() => DeletePayment(payment.PaymentId)" />
@@ -587,17 +587,7 @@
         };
     }
     
-    private string GetPaymentMethodLabel(string method)
-    {
-        return method switch {
-            "BankTransfer" or "bank_transfer" => "Banko pavedimas",
-            "Cash" or "cash" => "Grynais",
-            "Card" or "card" => "Kortelė",
-            "Other" or "other" => "Kita",
-            "Offset" or "offset" => "Užskaita",
-            _ => method
-        };
-    }
+    private string GetPaymentMethodLabel(string method) => PaymentMethodLabels.Label(method);
     
     private string GetInvoiceTypeLabel(string? type) => type switch
     {

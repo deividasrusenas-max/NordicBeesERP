@@ -111,7 +111,7 @@
                             }
                             <MudTd>@payment?.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
                             <MudTd>@FormatAmountHelper.Trim(payment?.Amount, 2) €</MudTd>
-                            <MudTd>@payment?.PaymentMethod</MudTd>
+                            <MudTd>@PaymentMethodLabels.Label(payment?.PaymentMethod, payment?.Reference)</MudTd>
                             <MudTd>@payment?.Reference</MudTd>
                         </RowTemplate>
                     </MudTable>

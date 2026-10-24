@@ -370,7 +370,7 @@
                                             @foreach (var p in _payments)
                                             {
                                                 <div class="d-flex justify-space-between mb-1">
-                                                    <MudText Typo="Typo.body2">@p.PaymentDate.ToString("yyyy-MM-dd") — @p.PaymentMethod</MudText>
+                                                    <MudText Typo="Typo.body2">@p.PaymentDate.ToString("yyyy-MM-dd") — @PaymentMethodLabels.Label(p.PaymentMethod, p.Reference)</MudText>
                                                     <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Trim(p.Amount, 2) €</MudText>
                                                 </div>
                                             }

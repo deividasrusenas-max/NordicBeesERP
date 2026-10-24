@@ -529,11 +529,7 @@
         _ => type ?? "-"
     };
 
-    private string GetPaymentMethodText(string method) => method switch
-    {
-        "bank_transfer" => "Banko pavedimas", "cash" => "Grynais",
-        "offset" => "Užskaita", _ => method
-    };
+    private string GetPaymentMethodText(string method) => PaymentMethodLabels.Label(method);
 
     public async ValueTask DisposeAsync()
     {

@@ -219,15 +219,5 @@
         }
     }
 
-    private string GetPaymentMethodLabel(string method)
-    {
-        return method switch {
-            "BankTransfer" or "bank_transfer" => "Banko pavedimas",
-            "Cash" or "cash" => "Grynais",
-            "Card" or "card" => "Kortelė",
-            "Other" or "other" => "Kita",
-            "Offset" or "offset" => "Užskaita",
-            _ => method
-        };
-    }
+    private string GetPaymentMethodLabel(string method) => PaymentMethodLabels.Label(method);
 }
