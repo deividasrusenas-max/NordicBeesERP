@@ -214,7 +214,20 @@
 
     private async Task AddPayment()
     {
-        if (_busy || _invoice is null || !CanAddPayment)
+        if (_busy || _invoice is null)
+            return;
+
+        if (_paymentAmount <= 0)
+        {
+            Snackbar.Add("Mokėjimo suma turi būti didesnė už 0.", Severity.Warning);
+            return;
+        }
+        if (_paymentAmount > RemainingAmount)
+        {
+            Snackbar.Add("Suma viršija likutį", Severity.Warning);
+            return;
+        }
+        if (!CanAddPayment)
             return;
 
         _busy = true;
@@ -250,6 +263,10 @@
 
         // Close dialog with success result to notify parent
         MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         finally
         {
@@ -303,6 +320,10 @@
             // Reload invoice from DB to get fresh status
             _invoice = await ExpenseService.GetInvoiceWithDetailsAsync(_invoice.Id);
             StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida trinant mokėjimą: {ex.Message}", Severity.Error);
         }
         finally
         {

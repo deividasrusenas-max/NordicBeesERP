@@ -9,6 +9,8 @@ namespace NordicBeesERP.Services
 {
     public class ExpenseService : IExpenseService
     {
+        private const int DuplicatePaymentWindowSeconds = 120;
+
         private readonly IDbContextFactory<NordicBeesERPContext> _dbFactory;
         private readonly IAuthService _authService;
         private readonly ICompanySettingsService _companySettingsService;
@@ -812,31 +814,51 @@ namespace NordicBeesERP.Services
 
         public async Task<ExpensePayment> AddPaymentAsync(ExpensePayment payment)
         {
+            if (payment.Amount <= 0)
+                throw new InvalidOperationException("Mokėjimo suma turi būti didesnė už 0.");
+
             using var context = _dbFactory.CreateDbContext();
-            
-            // Get invoice info before payment is added
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            // Get invoice info before payment is added (row locked so concurrent payments serialize)
             var invoice = await context.ExpenseInvoices
+                .FromSqlRaw("SELECT * FROM expense_invoices WHERE id = {0} FOR UPDATE", payment.InvoiceId)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(i => i.Id == payment.InvoiceId);
+                .FirstOrDefaultAsync();
             var oldStatus = invoice?.Status;
-            
+
+            // Double-submit guard. Bank-import rows are idempotent by BankImportRowId elsewhere,
+            // and two genuine bank rows may carry the same amount and date.
+            if (!payment.BankImportRowId.HasValue)
+            {
+                var since = DateTime.UtcNow.AddSeconds(-DuplicatePaymentWindowSeconds);
+                var duplicate = await context.ExpensePayments.AsNoTracking().AnyAsync(p =>
+                    p.InvoiceId == payment.InvoiceId
+                    && p.Amount == payment.Amount
+                    && p.PaymentDate == payment.PaymentDate
+                    && p.CreatedAt >= since);
+                if (duplicate)
+                    throw new InvalidOperationException("Toks mokėjimas ką tik užregistruotas – patikrinkite mokėjimų sąrašą.");
+            }
+
             payment.CreatedAt = DateTime.UtcNow;
             await context.ExpensePayments.AddAsync(payment);
             await context.SaveChangesAsync();
-            
+
             // Recalculate paid amount and update status
-            await RecalculateInvoiceStatusAsync(payment.InvoiceId);
-            
+            await RecalculateInvoiceStatusAsync(context, payment.InvoiceId);
+
             // Get new status after recalculation (re-query — ReloadAsync on detached entity silently fails)
             var updatedInvoice = await context.ExpenseInvoices
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == payment.InvoiceId);
             var newStatus = updatedInvoice?.Status;
-            
+
             // Log payment added
-            await LogAuditAsync(context, payment.InvoiceId, invoice?.InvoiceNumber ?? "Unknown", "PAYMENT_ADDED", 
+            await LogAuditAsync(context, payment.InvoiceId, invoice?.InvoiceNumber ?? "Unknown", "PAYMENT_ADDED",
                 $"Amount: {payment.Amount:C}", oldStatus, newStatus);
-            
+
+            await transaction.CommitAsync();
             return payment;
         }
 
@@ -877,7 +899,8 @@ namespace NordicBeesERP.Services
         public async Task<bool> DeletePaymentAsync(int id)
         {
             using var context = _dbFactory.CreateDbContext();
-            
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
             var payment = await context.ExpensePayments
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -885,38 +908,44 @@ namespace NordicBeesERP.Services
                 return false;
 
             var invoiceId = payment.InvoiceId;
-            
+
             // Get invoice info before payment is deleted
             var invoice = await context.ExpenseInvoices
+                .FromSqlRaw("SELECT * FROM expense_invoices WHERE id = {0} FOR UPDATE", invoiceId)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+                .FirstOrDefaultAsync();
             var oldStatus = invoice?.Status;
             var invoiceNumber = invoice?.InvoiceNumber ?? "Unknown";
-            
+
             await context.Database.ExecuteSqlRawAsync(
                 "DELETE FROM expense_payments WHERE id = {0}",
                 id);
-            
+
             // Recalculate paid amount and update status
-            await RecalculateInvoiceStatusAsync(invoiceId);
-            
+            await RecalculateInvoiceStatusAsync(context, invoiceId);
+
             // Get new status after recalculation (re-query — ReloadAsync on detached entity silently fails)
             var updatedInvoice = await context.ExpenseInvoices
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == invoiceId);
             var newStatus = updatedInvoice?.Status;
-            
+
             // Log payment deleted
-            await LogAuditAsync(context, invoiceId, invoiceNumber, "PAYMENT_DELETED", 
+            await LogAuditAsync(context, invoiceId, invoiceNumber, "PAYMENT_DELETED",
                 $"Amount: {payment.Amount:C}", oldStatus, newStatus);
-            
+
+            await transaction.CommitAsync();
             return true;
         }
 
         public async Task<ExpensePayment> UpdatePaymentAsync(ExpensePayment payment)
         {
+            if (payment.Amount <= 0)
+                throw new InvalidOperationException("Mokėjimo suma turi būti didesnė už 0.");
+
             using var context = _dbFactory.CreateDbContext();
-            
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
             var exists = await context.ExpensePayments
                 .AsNoTracking()
                 .AnyAsync(p => p.Id == payment.Id);
@@ -939,10 +968,11 @@ namespace NordicBeesERP.Services
                 payment.Reference,
                 payment.Notes,
                 payment.Id);
-            
+
             // Recalculate invoice paid amount and status
-            await RecalculateInvoiceStatusAsync(invoiceId);
-            
+            await RecalculateInvoiceStatusAsync(context, invoiceId);
+
+            await transaction.CommitAsync();
             return payment;
         }
 
@@ -1167,7 +1197,12 @@ namespace NordicBeesERP.Services
         public async Task RecalculateInvoiceStatusAsync(int invoiceId)
         {
             using var context = _dbFactory.CreateDbContext();
-            
+            await RecalculateInvoiceStatusAsync(context, invoiceId);
+        }
+
+        // Overload that joins the caller's context (and its open transaction).
+        private async Task RecalculateInvoiceStatusAsync(NordicBeesERPContext context, int invoiceId)
+        {
             var invoice = await context.ExpenseInvoices
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == invoiceId);

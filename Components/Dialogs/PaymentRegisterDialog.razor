@@ -148,7 +148,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" Style="text-transform:none" OnClick="CloseDialog">Atšaukti</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="RegisterPayment">Išsaugoti</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Save" OnClick="RegisterPayment" Disabled="@_busy">Išsaugoti</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -182,6 +182,7 @@
     private Color _statusColor;
 
     private bool _disposed = false;
+    private bool _busy;
 
     protected override void OnParametersSet()
     {
@@ -278,12 +279,19 @@
             return;
         }
 
+        if (_busy) return;
+        _busy = true;
         try
         {
             var invoiceIds = _selectedInvoices.Keys.ToList();
             var currentUser = await AuthService.GetAuthenticatedUserAsync();
-            var userId = currentUser?.Id ?? 1;
-            
+            if (currentUser == null)
+            {
+                Snackbar.Add("Nepavyko nustatyti vartotojo", Severity.Error);
+                return;
+            }
+            var userId = currentUser.Id;
+
             await PaymentService.RegisterPaymentAsync(
                 invoiceIds: invoiceIds,
                 amount: _paymentAmount,
@@ -305,6 +313,10 @@
             Snackbar.Add("Klaida registruojant mokėjimą", Severity.Error, options => {
                 options.Icon = Icons.Material.Filled.Error;
             });
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 

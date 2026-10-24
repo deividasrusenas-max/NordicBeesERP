@@ -195,7 +195,12 @@
         try
         {
             var userId = await AuthService.GetUserIdAsync();
-            await PaymentService.DeletePaymentAsync(paymentId, userId!.Value);
+            if (!userId.HasValue)
+            {
+                Snackbar.Add("Nepavyko nustatyti vartotojo", Severity.Error);
+                return;
+            }
+            await PaymentService.DeletePaymentAsync(paymentId, userId.Value);
 
             if (ExistingPayments != null)
             {
@@ -203,6 +208,10 @@
             }
 
             MudDialogInstance?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida trinant mokėjimą: {ex.Message}", Severity.Error);
         }
         finally
         {

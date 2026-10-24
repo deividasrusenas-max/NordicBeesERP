@@ -83,7 +83,7 @@ namespace NordicBeesERP.Services
 
             if (invoices.Count != invoiceIds.Count)
             {
-                throw new InvalidOperationException("One or more invoices not found");
+                throw new InvalidOperationException("Viena ar daugiau sąskaitų nerasta.");
             }
 
             if (invoices.Select(i => i.CustomerId).Distinct().Count() > 1)
@@ -128,7 +128,7 @@ namespace NordicBeesERP.Services
                     - creditedByInvoice.GetValueOrDefault(invoice.Id);
                 if (remainingOnInvoice <= 0)
                 {
-                    throw new InvalidOperationException($"Invoice {invoice.Id} is already fully paid");
+                    throw new InvalidOperationException($"Sąskaita {invoice.InvoiceNumber} jau pilnai apmokėta.");
                 }
 
                 var allocateAmount = Math.Min(remainingAmount, remainingOnInvoice);
