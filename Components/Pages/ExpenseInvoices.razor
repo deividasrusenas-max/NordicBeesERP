@@ -150,7 +150,7 @@
 
     <!-- MudTable -->
     <MudPaper Elevation="0" Rounded="true" Square="false" Class="mt-2 pa-3">
-        <MudTable Items="@FilteredInvoices" Dense="@true" Hover="@true" Striped="@true" RowsPerPage="25" Elevation="0" RowStyleFunc="@((inv, _) => GetRowStyle(inv))" OnRowClick="@(async (TableRowClickEventArgs<ExpenseInvoice> args) => { if (IsDoubleClick(args.Item)) await OpenInvoiceDetail(args.Item); })" Style="cursor:pointer">
+        <MudTable Items="@FilteredInvoices" Dense="@true" Hover="@true" Striped="@true" RowsPerPage="25" Elevation="0" RowStyleFunc="@((inv, _) => GetRowStyle(inv))" OnRowClick="@(async (TableRowClickEventArgs<ExpenseInvoice> args) => await OpenInvoiceDetail(args.Item))" Style="cursor:pointer">
             <HeaderContent>
                 <MudTh Style="min-width:48px;width:48px;">
                     <input type="checkbox"
@@ -238,6 +238,13 @@
                 </MudTd>
                 <MudTd>
                     <div @onclick:stopPropagation="true">
+                        @if (context.Status != "REJECTED" && context.Status != "DUPLICATE_PENDING")
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Payments"
+                                           Size="Size.Small" Color="Color.Primary"
+                                           Title="Mokėjimai"
+                                           OnClick="@(() => OpenPaymentDialog(context))" />
+                        }
                         @if (context.Status == "REJECTED")
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Restore"

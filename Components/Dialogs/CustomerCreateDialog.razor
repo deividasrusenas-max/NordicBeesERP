@@ -252,6 +252,9 @@
             PostalCode = "",
             IsActive = true
         };
+        // Opened from /customers with a blank Customer: the "Klientas" toggle must start ON (from /suppliers the dialog sets Tiekėjas).
+        if (customer.Id == 0 && !customer.IsCustomer && !customer.IsSupplier)
+            customer.IsCustomer = true;
         // Užfiksuoti pradinį VAT kodą — VIES patikrai (palyginimui, ar pasikeitė)
         _originalVatCode = customer.VatCode;
         if (customer.Id == 0)
