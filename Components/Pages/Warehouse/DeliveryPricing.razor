@@ -227,13 +227,13 @@
     private string GetRowStyle(Delivery d, int index)
     {
         var debt = d.DebtBase - d.PaidAmount;
-        return ListRowStyle.ForDue(debt <= 0, GetDueDate(d)?.Date, debt > 0, DateTime.Today);
+        return ListRowStyle.ForDue(debt <= 0, GetDueDate(d)?.Date, debt > 0, AppClock.TodayLt);
     }
 
     private List<Delivery> GetFilteredDeliveries()
     {
         var q = _searchText?.Trim() ?? string.Empty;
-        var today = DateTime.Today;
+        var today = AppClock.TodayLt;
         IEnumerable<Delivery> result = _deliveries;
 
         if (q.Length > 0)

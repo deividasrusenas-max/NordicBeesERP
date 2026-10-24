@@ -101,7 +101,7 @@
 
     [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private DateTime? _invoiceDate = DateTime.Today;
+    private DateTime? _invoiceDate = AppClock.TodayLt;
     private int? _selectedSupplierId;
     private BusinessPartner? _selectedSupplier;
 
@@ -153,7 +153,7 @@
     public class DeliveryInvoiceCostsResult
     {
         public int? SupplierId { get; init; }
-        public DateTime InvoiceDate { get; init; } = DateTime.Today;
+        public DateTime InvoiceDate { get; init; } = AppClock.TodayLt;
         public decimal TransportCost { get; init; }
         public decimal BarrelCost { get; init; }
         public decimal OtherCost { get; init; }

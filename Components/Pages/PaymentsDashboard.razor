@@ -184,7 +184,7 @@
                          <MudTd Class="text-center">
                              @{
                                  var days = invoice.DueDate.HasValue 
-                                     ? (invoice.DueDate.Value.Date - DateTime.Today).Days 
+                                     ? (invoice.DueDate.Value.Date - AppClock.TodayLt).Days 
                                      : (int?)null;
                                  var label = days == null ? "-" 
                                      : days == 0 ? "Šiandien" 
@@ -257,7 +257,7 @@
     protected override async Task OnInitializedAsync()
     {
         // Set year subtitle once at initialization
-        var currentYear = DateTime.Today.Year;
+        var currentYear = AppClock.TodayLt.Year;
         _yearSubtitle = $"({currentYear} m.)";
         await LoadData();
     }
@@ -271,7 +271,7 @@
         _loading = true;
         try
         {
-            var currentYear = DateTime.Today.Year;
+            var currentYear = AppClock.TodayLt.Year;
             var yearStart = new DateTime(currentYear, 1, 1);
             var yearEnd = new DateTime(currentYear, 12, 31);
 

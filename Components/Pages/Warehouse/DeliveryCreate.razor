@@ -369,7 +369,7 @@
     private int _supplierId;
     private int _warehouseId;
     private string _deliveryNumber = "";
-    private DateTime? _deliveryDate = DateTime.Today;
+    private DateTime? _deliveryDate = AppClock.TodayLt;
     private BusinessPartner? _selectedSupplier;
 
     // Lookups
@@ -687,7 +687,7 @@
             var delivery = new Delivery
             {
                 DeliveryNumber = _deliveryNumber,
-                DeliveryDate = _deliveryDate ?? DateTime.Today,
+                DeliveryDate = _deliveryDate ?? AppClock.TodayLt,
                 SupplierId = _supplierId,
                 WarehouseId = _warehouseId,
                 RawMaterialTypeId = _selectedRawMaterial?.Id,

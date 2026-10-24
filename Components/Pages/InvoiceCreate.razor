@@ -261,7 +261,7 @@
     
     private string _nextInvoiceNumber = "";
     private bool _invoiceNumberLocked = true;
-    private DateTime? _invoiceDate = DateTime.Today;
+    private DateTime? _invoiceDate = AppClock.TodayLt;
     private int _paymentTermDays = 7;
     private DateTime? _paymentDueDate;
     private bool _dueDateManuallyEdited = false;
@@ -343,7 +343,7 @@
             _customers = await _invoiceService.GetCustomersAsync();
             _products = await _invoiceService.GetProductsAsync();
             _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(
-                _invoiceDate ?? DateTime.Today, 
+                _invoiceDate ?? AppClock.TodayLt, 
                 _invoiceType
             );
             
@@ -459,7 +459,7 @@
     private async Task OnInvoiceTypeChanged(string newType)
     {
         _invoiceType = newType;
-        _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? DateTime.Today, _invoiceType);
+        _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? AppClock.TodayLt, _invoiceType);
         
         if (_invoiceType == "6% PVM SĄSKAITA FAKTŪRA")
         {
@@ -679,7 +679,7 @@
     private async Task RefreshLockedInvoiceNumberAsync()
     {
         if (_invoiceNumberLocked)
-            _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? DateTime.Today, _invoiceType);
+            _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? AppClock.TodayLt, _invoiceType);
     }
 
     private async Task SaveInvoice()
@@ -831,7 +831,7 @@
         var invoice = new Invoice
         {
             InvoiceNumber = _nextInvoiceNumber,
-            InvoiceDate = _invoiceDate ?? DateTime.Today,
+            InvoiceDate = _invoiceDate ?? AppClock.TodayLt,
             CustomerId = _isPurchase 
                 ? (_selectedSupplierId ?? 0) 
                 : (_selectedCustomerId ?? 0),

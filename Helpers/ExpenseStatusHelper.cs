@@ -147,7 +147,7 @@ public static class ExpenseStatusHelper
         // arithmetic): being paid does not make the data correct.
         if (ocrFlags != null && ParseFlags(ocrFlags).Any(IsCriticalFlag)) return true;
         if (status == "PAID") return false;
-        if (dueDate.HasValue && dueDate.Value < DateTime.Today && status != "PAID") return true;
+        if (dueDate.HasValue && dueDate.Value < AppClock.TodayLt && status != "PAID") return true;
         return false;
     }
 
@@ -176,7 +176,7 @@ public static class ExpenseStatusHelper
         if (currentStatus is "PAID" or "PARTIAL")
             return "PENDING";
 
-        if (dueDate.HasValue && dueDate.Value < DateTime.Today && currentStatus is null or "PENDING")
+        if (dueDate.HasValue && dueDate.Value < AppClock.TodayLt && currentStatus is null or "PENDING")
             return "OVERDUE";
 
         return currentStatus ?? "PENDING";

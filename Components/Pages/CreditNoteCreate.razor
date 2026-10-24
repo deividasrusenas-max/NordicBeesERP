@@ -154,7 +154,7 @@
     private List<CreditNoteLineModel> _lines = new();
     
     private string _creditNoteNumber = string.Empty;
-    private DateTime _creditDate = DateTime.Today;
+    private DateTime _creditDate = AppClock.TodayLt;
     private InvoiceSelectDto? _selectedInvoice;
     private string _customerName = string.Empty;
     private string _language = "LT";

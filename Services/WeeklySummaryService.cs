@@ -1,3 +1,4 @@
+using NordicBeesERP.Helpers;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using NordicBeesERP.Data;
@@ -29,7 +30,7 @@ public sealed class WeeklySummaryService : IWeeklySummaryService
 
     public async Task<WeeklySummary> GetSummaryAsync(DateTime? weekStart = null, CancellationToken ct = default)
     {
-        var start = (weekStart ?? MostRecentMonday(DateTime.Today)).Date;
+        var start = (weekStart ?? MostRecentMonday(AppClock.TodayLt)).Date;
         var end = start.AddDays(7); // exclusive upper bound
 
         await using var context = await _dbFactory.CreateDbContextAsync(ct);

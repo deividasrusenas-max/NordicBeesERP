@@ -683,8 +683,8 @@
 
     // ===== "Pirkimų apimtis" / "Pardavimų apimtis" trend charts (12-month curve(), current vs previous year) =====
 
-    private readonly int _curYear = DateTime.Today.Year;
-    private readonly int _prevYear = DateTime.Today.Year - 1;
+    private readonly int _curYear = AppClock.TodayLt.Year;
+    private readonly int _prevYear = AppClock.TodayLt.Year - 1;
 
     private static readonly string[] _monthLabels = Enumerable.Range(1, 12)
         .Select(m => new DateTime(2001, m, 1).ToString("MMM", System.Globalization.CultureInfo.GetCultureInfo("lt-LT")))

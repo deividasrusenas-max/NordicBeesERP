@@ -2509,7 +2509,7 @@ namespace NordicBeesERP.Services
             DateTime.TryParse(ocrResult.InvoiceDate, out var invoiceDate);
             var hasInvoiceDate = invoiceDate != default;
             // invoice_date is NOT NULL: keep the placeholder, but flag it (art. 226(1) mandatory field)
-            if (!hasInvoiceDate) invoiceDate = DateTime.Today;
+            if (!hasInvoiceDate) invoiceDate = AppClock.TodayLt;
 
             string? partnerCountry;
             await using (var countryContext = _dbFactory.CreateDbContext())
@@ -2678,7 +2678,7 @@ namespace NordicBeesERP.Services
             // Update invoice fields from OCR result
             DateTime.TryParse(ocrResult.InvoiceDate, out var invoiceDate);
             var hasInvoiceDate = invoiceDate != default;
-            if (!hasInvoiceDate) invoiceDate = DateTime.Today;
+            if (!hasInvoiceDate) invoiceDate = AppClock.TodayLt;
             DateTime.TryParse(ocrResult.DueDate, out var dueDate);
             if (dueDate == default) dueDate = invoiceDate.AddDays(30);
 

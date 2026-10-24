@@ -104,7 +104,7 @@
                 <MudTd Style="text-align:center">@(inv.DueDate.HasValue ? inv.DueDate.Value.ToString("yyyy-MM-dd") : "-")</MudTd>
                 <MudTd Style="text-align:center">
                 @{
-                    var d = inv.DueDate.HasValue ? (inv.DueDate.Value.Date - DateTime.Today).Days : (int?)null;
+                    var d = inv.DueDate.HasValue ? (inv.DueDate.Value.Date - AppClock.TodayLt).Days : (int?)null;
                     var lbl = d == null ? "-" : d == 0 ? "Šiandien" : d > 0 ? $"-{d}d." : $"+{Math.Abs(d.Value)}d.";
                     var clr = d == null ? "#9ca3af" : d < 0 ? "#ef4444" : d <= 7 ? "#f97316" : "#16a34a";
                 }
@@ -175,7 +175,7 @@
         _loading = true;
         try
         {
-            var today = DateTime.Today;
+            var today = AppClock.TodayLt;
             var futureDate = today.AddDays(_days);
             
             // Calculate chart dimensions
@@ -199,7 +199,7 @@
             if (_overdueInvoices == null || _overdueInvoices.Count == 0)
             {
                 _overdueInvoices = (await PaymentService.GetUnpaidInvoicesAsync())
-                    .Where(i => i.DueDate.HasValue && i.DueDate.Value.Date < DateTime.Today)
+                    .Where(i => i.DueDate.HasValue && i.DueDate.Value.Date < AppClock.TodayLt)
                     .ToList();
             }
 
@@ -267,7 +267,7 @@
     private async Task OpenThisWeekDetail()
     {
         var invoices = _upcomingInvoices
-            .Where(i => i.DueDate.HasValue && i.DueDate.Value.Date >= DateTime.Today && i.DueDate.Value.Date <= DateTime.Today.AddDays(_days))
+            .Where(i => i.DueDate.HasValue && i.DueDate.Value.Date >= AppClock.TodayLt && i.DueDate.Value.Date <= AppClock.TodayLt.AddDays(_days))
             .ToList();
         var parameters = new DialogParameters
         {

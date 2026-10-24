@@ -200,7 +200,7 @@
                 result = result.Where(d => d.BarrelsOwed > d.BarrelsReturned);
                 break;
             case 4: // Šis mėnuo
-                var startOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var startOfMonth = new DateTime(AppClock.TodayLt.Year, AppClock.TodayLt.Month, 1);
                 result = result.Where(d => d.DeliveryDate >= startOfMonth);
                 break;
         }

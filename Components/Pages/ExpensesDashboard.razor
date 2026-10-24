@@ -201,7 +201,7 @@
         var pendingSupplier = _attentionInvoices.Count(i => i.Status == "PENDING_SUPPLIER");
         var needsReview = _attentionInvoices.Count(i => i.Status == "NEEDS_REVIEW");
         var duplicate = _attentionInvoices.Count(i => i.Status == "DUPLICATE_PENDING");
-        var overdue = _attentionInvoices.Count(i => i.DueDate < DateTime.Today && i.Status != "PAID" && i.Status is "PENDING" or "PARTIAL" or "OVERDUE");
+        var overdue = _attentionInvoices.Count(i => i.DueDate < AppClock.TodayLt && i.Status != "PAID" && i.Status is "PENDING" or "PARTIAL" or "OVERDUE");
 
         if (_attentionInvoices.Any())
         {
@@ -297,7 +297,7 @@
                     <MudTd>@inv.InvoiceDate.ToString("yyyy-MM-dd")</MudTd>
                     <MudTd>
                         @{
-                            var d = (inv.DueDate.Date - DateTime.Today).Days;
+                            var d = (inv.DueDate.Date - AppClock.TodayLt).Days;
                             var lbl = d == 0 ? "Šiandien" : d > 0 ? $"-{d}d." : $"+{Math.Abs(d)}d.";
                             var sty = d < 0 ? "color:#ef4444;font-weight:600" : d <= 7 ? "color:#f97316;font-weight:600" : "color:#16a34a";
                         }
@@ -388,7 +388,7 @@
         {
             var all = await ExpenseService.GetInvoicesAsync();
             var nonUlak = all.Where(i => i.InvoiceType != "ULAK").ToList();
-            var filtered = _showAllYears ? nonUlak : nonUlak.Where(i => i.InvoiceDate.Year == DateTime.Today.Year).ToList();
+            var filtered = _showAllYears ? nonUlak : nonUlak.Where(i => i.InvoiceDate.Year == AppClock.TodayLt.Year).ToList();
 
             // Confirmed statuses: PENDING, PARTIAL, PAID, OVERDUE
             var confirmed = new[] { "PENDING", "PARTIAL", "PAID", "OVERDUE" };
@@ -432,7 +432,7 @@
             _needsReviewInvoices = nonUlak.Where(i => i.Status == "NEEDS_REVIEW").ToList();
 
             // Aging buckets: pradelstos sąskaitos (PENDING, PARTIAL, OVERDUE) where PaidAmount < AmountInclVat and DueDate < today
-            var today = DateTime.Today;
+            var today = AppClock.TodayLt;
             var overdueInvoices = confirmedFiltered
                 .Where(i => (i.Status == "PENDING" || i.Status == "PARTIAL" || i.Status == "OVERDUE")
                             && i.PaidAmount < i.AmountInclVat
@@ -491,7 +491,7 @@
     /// <summary>D-047 A4: entry point for the previously-unreachable ExpenseBudgetDialog.</summary>
     private async Task OpenBudgetDialogAsync()
     {
-        var p = new DialogParameters { ["Year"] = DateTime.Today.Year };
+        var p = new DialogParameters { ["Year"] = AppClock.TodayLt.Year };
         await DialogService.ShowAsync<ExpenseBudgetDialog>("Biudžetas", p, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseOnEscapeKey = true, BackdropClick = true });
     }
 
@@ -503,7 +503,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _yearSubtitle = $"({DateTime.Today.Year} m.)";
+        _yearSubtitle = $"({AppClock.TodayLt.Year} m.)";
         var auth = await AuthStateProvider.GetAuthenticationStateAsync();
         _isAdmin = auth.User.IsInRole("Admin");
         await LoadDataAsync();

@@ -303,7 +303,7 @@
     // Payment dialog
     private bool _paymentDialogVisible;
     private decimal _newPaymentAmount;
-    private DateTime? _newPaymentDate = DateTime.Today;
+    private DateTime? _newPaymentDate = AppClock.TodayLt;
     private string _newPaymentMethod = "bank_transfer";
     private string _newPaymentNotes = "";
 
@@ -435,7 +435,7 @@
     private void OpenPaymentDialog()
     {
         _newPaymentAmount = _skola > 0 ? _skola : 0;
-        _newPaymentDate = DateTime.Today;
+        _newPaymentDate = AppClock.TodayLt;
         _newPaymentMethod = "bank_transfer";
         _newPaymentNotes = "";
         _paymentDialogVisible = true;
@@ -450,7 +450,7 @@
                 DeliveryId = Id,
                 SupplierId = _delivery!.SupplierId,
                 Amount = _newPaymentAmount,
-                PaymentDate = _newPaymentDate ?? DateTime.Today,
+                PaymentDate = _newPaymentDate ?? AppClock.TodayLt,
                 PaymentMethod = _newPaymentMethod,
                 Notes = _newPaymentNotes
             };

@@ -345,7 +345,7 @@
 
     // Shipment creation state
     private Dictionary<int, decimal> _shipmentQuantities = new();
-    private DateTime? _shipmentDate = DateTime.Today;
+    private DateTime? _shipmentDate = AppClock.TodayLt;
     private string? _courierName;
     private string? _shipmentNotes;
     private bool _pendingShipmentsDirty;
@@ -553,7 +553,7 @@
             _shipmentQuantities.Clear();
             _courierName = null;
             _shipmentNotes = null;
-            _shipmentDate = DateTime.Today;
+            _shipmentDate = AppClock.TodayLt;
 
             await LoadOrderAsync();
         }

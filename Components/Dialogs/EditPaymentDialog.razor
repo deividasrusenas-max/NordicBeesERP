@@ -116,7 +116,7 @@
             await PaymentService.UpdatePaymentAsync(
                 paymentId: PaymentId,
                 amount: _amount,
-                date: _date ?? DateTime.Today,
+                date: _date ?? AppClock.TodayLt,
                 method: _method switch { "BankTransfer" => "bank_transfer", "Cash" => "cash", "Card" => "card", "Other" => "other", _ => _method },
                 reference: string.IsNullOrEmpty(_reference) ? null : _reference,
                 notes: string.IsNullOrEmpty(_notes) ? null : _notes,

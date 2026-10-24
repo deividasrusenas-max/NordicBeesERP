@@ -13,7 +13,7 @@
                            Label="Galioja nuo"
                            FirstDayOfWeek="DayOfWeek.Monday"
                            DisabledDaysOfTheWeek="@_disabledDays"
-                           MinDate="DateTime.Today"
+                           MinDate="AppClock.TodayLt"
                            Variant="Variant.Outlined"
                             FullWidth="@true"
                            AdornmentIcon="@Icons.Material.Filled.Event" />
@@ -30,7 +30,7 @@
     [Parameter] public int VersionId { get; set; }
     [Parameter] public string InitialComment { get; set; } = "";
 
-    private DateTime? _effectiveFrom = DateTime.Today;
+    private DateTime? _effectiveFrom = AppClock.TodayLt;
     private DayOfWeek[] _disabledDays = [DayOfWeek.Saturday, DayOfWeek.Sunday];
 
     private void ConfirmAsync()

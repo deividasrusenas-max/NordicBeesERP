@@ -238,7 +238,7 @@
             {
                 OriginalInvoiceId = _selectedInvoice.Id,
                 AppliedInvoiceId = _selectedAppliedInvoice?.Id,
-                CreditDate = DateTime.Today,
+                CreditDate = AppClock.TodayLt,
                 Language = "LT",
                 Lines = checkedLines.Select(l => new CreditNoteLineRequest
                 {

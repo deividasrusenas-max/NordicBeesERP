@@ -52,7 +52,7 @@
                     <MudTd Class="text-center">
                         @if (invoice.DueDate.HasValue)
                         {
-                            var daysOverdue = (DateTime.Today - invoice.DueDate.Value).Days;
+                            var daysOverdue = (AppClock.TodayLt - invoice.DueDate.Value).Days;
                             if (daysOverdue > 0)
                             {
                                 <MudText Style="color: #ef4444; font-weight: 500">@daysOverdue</MudText>

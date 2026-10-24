@@ -1,3 +1,4 @@
+using NordicBeesERP.Helpers;
 namespace NordicBeesERP.Services
 {
     /// <summary>
@@ -20,8 +21,8 @@ namespace NordicBeesERP.Services
         public DashboardPeriodState()
         {
             // Default: last 30 days, inclusive of today.
-            _toDate = DateTime.Today;
-            _fromDate = DateTime.Today.AddDays(-30);
+            _toDate = AppClock.TodayLt;
+            _fromDate = AppClock.TodayLt.AddDays(-30);
             _weeks = (int)Math.Ceiling((double)DaysBetween(_fromDate, _toDate) / 7.0);
         }
 
@@ -46,8 +47,8 @@ namespace NordicBeesERP.Services
             if (days <= 0)
                 throw new ArgumentOutOfRangeException(nameof(days), "Period must be a positive number of days.");
 
-            var to = DateTime.Today;
-            var from = DateTime.Today.AddDays(-days);
+            var to = AppClock.TodayLt;
+            var from = AppClock.TodayLt.AddDays(-days);
 
             lock (_syncRoot)
             {

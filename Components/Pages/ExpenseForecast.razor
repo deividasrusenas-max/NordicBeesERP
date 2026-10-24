@@ -103,7 +103,7 @@
                     <MudTd Style="text-align:center">@inv.DueDate.ToString("yyyy-MM-dd")</MudTd>
                     <MudTd Style="text-align:center">
                         @{
-                            var d = (inv.DueDate.Date - DateTime.Today).Days;
+                            var d = (inv.DueDate.Date - AppClock.TodayLt).Days;
                             var lbl = d == 0 ? "Šiandien" : d > 0 ? $"-{d}d." : $"+{Math.Abs(d)}d.";
                             var clr = d < 0 ? "#ef4444" : d <= 7 ? "#f97316" : "#16a34a";
                         }
@@ -177,7 +177,7 @@
         _loading = true;
         try
         {
-            var today = DateTime.Today;
+            var today = AppClock.TodayLt;
 
             var suppliers = await SupplierService.GetSuppliersAsync();
             _supplierNames = suppliers.ToDictionary(s => s.Id, s => s.Name);

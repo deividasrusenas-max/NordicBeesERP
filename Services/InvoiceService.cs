@@ -879,7 +879,7 @@ namespace NordicBeesERP.Services
             // the invoice itself should not display them as a comment).
 
             var paymentTermDays = supplier.PaymentTermDays > 0 ? supplier.PaymentTermDays : 10;
-            var issueDate = (invoiceDate ?? DateTime.Today).Date;
+            var issueDate = (invoiceDate ?? AppClock.TodayLt).Date;
 
             var invoice = new Invoice
             {

@@ -293,7 +293,7 @@
                             </MudChip>
                             @if (_invoice.Status != InvoiceStatus.Paid && _invoice.PaymentDueDate.HasValue)
                             {
-                                var daysLeft = (_invoice.PaymentDueDate.Value.Date - DateTime.Today).Days;
+                                var daysLeft = (_invoice.PaymentDueDate.Value.Date - AppClock.TodayLt).Days;
                                 <div class="d-flex align-center gap-1">
                                     <MudIcon Icon="@(daysLeft < 0 ? Icons.Material.Filled.Warning : Icons.Material.Filled.Schedule)"
                                              Size="Size.Small"

@@ -188,11 +188,11 @@
                 <MudTd>
                     @{
                         var dueDateLabel = GetDueDateLabel(context);
-                        var isOverdue = context.DueDate < DateTime.Today && context.Status != "PAID";
+                        var isOverdue = context.DueDate < AppClock.TodayLt && context.Status != "PAID";
                     }
                     @if (isOverdue)
                     {
-                        var daysOverdue = (DateTime.Today - context.DueDate.Date).Days;
+                        var daysOverdue = (AppClock.TodayLt - context.DueDate.Date).Days;
                         <div>
                             <span>@context.DueDate.ToString("MM-dd")</span>
                             <div style="font-size:0.7rem;color:#dc2626;">Pradelsta @daysOverdue d.</div>
@@ -428,15 +428,15 @@
                 break;
             case 2: // Pradelsta
                 result = _invoices.Where(i =>
-                    i.DueDate < DateTime.Today &&
+                    i.DueDate < AppClock.TodayLt &&
                     i.Status != "PAID" &&
                     i.Status != "PENDING_SUPPLIER"
                 ).ToList();
                 break;
             case 3: // Šis mėnuo
                 result = _invoices.Where(i =>
-                    i.InvoiceDate.Month == DateTime.Today.Month &&
-                    i.InvoiceDate.Year == DateTime.Today.Year
+                    i.InvoiceDate.Month == AppClock.TodayLt.Month &&
+                    i.InvoiceDate.Year == AppClock.TodayLt.Year
                 ).ToList();
                 break;
             case 4: // ULAK
@@ -459,7 +459,7 @@
         // Apply year filter
         if (_showCurrentYear)
         {
-            result = result.Where(i => i.InvoiceDate.Year == DateTime.Today.Year).ToList();
+            result = result.Where(i => i.InvoiceDate.Year == AppClock.TodayLt.Year).ToList();
         }
 
         // Apply date filter from _dateRange
@@ -565,9 +565,9 @@
     private string GetDueDateLabel(ExpenseInvoice invoice)
     {
         if (invoice.DueDate == default) return "—";
-        if (invoice.DueDate < DateTime.Today && invoice.Status != "PAID")
+        if (invoice.DueDate < AppClock.TodayLt && invoice.Status != "PAID")
         {
-            var daysOverdue = (DateTime.Today - invoice.DueDate.Date).Days;
+            var daysOverdue = (AppClock.TodayLt - invoice.DueDate.Date).Days;
             return $"Pradelsta {daysOverdue}d.";
         }
         return invoice.DueDate.ToString("MM-dd");
@@ -580,7 +580,7 @@
                         || inv.Status == "PENDING_SUPPLIER"
                         || inv.Status == "DUPLICATE_PENDING";
         bool hasWarning = inv.Status == "NEEDS_REVIEW"
-                       || (inv.DueDate < DateTime.Today && inv.Status != "PAID");
+                       || (inv.DueDate < AppClock.TodayLt && inv.Status != "PAID");
         if (hasCritical) return "background:#fff5f5;";
         if (hasWarning) return "background:#fffbeb;";
         return "";

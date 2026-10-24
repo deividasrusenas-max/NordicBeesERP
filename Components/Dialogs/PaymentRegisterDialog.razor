@@ -153,7 +153,7 @@
 </MudDialog>
 
 @code {
-    private DateTime? _paymentDate = DateTime.Today;
+    private DateTime? _paymentDate = AppClock.TodayLt;
     private string _paymentMethod = "BANK";
     private string? _referenceNumber;
     private string? _notes;

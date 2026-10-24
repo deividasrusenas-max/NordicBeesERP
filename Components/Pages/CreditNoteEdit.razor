@@ -178,7 +178,7 @@
     public int Id { get; set; }
     private string _creditNoteNumber = "";
     private int? _originalInvoiceId;
-    private DateTime? _creditDate = DateTime.Today;
+    private DateTime? _creditDate = AppClock.TodayLt;
     private int _selectedCustomerId;
     private string _selectedClientDisplay = "";
     private string _language = "LT";
@@ -421,7 +421,7 @@
             {
                 Id = _creditNoteId,
                 CustomerId = _selectedCustomerId,
-                CreditDate = _creditDate ?? DateTime.Today,
+                CreditDate = _creditDate ?? AppClock.TodayLt,
                 OriginalInvoiceId = _originalInvoiceId,
                  Language = _language,
                 // Status NOT changed via edit form — only through action buttons (Issue, Apply, Cancel, etc.)

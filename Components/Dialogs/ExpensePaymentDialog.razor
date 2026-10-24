@@ -153,14 +153,14 @@
     [Parameter]
     public IDialogService? DialogService { get; set; }
 
-    private bool _isOverdue => _invoice != null && _invoice.DueDate < DateTime.Today;
+    private bool _isOverdue => _invoice != null && _invoice.DueDate < AppClock.TodayLt;
 
     [Inject]
     IExpenseService ExpenseService { get; set; } = default!;
 
     private ExpenseInvoice? _invoice;
     private List<ExpensePayment> _payments = new();
-    private DateTime? _paymentDate = DateTime.Today;
+    private DateTime? _paymentDate = AppClock.TodayLt;
     private decimal _paymentAmount;
     private string _paymentMethod = "BANK";
     private string _paymentReference = string.Empty;

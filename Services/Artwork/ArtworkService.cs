@@ -1,3 +1,4 @@
+using NordicBeesERP.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using NordicBeesERP.Data;
@@ -467,7 +468,7 @@ public class ArtworkService : IArtworkService
 
     public async Task<List<ArtworkGalleryItem>> GetGalleryAsync()
     {
-        var today = DateTime.Today;
+        var today = AppClock.TodayLt;
 
         // Get all approved versions that are active (effective_from <= today OR effective_from IS NULL)
         var approvedVersions = await _context.ArtworkVersions

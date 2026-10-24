@@ -1,3 +1,4 @@
+using NordicBeesERP.Helpers;
 // =====================================================
 // NORDIC BEES ERP - PAYMENT SERVICE IMPLEMENTATION
 // Framework: .NET 10
@@ -477,7 +478,7 @@ namespace NordicBeesERP.Services
 
         public async Task<List<CashFlowWeek>> GetCashFlowForecastAsync(int weeks = 8)
         {
-            var today = DateTime.Today;
+            var today = AppClock.TodayLt;
             var weekStart = today;
 
             // Find the start of the current week (Monday)
@@ -575,7 +576,7 @@ namespace NordicBeesERP.Services
         {
             using var context = await _contextFactory.CreateDbContextAsync();
 
-            var today = DateTime.Today;
+            var today = AppClock.TodayLt;
             var report = new AgingReport();
 
             // Get ALL unpaid LAK invoices (excluding ULAK, disputed) with remaining amount > 0
@@ -682,7 +683,7 @@ namespace NordicBeesERP.Services
             // Default sort: newest payment first (OrderByDescending PaymentDate)
             // When sortBy is null or "paymentdate" and direction is not "asc", it uses OrderDescending
 
-            var today = DateTime.Today;
+            var today = AppClock.TodayLt;
 
             var query = from p in context.Payments
                         join bpRaw in context.BusinessPartners on p.CustomerId equals bpRaw.Id into bpGroup
@@ -1611,7 +1612,7 @@ namespace NordicBeesERP.Services
             using var context = await _contextFactory.CreateDbContextAsync();
 
             var result = new DashboardTrendResult();
-            var today = DateTime.Today;
+            var today = AppClock.TodayLt;
             var fourteenDaysAgo = today.AddDays(-14);
             var sevenDaysAgo = today.AddDays(-7);
 
@@ -1684,7 +1685,7 @@ namespace NordicBeesERP.Services
             // 2. Overdue invoices (LAK, COALESCE(due_date, payment_due_date) < today, not paid/disputed) — see OverdueInvoiceFilter
             counts.OverdueInvoices = await context.Invoices
                 .AsNoTracking()
-                .Where(OverdueInvoiceFilter.Predicate(DateTime.Today))
+                .Where(OverdueInvoiceFilter.Predicate(AppClock.TodayLt))
                 .CountAsync();
 
             // 3. Unmatched bank import rows

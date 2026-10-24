@@ -226,7 +226,7 @@
     [Parameter]
     public int Id { get; set; }
     private string _invoiceNumber = "";
-    private DateTime? _invoiceDate = DateTime.Today;
+    private DateTime? _invoiceDate = AppClock.TodayLt;
     private int _paymentTermDays = 7;
     private DateTime? _paymentDueDate;
     private int _selectedCustomerId;
@@ -570,7 +570,7 @@
         {
             Id = _invoiceId,
             InvoiceNumber = _invoiceNumber,
-            InvoiceDate = _invoiceDate ?? DateTime.Today,
+            InvoiceDate = _invoiceDate ?? AppClock.TodayLt,
             CustomerId = _selectedCustomerId,
             PaymentTermDays = _paymentTermDays,
             PaymentDueDate = _paymentDueDate,

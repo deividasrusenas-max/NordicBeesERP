@@ -172,8 +172,8 @@
     
     protected override void OnParametersSet()
     {
-        _fromDate = FromDate ?? DateTime.Today.AddMonths(-1);
-        _toDate = ToDate ?? DateTime.Today;
+        _fromDate = FromDate ?? AppClock.TodayLt.AddMonths(-1);
+        _toDate = ToDate ?? AppClock.TodayLt;
     }
     
     protected override async Task OnInitializedAsync()
@@ -385,12 +385,12 @@
         if (_fromDate.HasValue)
         {
             _fromDate = _fromDate.Value.AddMonths(-1);
-            _toDate = _toDate ?? DateTime.Today;
+            _toDate = _toDate ?? AppClock.TodayLt;
         }
         else
         {
-            _fromDate = DateTime.Today.AddMonths(-1);
-            _toDate = DateTime.Today;
+            _fromDate = AppClock.TodayLt.AddMonths(-1);
+            _toDate = AppClock.TodayLt;
         }
         GroupData();
     }
@@ -405,15 +405,15 @@
         }
         else
         {
-            _fromDate = DateTime.Today.AddMonths(-1);
-            _toDate = DateTime.Today;
+            _fromDate = AppClock.TodayLt.AddMonths(-1);
+            _toDate = AppClock.TodayLt;
         }
         GroupData();
     }
     
     private void SetLastWeek()
     {
-        var today = DateTime.Today;
+        var today = AppClock.TodayLt;
         var currentDayOfWeek = (int)today.DayOfWeek;
         var daysSinceMonday = currentDayOfWeek == 0 ? 6 : currentDayOfWeek - 1;
         var currentWeekStart = today.AddDays(-daysSinceMonday);
@@ -425,7 +425,7 @@
     
     private void SetNextWeek()
     {
-        var today = DateTime.Today;
+        var today = AppClock.TodayLt;
         var currentDayOfWeek = (int)today.DayOfWeek;
         var daysSinceMonday = currentDayOfWeek == 0 ? 6 : currentDayOfWeek - 1;
         var currentWeekStart = today.AddDays(-daysSinceMonday);

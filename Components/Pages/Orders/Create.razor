@@ -59,7 +59,7 @@
                 <MudDatePicker T="DateTime"
                                Label="Užsakymo data *"
                                Date="@_orderDate"
-                                DateChanged="@(date => _orderDate = date ?? DateTime.Today)"
+                                DateChanged="@(date => _orderDate = date ?? AppClock.TodayLt)"
                                 Editable="true"
                                 Variant="Variant.Outlined"
                                Required="true"
@@ -172,7 +172,7 @@
 
     // Header fields
     private Customer? _selectedCustomer;
-    private DateTime _orderDate = DateTime.Today;
+    private DateTime _orderDate = AppClock.TodayLt;
     private DateTime? _deliveryDate;
     private string? _notes;
 

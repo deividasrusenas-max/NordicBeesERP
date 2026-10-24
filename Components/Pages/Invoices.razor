@@ -173,7 +173,7 @@
                     }
                     @if (invoice.PaymentDueDate.HasValue)
                     {
-                        var days = (invoice.PaymentDueDate.Value.Date - DateTime.Today).Days;
+                        var days = (invoice.PaymentDueDate.Value.Date - AppClock.TodayLt).Days;
                         <span>@invoice.PaymentDueDate.Value.ToString("yyyy-MM-dd")</span>
                         @if (!isPaid)
                         {
@@ -465,7 +465,7 @@
                 result = result.Where(i => 
                     i.Status == InvoiceStatus.Confirmed && 
                     i.PaymentDueDate.HasValue && 
-                    i.PaymentDueDate.Value < DateTime.Today &&
+                    i.PaymentDueDate.Value < AppClock.TodayLt &&
                     i.PaidAmount < i.TotalInclVat);
                 break;
             case 3: // Šis mėnuo
@@ -630,7 +630,7 @@
         if (!invoice.PaymentDueDate.HasValue) return "";
         
         var dueDate = invoice.PaymentDueDate.Value;
-        var today = DateTime.Today;
+        var today = AppClock.TodayLt;
         
         if (dueDate < today)
         {
@@ -645,7 +645,7 @@
     }
 
     private string GetRowStyle(Invoice item, int index) =>
-        ListRowStyle.ForDue(item.Status == InvoiceStatus.Paid, item.PaymentDueDate, item.PaidAmount < item.TotalInclVat, DateTime.Today);
+        ListRowStyle.ForDue(item.Status == InvoiceStatus.Paid, item.PaymentDueDate, item.PaidAmount < item.TotalInclVat, AppClock.TodayLt);
 
     // Selection helpers
     private void ToggleInvoice(int id, bool selected)
