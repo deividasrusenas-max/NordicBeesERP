@@ -111,7 +111,7 @@
                     <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
                 }
             </MudTd>
-            <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Trim(payment.Amount, 2)</MudTd>
+            <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Money(payment.Amount)</MudTd>
             <MudTd DataLabel="Klientas">@payment.CustomerName</MudTd>
              <MudTd DataLabel="Būdas">
                  <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@PaymentMethodLabels.Label(payment.PaymentMethod, payment.ReferenceNumber)</MudChip>

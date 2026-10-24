@@ -207,7 +207,7 @@
                         <span>—</span>
                     }
                 </MudTd>
-                <MudTd Class="lakstena-mono">@FormatAmountHelper.Trim(context.AmountInclVat, 2) €</MudTd>
+                <MudTd Class="lakstena-mono">@FormatAmountHelper.Money(context.AmountInclVat)</MudTd>
                 <MudTd Class="lakstena-mono">@GetRemainingAmount(context)</MudTd>
                 <MudTd>
                     <MudChip T="string" Size="Size.Small" Color="@ExpenseStatusHelper.GetColor(context.Status)">
@@ -593,7 +593,7 @@
         {
             return "–";
         }
-        return $"{FormatAmountHelper.Trim(remaining, 2)} €";
+        return $"{FormatAmountHelper.Money(remaining)}";
     }
 
     private async Task OpenPaymentDialog(ExpenseInvoice invoice)

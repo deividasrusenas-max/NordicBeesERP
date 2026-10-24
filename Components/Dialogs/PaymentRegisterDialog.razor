@@ -40,15 +40,15 @@
         <MudGrid Spacing="2" Class="mb-3">
             <MudItem xs="3">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Suma su PVM</MudText>
-                <MudText Typo="Typo.body1" Style="font-weight:600">@FormatAmountHelper.Trim(_totalAmount, 2) €</MudText>
+                <MudText Typo="Typo.body1" Style="font-weight:600">@FormatAmountHelper.Money(_totalAmount)</MudText>
             </MudItem>
             <MudItem xs="3">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Sumokėta</MudText>
-                <MudText Typo="Typo.body1" Style="color:#16a34a;font-weight:600">@FormatAmountHelper.Trim(_paidAmount, 2) €</MudText>
+                <MudText Typo="Typo.body1" Style="color:#16a34a;font-weight:600">@FormatAmountHelper.Money(_paidAmount)</MudText>
             </MudItem>
             <MudItem xs="3">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Liko</MudText>
-                <MudText Typo="Typo.body1" Style="color:#dc2626;font-weight:600">@FormatAmountHelper.Trim(_remainingAmount, 2) €</MudText>
+                <MudText Typo="Typo.body1" Style="color:#dc2626;font-weight:600">@FormatAmountHelper.Money(_remainingAmount)</MudText>
             </MudItem>
             <MudItem xs="3">
                 <MudChip T="string" Color="@_statusColor" Size="Size.Small">@_statusLabel</MudChip>
@@ -106,11 +106,11 @@
                         <MudTd DataLabel="Klientas">@invoice.CustomerName</MudTd>
                         <MudTd DataLabel="Data">@invoice.InvoiceDate.ToShortDateString()</MudTd>
                         <MudTd DataLabel="Terminas">@invoice.DueDate?.ToShortDateString()</MudTd>
-                        <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Trim(invoice.TotalInclVat, 2)</MudTd>
-                        <MudTd DataLabel="Sumokėta" Style="text-align:right">@FormatAmountHelper.Trim(invoice.PaidAmount, 2)</MudTd>
-                        <MudTd DataLabel="Likęs mokėjimas" Style="text-align:right">@FormatAmountHelper.Trim(invoice.RemainingAmount, 2)</MudTd>
+                        <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Money(invoice.TotalInclVat)</MudTd>
+                        <MudTd DataLabel="Sumokėta" Style="text-align:right">@FormatAmountHelper.Money(invoice.PaidAmount)</MudTd>
+                        <MudTd DataLabel="Likęs mokėjimas" Style="text-align:right">@FormatAmountHelper.Money(invoice.RemainingAmount)</MudTd>
                         <MudTd DataLabel="Skirtumas" Style="text-align:right; font-weight:600">
-                            @FormatAmountHelper.Trim(GetAllocationAmount(invoice.Id), 2)
+                            @FormatAmountHelper.Money(GetAllocationAmount(invoice.Id))
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -125,23 +125,23 @@
             <MudGrid>
                 <MudItem xs="6">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Iš viso pasirinkta</MudText>
-                    <MudText Typo="Typo.body1">@FormatAmountHelper.Trim(_totalAllocated, 2) €</MudText>
+                    <MudText Typo="Typo.body1">@FormatAmountHelper.Money(_totalAllocated)</MudText>
                 </MudItem>
                 <MudItem xs="6">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Mokėjimo suma</MudText>
-                    <MudText Typo="Typo.body1" Style="color:#2563eb">@FormatAmountHelper.Trim(_paymentAmount, 2) €</MudText>
+                    <MudText Typo="Typo.body1" Style="color:#2563eb">@FormatAmountHelper.Money(_paymentAmount)</MudText>
                 </MudItem>
             </MudGrid>
             @if (_totalAllocated > _paymentAmount)
             {
                 <MudAlert T="Alert" Severity="Severity.Warning" Class="mt-2">
-                    Pasirinktų sąskaitų suma (@FormatAmountHelper.Trim(_totalAllocated, 2) €) viršija mokėjimo sumą (@FormatAmountHelper.Trim(_paymentAmount, 2) €).
+                    Pasirinktų sąskaitų suma (@FormatAmountHelper.Money(_totalAllocated)) viršija mokėjimo sumą (@FormatAmountHelper.Money(_paymentAmount)).
                 </MudAlert>
             }
             else if (_totalAllocated < _paymentAmount)
             {
                 <MudAlert T="Alert" Severity="Severity.Info" Class="mt-2">
-                    Mokėjimo suma (@FormatAmountHelper.Trim(_paymentAmount, 2) €) yra didesnė už pasirinktų sąskaitų sumą (@FormatAmountHelper.Trim(_totalAllocated, 2) €).
+                    Mokėjimo suma (@FormatAmountHelper.Money(_paymentAmount)) yra didesnė už pasirinktų sąskaitų sumą (@FormatAmountHelper.Money(_totalAllocated)).
                 </MudAlert>
             }
         </MudPaper>

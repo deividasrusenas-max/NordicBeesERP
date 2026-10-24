@@ -62,11 +62,11 @@
                                 <MudTextField @bind-Value="item.PlannedAmount" Type="number" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="€" AdornmentColor="Color.Primary" Margin="Margin.Dense" Class="w-100" Disabled="@item.IsUnassigned" />
                             </MudTd>
                             <MudTd>
-                                <MudText>@FormatAmountHelper.Trim(item.ActualExpenses, 2) €</MudText>
+                                <MudText>@FormatAmountHelper.Money(item.ActualExpenses)</MudText>
                             </MudTd>
                             <MudTd>
                                 <MudText Color="@(item.Variance >= 0 ? Color.Success : Color.Error)">
-                                    @FormatAmountHelper.Trim(item.Variance, 2) €
+                                    @FormatAmountHelper.Money(item.Variance)
                                 </MudText>
                             </MudTd>
                             <MudTd>
@@ -95,19 +95,19 @@
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#e8f5e9; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Success">Planuojama suma</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Success">@FormatAmountHelper.Trim(_totalBudgeted, 2) €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Success">@FormatAmountHelper.Money(_totalBudgeted)</MudText>
                             </MudPaper>
                         </MudItem>
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#ffebee; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Error">Tikrosios išlaidos</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Error">@FormatAmountHelper.Trim(_totalActual, 2) €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Error">@FormatAmountHelper.Money(_totalActual)</MudText>
                             </MudPaper>
                         </MudItem>
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#e3f2fd; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Primary">Ventilė</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Primary">@FormatAmountHelper.Trim(_totalVariance, 2) €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Primary">@FormatAmountHelper.Money(_totalVariance)</MudText>
                             </MudPaper>
                         </MudItem>
                     </MudGrid>

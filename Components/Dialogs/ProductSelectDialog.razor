@@ -37,7 +37,7 @@
                 <MudTd>@context.Code</MudTd>
                 <MudTd>@context.Name</MudTd>
                 <MudTd>@context.Unit</MudTd>
-                <MudTd>@FormatAmountHelper.Trim(context.SalePrice, 2) €</MudTd>
+                <MudTd>@FormatAmountHelper.Money(context.SalePrice)</MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Color="Color.Secondary">Produktų nerasta</MudText>

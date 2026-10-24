@@ -279,7 +279,7 @@
                                             <MudGrid Spacing="2">
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">Suma be PVM</MudText>
-                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Trim(_invoice.AmountExclVat, 2) €</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Money(_invoice.AmountExclVat)</MudText>
                                                 </MudItem>
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">PVM%</MudText>
@@ -287,11 +287,11 @@
                                                 </MudItem>
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">PVM suma</MudText>
-                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Trim(_invoice.VatAmount, 2) €</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Money(_invoice.VatAmount)</MudText>
                                                 </MudItem>
                                                 <MudItem xs="6">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">Suma su PVM</MudText>
-                                                    <MudText Typo="Typo.subtitle2" Style="font-weight:700; color:#1976d2">@FormatAmountHelper.Trim(_invoice.AmountInclVat, 2) €</MudText>
+                                                    <MudText Typo="Typo.subtitle2" Style="font-weight:700; color:#1976d2">@FormatAmountHelper.Money(_invoice.AmountInclVat)</MudText>
                                                 </MudItem>
                                             </MudGrid>
                                         }
@@ -359,7 +359,7 @@
                                         }
                                         <MudDivider Class="my-2" />
                                         <MudText Typo="Typo.caption" Style="font-weight:600; color:#1976d2">
-                                            Sumokėta: @FormatAmountHelper.Trim(_invoice.PaidAmount, 2) € | Liko: @FormatAmountHelper.Trim((_invoice.AmountInclVat - _invoice.PaidAmount), 2) €
+                                            Sumokėta: @FormatAmountHelper.Money(_invoice.PaidAmount) | Liko: @FormatAmountHelper.Money((_invoice.AmountInclVat - _invoice.PaidAmount))
                                         </MudText>
                                     </MudPaper>
 
@@ -371,7 +371,7 @@
                                             {
                                                 <div class="d-flex justify-space-between mb-1">
                                                     <MudText Typo="Typo.body2">@p.PaymentDate.ToString("yyyy-MM-dd") — @PaymentMethodLabels.Label(p.PaymentMethod, p.Reference)</MudText>
-                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Trim(p.Amount, 2) €</MudText>
+                                                    <MudText Typo="Typo.body2" Style="font-weight:600">@FormatAmountHelper.Money(p.Amount)</MudText>
                                                 </div>
                                             }
                                         </MudPaper>
@@ -417,7 +417,7 @@
                                             }
                                             <MudDivider Class="mt-1 mb-1" />
                                             <MudText Typo="Typo.body2" Class="text-right">
-                                                Iš viso be PVM: <strong>@FormatAmountHelper.Trim(_lines.Sum(l => l.AmountExclVat), 2) €</strong>
+                                                Iš viso be PVM: <strong>@FormatAmountHelper.Money(_lines.Sum(l => l.AmountExclVat))</strong>
                                             </MudText>
                                         </MudPaper>
                                     }
@@ -442,16 +442,16 @@
                                                         <tr style="border-bottom:1px solid #e5e7eb;">
                                                             <td style="padding:4px 8px;">@line.Description</td>
                                                             <td style="padding:4px 8px;text-align:right;">@(line.Quantity.HasValue ? line.Quantity.Value.ToString("G29") : "")</td>
-                                                            <td style="padding:4px 8px;text-align:right;">@FormatAmountHelper.Trim(line.AmountExclVat, 2)</td>
+                                                            <td style="padding:4px 8px;text-align:right;">@FormatAmountHelper.Money(line.AmountExclVat)</td>
                                                             <td style="padding:4px 8px;text-align:right;">@((int)line.VatRate)%</td>
-                                                            <td style="padding:4px 8px;text-align:right;">@FormatAmountHelper.Trim(line.AmountInclVat, 2)</td>
+                                                            <td style="padding:4px 8px;text-align:right;">@FormatAmountHelper.Money(line.AmountInclVat)</td>
                                                         </tr>
                                                     }
                                                 </tbody>
                                                 <tfoot style="font-weight:600;background:#f8fafc;">
                                                     <tr>
                                                         <td colspan="4" style="padding:4px 8px;">Viso:</td>
-                                                        <td style="padding:4px 8px;text-align:right;">@FormatAmountHelper.Trim(GetLinesTotal(), 2) €</td>
+                                                        <td style="padding:4px 8px;text-align:right;">@FormatAmountHelper.Money(GetLinesTotal())</td>
                                                     </tr>
                                                 </tfoot>
                                             </table>

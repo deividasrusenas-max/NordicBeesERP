@@ -26,11 +26,11 @@
                     <MudTd Class="text-no-wrap">@invoice.InvoiceNumber</MudTd>
                     <MudTd>@invoice.CustomerName</MudTd>
                     <MudTd>@invoice.InvoiceDate.ToString("dd.MM.yyyy")</MudTd>
-                    <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.SubtotalExclVat, 2)</MudTd>
-                    <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.TotalVat, 2)</MudTd>
-                    <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.TotalInclVat, 2)</MudTd>
-                    <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.PaidAmount, 2)</MudTd>
-                    <MudTd Class="text-right">@FormatAmountHelper.Trim(invoice.RemainingAmount, 2)</MudTd>
+                    <MudTd Class="text-right">@FormatAmountHelper.Money(invoice.SubtotalExclVat)</MudTd>
+                    <MudTd Class="text-right">@FormatAmountHelper.Money(invoice.TotalVat)</MudTd>
+                    <MudTd Class="text-right">@FormatAmountHelper.Money(invoice.TotalInclVat)</MudTd>
+                    <MudTd Class="text-right">@FormatAmountHelper.Money(invoice.PaidAmount)</MudTd>
+                    <MudTd Class="text-right">@FormatAmountHelper.Money(invoice.RemainingAmount)</MudTd>
                     <MudTd Class="text-center">
                         @if (invoice.PaymentStatus == "paid")
                         {

@@ -457,7 +457,7 @@
         if (balance == 0m)
             return "0,00 €";
         var sign = balance > 0m ? "+" : "-";
-        return $"{sign}{FormatAmountHelper.Trim(Math.Abs(balance), 2)} €";
+        return $"{sign}{FormatAmountHelper.Money(Math.Abs(balance))}";
     }
 
     private IEnumerable<Supplier> FilteredSuppliers

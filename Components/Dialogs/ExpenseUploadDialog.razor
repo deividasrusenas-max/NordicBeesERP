@@ -304,7 +304,7 @@
                     @if (_ocrFlags.Contains("AMOUNT_MISMATCH"))
                     {
                         <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
-                            Eilučių suma @FormatAmountHelper.Trim(_ocrLines.Sum(l => l.AmountExclVat), 2) ≠ sąskaitos suma @FormatAmountHelper.Trim(_amountExclVat, 2)
+                            Eilučių suma @FormatAmountHelper.Money(_ocrLines.Sum(l => l.AmountExclVat)) ≠ sąskaitos suma @FormatAmountHelper.Money(_amountExclVat)
                         </MudAlert>
                     }
 
@@ -336,7 +336,7 @@
 
                     <MudDivider Class="mt-2 mb-1" />
                     <MudText Typo="Typo.body2" Class="text-right">
-                        Iš viso be PVM: <strong>@FormatAmountHelper.Trim(_ocrLines.Sum(l => l.AmountExclVat), 2) €</strong>
+                        Iš viso be PVM: <strong>@FormatAmountHelper.Money(_ocrLines.Sum(l => l.AmountExclVat))</strong>
                     </MudText>
                 </MudPaper>
 

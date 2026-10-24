@@ -138,20 +138,20 @@
             new ComparisonRow
             {
                 FieldName = "Suma be PVM",
-                ThisValue = $"{FormatAmountHelper.Trim(ThisInvoice.AmountExclVat, 2)} €",
-                OriginalValue = $"{FormatAmountHelper.Trim(OriginalInvoice.AmountExclVat, 2)} €"
+                ThisValue = $"{FormatAmountHelper.Money(ThisInvoice.AmountExclVat)}",
+                OriginalValue = $"{FormatAmountHelper.Money(OriginalInvoice.AmountExclVat)}"
             },
             new ComparisonRow
             {
                 FieldName = "PVM suma",
-                ThisValue = $"{FormatAmountHelper.Trim(ThisInvoice.VatAmount, 2)} €",
-                OriginalValue = $"{FormatAmountHelper.Trim(OriginalInvoice.VatAmount, 2)} €"
+                ThisValue = $"{FormatAmountHelper.Money(ThisInvoice.VatAmount)}",
+                OriginalValue = $"{FormatAmountHelper.Money(OriginalInvoice.VatAmount)}"
             },
             new ComparisonRow
             {
                 FieldName = "Suma su PVM",
-                ThisValue = $"{FormatAmountHelper.Trim(ThisInvoice.AmountInclVat, 2)} €",
-                OriginalValue = $"{FormatAmountHelper.Trim(OriginalInvoice.AmountInclVat, 2)} €"
+                ThisValue = $"{FormatAmountHelper.Money(ThisInvoice.AmountInclVat)}",
+                OriginalValue = $"{FormatAmountHelper.Money(OriginalInvoice.AmountInclVat)}"
             }
         };
     }

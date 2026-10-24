@@ -46,19 +46,19 @@
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#e8f5e9; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Success">Bendra pajamos</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Success">@FormatAmountHelper.Trim(_totalIncome, 2) €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Success">@FormatAmountHelper.Money(_totalIncome)</MudText>
                             </MudPaper>
                         </MudItem>
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#ffebee; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Error">Bendra išlaidos</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Error">@FormatAmountHelper.Trim(_totalExpenses, 2) €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Error">@FormatAmountHelper.Money(_totalExpenses)</MudText>
                             </MudPaper>
                         </MudItem>
                         <MudItem xs="12" sm="4">
                             <MudPaper Elevation="0" Class="pa-3" Style="background:#e3f2fd; border-radius:8px">
                                 <MudText Typo="Typo.body2" Color="Color.Primary">Grynoji srautas</MudText>
-                                <MudText Typo="Typo.h5" Color="Color.Primary">@FormatAmountHelper.Trim(_netCashFlow, 2) €</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Primary">@FormatAmountHelper.Money(_netCashFlow)</MudText>
                             </MudPaper>
                         </MudItem>
                     </MudGrid>
@@ -89,10 +89,10 @@
                                     @group.GroupKey
                                 </MudButton>
                             </MudTd>
-                            <MudTd>@FormatAmountHelper.Trim(group.TotalIncome, 2) €</MudTd>
-                            <MudTd>@FormatAmountHelper.Trim(group.TotalExpenses, 2) €</MudTd>
+                            <MudTd>@FormatAmountHelper.Money(group.TotalIncome)</MudTd>
+                            <MudTd>@FormatAmountHelper.Money(group.TotalExpenses)</MudTd>
                             <MudTd Color="@(group.NetBalance >= 0 ? Color.Success : Color.Error)">
-                                @FormatAmountHelper.Trim(group.NetBalance, 2) €
+                                @FormatAmountHelper.Money(group.NetBalance)
                             </MudTd>
                         </RowTemplate>
                         <ChildRowContent Context="group">
@@ -116,8 +116,8 @@
                                                         @entry.Type
                                                     </MudChip>
                                                 </MudTd>
-                                                <MudTd>@FormatAmountHelper.Trim(entry.Amount, 2) €</MudTd>
-                                                <MudTd>@FormatAmountHelper.Trim(entry.Balance, 2) €</MudTd>
+                                                <MudTd>@FormatAmountHelper.Money(entry.Amount)</MudTd>
+                                                <MudTd>@FormatAmountHelper.Money(entry.Balance)</MudTd>
                                             </RowTemplate>
                                         </MudTable>
                                     </MudTd>
@@ -126,9 +126,9 @@
                         </ChildRowContent>
                         <FooterContent>
                             <MudTd><b>Iš viso</b></MudTd>
-                            <MudTd><b>@FormatAmountHelper.Trim(_totalIncome, 2) €</b></MudTd>
-                            <MudTd><b>@FormatAmountHelper.Trim(_totalExpenses, 2) €</b></MudTd>
-                            <MudTd Color="@(NetCashFlowColor)"><b>@FormatAmountHelper.Trim(_netCashFlow, 2) €</b></MudTd>
+                            <MudTd><b>@FormatAmountHelper.Money(_totalIncome)</b></MudTd>
+                            <MudTd><b>@FormatAmountHelper.Money(_totalExpenses)</b></MudTd>
+                            <MudTd Color="@(NetCashFlowColor)"><b>@FormatAmountHelper.Money(_netCashFlow)</b></MudTd>
                         </FooterContent>
                     </MudTable>
                 </MudPaper>

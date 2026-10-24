@@ -55,19 +55,19 @@
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#fef3c7; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Bendra suma (ULAK su 6 % PVM)</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FormatAmountHelper.Trim(FilteredDebtRows.Sum(r => r.TotalAmount), 2) €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FormatAmountHelper.Money(FilteredDebtRows.Sum(r => r.TotalAmount))</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card" Style="background:#dbeafe; border-radius:12px">
                     <MudText Typo="Typo.caption" Style="color:#666">Sumokėta</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FormatAmountHelper.Trim(FilteredDebtRows.Sum(r => r.PaidAmount), 2) €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value lakstena-mono">@FormatAmountHelper.Money(FilteredDebtRows.Sum(r => r.PaidAmount))</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6" md="3">
                 <MudPaper Class="pa-4 summary-card debt-card" Style="@_debtCardStyle">
                     <MudText Typo="Typo.caption" Style="color:#666">Skola</MudText>
-                    <MudText Typo="Typo.h4" Class="summary-value debt-text lakstena-mono">@FormatAmountHelper.Trim(_totalDebt, 2) €</MudText>
+                    <MudText Typo="Typo.h4" Class="summary-value debt-text lakstena-mono">@FormatAmountHelper.Money(_totalDebt)</MudText>
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -95,10 +95,10 @@
                 <MudTd><strong>@row.SupplierName</strong></MudTd>
                 <MudTd Class="lakstena-mono" Style="text-align:right">@row.DeliveryCount</MudTd>
                 <MudTd Class="lakstena-mono" Style="text-align:right">@row.TotalNetWeight.ToString("N1")</MudTd>
-                <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Trim(row.TotalAmount, 2)</MudTd>
-                <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Trim(row.PaidAmount, 2)</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Money(row.TotalAmount)</MudTd>
+                <MudTd Class="lakstena-mono" Style="text-align:right">@FormatAmountHelper.Money(row.PaidAmount)</MudTd>
                 <MudTd Class="lakstena-mono" @attributes='@(new Dictionary<string, object> { { "Style", $"text-align:right{GetRowDebtClass(row.Debt)}" } })'>
-                    @FormatAmountHelper.Trim(row.Debt, 2)
+                    @FormatAmountHelper.Money(row.Debt)
                 </MudTd>
             </RowTemplate>
         </MudTable>

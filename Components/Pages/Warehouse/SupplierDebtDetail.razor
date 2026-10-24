@@ -21,19 +21,19 @@
         <MudItem xs="6" md="3">
             <MudPaper Class="pa-3" Elevation="0" Style="background:#e3f2fd; border-radius:8px">
                 <MudText Typo="Typo.caption">Bendra suma@(_deliveries.Any(d => d.DebtInvoiceTotal.HasValue) ? " (ULAK su 6 % PVM)" : "")</MudText>
-                <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_deliveries.Sum(d => d.DebtBase), 2) €</MudText>
+                <MudText Typo="Typo.h6">@FormatAmountHelper.Money(_deliveries.Sum(d => d.DebtBase))</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
             <MudPaper Class="pa-3" Elevation="0" Style="background:#e8f5e9; border-radius:8px">
                 <MudText Typo="Typo.caption">Sumokėta</MudText>
-                <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_deliveries.Sum(d => d.PaidAmount), 2) €</MudText>
+                <MudText Typo="Typo.h6">@FormatAmountHelper.Money(_deliveries.Sum(d => d.PaidAmount))</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
             <MudPaper Class="pa-3" Elevation="0" Style="background:#ffebee; border-radius:8px">
                 <MudText Typo="Typo.caption">Skola</MudText>
-                <MudText Typo="Typo.h6">@FormatAmountHelper.Trim(_deliveries.Sum(d => d.DebtBase - d.PaidAmount), 2) €</MudText>
+                <MudText Typo="Typo.h6">@FormatAmountHelper.Money(_deliveries.Sum(d => d.DebtBase - d.PaidAmount))</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="6" md="3">
@@ -67,10 +67,10 @@
             <MudTd DataLabel="Data">@delivery.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
             <MudTd DataLabel="Numeris">@delivery.DeliveryNumber</MudTd>
             <MudTd DataLabel="Netto" Style="text-align:right">@delivery.TotalNetWeight.ToString("N1")</MudTd>
-            <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Trim(delivery.DebtBase, 2)@(delivery.DebtInvoiceTotal.HasValue ? " su 6 % PVM" : "")</MudTd>
-            <MudTd DataLabel="Sumokėta" Style="text-align:right">@FormatAmountHelper.Trim(delivery.PaidAmount, 2)</MudTd>
+            <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Money(delivery.DebtBase)@(delivery.DebtInvoiceTotal.HasValue ? " su 6 % PVM" : "")</MudTd>
+            <MudTd DataLabel="Sumokėta" Style="text-align:right">@FormatAmountHelper.Money(delivery.PaidAmount)</MudTd>
             <MudTd DataLabel="Skola" Style="@GetDebtStyle(delivery.DebtBase - delivery.PaidAmount)">
-                @(FormatAmountHelper.Trim((delivery.DebtBase - delivery.PaidAmount), 2))
+                @(FormatAmountHelper.Money((delivery.DebtBase - delivery.PaidAmount)))
             </MudTd>
             <MudTd DataLabel="Būsena">
                 <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(delivery.Status, _statusDisplay)"

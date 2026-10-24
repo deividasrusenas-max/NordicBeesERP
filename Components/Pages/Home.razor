@@ -102,7 +102,7 @@
                         <div class="lb-kpi-labelvalue">
                             <span class="lb-kpi-label">Skolos tiekėjams</span>
                             <div class="lb-kpi-valuerow">
-                                <span class="lb-kpi-value">@FormatAmountHelper.Trim(_trendResult.SupplierDebtTotal.CurrentValue, 2)</span>
+                                <span class="lb-kpi-value">@FormatAmountHelper.Money(_trendResult.SupplierDebtTotal.CurrentValue)</span>
                                 <span class="lb-kpi-unit">€</span>
                             </div>
                         </div>
@@ -123,7 +123,7 @@
             @if (_agingReport.Bucket90Plus.InvoiceCount > 0)
             {
                 <MudAlert Severity="Severity.Warning" Style="background:var(--lakstena-accent-light);border-radius:16px">
-                    <b>Dėmesio!</b> @_agingReport.Bucket90Plus.InvoiceCount sąskaita(-os) pradelsta daugiau nei 90 dienų (@FormatAmountHelper.Trim(_agingReport.Bucket90Plus.TotalAmount, 2) €).
+                    <b>Dėmesio!</b> @_agingReport.Bucket90Plus.InvoiceCount sąskaita(-os) pradelsta daugiau nei 90 dienų (@FormatAmountHelper.Money(_agingReport.Bucket90Plus.TotalAmount)).
                     <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/invoices/sales?status=overdue" Class="ml-2">PERŽIŪRĖTI</MudButton>
                 </MudAlert>
             }
@@ -223,7 +223,7 @@
                             <MudTd>@d.DeliveryDate.ToString("yyyy-MM-dd")</MudTd>
                             <MudTd>@GetSupplierName(d.SupplierId)</MudTd>
                             <MudTd Style="text-align:right">@d.TotalNetWeight.ToString("N1")</MudTd>
-                            <MudTd Style="text-align:right">@FormatAmountHelper.Trim(d.TotalAmount, 2)</MudTd>
+                            <MudTd Style="text-align:right">@FormatAmountHelper.Money(d.TotalAmount)</MudTd>
                             <MudTd>
                                 <MudChip T="string" Size="Size.Small" Color="@StatusDisplayHelper.GetColor(d.Status, _statusDisplay)" Style="font-size:0.75rem">
                                     @StatusDisplayHelper.GetLabel(d.Status, _statusDisplay)

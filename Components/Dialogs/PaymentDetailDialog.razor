@@ -15,7 +15,7 @@
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.caption">Suma</MudText>
-                    <MudText>@Payment.Amount.ToString("C")</MudText>
+                    <MudText>@FormatAmountHelper.Money(Payment.Amount)</MudText>
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.caption">Mokėjimo būdas</MudText>
@@ -40,7 +40,7 @@
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="Sąskaitos Nr.">@context.InvoiceNumber</MudTd>
-                        <MudTd DataLabel="Paskirstyta suma">@context.AllocatedAmount.ToString("C")</MudTd>
+                        <MudTd DataLabel="Paskirstyta suma">@FormatAmountHelper.Money(context.AllocatedAmount)</MudTd>
                     </RowTemplate>
                 </MudTable>
             }

@@ -118,8 +118,8 @@
                     }
                 </MudTd>
                 <MudTd>@product.Unit</MudTd>
-                <MudTd Class="lakstena-mono">@FormatAmountHelper.Trim(product.CostPrice, 2) €</MudTd>
-                <MudTd Class="lakstena-mono"><strong>@FormatAmountHelper.Trim(product.SalePrice, 2) €</strong></MudTd>
+                <MudTd Class="lakstena-mono">@FormatAmountHelper.Money(product.CostPrice)</MudTd>
+                <MudTd Class="lakstena-mono"><strong>@FormatAmountHelper.Money(product.SalePrice)</strong></MudTd>
                 <MudTd>
                     <MudChip T="string" Size="Size.Small"
                              Color="@(product.IsActive ? Color.Success : Color.Default)"

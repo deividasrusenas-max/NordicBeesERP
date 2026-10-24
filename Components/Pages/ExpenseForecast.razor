@@ -36,25 +36,25 @@
             <MudItem xs="12" sm="4">
                 <MudPaper Elevation="1" Class="pa-4" Style="background:#dcfce7; border-radius:12px;">
                     <MudText Typo="Typo.caption">Per @_days dienų</MudText>
-                    <MudText Typo="Typo.h4">@FormatAmountHelper.Trim(_nextPeriodExclVat, 2) €</MudText>
-                    <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_nextPeriodVat, 2) €</MudText>
-                    <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_nextPeriodInclVat, 2) €</MudText>
+                    <MudText Typo="Typo.h4">@FormatAmountHelper.Money(_nextPeriodExclVat)</MudText>
+                    <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Money(_nextPeriodVat)</MudText>
+                    <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Money(_nextPeriodInclVat)</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudPaper Elevation="1" Class="pa-4" Style="background:#fee2e2; border-radius:12px;">
                     <MudText Typo="Typo.caption" Color="Color.Error">Pradelsta</MudText>
-                    <MudText Typo="Typo.h4">@FormatAmountHelper.Trim(_overdueExclVat, 2) €</MudText>
-                    <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_overdueVat, 2) €</MudText>
-                    <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_overdueInclVat, 2) €</MudText>
+                    <MudText Typo="Typo.h4">@FormatAmountHelper.Money(_overdueExclVat)</MudText>
+                    <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Money(_overdueVat)</MudText>
+                    <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Money(_overdueInclVat)</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudPaper Elevation="1" Class="pa-4" Style="background:#dbeafe; border-radius:12px;">
                     <MudText Typo="Typo.caption">Viso laukiama</MudText>
-                    <MudText Typo="Typo.h4">@FormatAmountHelper.Trim(_totalExclVat, 2) €</MudText>
-                    <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Trim(_totalVat, 2) €</MudText>
-                    <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Trim(_totalInclVat, 2) €</MudText>
+                    <MudText Typo="Typo.h4">@FormatAmountHelper.Money(_totalExclVat)</MudText>
+                    <MudText Typo="Typo.caption">PVM: @FormatAmountHelper.Money(_totalVat)</MudText>
+                    <MudText Typo="Typo.caption">Su PVM: @FormatAmountHelper.Money(_totalInclVat)</MudText>
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -99,7 +99,7 @@
                 <RowTemplate Context="inv">
                     <MudTd>@inv.InvoiceNumber</MudTd>
                     <MudTd>@GetSupplierName(inv)</MudTd>
-                    <MudTd Style="text-align:right">@FormatAmountHelper.Trim(inv.AmountInclVat - inv.PaidAmount, 2) €</MudTd>
+                    <MudTd Style="text-align:right">@FormatAmountHelper.Money(inv.AmountInclVat - inv.PaidAmount)</MudTd>
                     <MudTd Style="text-align:center">@inv.DueDate.ToString("yyyy-MM-dd")</MudTd>
                     <MudTd Style="text-align:center">
                         @{
