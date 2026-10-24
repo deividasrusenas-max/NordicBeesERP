@@ -45,7 +45,7 @@
                 <MudText Class="text-center py-4">Užskaitų nėra</MudText>
             </NoRecordsContent>
             <PagerContent>
-                <MudTablePager />
+                <MudTablePager RowsPerPageString="@LtPager.RowsPerPage" InfoFormat="@LtPager.InfoFormat" PageSizeOptions="new int[]{25, 50, 100}" />
             </PagerContent>
         </MudTable>
     }
