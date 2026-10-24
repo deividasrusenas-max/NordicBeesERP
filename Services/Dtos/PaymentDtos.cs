@@ -92,8 +92,11 @@ namespace NordicBeesERP.Services.Dtos
         public decimal TotalAmount { get; set; }
         public int InvoiceCount { get; set; }
         public List<InvoiceWithPaymentInfo> Invoices { get; set; } = new List<InvoiceWithPaymentInfo>();
-        public decimal TotalAmountExclVat => Invoices.Sum(i => i.SubtotalExclVat);
-        public decimal TotalVatAmount => Invoices.Sum(i => i.TotalVat);
+        // Net/VAT split of the REMAINING amounts (pro-rata, same method as AgingReport.TotalOverdueExclVat) so the
+        // four buckets add up to the "overdue" card. Full invoice net/VAT would exceed remaining on part-paid invoices.
+        public decimal TotalAmountExclVat => Invoices.Sum(i =>
+            NordicBeesERP.Services.InvoiceBalanceRule.SplitRemaining(i.RemainingAmount, i.SubtotalExclVat, i.TotalInclVat).ExclVat);
+        public decimal TotalVatAmount => TotalAmount - TotalAmountExclVat;
     }
 
     // =====================================================

@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @inject IPaymentService PaymentService
 @inject IInvoiceService InvoiceService
+@inject ICreditNoteService CreditNoteService
 @using MudBlazor
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -303,11 +304,11 @@
             
             // Calculate debt (remaining amount) breakdown - use SubtotalExclVat and TotalVat from DTO
             var debtInvoices = _filteredInvoices
-                .Where(i => i.PaymentStatus != "paid" && i.RemainingAmount > 0)
+                .Where(i => i.RemainingAmount > InvoiceBalanceRule.OpenThreshold)
                 .ToList();
             _totalDebt = debtInvoices.Sum(i => i.RemainingAmount);
             _totalDebtExclVat = debtInvoices.Sum(i =>
-                i.TotalInclVat > 0 ? i.RemainingAmount * i.SubtotalExclVat / i.TotalInclVat : 0);
+                InvoiceBalanceRule.SplitRemaining(i.RemainingAmount, i.SubtotalExclVat, i.TotalInclVat).ExclVat);
             _totalDebtVat = _totalDebt - _totalDebtExclVat;
             _debtCount = debtInvoices.Count;
             
@@ -321,7 +322,7 @@
             _overpaidTotal = overpaidInvoices.Sum(i => i.PaidAmount - i.TotalInclVat);
 
             // Get overdue invoices (DueDate < today)
-            _overdueInvoices = allInvoices.Where(i => i.DueDate.HasValue && i.DueDate.Value.Date < DateTime.Now.Date && i.RemainingAmount > 0)
+            _overdueInvoices = allInvoices.Where(i => i.DueDate.HasValue && i.DueDate.Value.Date < AppClock.TodayLt && i.RemainingAmount > InvoiceBalanceRule.OpenThreshold)
                 .OrderBy(i => i.DueDate)
                 .ToList();
 
@@ -360,7 +361,8 @@
         if (freshInvoice == null) return;
         
         // Calculate fresh RemainingAmount from current invoice state
-        var remainingAmount = freshInvoice.TotalInclVat - freshInvoice.PaidAmount;
+        var credited = await CreditNoteService.GetTotalCreditedAmountAsync(invoice.Id);
+        var remainingAmount = InvoiceBalanceRule.Remaining(freshInvoice.TotalInclVat, freshInvoice.PaidAmount, credited);
         
         // Load payment history for this invoice
         var history = await PaymentService.GetPaymentsByInvoiceAsync(invoice.Id);

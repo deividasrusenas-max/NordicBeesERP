@@ -328,7 +328,7 @@
         var request = new CreateCreditNoteRequest
         {
             OriginalInvoiceId = source.OriginalInvoiceId ?? 0,
-            CreditDate = DateTime.Now,
+            CreditDate = AppClock.TodayLt,
             Language = source.Language,
             Lines = source.Lines.Select(l => new CreditNoteLineRequest
             {

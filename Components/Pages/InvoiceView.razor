@@ -291,9 +291,9 @@
                             <MudChip T="string" Color="GetPaymentStatusColor()" Size="Size.Small" Style="width:fit-content">
                                 @GetPaymentStatusLabel()
                             </MudChip>
-                            @if (_invoice.Status != InvoiceStatus.Paid && _invoice.PaymentDueDate.HasValue)
+                            @if (InvoiceBalanceRule.IsOpen(_invoice.Status, RemainingBalance) && InvoiceBalanceRule.DueDate(_invoice.DueDate, _invoice.PaymentDueDate).HasValue)
                             {
-                                var daysLeft = (_invoice.PaymentDueDate.Value.Date - AppClock.TodayLt).Days;
+                                var daysLeft = (InvoiceBalanceRule.DueDate(_invoice.DueDate, _invoice.PaymentDueDate)!.Value.Date - AppClock.TodayLt).Days;
                                 <div class="d-flex align-center gap-1">
                                     <MudIcon Icon="@(daysLeft < 0 ? Icons.Material.Filled.Warning : Icons.Material.Filled.Schedule)"
                                              Size="Size.Small"
@@ -478,6 +478,8 @@
     }
     private List<InvoiceLine> _invoiceLines = new List<InvoiceLine>();
     private List<CreditNoteListDto> _creditNotes = new();
+    private decimal _creditedTotal;
+    private decimal RemainingBalance => _invoice is null ? 0m : InvoiceBalanceRule.Remaining(_invoice.TotalInclVat, _invoice.PaidAmount, _creditedTotal);
     private Dictionary<int, decimal> _creditedQuantitiesByLine = new();
 
     protected override async Task OnInitializedAsync()
@@ -510,6 +512,7 @@
         {
             _creditNotes = await CreditNoteService.GetCreditNotesForInvoiceAsync(Id);
             _creditedQuantitiesByLine = await CreditNoteService.GetCreditedQuantitiesByInvoiceLineAsync(Id);
+            _creditedTotal = await CreditNoteService.GetTotalCreditedAmountAsync(Id);
         }
         catch (Exception ex)
         {
@@ -695,7 +698,7 @@
             if (_invoice is null) return;
 
             // Calculate fresh RemainingAmount from current invoice state
-            var remainingAmount = _invoice.TotalInclVat - _invoice.PaidAmount;
+            var remainingAmount = RemainingBalance;
 
             var parameters = new DialogParameters
             {
@@ -775,10 +778,10 @@
             
             var newInvoice = new Invoice
             {
-                InvoiceNumber = await InvoiceService.GenerateNextInvoiceNumberAsync(DateTime.Now, source.InvoiceType),
-                InvoiceDate = DateTime.Now,
+                InvoiceNumber = await InvoiceService.GenerateNextInvoiceNumberAsync(AppClock.TodayLt, source.InvoiceType),
+                InvoiceDate = AppClock.TodayLt,
                 PaymentTermDays = source.PaymentTermDays,
-                PaymentDueDate = DateTime.Now.AddDays(source.PaymentTermDays),
+                PaymentDueDate = AppClock.TodayLt.AddDays(source.PaymentTermDays),
                 Status = InvoiceStatus.Draft,
                 CustomerId = source.CustomerId,
                 InvoiceType = source.InvoiceType,

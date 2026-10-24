@@ -525,7 +525,8 @@ namespace NordicBeesERP.Services
                                       join bpRaw in context.BusinessPartners on inv.CustomerId equals bpRaw.Id into bpGroup
                                       from bp in bpGroup.DefaultIfEmpty()
                                       where (inv.DueDate ?? inv.PaymentDueDate) >= weekStart && (inv.DueDate ?? inv.PaymentDueDate) <= weekEnd &&
-                                            inv.PaymentStatus != "paid" && inv.Status != InvoiceStatus.Disputed
+                                            inv.PaymentStatus != "paid" && inv.Status != InvoiceStatus.Disputed &&
+                                            inv.Status != InvoiceStatus.Draft && inv.Status != InvoiceStatus.Cancelled
                                       orderby (inv.DueDate ?? inv.PaymentDueDate)
                                       select new InvoiceWithPaymentInfo
                                        {
@@ -587,6 +588,7 @@ namespace NordicBeesERP.Services
                                         where EF.Functions.Like(i.InvoiceNumber, "LAK%") &&
                                               !EF.Functions.Like(i.InvoiceNumber, "ULAK%") &&
                                                i.PaymentStatus != "paid" &&
+                                               i.Status != InvoiceStatus.Draft && i.Status != InvoiceStatus.Cancelled &&
                                                i.Status != InvoiceStatus.Disputed
                                         select new InvoiceWithPaymentInfo
                                         {
@@ -611,8 +613,8 @@ namespace NordicBeesERP.Services
             foreach (var inv in unpaidInvoices)
             {
                 var credited = credits.TryGetValue(inv.Id, out var c) ? c : 0m;
-                var remaining = inv.TotalInclVat - inv.PaidAmount - credited;
-                if (remaining > 0)
+                var remaining = InvoiceBalanceRule.Remaining(inv.TotalInclVat, inv.PaidAmount, credited);
+                if (remaining > InvoiceBalanceRule.OpenThreshold)
                 {
                     inv.RemainingAmount = remaining;
                     remainingUnpaid.Add(inv);
@@ -626,7 +628,7 @@ namespace NordicBeesERP.Services
             // Calculate totals from ONLY overdue invoices (sum of 4 aging buckets)
             report.TotalOverdue = overdueInvoices.Sum(i => i.RemainingAmount);
             report.TotalOverdueExclVat = overdueInvoices.Sum(i =>
-                i.TotalInclVat > 0 ? i.RemainingAmount * i.SubtotalExclVat / i.TotalInclVat : 0);
+                InvoiceBalanceRule.SplitRemaining(i.RemainingAmount, i.SubtotalExclVat, i.TotalInclVat).ExclVat);
             report.TotalOverdueVat = report.TotalOverdue - report.TotalOverdueExclVat;
 
             foreach (var invoice in overdueInvoices)
@@ -1436,7 +1438,8 @@ namespace NordicBeesERP.Services
                         join bpRaw in context.BusinessPartners on i.CustomerId equals bpRaw.Id into bpGroup
                         from bp in bpGroup.DefaultIfEmpty()
                         where EF.Functions.Like(i.InvoiceNumber, "LAK%") &&
-                              !EF.Functions.Like(i.InvoiceNumber, "ULAK%")
+                              !EF.Functions.Like(i.InvoiceNumber, "ULAK%") &&
+                              i.Status != InvoiceStatus.Draft && i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Disputed
                         select new InvoiceWithPaymentInfo
                         {
                             Id = i.Id,
@@ -1488,7 +1491,7 @@ namespace NordicBeesERP.Services
             foreach (var inv in invoices)
             {
                 var credited = credits.TryGetValue(inv.Id, out var c) ? c : 0m;
-                inv.RemainingAmount = inv.TotalInclVat - inv.PaidAmount - credited;
+                inv.RemainingAmount = InvoiceBalanceRule.Remaining(inv.TotalInclVat, inv.PaidAmount, credited);
             }
 
             return new InvoiceWithPaymentInfoResult

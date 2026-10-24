@@ -168,13 +168,13 @@
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">@GetCustomerName(invoice)</MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">
                     @{
-                        var remaining = invoice.TotalInclVat - invoice.PaidAmount;
-                        var isPaid = remaining <= 0;
+                        var due = DueOf(invoice);
+                        var isPaid = !IsOpenInvoice(invoice);
                     }
-                    @if (invoice.PaymentDueDate.HasValue)
+                    @if (due.HasValue)
                     {
-                        var days = (invoice.PaymentDueDate.Value.Date - AppClock.TodayLt).Days;
-                        <span>@invoice.PaymentDueDate.Value.ToString("yyyy-MM-dd")</span>
+                        var days = (due.Value.Date - AppClock.TodayLt).Days;
+                        <span>@due.Value.ToString("yyyy-MM-dd")</span>
                         @if (!isPaid)
                         {
                             @if (days == 0)
@@ -198,12 +198,18 @@
                 </MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Class="lakstena-mono" Style="cursor:pointer">@FormatAmountHelper.Money(invoice.TotalInclVat)</MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Class="lakstena-mono" Style="cursor:pointer;font-weight:bold;color:#1976d2">
-                    @FormatAmountHelper.Money(invoice.TotalInclVat - invoice.PaidAmount)
+                    @FormatAmountHelper.Money(RemainingOf(invoice))
                 </MudTd>
                 <MudTd @ondblclick="@(() => ViewInvoice(invoice.Id))" Style="cursor:pointer">
                     @{
-                        var payStatus = invoice.PaymentStatus ?? "unpaid";
                         var statusString = invoice.Status.ToString();
+                        var rowRemaining = RemainingOf(invoice);
+                        // Chip derived from the same balance rule as "Liko" (payment_status ignores nothing now, but stays a fallback)
+                        var payStatus = !InvoiceBalanceRule.CountsAsDebt(invoice.Status)
+                            ? (invoice.PaymentStatus ?? "unpaid")
+                            : rowRemaining <= InvoiceBalanceRule.OpenThreshold ? "paid"
+                            : (invoice.PaidAmount > 0 || rowRemaining < invoice.TotalInclVat) ? "partial"
+                            : "unpaid";
                         var payLabel = payStatus switch {
                             "paid" => "Apmokėta",
                             "partial" => "Dalinai",
@@ -293,6 +299,13 @@
 @code {
     private List<Invoice> _items = new();
     private HashSet<int> _invoiceIdsWithCreditNote = new();
+    private Dictionary<int, decimal> _creditedByInvoice = new();
+
+    // One balance rule on every screen (InvoiceBalanceRule): total − allocations − credit notes.
+    private decimal RemainingOf(Invoice i) =>
+        InvoiceBalanceRule.Remaining(i.TotalInclVat, i.PaidAmount, _creditedByInvoice.GetValueOrDefault(i.Id));
+    private bool IsOpenInvoice(Invoice i) => InvoiceBalanceRule.IsOpen(i.Status, RemainingOf(i));
+    private static DateTime? DueOf(Invoice i) => InvoiceBalanceRule.DueDate(i.DueDate, i.PaymentDueDate);
     private List<CreditNoteListDto> _creditNoteItems = new();
     private bool _isLoading = false;
     private int _selectedTab = 0;
@@ -398,6 +411,7 @@
                 _creditNoteItems = notes.Items;
                 _items = new List<Invoice>();
                 _invoiceIdsWithCreditNote = new HashSet<int>();
+                _creditedByInvoice = new Dictionary<int, decimal>();
             }
             else
             {
@@ -414,6 +428,9 @@
                 _invoiceIdsWithCreditNote = invoiceIds.Count > 0
                     ? await CreditNoteService.GetInvoiceIdsWithCreditNotesAsync(invoiceIds)
                     : new HashSet<int>();
+                _creditedByInvoice = invoiceIds.Count > 0
+                    ? await CreditNoteService.GetTotalCreditedAmountsAsync(invoiceIds)
+                    : new Dictionary<int, decimal>();
             }
         }
         catch (Exception ex)
@@ -459,14 +476,10 @@
         switch (_selectedTab)
         {
             case 1: // Nesumokėtos arba dalinai apmokėtos — Confirmed statusas IR liko neapmokėtos sumos
-                result = result.Where(i => i.Status == InvoiceStatus.Confirmed && i.PaidAmount < i.TotalInclVat);
+                result = result.Where(i => IsOpenInvoice(i));
                 break;
             case 2: // Vėluojančios
-                result = result.Where(i => 
-                    i.Status == InvoiceStatus.Confirmed && 
-                    i.PaymentDueDate.HasValue && 
-                    i.PaymentDueDate.Value < AppClock.TodayLt &&
-                    i.PaidAmount < i.TotalInclVat);
+                result = result.Where(i => InvoiceBalanceRule.IsOverdue(i.Status, RemainingOf(i), DueOf(i), AppClock.TodayLt));
                 break;
             case 3: // Šis mėnuo
                 var startOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
@@ -627,9 +640,10 @@
 
     private string GetDueDateStyle(Invoice invoice)
     {
-        if (!invoice.PaymentDueDate.HasValue) return "";
+        var due = DueOf(invoice);
+        if (!due.HasValue) return "";
         
-        var dueDate = invoice.PaymentDueDate.Value;
+        var dueDate = due.Value;
         var today = AppClock.TodayLt;
         
         if (dueDate < today)
@@ -645,7 +659,7 @@
     }
 
     private string GetRowStyle(Invoice item, int index) =>
-        ListRowStyle.ForDue(item.Status == InvoiceStatus.Paid, item.PaymentDueDate, item.PaidAmount < item.TotalInclVat, AppClock.TodayLt);
+        ListRowStyle.ForDue(!IsOpenInvoice(item), DueOf(item), IsOpenInvoice(item), AppClock.TodayLt);
 
     // Selection helpers
     private void ToggleInvoice(int id, bool selected)
