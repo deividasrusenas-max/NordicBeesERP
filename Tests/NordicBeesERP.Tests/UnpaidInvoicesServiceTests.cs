@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// aggregations, then delete every row they created.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class UnpaidInvoicesServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

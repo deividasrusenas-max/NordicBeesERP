@@ -9,6 +9,7 @@ namespace NordicBeesERP.Tests;
 /// (D-031 criterion 6, PLAN-ETAPAS4.md §4) — synthetic invoices only, no personal data.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ReviewQueueAgingServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

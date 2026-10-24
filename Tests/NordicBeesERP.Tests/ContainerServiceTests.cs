@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// path actually persists changes (no silent NoTracking drop).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ContainerServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

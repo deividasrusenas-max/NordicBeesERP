@@ -50,6 +50,7 @@ public class ZeroVatBasisRuleTests
 }
 
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ZeroVatBasisPdfTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

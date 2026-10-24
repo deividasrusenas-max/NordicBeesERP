@@ -19,6 +19,7 @@ namespace NordicBeesERP.Tests;
 /// deleted in teardown as well.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class FileStoreTests : IClassFixture<DbTestFixture>, IDisposable
 {
     private readonly DbTestFixture _fixture;

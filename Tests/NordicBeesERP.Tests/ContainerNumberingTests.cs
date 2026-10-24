@@ -39,6 +39,7 @@ public class ContainerCodeSequenceTests
 }
 
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ContainerNumberingIntegrationTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

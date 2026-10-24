@@ -21,6 +21,7 @@ namespace NordicBeesERP.Tests;
 /// only the OCR call itself is faked, so no test ever calls real Azure.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class BulkUploadServiceTests : IClassFixture<DbTestFixture>, IDisposable
 {
     private readonly DbTestFixture _fixture;

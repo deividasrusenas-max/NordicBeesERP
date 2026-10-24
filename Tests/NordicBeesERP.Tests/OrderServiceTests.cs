@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// second call REPLACES unshipped batches instead of appending to them.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class OrderServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

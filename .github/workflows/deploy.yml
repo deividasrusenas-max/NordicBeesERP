@@ -46,13 +46,21 @@ jobs:
             export TEST_DB_CONNECTION="$TEST_DB_SECRET"
             DB_HOST=$(printf '%s' "$TEST_DB_SECRET" | sed -n 's/.*[Ss]erver=\([^;]*\).*/\1/p')
           fi
-          RUN="docker run --rm --network host --user $(id -u):$(id -g) -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp $ENV_ARGS -v $GITHUB_WORKSPACE:/src -w /src mcr.microsoft.com/dotnet/sdk:10.0"
-          if timeout 5 bash -c "exec 3<>/dev/tcp/$DB_HOST/3306" 2>/dev/null; then
-            echo "Test DB reachable - running build and the full test suite"
-            $RUN sh -c "dotnet add Tests/NordicBeesERP.Tests package SkiaSharp.NativeAssets.Linux.NoDependencies --version 2.88.8 && dotnet build NordicBeesERP.csproj -c Release && dotnet test Tests/NordicBeesERP.Tests"
+          # Persistent NuGet cache on the runner host: restore is not from scratch every run.
+          mkdir -p "$HOME/.nuget-ci"
+          RUN="docker run --rm --network host --user $(id -u):$(id -g) -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp -e NUGET_PACKAGES=/tmp/nuget -v $HOME/.nuget-ci:/tmp/nuget $ENV_ARGS -v $GITHUB_WORKSPACE:/src -w /src mcr.microsoft.com/dotnet/sdk:10.0"
+          PREP="dotnet add Tests/NordicBeesERP.Tests package SkiaSharp.NativeAssets.Linux.NoDependencies --version 2.88.8 && dotnet build NordicBeesERP.csproj -c Release"
+          if [ "${{ github.ref_name }}" != "production" ]; then
+            # main (staging): fast gate = build + every test that needs no database. The FULL suite runs on production
+            # pushes and nightly (nightly-tests.yml), so nothing reaches production without it.
+            echo "Staging push - build and non-DB tests (Category!=Db)"
+            $RUN sh -c "$PREP && dotnet test Tests/NordicBeesERP.Tests --filter 'Category!=Db'"
+          elif timeout 5 bash -c "exec 3<>/dev/tcp/$DB_HOST/3306" 2>/dev/null; then
+            echo "Production push - test DB reachable - running build and the FULL test suite"
+            $RUN sh -c "$PREP && dotnet test Tests/NordicBeesERP.Tests"
           else
-            echo "::warning::Test DB $DB_HOST:3306 is not reachable from this runner - DB-backed tests are SKIPPED, build only"
-            $RUN dotnet build NordicBeesERP.csproj -c Release
+            echo "::error::Production push but test DB $DB_HOST:3306 is not reachable from this runner - the full suite cannot run"
+            exit 1
           fi
       - name: Is this commit still the branch head?
         id: head

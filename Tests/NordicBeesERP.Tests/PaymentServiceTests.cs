@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// zero rows.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class PaymentServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

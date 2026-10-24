@@ -34,6 +34,7 @@ public class CreditNoteDebtRuleTests
 
 /// <summary>Read-only checks against the test DB: the SQL fragment must agree with the pure rule for every value of the real DB enum.</summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class CreditNoteDebtRuleSqlTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

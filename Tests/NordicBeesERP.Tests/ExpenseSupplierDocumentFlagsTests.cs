@@ -16,6 +16,7 @@ namespace NordicBeesERP.Tests;
 /// document's codes are stored nowhere else, so the stored flags are carried over.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseSupplierDocumentFlagsTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

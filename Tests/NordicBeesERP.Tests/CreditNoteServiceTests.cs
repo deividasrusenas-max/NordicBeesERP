@@ -22,6 +22,7 @@ namespace NordicBeesERP.Tests;
 /// zero rows.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class CreditNoteServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

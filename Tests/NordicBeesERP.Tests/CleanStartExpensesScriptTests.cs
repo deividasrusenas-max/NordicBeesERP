@@ -34,6 +34,7 @@ namespace NordicBeesERP.Tests;
 /// row it should have spared).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class CleanStartExpensesScriptTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

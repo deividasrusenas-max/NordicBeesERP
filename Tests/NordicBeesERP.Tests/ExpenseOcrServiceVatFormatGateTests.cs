@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// match may still run. Integration tests against nordic_bees_erp_test (supplier match reads partners).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseOcrServiceVatFormatGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// NOT NULL expense_invoices.invoice_number column.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseServiceInvoiceNumberValidationTests : IClassFixture<DbTestFixture>
 {
     private const string ExpectedErrorMessage =

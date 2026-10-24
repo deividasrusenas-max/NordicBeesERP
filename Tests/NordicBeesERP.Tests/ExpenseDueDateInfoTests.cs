@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// was assumed (+30 d.), the colour stays Default, and the flag does not change status.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseDueDateInfoTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

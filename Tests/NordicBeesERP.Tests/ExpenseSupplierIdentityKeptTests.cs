@@ -15,6 +15,7 @@ namespace NordicBeesERP.Tests;
 /// Address / city / postal code / country are unaffected — still pending-only. Real nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseSupplierIdentityKeptTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

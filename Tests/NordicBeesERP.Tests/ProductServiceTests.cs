@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// (FindAsync + Remove + SaveChangesAsync silently persisted 0 rows).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ProductServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

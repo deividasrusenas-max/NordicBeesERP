@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// (agents never run DDL).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class BucketTareIntegrationTests : IClassFixture<DbTestFixture>
 {
     private const string PreviousMigration = "20260927011841_AddSupplierAliases";

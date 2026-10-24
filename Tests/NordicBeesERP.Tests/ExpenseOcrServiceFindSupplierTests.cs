@@ -17,6 +17,7 @@ namespace NordicBeesERP.Tests;
 /// prefix-less VAT now assert NO match, and the two-partners-same-VAT test stores the same code in two spellings.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseOcrServiceFindSupplierTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

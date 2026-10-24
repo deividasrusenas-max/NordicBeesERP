@@ -29,6 +29,7 @@ namespace NordicBeesERP.Tests;
 /// need to become real fakes at that point.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseUploadDialogDragDropTests : IClassFixture<DbTestFixture>, IDisposable
 {
     private readonly DbTestFixture _fixture;

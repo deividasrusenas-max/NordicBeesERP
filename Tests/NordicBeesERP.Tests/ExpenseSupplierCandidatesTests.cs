@@ -16,6 +16,7 @@ namespace NordicBeesERP.Tests;
 /// (IsExpenseSupplier role, sweep flag removal, re-OCR dropping a stale VENDOR_SUGGESTED). Real nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseSupplierCandidatesTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

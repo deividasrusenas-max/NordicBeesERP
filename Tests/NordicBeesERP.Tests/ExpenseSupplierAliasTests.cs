@@ -17,6 +17,7 @@ namespace NordicBeesERP.Tests;
 /// contradicting VAT; revoke and unfreeze write events. Real nordic_bees_erp_test (supplier_aliases, supplier_alias_events).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseSupplierAliasTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -9,6 +9,7 @@ namespace NordicBeesERP.Tests;
 /// deliveries.total_amount. Integration tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class DeliveryDebtTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

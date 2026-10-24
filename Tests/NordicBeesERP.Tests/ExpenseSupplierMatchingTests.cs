@@ -16,6 +16,7 @@ namespace NordicBeesERP.Tests;
 /// Integration tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseSupplierMatchingTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

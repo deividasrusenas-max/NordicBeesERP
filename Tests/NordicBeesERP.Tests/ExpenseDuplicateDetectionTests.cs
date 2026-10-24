@@ -11,6 +11,7 @@ namespace NordicBeesERP.Tests;
 /// positive 277 ↔ 173, both „1" / 0,00 €). Integration tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseDuplicateDetectionTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

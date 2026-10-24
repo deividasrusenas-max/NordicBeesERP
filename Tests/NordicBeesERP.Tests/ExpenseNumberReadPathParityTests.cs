@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseNumberReadPathParityTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

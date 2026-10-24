@@ -25,6 +25,7 @@ namespace NordicBeesERP.Tests;
 /// <c>20260927_backfill_supplier_bank_accounts.sql</c> for the same reason.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class CleanStartExpensesSupplierApprovalsOptionalTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

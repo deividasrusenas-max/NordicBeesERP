@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// zero rows.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class HoneyTypeServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

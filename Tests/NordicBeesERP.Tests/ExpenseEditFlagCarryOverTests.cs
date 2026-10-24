@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// edit-form save — invoice 370 on staging). Integration tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseEditFlagCarryOverTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// nordic_bees_erp_test database via DbTestFixture.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ErpUserServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

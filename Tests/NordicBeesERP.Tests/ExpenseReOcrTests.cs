@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// like CreateFromOcrAsync. Integration tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseReOcrTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

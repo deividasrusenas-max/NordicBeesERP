@@ -18,6 +18,7 @@ namespace NordicBeesERP.Tests;
 /// VAT_RATE_UNCHECKED, while LT with a legal 21 % is not.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseCountryCodeParityTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

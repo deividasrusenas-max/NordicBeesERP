@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseBudgetActualsTests : IClassFixture<DbTestFixture>, IAsyncLifetime
 {
     private const int Year = 2093;

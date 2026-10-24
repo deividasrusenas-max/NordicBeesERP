@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// this test ensures the bucket delivery INSERT no longer breaks and stores "BUCKET_GROUP".
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class DeliveryContainerTypeTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

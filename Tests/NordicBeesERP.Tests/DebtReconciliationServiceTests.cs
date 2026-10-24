@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// cleanup, mirroring SupplierServiceTests' setup/cleanup pattern.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class DebtReconciliationServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

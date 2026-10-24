@@ -36,6 +36,7 @@ public sealed class FactRequiresBankRefAttribute : FactAttribute
 /// and never allocates more than the invoice's remaining balance (credit notes included).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class BankImportPaymentTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

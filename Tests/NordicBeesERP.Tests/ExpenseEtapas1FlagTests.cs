@@ -15,6 +15,7 @@ namespace NordicBeesERP.Tests;
 /// as stored flags. The status tests are integration tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseEtapas1FlagTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

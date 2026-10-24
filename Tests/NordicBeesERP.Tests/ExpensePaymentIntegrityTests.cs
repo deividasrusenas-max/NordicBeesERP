@@ -12,6 +12,7 @@ namespace NordicBeesERP.Tests;
 /// Integration tests against nordic_bees_erp_test, fresh contexts for every assertion.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpensePaymentIntegrityTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

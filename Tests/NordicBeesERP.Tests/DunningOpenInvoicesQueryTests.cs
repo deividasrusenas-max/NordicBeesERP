@@ -8,6 +8,7 @@ namespace NordicBeesERP.Tests;
 /// does not need the dunning tables). Guards the SQL syntax on MySQL and the remaining/due/scope invariants on real rows.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class DunningOpenInvoicesQueryTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

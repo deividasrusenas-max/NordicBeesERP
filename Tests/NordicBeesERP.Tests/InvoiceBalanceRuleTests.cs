@@ -8,6 +8,7 @@ namespace NordicBeesERP.Tests;
 
 /// <summary>DISPLAY-01: one receivable balance rule for every screen (pure rule + the service consumers).</summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class InvoiceBalanceRuleTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

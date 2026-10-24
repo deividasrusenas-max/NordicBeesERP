@@ -15,6 +15,7 @@ namespace NordicBeesERP.Tests;
 /// The flags stay stored, and a real review flag still holds the invoice. Integration tests against nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseSupplierDocumentStatusTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

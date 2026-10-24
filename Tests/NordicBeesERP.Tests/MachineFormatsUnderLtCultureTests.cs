@@ -98,6 +98,7 @@ public class MachineFormatsUnderLtCultureTests
 }
 
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class SqlParametersUnderLtCultureTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

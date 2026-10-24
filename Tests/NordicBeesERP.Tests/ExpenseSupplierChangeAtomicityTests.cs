@@ -20,6 +20,7 @@ namespace NordicBeesERP.Tests;
 /// invoice's supplier, status and flags are unchanged, no audit row and no alias row exist. Real nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseSupplierChangeAtomicityTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

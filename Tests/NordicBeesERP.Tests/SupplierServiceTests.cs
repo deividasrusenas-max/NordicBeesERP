@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// zero rows, or silently coerces NULL into an empty string.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class SupplierServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

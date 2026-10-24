@@ -34,6 +34,7 @@ public sealed class FactRequiresSettlementTablesAttribute : FactAttribute
 }
 
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class SettlementOffsetServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

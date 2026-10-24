@@ -1,0 +1,42 @@
+name: Nightly full tests
+on:
+  schedule:
+    - cron: "30 0 * * *"   # UTC
+  workflow_dispatch:
+concurrency:
+  group: nightly-tests
+  cancel-in-progress: false
+jobs:
+  full-suite:
+    runs-on: self-hosted
+    steps:
+      - name: Clean root-owned build output left by earlier container runs
+        run: |
+          if [ -d "$GITHUB_WORKSPACE" ]; then
+            docker run --rm -v "$GITHUB_WORKSPACE":/w mcr.microsoft.com/dotnet/sdk:10.0 \
+              sh -c 'find /w -mindepth 1 -maxdepth 1 -exec rm -rf {} +' || true
+          fi
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Build and FULL test suite (SDK container)
+        env:
+          TEST_DB_SECRET: ${{ secrets.TEST_DB_CONNECTION }}
+        run: |
+          # Same container command as deploy.yml, but always the full suite and never a deploy. Red = visible in Actions.
+          ENV_ARGS=""
+          DB_HOST="100.110.26.80"
+          if [ -n "$TEST_DB_SECRET" ]; then
+            ENV_ARGS="-e TEST_DB_CONNECTION"
+            export TEST_DB_CONNECTION="$TEST_DB_SECRET"
+            DB_HOST=$(printf '%s' "$TEST_DB_SECRET" | sed -n 's/.*[Ss]erver=\([^;]*\).*/\1/p')
+          fi
+          if ! timeout 5 bash -c "exec 3<>/dev/tcp/$DB_HOST/3306" 2>/dev/null; then
+            echo "::error::Test DB $DB_HOST:3306 is not reachable from this runner"
+            exit 1
+          fi
+          mkdir -p "$HOME/.nuget-ci"
+          docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp -e NUGET_PACKAGES=/tmp/nuget \
+            -v "$HOME/.nuget-ci":/tmp/nuget $ENV_ARGS -v "$GITHUB_WORKSPACE":/src -w /src mcr.microsoft.com/dotnet/sdk:10.0 \
+            sh -c "dotnet add Tests/NordicBeesERP.Tests package SkiaSharp.NativeAssets.Linux.NoDependencies --version 2.88.8 && dotnet build NordicBeesERP.csproj -c Release && dotnet test Tests/NordicBeesERP.Tests"

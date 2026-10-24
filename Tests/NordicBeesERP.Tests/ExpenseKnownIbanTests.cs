@@ -17,6 +17,7 @@ namespace NordicBeesERP.Tests;
 /// flag; PATVIRTINTI keeps it as a record; the partner save upserts a valid IBAN. Real nordic_bees_erp_test (supplier_bank_accounts).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseKnownIbanTests : IClassFixture<DbTestFixture>
 {
     private const string IbanA = "LT121000011101001000";     // valid (Lietuvos bankas example)

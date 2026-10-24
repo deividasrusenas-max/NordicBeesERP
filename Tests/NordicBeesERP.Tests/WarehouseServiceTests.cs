@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// a detached-entity SaveChangesAsync.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class WarehouseServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

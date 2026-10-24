@@ -8,6 +8,7 @@ namespace NordicBeesERP.Tests;
 /// exercised. Integration tests against nordic_bees_erp_test (the supplier match reads partners).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseOcrServiceNumberReadTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

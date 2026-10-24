@@ -8,6 +8,7 @@ namespace NordicBeesERP.Tests;
 /// isolation (that class's own behaviour is <see cref="Validation.ZeroVatFormulationExtractorTests"/>).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseOcrServiceZeroVatTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

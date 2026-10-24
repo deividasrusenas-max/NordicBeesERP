@@ -40,6 +40,7 @@ public class OverdueInvoiceFilterTests
 
 /// <summary>Read-only smoke test against the test DB: guards EF translation of the COALESCE predicate.</summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class NavBadgeOverdueQueryTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -14,6 +14,7 @@ namespace NordicBeesERP.Tests;
 /// UPDATE/DELETE actually persist changes (not silent NoTracking no-ops).
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseServiceTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

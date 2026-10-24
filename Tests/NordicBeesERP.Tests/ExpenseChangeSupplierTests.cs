@@ -13,6 +13,7 @@ namespace NordicBeesERP.Tests;
 /// other status, voids an approval, recomputes flags and status by the shared rules, audits SUPPLIER_CHANGED. Real nordic_bees_erp_test.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseChangeSupplierTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

@@ -7,6 +7,7 @@ namespace NordicBeesERP.Tests;
 
 /// <summary>#33: a container can be written off once; the reason is appended to notes, never replaces them.</summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ContainerWriteOffGuardTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;

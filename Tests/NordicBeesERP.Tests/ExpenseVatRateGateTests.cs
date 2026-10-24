@@ -18,6 +18,7 @@ namespace NordicBeesERP.Tests;
 /// and injected through <c>ExpenseService</c>'s optional row-set constructor argument.
 /// </summary>
 [Collection("RealDatabase")]
+[Trait("Category", "Db")]
 public class ExpenseVatRateGateTests : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture _fixture;
