@@ -1136,6 +1136,35 @@ namespace NordicBeesERP.Services
         public async Task<int> CreatePaymentFromBankImportAsync(int bankImportRowId, int userId)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
+            int paymentId;
+            Exception? throwAfterCommit;
+            await using (var transaction = await context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    (paymentId, throwAfterCommit) = await CreatePaymentFromBankImportCoreAsync(context, bankImportRowId, userId);
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+
+            if (throwAfterCommit != null) throw throwAfterCommit;
+            return paymentId;
+        }
+
+        // Returns the exception to throw AFTER the transaction committed (needs_review / already_paid row statuses must persist).
+        private async Task<(int PaymentId, Exception? ThrowAfterCommit)> CreatePaymentFromBankImportCoreAsync(
+            NordicBeesERPContext context, int bankImportRowId, int userId)
+        {
+            // Lock the matched invoice BEFORE any other read (REPEATABLE READ snapshot starts at the first
+            // consistent read), so concurrent rows for the same invoice see each other's committed allocations.
+            await RawSql.QueryAsync(context,
+                "SELECT i.id FROM invoices i JOIN bank_import_rows r ON r.matched_invoice_id = i.id WHERE r.id = @p0 FOR UPDATE",
+                r => r.Int("id"), default, new object?[] { bankImportRowId });
 
             var row = await context.BankImportRows
                 .Include(r => r.BankImport)
@@ -1145,28 +1174,25 @@ namespace NordicBeesERP.Services
             {
                 throw new InvalidOperationException("Bank import row or matched invoice not found");
             }
+            var invoiceId = row.MatchedInvoiceId.Value;
 
             var invoice = await context.Invoices
                 .AsNoTracking()
-                .FirstOrDefaultAsync(i => i.Id == row.MatchedInvoiceId.Value);
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
             if (invoice == null)
             {
                 throw new InvalidOperationException($"Invoice {row.MatchedInvoiceId} not found");
             }
 
-            // Check if payment already exists for this invoice from bank import
-            var existingPayment = await context.Payments
-                .Where(p => p.InvoiceId == row.MatchedInvoiceId && p.Source == "bank_import")
-                .FirstOrDefaultAsync();
-            if (existingPayment != null)
+            // Row-level idempotency: this very bank row must not produce a second payment.
+            var rowAlreadyLinked = row.PaymentId.HasValue
+                || await context.Payments.AsNoTracking().AnyAsync(p => p.BankImportRowId == bankImportRowId);
+            if (rowAlreadyLinked)
             {
-                await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE bank_import_rows SET match_status = {0} WHERE id = {1}",
-                    "already_paid", bankImportRowId);
-                throw new InvalidOperationException($"Sąskaita {row.MatchedInvoiceId} jau apmokėta iš banko importo");
+                throw new InvalidOperationException("Ši banko importo eilutė jau susieta su mokėjimu.");
             }
 
-             // === Cross-check: detect duplicate manual payments before creating bank-import payment ===
+            // === Cross-check: detect duplicate manual payments before creating bank-import payment ===
             var manualPayments = await context.Payments
                 .Where(p => p.InvoiceId == row.MatchedInvoiceId
                          && p.Source == "manual"
@@ -1187,12 +1213,12 @@ namespace NordicBeesERP.Services
                         "UPDATE bank_import_rows SET match_status = {0}, payment_id = {1} WHERE id = {2}",
                         "matched", existing.Id, bankImportRowId);
 
-                    await RecalculateInvoiceStatusInternalAsync(context, row.MatchedInvoiceId.Value);
+                    await RecalculateInvoiceStatusInternalAsync(context, invoiceId);
 
                     await LogAuditEntryAsync(context, existing.Id, null, "bank_confirmed", null, null, userId,
                         JsonSerializer.Serialize(new { BankImportRowId = bankImportRowId, OriginalAmount = existing.Amount }));
 
-                    return existing.Id;
+                    return (existing.Id, null);
                 }
                 else
                 {
@@ -1201,13 +1227,13 @@ namespace NordicBeesERP.Services
                         "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1} WHERE id = {2}",
                         "needs_review", row.MatchedInvoiceId, bankImportRowId);
 
-                    throw new NeedsReviewException(
+                    return (0, new NeedsReviewException(
                         bankImportRowId: bankImportRowId,
-                        invoiceId: row.MatchedInvoiceId!.Value,
+                        invoiceId: invoiceId,
                         manualPaymentCount: 1,
                         bankAmount: row.Amount,
                         manualAmount: existing.Amount,
-                        message: $"Sumos nesutampa: mokėjimas {existing.Amount:N2} €, bankas {row.Amount:N2} €. Reikia rankinio patikrinimo.");
+                        message: $"Sumos nesutampa: mokėjimas {existing.Amount:N2} €, bankas {row.Amount:N2} €. Reikia rankinio patikrinimo."));
                 }
             }
             else if (manualPayments.Count > 1)
@@ -1217,21 +1243,34 @@ namespace NordicBeesERP.Services
                     "UPDATE bank_import_rows SET match_status = {0}, matched_invoice_id = {1} WHERE id = {2}",
                     "needs_review", row.MatchedInvoiceId, bankImportRowId);
 
-                throw new NeedsReviewException(
+                return (0, new NeedsReviewException(
                     bankImportRowId: bankImportRowId,
-                    invoiceId: row.MatchedInvoiceId!.Value,
+                    invoiceId: invoiceId,
                     manualPaymentCount: manualPayments.Count,
                     bankAmount: row.Amount,
-                    message: $"Rasti keli neatidėti mokėjimai ({manualPayments.Count}) tai pačiai sąskaitai. Reikia rankinio patikrinimo.");
+                    message: $"Rasti keli neatidėti mokėjimai ({manualPayments.Count}) tai pačiai sąskaitai. Reikia rankinio patikrinimo."));
             }
             // CASE 3: No matching manual payments → proceed with normal behavior (create new payment)
 
-             // Create payment with invoice_id set
-             var payment = new Payment
-             {
-                 PaymentDate = row.RowDate,
-                 InvoiceId = row.MatchedInvoiceId!.Value,
-                 CustomerId = invoice.CustomerId,
+            // Remaining = total − allocations − credit notes
+            var allocated = await context.PaymentAllocations.AsNoTracking()
+                .Where(a => a.InvoiceId == invoiceId).SumAsync(a => (decimal?)a.AllocatedAmount) ?? 0m;
+            var credited = (await CreditNoteDebtRule.GetCreditedByInvoiceAsync(context, new[] { invoiceId }))
+                .GetValueOrDefault(invoiceId);
+            var remaining = invoice.TotalInclVat - allocated - credited;
+            if (remaining <= 0)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "UPDATE bank_import_rows SET match_status = {0} WHERE id = {1}",
+                    "already_paid", bankImportRowId);
+                return (0, new InvalidOperationException($"Sąskaita {invoice.InvoiceNumber} jau pilnai apmokėta."));
+            }
+
+            var payment = new Payment
+            {
+                PaymentDate = row.RowDate,
+                InvoiceId = invoiceId,
+                CustomerId = invoice.CustomerId,
                 Amount = row.Amount,
                 PaymentMethod = PaymentMethod.BankTransfer,
                 Source = "bank_import",
@@ -1245,12 +1284,12 @@ namespace NordicBeesERP.Services
             context.Payments.Add(payment);
             await context.SaveChangesAsync();
 
-            // Create allocation
+            // Allocation capped at the invoice's remaining balance
             var allocation = new PaymentAllocation
             {
                 PaymentId = payment.Id,
-                InvoiceId = row.MatchedInvoiceId!.Value,
-                AllocatedAmount = row.Amount,
+                InvoiceId = invoiceId,
+                AllocatedAmount = Math.Min(row.Amount, remaining),
                 AllocatedAt = DateTime.UtcNow
             };
 
@@ -1258,7 +1297,7 @@ namespace NordicBeesERP.Services
             await context.SaveChangesAsync();
 
             // Recalculate invoice status using the SAME context
-            await RecalculateInvoiceStatusInternalAsync(context, row.MatchedInvoiceId.Value);
+            await RecalculateInvoiceStatusInternalAsync(context, invoiceId);
 
             // Update bank import row
             await context.Database.ExecuteSqlRawAsync(
@@ -1270,12 +1309,13 @@ namespace NordicBeesERP.Services
             {
                 payment.PaymentDate,
                 payment.Amount,
-                BankImportRowId = bankImportRowId
+                BankImportRowId = bankImportRowId,
+                AllocatedAmount = allocation.AllocatedAmount
             }));
 
             await context.SaveChangesAsync();
 
-            return payment.Id;
+            return (payment.Id, null);
         }
 
         // =====================================================

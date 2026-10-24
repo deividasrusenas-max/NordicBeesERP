@@ -836,7 +836,7 @@
                     await PaymentService.CreatePaymentFromBankImportAsync(row.Id, 1);
                     paymentsCreated++;
                 }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("jau apmokėta iš banko importo"))
+                catch (InvalidOperationException ex) when (ex.Message.Contains("jau pilnai apmokėta") || ex.Message.Contains("jau susieta su mokėjimu"))
                 {
                     // Invoice already paid - skip without counting as error
                     Snackbar.Add($"Sąskaita jau apmokėta - praleidžiama", Severity.Info);
