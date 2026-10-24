@@ -79,6 +79,8 @@ namespace NordicBeesERP.Data
         public DbSet<BankImport> BankImports { get; set; }
         public DbSet<BankImportRow> BankImportRows { get; set; }
         public DbSet<PaymentAuditLog> PaymentAuditLogs { get; set; }
+        public DbSet<SettlementOffset> SettlementOffsets { get; set; }
+        public DbSet<SettlementOffsetLine> SettlementOffsetLines { get; set; }
         
         public DbSet<NordicBeesERP.Models.Expenses.ExpenseCategory> ExpenseCategories { get; set; }
         public DbSet<Expense> Expenses { get; set; }
@@ -406,10 +408,12 @@ namespace NordicBeesERP.Data
                       .HasConversion(
                           v => v == PaymentMethod.BankTransfer ? "bank_transfer" :
                                  v == PaymentMethod.Cash ? "cash" :
-                                 v == PaymentMethod.Card ? "card" : "other",
+                                 v == PaymentMethod.Card ? "card" :
+                                 v == PaymentMethod.Offset ? "offset" : "other",
                           v => v == "bank_transfer" ? PaymentMethod.BankTransfer :
                                  v == "cash" ? PaymentMethod.Cash :
-                                 v == "card" ? PaymentMethod.Card : PaymentMethod.Other)
+                                 v == "card" ? PaymentMethod.Card :
+                                 v == "offset" ? PaymentMethod.Offset : PaymentMethod.Other)
                       .HasMaxLength(20);
 
                 // Decimal precision
