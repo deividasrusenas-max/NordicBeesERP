@@ -161,7 +161,7 @@ public class PaymentIntegrityE2ETests : IAsyncLifetime
             await _page.GetByLabel("Paieška pagal Nr. arba tiekėją").FillAsync(number);
             var row = _page.Locator("tr", new() { HasText = number });
             await Assertions.Expect(row).ToBeVisibleAsync();
-            await row.First.DblClickAsync(new() { Position = new Position { X = 120, Y = 10 } });
+            await row.First.ClickAsync(new() { Position = new Position { X = 120, Y = 10 } }); // FIX-002: a single click opens the detail dialog
 
             await _page.GetByRole(AriaRole.Button, new() { Name = "REGISTRUOTI MOKĖJIMĄ" }).ClickAsync();
             var dialog = _page.Locator(".mud-dialog", new() { HasText = "Įvesti mokėjimą" });

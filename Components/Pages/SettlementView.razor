@@ -44,7 +44,7 @@
             <MudPaper Class="pa-3 my-2" Elevation="1">
                 <MudTextField @bind-Value="_reason" Label="Atšaukimo priežastis" Variant="Variant.Outlined" Immediate="true" />
                 <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Error" Style="text-transform:none" OnClick="CancelAsync"
-                           Disabled="@(_busy || string.IsNullOrWhiteSpace(_reason))">Patvirtinti atšaukimą</MudButton>
+                           Disabled="_busy">Patvirtinti atšaukimą</MudButton>
             </MudPaper>
         }
 

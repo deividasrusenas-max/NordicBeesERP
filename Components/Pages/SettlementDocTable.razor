@@ -13,9 +13,8 @@
         <MudTd>@((context.Doc.DueDate ?? context.Doc.Date).ToString("yyyy-MM-dd"))</MudTd>
         <MudTd Class="text-right lakstena-mono">@FormatAmountHelper.Money(context.Doc.Open)</MudTd>
         <MudTd>
-            <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" Value="context.Amount" ValueChanged="@(v => { context.Amount = v; OnChanged.InvokeAsync(); })"
-                             Min="0" Max="context.Doc.Open" Variant="Variant.Outlined" Margin="Margin.Dense"
-                             Immediate="true" Disabled="Disabled" HideSpinButtons="true" />
+            <MudTextField T="string" Value="@context.Text" ValueChanged="@(v => { context.Text = v; context.Amount = LtNumber.TryParseDecimal(v, out var d) ? d : 0m; OnChanged.InvokeAsync(); })"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" Disabled="Disabled" />
         </MudTd>
     </RowTemplate>
     <NoRecordsContent>

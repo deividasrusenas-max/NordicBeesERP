@@ -16,15 +16,15 @@
     <MudPaper Class="pa-4 mb-4" Elevation="1">
         <MudGrid>
             <MudItem xs="12" md="6">
-                <MudSelect T="int" Value="_partnerId" ValueChanged="OnPartnerChangedAsync" Label="Partneris" Variant="Variant.Outlined" Disabled="_busy">
+                <MudSelect T="int?" Value="@(_partnerId > 0 ? _partnerId : (int?)null)" ValueChanged="OnPartnerChangedAsync" Label="Partneris" Placeholder="Pasirinkite partnerį" Variant="Variant.Outlined" Disabled="_busy">
                     @foreach (var p in _partners)
                     {
-                        <MudSelectItem T="int" Value="p.Id">@p.Name</MudSelectItem>
+                        <MudSelectItem T="int?" Value="@((int?)p.Id)">@p.Name</MudSelectItem>
                     }
                 </MudSelect>
                 @if (!_loadingPartners && _partners.Count == 0)
                 {
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nėra partnerių, turinčių atvirų pardavimo ir pirkimo sąskaitų.</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nėra partnerių, turinčių atvirų pardavimo ir patvirtintų pirkimo sąskaitų (pirkimo sąskaitos su būsena „Reikia patikrinti“ ar „Nežinomas tiekėjas“ neįtraukiamos).</MudText>
                 }
             </MudItem>
             <MudItem xs="12" md="3">
@@ -71,6 +71,7 @@
     {
         public OffsetDocument Doc { get; set; } = new();
         public decimal Amount { get; set; }
+        public string Text { get; set; } = "";   // what the user typed (comma or dot); Amount is parsed with LtNumber
     }
 
     private List<(int Id, string Name)> _partners = new();
@@ -100,9 +101,16 @@
         }
     }
 
-    private async Task OnPartnerChangedAsync(int partnerId)
+    private async Task OnPartnerChangedAsync(int? selected)
     {
+        var partnerId = selected ?? 0;
         _partnerId = partnerId;
+        if (partnerId == 0)
+        {
+            _receivables = new();
+            _payables = new();
+            return;
+        }
         _receivables = (await SettlementService.GetOpenReceivablesAsync(partnerId)).Select(d => new Row { Doc = d }).ToList();
         _payables = (await SettlementService.GetOpenPayablesAsync(partnerId)).Select(d => new Row { Doc = d }).ToList();
     }
@@ -121,6 +129,7 @@
         foreach (var r in rows)
         {
             r.Amount = Math.Min(r.Doc.Open, left);
+            r.Text = r.Amount > 0 ? LtNumber.Format(r.Amount, 2, grouped: false) : "";
             left -= r.Amount;
         }
     }
