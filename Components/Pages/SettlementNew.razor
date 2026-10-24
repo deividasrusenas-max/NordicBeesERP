@@ -1,0 +1,158 @@
+@page "/settlements/new"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
+@rendermode InteractiveServer
+@using NordicBeesERP.Services
+@using MudBlazor
+@inject ISettlementOffsetService SettlementService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Nauja užskaita</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h5" Class="mb-4">Nauja užskaita</MudText>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudSelect T="int" Value="_partnerId" ValueChanged="OnPartnerChangedAsync" Label="Partneris" Variant="Variant.Outlined" Disabled="_busy">
+                    @foreach (var p in _partners)
+                    {
+                        <MudSelectItem T="int" Value="p.Id">@p.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (!_loadingPartners && _partners.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nėra partnerių, turinčių atvirų pardavimo ir pirkimo sąskaitų.</MudText>
+                }
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDatePicker Date="_date" DateChanged="@(d => _date = d)" Label="Užskaitos data" Variant="Variant.Outlined" Disabled="_busy" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_partnerId > 0)
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6">Gautinos (partneris skolingas mums)</MudText>
+                <SettlementDocTable Rows="_receivables" OnChanged="StateHasChanged" Disabled="_busy" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6">Mokėtinos (mes skolingi partneriui)</MudText>
+                <SettlementDocTable Rows="_payables" OnChanged="StateHasChanged" Disabled="_busy" />
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Class="pa-4 mt-4" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
+                <MudText>Gautinos: <b>@FormatAmountHelper.Money(ReceivableSum)</b></MudText>
+                <MudText>Mokėtinos: <b>@FormatAmountHelper.Money(PayableSum)</b></MudText>
+                @if (ReceivableSum != PayableSum)
+                {
+                    <MudText Color="Color.Warning">Sumos nelygios (skirtumas @FormatAmountHelper.Money(Math.Abs(ReceivableSum - PayableSum)))</MudText>
+                }
+                <MudSpacer />
+                <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="AutoFill" Disabled="_busy">Užpildyti automatiškai</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" OnClick="SubmitAsync"
+                           Disabled="@(_busy || ReceivableSum <= 0 || ReceivableSum != PayableSum)">
+                    @if (_busy) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                    Sudengti
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    public class Row
+    {
+        public OffsetDocument Doc { get; set; } = new();
+        public decimal Amount { get; set; }
+    }
+
+    private List<(int Id, string Name)> _partners = new();
+    private List<Row> _receivables = new();
+    private List<Row> _payables = new();
+    private int _partnerId;
+    private DateTime? _date = AppClock.TodayLt;
+    private bool _busy;
+    private bool _loadingPartners = true;
+
+    private decimal ReceivableSum => _receivables.Sum(r => r.Amount);
+    private decimal PayableSum => _payables.Sum(r => r.Amount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _partners = await SettlementService.GetCandidatePartnersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkeliant partnerius: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingPartners = false;
+        }
+    }
+
+    private async Task OnPartnerChangedAsync(int partnerId)
+    {
+        _partnerId = partnerId;
+        _receivables = (await SettlementService.GetOpenReceivablesAsync(partnerId)).Select(d => new Row { Doc = d }).ToList();
+        _payables = (await SettlementService.GetOpenPayablesAsync(partnerId)).Select(d => new Row { Doc = d }).ToList();
+    }
+
+    // Default amount = min(Σ open receivable, Σ open payable), greedy by oldest due date, editable afterwards.
+    private void AutoFill()
+    {
+        var target = Math.Min(_receivables.Sum(r => r.Doc.Open), _payables.Sum(r => r.Doc.Open));
+        Fill(_receivables, target);
+        Fill(_payables, target);
+    }
+
+    private static void Fill(List<Row> rows, decimal target)
+    {
+        var left = target;
+        foreach (var r in rows)
+        {
+            r.Amount = Math.Min(r.Doc.Open, left);
+            left -= r.Amount;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (!userId.HasValue)
+            {
+                Snackbar.Add("Nepavyko nustatyti vartotojo", Severity.Error);
+                return;
+            }
+            var id = await SettlementService.CreateAndConfirmAsync(new CreateOffsetRequest
+            {
+                PartnerId = _partnerId,
+                OffsetDate = _date ?? AppClock.TodayLt,
+                Receivables = _receivables.Where(r => r.Amount > 0).Select(r => new OffsetLineRequest { DocumentId = r.Doc.Id, Amount = r.Amount }).ToList(),
+                Payables = _payables.Where(r => r.Amount > 0).Select(r => new OffsetLineRequest { DocumentId = r.Doc.Id, Amount = r.Amount }).ToList()
+            }, userId.Value);
+            Navigation.NavigateTo($"/settlements/{id}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida kuriant užskaitą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

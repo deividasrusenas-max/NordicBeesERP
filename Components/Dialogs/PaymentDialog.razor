@@ -44,7 +44,7 @@
                 <MudSelect T="string" @bind-Value="_method" Label="Mokėjimo būdas" Variant="Variant.Outlined" Margin="Margin.Dense" Required="@true">
                     <MudSelectItem T="string" Value="@("bank_transfer")">Banko pavedimas</MudSelectItem>
                     <MudSelectItem T="string" Value="@("cash")">Grynais</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("other")">Užskaita</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("other")">Kita</MudSelectItem>
                 </MudSelect>
             </MudItem>
             <MudItem xs="6">
@@ -225,7 +225,8 @@
             "BankTransfer" or "bank_transfer" => "Banko pavedimas",
             "Cash" or "cash" => "Grynais",
             "Card" or "card" => "Kortelė",
-            "Other" or "other" => "Užskaita",
+            "Other" or "other" => "Kita",
+            "Offset" or "offset" => "Užskaita",
             _ => method
         };
     }

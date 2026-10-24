@@ -925,6 +925,11 @@ namespace NordicBeesERP.Services
                 return false;
             }
 
+            if (payment.Source == SettlementOffsetService.Source)
+            {
+                throw new InvalidOperationException($"Užskaitos mokėjimą galima atšaukti tik atšaukus užskaitos aktą {payment.ReferenceNumber}.");
+            }
+
             // Get invoice IDs before deleting
             var invoiceIds = payment.Allocations.Select(a => a.InvoiceId).ToList();
 
@@ -997,6 +1002,11 @@ namespace NordicBeesERP.Services
             if (payment == null)
             {
                 return false;
+            }
+
+            if (payment.Source == SettlementOffsetService.Source)
+            {
+                throw new InvalidOperationException($"Užskaitos mokėjimą galima atšaukti tik atšaukus užskaitos aktą {payment.ReferenceNumber}.");
             }
 
             // `amount` is the payment TOTAL. A payment split over several invoices cannot have its total

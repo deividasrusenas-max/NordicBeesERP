@@ -1,0 +1,75 @@
+@page "/settlements"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
+@rendermode InteractiveServer
+@using NordicBeesERP.Services
+@using MudBlazor
+@inject ISettlementOffsetService SettlementService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Užskaitos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h5">Užskaitos</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => Navigation.NavigateTo("/settlements/new"))">Nauja užskaita</MudButton>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable Items="@_items" Dense="true" Hover="true" Striped="true" Elevation="0" RowsPerPage="25">
+            <HeaderContent>
+                <MudTh>Numeris</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Partneris</MudTh>
+                <MudTh Class="text-right">Suma</MudTh>
+                <MudTh>Būsena</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd @ondblclick="@(() => Open(context.Id))" Style="cursor:pointer">@context.Number</MudTd>
+                <MudTd @ondblclick="@(() => Open(context.Id))" Style="cursor:pointer">@context.Date.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd @ondblclick="@(() => Open(context.Id))" Style="cursor:pointer">@context.PartnerName</MudTd>
+                <MudTd @ondblclick="@(() => Open(context.Id))" Class="text-right lakstena-mono" Style="cursor:pointer">@FormatAmountHelper.Money(context.Amount)</MudTd>
+                <MudTd @ondblclick="@(() => Open(context.Id))" Style="cursor:pointer">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Status == "confirmed" ? Color.Success : Color.Default)" Style="text-transform:none">
+                        @(context.Status == "confirmed" ? "Patvirtinta" : "Atšaukta")
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="text-center py-4">Užskaitų nėra</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<SettlementListItem> _items = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _items = await SettlementService.ListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkeliant užskaitas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Open(int id) => Navigation.NavigateTo($"/settlements/{id}");
+}

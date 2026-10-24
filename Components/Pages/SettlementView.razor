@@ -1,0 +1,142 @@
+@page "/settlements/{Id:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
+@rendermode InteractiveServer
+@using NordicBeesERP.Models
+@using NordicBeesERP.Services
+@using NordicBeesERP.Services.Pdf
+@using MudBlazor
+@inject ISettlementOffsetService SettlementService
+@inject SettlementOffsetPdfService PdfService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Užskaitos aktas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_detail == null)
+    {
+        @if (_loading) { <MudProgressLinear Indeterminate="true" /> } else { <MudText>Užskaitos aktas nerastas.</MudText> }
+    }
+    else
+    {
+        var o = _detail.Offset;
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudText Typo="Typo.h5">Užskaitos aktas @o.OffsetNumber</MudText>
+            <MudChip T="string" Size="Size.Small" Color="@(o.Status == SettlementOffset.StatusConfirmed ? Color.Success : Color.Default)" Style="text-transform:none">
+                @(o.Status == SettlementOffset.StatusConfirmed ? "Patvirtinta" : "Atšaukta")
+            </MudChip>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Style="text-transform:none" OnClick="DownloadPdfAsync" Disabled="_busy">Atsisiųsti PDF</MudButton>
+            @if (o.Status == SettlementOffset.StatusConfirmed)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Style="text-transform:none" OnClick="@(() => _showCancel = !_showCancel)" Disabled="_busy">Atšaukti aktą</MudButton>
+            }
+        </MudStack>
+        <MudText>Data: @o.OffsetDate.ToString("yyyy-MM-dd") · Partneris: @_detail.PartnerName · Suma: <b>@FormatAmountHelper.Money(o.Amount)</b></MudText>
+        @if (o.Status == SettlementOffset.StatusCancelled)
+        {
+            <MudAlert Severity="Severity.Warning" Class="my-2">Atšaukta @o.CancelledAt?.ToString("yyyy-MM-dd HH:mm"): @o.CancelReason</MudAlert>
+        }
+        @if (_showCancel)
+        {
+            <MudPaper Class="pa-3 my-2" Elevation="1">
+                <MudTextField @bind-Value="_reason" Label="Atšaukimo priežastis" Variant="Variant.Outlined" Immediate="true" />
+                <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Error" Style="text-transform:none" OnClick="CancelAsync"
+                           Disabled="@(_busy || string.IsNullOrWhiteSpace(_reason))">Patvirtinti atšaukimą</MudButton>
+            </MudPaper>
+        }
+
+        <MudTable Items="@_detail.Lines" Dense="true" Hover="true" Striped="true" Elevation="0" Class="mt-3">
+            <HeaderContent>
+                <MudTh>Pusė</MudTh>
+                <MudTh>Dokumentas</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh Class="text-right">Likutis iki</MudTh>
+                <MudTh Class="text-right">Užskaityta</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@(context.Line.Side == SettlementOffsetLine.SideReceivable ? "Gautina" : "Mokėtina")</MudTd>
+                <MudTd>@context.DocNumber</MudTd>
+                <MudTd>@context.DocDate.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd Class="text-right lakstena-mono">@FormatAmountHelper.Money(context.Line.OpenBefore)</MudTd>
+                <MudTd Class="text-right lakstena-mono">@FormatAmountHelper.Money(context.Line.Amount)</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private SettlementDetail? _detail;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _showCancel;
+    private string _reason = "";
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _detail = await SettlementService.GetAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida įkeliant aktą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task DownloadPdfAsync()
+    {
+        if (_busy || _detail == null) return;
+        _busy = true;
+        try
+        {
+            var bytes = await PdfService.GeneratePdfAsync(Id);
+            await JS.InvokeVoidAsync("downloadFileFromBytes", $"{_detail.Offset.OffsetNumber}.pdf", "application/pdf", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida generuojant PDF: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            var userId = await AuthService.GetUserIdAsync();
+            if (!userId.HasValue)
+            {
+                Snackbar.Add("Nepavyko nustatyti vartotojo", Severity.Error);
+                return;
+            }
+            await SettlementService.CancelAsync(Id, _reason, userId.Value);
+            Snackbar.Add("Užskaitos aktas atšauktas", Severity.Success);
+            _showCancel = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Klaida atšaukiant aktą: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

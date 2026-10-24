@@ -907,6 +907,9 @@ namespace NordicBeesERP.Services
             if (payment == null)
                 return false;
 
+            if (payment.Source == SettlementOffsetService.Source)
+                throw new InvalidOperationException($"Užskaitos mokėjimą galima atšaukti tik atšaukus užskaitos aktą {payment.Reference}.");
+
             var invoiceId = payment.InvoiceId;
 
             // Get invoice info before payment is deleted
@@ -946,11 +949,13 @@ namespace NordicBeesERP.Services
             using var context = _dbFactory.CreateDbContext();
             await using var transaction = await context.Database.BeginTransactionAsync();
 
-            var exists = await context.ExpensePayments
+            var stored = await context.ExpensePayments
                 .AsNoTracking()
-                .AnyAsync(p => p.Id == payment.Id);
-            if (!exists)
+                .FirstOrDefaultAsync(p => p.Id == payment.Id);
+            if (stored == null)
                 throw new InvalidOperationException($"Payment with ID {payment.Id} not found");
+            if (stored.Source == SettlementOffsetService.Source)
+                throw new InvalidOperationException($"Užskaitos mokėjimą galima atšaukti tik atšaukus užskaitos aktą {stored.Reference}.");
 
             var invoiceId = payment.InvoiceId;
 

@@ -100,6 +100,8 @@ builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
     builder.Services.AddScoped<DebtReconciliationXlsxService>();
     builder.Services.AddScoped<UnpaidInvoicesService>();
     builder.Services.AddScoped<UnpaidInvoicesPdfService>();
+    builder.Services.AddScoped<ISettlementOffsetService, SettlementOffsetService>();
+    builder.Services.AddScoped<SettlementOffsetPdfService>();
     builder.Services.AddScoped<UnpaidInvoicesXlsxService>();
     builder.Services.AddScoped<SalesByCustomerReportService>();
     builder.Services.AddScoped<SalesByCustomerPdfService>();

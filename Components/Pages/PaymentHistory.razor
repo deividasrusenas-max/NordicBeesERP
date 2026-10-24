@@ -114,7 +114,7 @@
             <MudTd DataLabel="Suma" Style="text-align:right">@FormatAmountHelper.Trim(payment.Amount, 2)</MudTd>
             <MudTd DataLabel="Klientas">@payment.CustomerName</MudTd>
              <MudTd DataLabel="Būdas">
-                 <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@payment.PaymentMethod</MudChip>
+                 <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@(payment.PaymentMethod == "Offset" ? $"Užskaita {payment.ReferenceNumber}" : payment.PaymentMethod)</MudChip>
              </MudTd>
              <MudTd>
                 <MudTooltip Text="Mokėjimo peržiūra" Origin="TooltipOrigin.TopCenter" Anchor="TooltipAnchor.Center" AnchorOrigin="TooltipOrigin.TopCenter" Adornment="Adornment.Icon">

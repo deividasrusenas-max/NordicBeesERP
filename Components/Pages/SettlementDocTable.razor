@@ -1,0 +1,30 @@
+@using NordicBeesERP.Services
+@using MudBlazor
+
+<MudTable Items="@Rows" Dense="true" Hover="true" Striped="true" Elevation="0">
+    <HeaderContent>
+        <MudTh>Dokumentas</MudTh>
+        <MudTh>Terminas</MudTh>
+        <MudTh Class="text-right">Likutis</MudTh>
+        <MudTh Style="width:140px">Užskaityti</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Doc.Number</MudTd>
+        <MudTd>@((context.Doc.DueDate ?? context.Doc.Date).ToString("yyyy-MM-dd"))</MudTd>
+        <MudTd Class="text-right lakstena-mono">@FormatAmountHelper.Money(context.Doc.Open)</MudTd>
+        <MudTd>
+            <MudNumericField T="decimal" Value="context.Amount" ValueChanged="@(v => { context.Amount = v; OnChanged.InvokeAsync(); })"
+                             Min="0" Max="context.Doc.Open" Format="0.00" Variant="Variant.Outlined" Margin="Margin.Dense"
+                             Immediate="true" Disabled="Disabled" HideSpinButtons="true" />
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Class="text-center py-2">Atvirų sąskaitų nėra</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter] public List<SettlementNew.Row> Rows { get; set; } = new();
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+}

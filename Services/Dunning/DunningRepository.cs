@@ -270,7 +270,8 @@ public class DunningRepository
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var bank = await RawSql.ScalarAsync(db, "SELECT MAX(import_date) FROM bank_imports WHERE status = 'completed'", ct);
-        var pay = await RawSql.ScalarAsync(db, "SELECT MAX(payment_date) FROM payments", ct);
+        // Settlement-act (užskaita) rows are not cash: they must not make the payment data look fresh.
+        var pay = await RawSql.ScalarAsync(db, "SELECT MAX(payment_date) FROM payments WHERE source <> 'offset'", ct);
         return (bank is null ? null : Convert.ToDateTime(bank), pay is null ? null : Convert.ToDateTime(pay));
     }
 }
