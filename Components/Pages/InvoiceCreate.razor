@@ -12,6 +12,7 @@
 @inject IDeliveryService DeliveryService
 @inject IInvoiceService _invoiceService
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject ISupplierService SupplierService
 @inject IRawMaterialTypeService RawMaterialTypeService
@@ -682,6 +683,13 @@
             _nextInvoiceNumber = await _invoiceService.GenerateNextInvoiceNumberAsync(_invoiceDate ?? AppClock.TodayLt, _invoiceType);
     }
 
+    // Non-blocking: 0 % VAT on a Lithuanian customer is almost always a wrong default.
+    private void WarnIfZeroVatToLtCustomer(Invoice invoice)
+    {
+        if (ZeroVatBasis.ShouldWarnZeroVatToLtCustomer(_selectedCustomer?.CountryCode, _selectedCustomer?.VatCode, invoice.Lines.Select(l => l.VatRate)))
+            Snackbar.Add(ZeroVatBasis.ZeroVatToLtCustomerWarning, Severity.Warning);
+    }
+
     private async Task SaveInvoice()
     {
         if (_isBusy) return;
@@ -694,6 +702,7 @@
 
             await RefreshLockedInvoiceNumberAsync();
             var invoice = BuildInvoice();
+            WarnIfZeroVatToLtCustomer(invoice);
             await _invoiceService.CreateInvoiceAsync(invoice);
             navigating = true;
             Navigation.NavigateTo("/invoices");
@@ -724,6 +733,7 @@
 
             await RefreshLockedInvoiceNumberAsync();
             var invoice = BuildInvoice();
+            WarnIfZeroVatToLtCustomer(invoice);
             var invoiceId = await _invoiceService.CreateInvoiceAsync(invoice);
             navigating = true;
             Navigation.NavigateTo($"/invoices/pdf/{invoiceId}");

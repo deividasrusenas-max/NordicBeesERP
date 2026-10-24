@@ -397,6 +397,15 @@ namespace NordicBeesERP.Services
                     {
                         col.Item().PaddingTop(5).Text($"{labels.AmountInWordsLabel} {ConvertToLithuanianWords(totalInclVat)}").FontSize(9);
                     }
+
+                    // Legal basis for 0 % lines on a standard invoice (intra-EU supply / export). Not for 96 str. or ULAK 6 %.
+                    if (!isRc96 && !isReverseCharge6)
+                    {
+                        var zeroVatNote = ZeroVatBasis.NoteFor(invoice.Customer?.CountryCode, invoice.CustomerVatCode ?? invoice.Customer?.VatCode,
+                            invoice.Lines.Select(l => l.VatRate), invoice.Language?.ToUpper() == "EN");
+                        if (zeroVatNote != null)
+                            col.Item().PaddingTop(5).Text(zeroVatNote).FontSize(8);
+                    }
                     
                     // Apmokėti iki (perkeltas po "Suma žodžiais")
                     col.Item().PaddingTop(10).Text($"{labels.DueDateLabel} {invoice.PaymentDueDate?.ToString(invoice.Language?.ToUpper() == "EN" ? "MMMM d, yyyy" : "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? ""}").FontSize(9);

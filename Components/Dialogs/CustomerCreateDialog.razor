@@ -229,7 +229,7 @@
     private void ApplyCountryVatDefault(string? countryCode)
     {
         if (customer.Id != 0 || _vatRateTouched || string.IsNullOrWhiteSpace(countryCode)) return;
-        customer.DefaultVatRate = countryCode.Trim().ToUpperInvariant() == "LT" ? 21m : 0m;
+        customer.DefaultVatRate = ZeroVatBasis.DefaultRateForNewCustomer(countryCode, customer.VatCode);
         _vatRateKey++;
     }
     private string? _originalVatCode = "";
@@ -243,7 +243,7 @@
             PartnerType = "Customer",
             IsCustomer = true,
             PaymentTermDays = 30,
-            DefaultVatRate = 0m,
+            DefaultVatRate = ZeroVatBasis.StandardRate, // never 0 % until the country says so
             DefaultLanguage = "lt",
             CountryCode = "",
             Country = "",
@@ -256,7 +256,7 @@
         _originalVatCode = customer.VatCode;
         if (customer.Id == 0)
         {
-            customer.DefaultVatRate = 0m;
+            customer.DefaultVatRate = ZeroVatBasis.StandardRate;
             customer.CountryCode = "";
             customer.Country = "";
         }
@@ -369,6 +369,7 @@
  private async Task OnVatCodeChanged()
  {
      customer.VatCode = customer.VatCode?.Trim() ?? "";
+     ApplyCountryVatDefault(customer.CountryCode);
      if (string.IsNullOrWhiteSpace(customer.VatCode) || customer.VatCode.Length < 4) return;
      // Auto-prefix PL NIP if user enters 10-digit number without PL prefix
      if (customer.VatCode.Length == 10 && customer.VatCode.All(char.IsDigit))

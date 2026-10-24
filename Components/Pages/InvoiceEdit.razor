@@ -499,6 +499,13 @@
 
     private bool _isBusy;
 
+    // Non-blocking: 0 % VAT on a Lithuanian customer is almost always a wrong default.
+    private void WarnIfZeroVatToLtCustomer(Invoice invoice)
+    {
+        if (ZeroVatBasis.ShouldWarnZeroVatToLtCustomer(SelectedCustomer?.CountryCode, SelectedCustomer?.VatCode, invoice.Lines.Select(l => l.VatRate)))
+            Snackbar.Add(ZeroVatBasis.ZeroVatToLtCustomerWarning, Severity.Warning);
+    }
+
     private async Task SaveInvoice()
     {
         if (_isBusy) return;
@@ -510,6 +517,7 @@
             if (!ValidateInvoice()) return;
 
             var invoice = BuildInvoice();
+            WarnIfZeroVatToLtCustomer(invoice);
             await _invoiceService.UpdateInvoiceAsync(invoice);
             navigating = true;
             await InvokeAsync(() => Navigation.NavigateTo($"/invoices/{_invoiceId}"));
