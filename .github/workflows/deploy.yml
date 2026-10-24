@@ -4,13 +4,52 @@ on:
     branches:
       - main
       - production
+  workflow_dispatch:
+    inputs:
+      simulate_smoke_fail:
+        description: "Staging only: use a wrong smoke URL to verify the automatic rollback"
+        type: boolean
+        default: false
 jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build and test (SDK container)
+        env:
+          TEST_DB_SECRET: ${{ secrets.TEST_DB_CONNECTION }}
+        run: |
+          # TEST_DB_CONNECTION is only passed on when the secret exists; an empty value would
+          # defeat the fallback in DbTestFixture. Never print the value.
+          ENV_ARGS=""
+          if [ -n "$TEST_DB_SECRET" ]; then
+            ENV_ARGS="-e TEST_DB_CONNECTION"
+            export TEST_DB_CONNECTION="$TEST_DB_SECRET"
+          fi
+          docker run --rm --network host $ENV_ARGS \
+            -v "$GITHUB_WORKSPACE":/src -w /src \
+            mcr.microsoft.com/dotnet/sdk:10.0 \
+            sh -c "dotnet build NordicBeesERP.csproj -c Release && dotnet test Tests/NordicBeesERP.Tests"
   build-and-deploy:
+    needs: test
     runs-on: self-hosted
     permissions:
       contents: read
       packages: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Production gate (staging must be green for this SHA)
+        if: github.ref_name == 'production'
+        run: |
+          RESULT=$(gh run list --repo "${{ github.repository }}" --workflow "Build and Deploy" --branch main --commit "$GITHUB_SHA" --json conclusion -q '.[0].conclusion')
+          echo "main run for $GITHUB_SHA: ${RESULT:-none}"
+          if [ "$RESULT" != "success" ]; then
+            echo "Production deploy refused: no successful Build and Deploy run on main for this SHA."
+            exit 1
+          fi
       - name: Checkout
         uses: actions/checkout@v4
       - name: Set image tag
@@ -21,53 +60,99 @@ jobs:
           else
             echo "tag=staging" >> $GITHUB_OUTPUT
           fi
+      - name: Keep previous image for rollback
+        run: |
+          docker tag nordicbees-erp:${{ steps.tag.outputs.tag }} nordicbees-erp:${{ steps.tag.outputs.tag }}-previous || true
       - name: Build Docker image
         run: |
           docker build -t nordicbees-erp:${{ steps.tag.outputs.tag }} .
       - name: Deploy
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          SIMULATE_SMOKE_FAIL: ${{ github.event_name == 'workflow_dispatch' && github.ref_name != 'production' && inputs.simulate_smoke_fail }}
         run: |
           if [ "${{ github.ref_name }}" = "production" ]; then
-            docker stop nordicbees_prod || true
-            docker rm nordicbees_prod || true
-            docker run -d \
-              --name nordicbees_prod \
-              --restart always \
-              --add-host host.docker.internal:host-gateway \
-              -e ASPNETCORE_ENVIRONMENT=Production \
-              -e "Email__Mode=${{ vars.EMAIL_MODE_PROD || 'Redirect' }}" \
-              -e "Email__RedirectTo=${{ vars.EMAIL_REDIRECT_TO }}" \
-              -e "Email__SmtpHost=${{ vars.EMAIL_SMTP_HOST }}" \
-              -e "Email__ImapHost=${{ vars.EMAIL_IMAP_HOST }}" \
-              -e "Email__Username=${{ vars.EMAIL_USERNAME }}" \
-              -e "Email__FromAddress=${{ vars.EMAIL_FROM_ADDRESS }}" \
-              -e "Email__Password=${{ secrets.EMAIL_SMTP_PASSWORD }}" \
-              -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
-              -v /var/lib/nordicbees/artwork:/var/lib/nordicbees/artwork \
-              -v /var/lib/nordicbees/delivery-receipts:/var/lib/nordicbees/delivery-receipts \
-              -v /var/lib/nordicbees/invoices:/var/lib/nordicbees/invoices \
-              -v /var/lib/nordicbees/credit-notes:/var/lib/nordicbees/credit-notes \
-              -v /var/lib/nordicbees/prod:/var/lib/nordicbees/data \
-              -v /var/lib/nordicbees/dpkeys-prod:/app/keys \
-              -p 8080:8080 \
-              nordicbees-erp:latest
+            NAME=nordicbees_prod
+            PORT=8080
           else
-            docker stop nordicbees_staging || true
-            docker rm nordicbees_staging || true
-            docker run -d \
-              --name nordicbees_staging \
-              --restart always \
-              --add-host host.docker.internal:host-gateway \
-              -e ASPNETCORE_ENVIRONMENT=Staging \
-              -e "Email__Mode=Redirect" \
-              -e "Email__RedirectTo=${{ vars.EMAIL_REDIRECT_TO }}" \
-              -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp_staging;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
-              -v /var/lib/nordicbees/artwork-staging:/var/lib/nordicbees/artwork \
-              -v /var/lib/nordicbees/delivery-receipts-staging:/var/lib/nordicbees/delivery-receipts \
-              -v /var/lib/nordicbees/invoices-staging:/var/lib/nordicbees/invoices \
-              -v /var/lib/nordicbees/credit-notes-staging:/var/lib/nordicbees/credit-notes \
-              -v /var/lib/nordicbees/staging:/var/lib/nordicbees/data \
-              -v /var/lib/nordicbees/dpkeys-staging:/app/keys \
-              -p 8081:8080 \
-              nordicbees-erp:staging
+            NAME=nordicbees_staging
+            PORT=8081
+          fi
+
+          run_container() {
+            IMAGE="$1"
+            docker stop $NAME || true
+            docker rm $NAME || true
+            if [ "${{ github.ref_name }}" = "production" ]; then
+              docker run -d \
+                --name nordicbees_prod \
+                --restart always \
+                --add-host host.docker.internal:host-gateway \
+                -e ASPNETCORE_ENVIRONMENT=Production \
+                -e "Email__Mode=${{ vars.EMAIL_MODE_PROD || 'Redirect' }}" \
+                -e "Email__RedirectTo=${{ vars.EMAIL_REDIRECT_TO }}" \
+                -e "Email__SmtpHost=${{ vars.EMAIL_SMTP_HOST }}" \
+                -e "Email__ImapHost=${{ vars.EMAIL_IMAP_HOST }}" \
+                -e "Email__Username=${{ vars.EMAIL_USERNAME }}" \
+                -e "Email__FromAddress=${{ vars.EMAIL_FROM_ADDRESS }}" \
+                -e "Email__Password=${{ secrets.EMAIL_SMTP_PASSWORD }}" \
+                -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
+                -v /var/lib/nordicbees/artwork:/var/lib/nordicbees/artwork \
+                -v /var/lib/nordicbees/delivery-receipts:/var/lib/nordicbees/delivery-receipts \
+                -v /var/lib/nordicbees/invoices:/var/lib/nordicbees/invoices \
+                -v /var/lib/nordicbees/credit-notes:/var/lib/nordicbees/credit-notes \
+                -v /var/lib/nordicbees/prod:/var/lib/nordicbees/data \
+                -v /var/lib/nordicbees/dpkeys-prod:/app/keys \
+                -p 8080:8080 \
+                "$IMAGE"
+            else
+              docker run -d \
+                --name nordicbees_staging \
+                --restart always \
+                --add-host host.docker.internal:host-gateway \
+                -e ASPNETCORE_ENVIRONMENT=Staging \
+                -e "Email__Mode=Redirect" \
+                -e "Email__RedirectTo=${{ vars.EMAIL_REDIRECT_TO }}" \
+                -e "ConnectionStrings__DefaultConnection=Server=host.docker.internal;Port=3306;Database=nordic_bees_erp_staging;Uid=erp_user;Pwd=${{ secrets.MYSQL_PASSWORD }};SslMode=none;AllowPublicKeyRetrieval=True;" \
+                -v /var/lib/nordicbees/artwork-staging:/var/lib/nordicbees/artwork \
+                -v /var/lib/nordicbees/delivery-receipts-staging:/var/lib/nordicbees/delivery-receipts \
+                -v /var/lib/nordicbees/invoices-staging:/var/lib/nordicbees/invoices \
+                -v /var/lib/nordicbees/credit-notes-staging:/var/lib/nordicbees/credit-notes \
+                -v /var/lib/nordicbees/staging:/var/lib/nordicbees/data \
+                -v /var/lib/nordicbees/dpkeys-staging:/app/keys \
+                -p 8081:8080 \
+                "$IMAGE"
+            fi
+          }
+
+          smoke() {
+            LOGIN_PATH="/login"
+            if [ "$1" = "simulate" ]; then LOGIN_PATH="/login-simulated-missing"; fi
+            for i in $(seq 1 45); do
+              if curl -fsS -o /dev/null "http://localhost:$PORT$LOGIN_PATH" \
+                && curl -fsS -o /dev/null "http://localhost:$PORT/_framework/blazor.web.js"; then
+                echo "Smoke OK after $((i * 2)) s"
+                return 0
+              fi
+              sleep 2
+            done
+            return 1
+          }
+
+          run_container nordicbees-erp:$TAG
+          SMOKE_MODE=real
+          if [ "$SIMULATE_SMOKE_FAIL" = "true" ]; then SMOKE_MODE=simulate; fi
+          if ! smoke $SMOKE_MODE; then
+            echo "::error::Smoke check failed - rolling back to nordicbees-erp:$TAG-previous"
+            docker logs --tail 100 $NAME || true
+            if docker image inspect nordicbees-erp:$TAG-previous > /dev/null 2>&1; then
+              run_container nordicbees-erp:$TAG-previous
+              smoke real && echo "Rollback container is healthy" || echo "::error::Rollback container is NOT healthy"
+            else
+              docker stop $NAME || true
+              docker rm $NAME || true
+              echo "::error::No previous image to roll back to"
+            fi
+            exit 1
           fi
           docker image prune -f
