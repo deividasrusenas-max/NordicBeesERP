@@ -213,7 +213,7 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
     {
         var service = new SupplierService(_fixture.Factory);
 
-        var verifiedAt = DateTime.UtcNow;
+        var verifiedAt = new DateTime(DateTime.UtcNow.Ticks / 10 * 10, DateTimeKind.Utc); // MySQL datetime(6) keeps microseconds only
         var dto = new Supplier
         {
             Id = 0,
@@ -264,7 +264,7 @@ public class SupplierServiceTests : IClassFixture<DbTestFixture>
 
         var service = new SupplierService(_fixture.Factory);
 
-        var verifiedAt = DateTime.UtcNow;
+        var verifiedAt = new DateTime(DateTime.UtcNow.Ticks / 10 * 10, DateTimeKind.Utc); // MySQL datetime(6) keeps microseconds only
         var dto = new Supplier
         {
             Id = id,

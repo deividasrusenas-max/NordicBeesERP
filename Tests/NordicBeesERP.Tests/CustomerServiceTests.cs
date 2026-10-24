@@ -213,7 +213,7 @@ public class CustomerServiceTests : IClassFixture<DbTestFixture>
     {
         var service = new CustomerService(_fixture.Factory, NullLogger<CustomerService>.Instance);
 
-        var vatVerifiedAt = DateTime.UtcNow;
+        var vatVerifiedAt = new DateTime(DateTime.UtcNow.Ticks / 10 * 10, DateTimeKind.Utc); // MySQL datetime(6) keeps microseconds only
         var dto = new Customer
         {
             Id = 0,
@@ -290,7 +290,7 @@ public class CustomerServiceTests : IClassFixture<DbTestFixture>
 
         var service = new CustomerService(_fixture.Factory, NullLogger<CustomerService>.Instance);
 
-        var vatVerifiedAt = DateTime.UtcNow;
+        var vatVerifiedAt = new DateTime(DateTime.UtcNow.Ticks / 10 * 10, DateTimeKind.Utc); // MySQL datetime(6) keeps microseconds only
         var dto = new Customer
         {
             Id = id,
