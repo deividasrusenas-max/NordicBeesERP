@@ -10,9 +10,18 @@ on:
         description: "Staging only: use a wrong smoke URL to verify the automatic rollback"
         type: boolean
         default: false
+# One deploy pipeline per branch. cancel-in-progress is deliberately false: cancelling a run that is already inside the
+# Deploy step could leave the container stopped, and cancelled test runs leave their docker container running on the
+# runner (sharing the test DB). With false, GitHub still keeps only the NEWEST pending run per group (older queued runs
+# are cancelled automatically); the running one finishes, and the `current` check below skips a stale deploy.
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
 jobs:
   test:
     runs-on: self-hosted
+    outputs:
+      current: ${{ steps.head.outputs.current }}
     steps:
       - name: Clean root-owned build output left by earlier container runs
         run: |
@@ -45,8 +54,22 @@ jobs:
             echo "::warning::Test DB $DB_HOST:3306 is not reachable from this runner - DB-backed tests are SKIPPED, build only"
             $RUN dotnet build NordicBeesERP.csproj -c Release
           fi
+      - name: Is this commit still the branch head?
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          HEAD_SHA=$(gh api "repos/${{ github.repository }}/commits/${{ github.ref_name }}" -q .sha || echo "")
+          if [ -z "$HEAD_SHA" ] || [ "$HEAD_SHA" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Superseded by $HEAD_SHA - deploy skipped for $GITHUB_SHA"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
   build-and-deploy:
     needs: test
+    # Skip when a newer commit has landed on this branch while the tests ran (never deploy an older image over a newer one).
+    if: needs.test.outputs.current == 'true'
     runs-on: self-hosted
     permissions:
       contents: read
