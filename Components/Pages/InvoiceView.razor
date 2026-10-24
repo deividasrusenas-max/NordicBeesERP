@@ -302,15 +302,15 @@
                                              Style="@(daysLeft < 0 ? "color:#dc2626;font-weight:600" : daysLeft <= 7 ? "color:#d97706;font-weight:600" : "color:#16a34a")">
                                         @if (daysLeft < 0)
                                         {
-                                            <span>Vėluoja @Math.Abs(daysLeft) d.</span>
+                                            <span>@DueDaysText.UntilDue(daysLeft)</span>
                                         }
                                         else if (daysLeft == 0)
                                         {
-                                            <span>Mokėjimas šiandien</span>
+                                            <span>@DueDaysText.UntilDue(0)</span>
                                         }
                                         else
                                         {
-                                            <span>Liko @daysLeft d.</span>
+                                            <span>@DueDaysText.UntilDue(daysLeft)</span>
                                         }
                                     </MudText>
                                 </div>

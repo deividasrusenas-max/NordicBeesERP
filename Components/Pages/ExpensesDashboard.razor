@@ -298,7 +298,7 @@
                     <MudTd>
                         @{
                             var d = (inv.DueDate.Date - AppClock.TodayLt).Days;
-                            var lbl = d == 0 ? "Šiandien" : d > 0 ? $"-{d}d." : $"+{Math.Abs(d)}d.";
+                            var lbl = DueDaysText.UntilDue(d);
                             var sty = d < 0 ? "color:#ef4444;font-weight:600" : d <= 7 ? "color:#f97316;font-weight:600" : "color:#16a34a";
                         }
                         <MudText Style="@sty">@lbl</MudText>

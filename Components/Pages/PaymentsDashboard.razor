@@ -187,10 +187,7 @@
                                  var days = invoice.DueDate.HasValue 
                                      ? (invoice.DueDate.Value.Date - AppClock.TodayLt).Days 
                                      : (int?)null;
-                                 var label = days == null ? "-" 
-                                     : days == 0 ? "Šiandien" 
-                                     : days > 0 ? $"-{days}d." 
-                                     : $"+{Math.Abs(days.Value)}d.";
+                                 var label = days == null ? "-" : DueDaysText.UntilDue(days.Value);
                                  var termStyle = days == null ? "color:#9ca3af" 
                                      : days < 0 ? "color:#ef4444;font-weight:600" 
                                      : days == 0 ? "color:#f97316;font-weight:600"

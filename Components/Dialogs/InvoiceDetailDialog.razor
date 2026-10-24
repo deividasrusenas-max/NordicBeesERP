@@ -1054,13 +1054,16 @@
             var dlg = await DialogService.ShowAsync<ExpensePaymentDialog>(
                 "Registruoti mokėjimą", p,
                 new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
-        var result = await dlg.Result;
-        if (result is { Canceled: false })
-        {
-            _loadedInvoiceId = 0;
-            await OnParametersSetAsync();
-            StateHasChanged();
-        }
+        await dlg.Result;
+        await ReloadInvoiceAfterPaymentsAsync();
+    }
+
+    // The child dialog can add/delete payments and then be closed with X (Canceled) - always refresh the payments and status.
+    private async Task ReloadInvoiceAfterPaymentsAsync()
+    {
+        _loadedInvoiceId = 0;
+        await OnParametersSetAsync();
+        StateHasChanged();
     }
 
     private void CancelEdit()
@@ -1079,6 +1082,7 @@
             "Mokėjimai", p,
             new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true });
         await dlg.Result;
+        await ReloadInvoiceAfterPaymentsAsync();
     }
 
     private async Task OpenDuplicateDialog()

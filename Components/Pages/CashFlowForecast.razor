@@ -105,7 +105,7 @@
                 <MudTd Style="text-align:center">
                 @{
                     var d = inv.DueDate.HasValue ? (inv.DueDate.Value.Date - AppClock.TodayLt).Days : (int?)null;
-                    var lbl = d == null ? "-" : d == 0 ? "Šiandien" : d > 0 ? $"-{d}d." : $"+{Math.Abs(d.Value)}d.";
+                    var lbl = d == null ? "-" : DueDaysText.UntilDue(d.Value);
                     var clr = d == null ? "#9ca3af" : d < 0 ? "#ef4444" : d <= 7 ? "#f97316" : "#16a34a";
                 }
                 <MudText Style="@($"color:{clr};font-weight:600")">@lbl</MudText>

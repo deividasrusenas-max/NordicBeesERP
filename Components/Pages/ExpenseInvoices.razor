@@ -195,7 +195,7 @@
                         var daysOverdue = (AppClock.TodayLt - context.DueDate.Date).Days;
                         <div>
                             <span>@context.DueDate.ToString("MM-dd")</span>
-                            <div style="font-size:0.7rem;color:#dc2626;">Pradelsta @daysOverdue d.</div>
+                            <div style="font-size:0.7rem;color:#dc2626;">@DueDaysText.UntilDue(-daysOverdue)</div>
                         </div>
                     }
                     else if (!string.IsNullOrEmpty(dueDateLabel) && dueDateLabel != "—")
@@ -568,7 +568,7 @@
         if (invoice.DueDate < AppClock.TodayLt && invoice.Status != "PAID")
         {
             var daysOverdue = (AppClock.TodayLt - invoice.DueDate.Date).Days;
-            return $"Pradelsta {daysOverdue}d.";
+            return DueDaysText.UntilDue(-daysOverdue);
         }
         return invoice.DueDate.ToString("MM-dd");
     }

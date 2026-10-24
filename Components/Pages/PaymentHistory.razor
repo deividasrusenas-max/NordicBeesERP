@@ -285,19 +285,19 @@
     {
         if (daysFromDue < 0)
         {
-            return ($"-{Math.Abs(daysFromDue)}d. anksčiau", Color.Success);
+            return (DueDaysText.PaymentTiming(daysFromDue), Color.Success);
         }
         else if (daysFromDue == 0)
         {
-            return ("Laiku", Color.Success);
+            return (DueDaysText.PaymentTiming(0), Color.Success);
         }
         else if (daysFromDue > 0 && daysFromDue <= 7)
         {
-            return ($"+{daysFromDue}d.", Color.Warning);
+            return (DueDaysText.PaymentTiming(daysFromDue), Color.Warning);
         }
         else
         {
-            return ($"+{daysFromDue}d.", Color.Error);
+            return (DueDaysText.PaymentTiming(daysFromDue), Color.Error);
         }
     }
 
