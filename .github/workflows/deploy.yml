@@ -20,6 +20,9 @@ jobs:
         env:
           TEST_DB_SECRET: ${{ secrets.TEST_DB_CONNECTION }}
         run: |
+          # The Linux Skia native asset is not referenced by the repo (the app container image brings its own
+          # rendering path); the tests that touch SKBitmap abort the host without it, so it is added to the
+          # throw-away CI checkout only.
           # TEST_DB_CONNECTION is only passed on when the secret exists; an empty value would
           # defeat the fallback in DbTestFixture. Never print the value.
           ENV_ARGS=""
@@ -30,7 +33,7 @@ jobs:
           docker run --rm --network host $ENV_ARGS \
             -v "$GITHUB_WORKSPACE":/src -w /src \
             mcr.microsoft.com/dotnet/sdk:10.0 \
-            sh -c "dotnet build NordicBeesERP.csproj -c Release && dotnet test Tests/NordicBeesERP.Tests"
+            sh -c "dotnet add Tests/NordicBeesERP.Tests package SkiaSharp.NativeAssets.Linux.NoDependencies --version 2.88.8 && dotnet build NordicBeesERP.csproj -c Release && dotnet test Tests/NordicBeesERP.Tests"
   build-and-deploy:
     needs: test
     runs-on: self-hosted
