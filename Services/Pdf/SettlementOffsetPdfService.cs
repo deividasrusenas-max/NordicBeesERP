@@ -67,7 +67,7 @@ internal class SettlementOffsetDocument : IDocument
         container.Column(col =>
         {
             col.Spacing(10);
-            col.Item().AlignCenter().Text("TARPUSAVIO UŽSKAITOS AKTAS").FontSize(15).Bold();
+            col.Item().AlignCenter().Text(SettlementOffsetLabels.Title).FontSize(15).Bold();
             col.Item().AlignCenter().Text($"Nr. {o.OffsetNumber}").FontSize(11).Bold();
             col.Item().AlignCenter().Text($"{o.OffsetDate:yyyy-MM-dd}");
             if (o.Status == SettlementOffset.StatusCancelled)
@@ -82,13 +82,13 @@ internal class SettlementOffsetDocument : IDocument
                     $"{_partner.Address}, {_partner.PostalCode} {_partner.City}".Trim(' ', ',')));
             });
 
-            col.Item().Text("Šalys susitaria tarpusavyje įskaityti žemiau nurodytus tarpusavio įsipareigojimus:");
+            col.Item().Text(SettlementOffsetLabels.Intro);
 
             col.Item().Element(c => Table(c, $"Šalies 2 skola Šaliai 1 (pardavimo sąskaitos)", SettlementOffsetLine.SideReceivable));
             col.Item().Element(c => Table(c, $"Šalies 1 skola Šaliai 2 (pirkimo sąskaitos)", SettlementOffsetLine.SidePayable));
 
             col.Item().PaddingTop(4).Text($"Įskaitoma suma: {Money(o.Amount)}").FontSize(11).Bold();
-            col.Item().Text("Po užskaitos likusios sąskaitų skolos nurodytos lentelėse (stulpelis „Likutis po užskaitos“). Akto pasirašymo momentu šalių tarpusavio įsipareigojimai įskaitytos sumos dalyje laikomi įvykdytais.");
+            col.Item().Text(SettlementOffsetLabels.Outro);
 
             col.Item().PaddingTop(40).Row(row =>
             {
@@ -96,14 +96,14 @@ internal class SettlementOffsetDocument : IDocument
                 {
                     c.Item().Text(_company.CompanyName).Bold();
                     c.Item().PaddingTop(28).LineHorizontal(0.5f);
-                    c.Item().Text("Parašas, vardas, pavardė, data").FontSize(7);
+                    c.Item().Text(SettlementOffsetLabels.SignatureCaption).FontSize(7);
                 });
                 row.ConstantItem(30);
                 row.RelativeItem().Column(c =>
                 {
                     c.Item().Text(_partner.Name).Bold();
                     c.Item().PaddingTop(28).LineHorizontal(0.5f);
-                    c.Item().Text("Parašas, vardas, pavardė, data").FontSize(7);
+                    c.Item().Text(SettlementOffsetLabels.SignatureCaption).FontSize(7);
                 });
             });
         });
@@ -146,10 +146,20 @@ internal class SettlementOffsetDocument : IDocument
                     t.Cell().Padding(4).AlignRight().Text(Money(line.Amount));
                     t.Cell().Padding(4).AlignRight().Text(Money(line.OpenBefore - line.Amount));
                 }
-                t.Cell().ColumnSpan(3).Padding(4).AlignRight().Text("Iš viso užskaityta:").Bold();
+                t.Cell().ColumnSpan(3).Padding(4).AlignRight().Text(SettlementOffsetLabels.TotalOffsetLabel).Bold();
                 t.Cell().Padding(4).AlignRight().Text(Money(rows.Sum(r => r.Line.Amount))).Bold();
                 t.Cell().Padding(4).Text("");
             });
         });
     }
+}
+
+/// <summary>Visible texts of the settlement act (LT only in phase 1), kept out of inline .Text("…") literals.</summary>
+internal static class SettlementOffsetLabels
+{
+    public const string Title = "TARPUSAVIO UŽSKAITOS AKTAS";
+    public const string Intro = "Šalys susitaria tarpusavyje įskaityti žemiau nurodytus tarpusavio įsipareigojimus:";
+    public const string Outro = "Po užskaitos likusios sąskaitų skolos nurodytos lentelėse (stulpelis „Likutis po užskaitos“). Akto pasirašymo momentu šalių tarpusavio įsipareigojimai įskaitytos sumos dalyje laikomi įvykdytais.";
+    public const string SignatureCaption = "Parašas, vardas, pavardė, data";
+    public const string TotalOffsetLabel = "Iš viso užskaityta:";
 }
