@@ -326,6 +326,8 @@ public class SettlementOffsetService : ISettlementOffsetService
             throw new InvalidOperationException("Pasirinkite bent po vieną pardavimo ir pirkimo sąskaitą.");
         if (r.Receivables.Concat(r.Payables).Any(l => l.Amount <= 0))
             throw new InvalidOperationException("Kiekvienos eilutės suma turi būti didesnė už 0.");
+        if (r.Receivables.Concat(r.Payables).Any(l => decimal.Round(l.Amount, 2) != l.Amount))
+            throw new InvalidOperationException("Sumos gali turėti ne daugiau kaip 2 skaitmenis po kablelio.");
         if (r.Receivables.GroupBy(l => l.DocumentId).Any(g => g.Count() > 1) || r.Payables.GroupBy(l => l.DocumentId).Any(g => g.Count() > 1))
             throw new InvalidOperationException("Ta pati sąskaita pasirinkta kelis kartus.");
         if (r.Receivables.Sum(l => l.Amount) != r.Payables.Sum(l => l.Amount))
@@ -377,9 +379,20 @@ public class SettlementOffsetService : ISettlementOffsetService
             var lines = await db.SettlementOffsetLines.AsNoTracking().Where(l => l.OffsetId == id).ToListAsync();
             var now = DateTime.UtcNow;
 
+            // Same lock order as confirm (invoices, then expense invoices, ascending ids) so a concurrent payment cannot deadlock the cancel.
+            var lockInvoices = lines.Where(l => l.InvoiceId != null).Select(l => l.InvoiceId!.Value).OrderBy(x => x).ToList();
+            var lockExpenses = lines.Where(l => l.ExpenseInvoiceId != null).Select(l => l.ExpenseInvoiceId!.Value).OrderBy(x => x).ToList();
+            if (lockInvoices.Count > 0)
+                await RawSql.QueryAsync(db, "SELECT id FROM invoices WHERE id IN (" + Placeholders(lockInvoices.Count) + ") ORDER BY id FOR UPDATE",
+                    r => r.Int("id"), default, lockInvoices.Cast<object?>().ToArray());
+            if (lockExpenses.Count > 0)
+                await RawSql.QueryAsync(db, "SELECT id FROM expense_invoices WHERE id IN (" + Placeholders(lockExpenses.Count) + ") ORDER BY id FOR UPDATE",
+                    r => r.Int("id"), default, lockExpenses.Cast<object?>().ToArray());
+
             foreach (var l in lines.Where(l => l.PaymentId != null))
             {
-                await db.Database.ExecuteSqlRawAsync("DELETE FROM payment_audit_log WHERE payment_id = {0}", l.PaymentId!.Value);
+                // Keep the creation audit trail: detach it from the payment that is about to be deleted.
+                await db.Database.ExecuteSqlRawAsync("UPDATE payment_audit_log SET payment_id = NULL WHERE payment_id = {0}", l.PaymentId!.Value);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM payment_allocations WHERE payment_id = {0}", l.PaymentId.Value);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM payments WHERE id = {0} AND source = {1}", l.PaymentId.Value, Source);
                 await PaymentService.RecalculateInvoiceStatusInternalAsync(db, l.InvoiceId!.Value);
