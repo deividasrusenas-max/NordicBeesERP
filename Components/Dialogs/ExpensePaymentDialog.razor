@@ -64,7 +64,7 @@
                     <MudDatePicker Label="Mokėjimo data" Date="_paymentDate" DateChanged="@((DateTime? d) => _paymentDate = d)" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal" Label="Suma (€)" @bind-Value="_paymentAmount" Min="0.01m" Max="999999999.99m" Format="F2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField T="string" Label="Suma (€)" Value="@_amountStr" ValueChanged="@OnAmountChanged" Variant="Variant.Outlined" Margin="Margin.Dense" />
                 </MudItem>
                 <MudItem xs="6">
                     <MudSelect T="string" Label="Mokėjimo būdas" @bind-Value="_paymentMethod" Variant="Variant.Outlined" Margin="Margin.Dense">
@@ -162,6 +162,21 @@
     private List<ExpensePayment> _payments = new();
     private DateTime? _paymentDate = AppClock.TodayLt;
     private decimal _paymentAmount;
+    private string _amountStr = "";
+
+    // Text field + LtNumber (not MudNumericField): no browser-dependent "300.00", and an unparseable/zero entry is 0 -> rejected on save,
+    // never silently clamped to 0,01.
+    private void OnAmountChanged(string v)
+    {
+        _amountStr = v;
+        _paymentAmount = LtNumber.TryParseDecimal(v, out var d) ? d : 0m;
+    }
+
+    private void SetAmount(decimal v)
+    {
+        _paymentAmount = v;
+        _amountStr = v > 0 ? LtNumber.Format(v, 2, grouped: false) : "";
+    }
     private string _paymentMethod = "BANK";
     private string _paymentReference = string.Empty;
     private string _paymentNotes = string.Empty;
@@ -195,7 +210,7 @@
         {
             _payments = await ExpenseService.GetPaymentsAsync(invoiceId);
             _totalPaid = _payments.Sum(p => p.Amount);
-            _paymentAmount = RemainingAmount > 0 ? RemainingAmount : 0;
+            SetAmount(RemainingAmount > 0 ? RemainingAmount : 0);
             // Sync invoice paid amount with calculated total from payments
             if (_invoice != null)
             {

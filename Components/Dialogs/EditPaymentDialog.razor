@@ -6,12 +6,7 @@
     <DialogContent>
         <MudGrid Class="mt-3">
             <MudItem xs="12">
-                <MudNumericField Converter="@LtNumberConverters.Decimal" Culture="@LtCulture.Instance" T="decimal"
-                                 Value="_amount"
-                                 ValueChanged="@((decimal v) => _amount = v)"
-                                 Label="Suma (€)"
-                                 Min="0.01m" Max="999999999.99m" Required="true"
-                                 Format="F2" />
+                <MudTextField T="string" Label="Suma (€)" Value="@_amountStr" ValueChanged="@OnAmountChanged" Variant="Variant.Outlined" Required="true" />
             </MudItem>
             
             <MudItem xs="12">
@@ -70,6 +65,13 @@
     [Parameter] public string CurrentMethod { get; set; } = string.Empty;
 
     private decimal _amount;
+    private string _amountStr = "";
+
+    private void OnAmountChanged(string v)
+    {
+        _amountStr = v;
+        _amount = LtNumber.TryParseDecimal(v, out var d) ? d : 0m;
+    }
     private DateTime? _date;
     private string _method = "BankTransfer";
     private string _reference = string.Empty;
@@ -79,6 +81,7 @@
     protected override async Task OnInitializedAsync()
     {
         _amount = CurrentAmount;
+        _amountStr = LtNumber.Format(_amount, 2, grouped: false);
         _date = CurrentDate;
         _method = CurrentMethod;
         
@@ -102,7 +105,7 @@
         {
             if (_amount <= 0)
             {
-                Snackbar.Add("Suma turi būti didesnė nei 0", Severity.Error);
+                Snackbar.Add("Mokėjimo suma turi būti didesnė už 0.", Severity.Error);
                 return;
             }
 
